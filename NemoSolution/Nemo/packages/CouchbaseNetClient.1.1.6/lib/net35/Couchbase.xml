@@ -1,0 +1,454 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Couchbase</name>
+    </assembly>
+    <members>
+        <member name="M:Couchbase.BucketConfigListener.Start">
+            <summary>
+            Starts listening for configuration data. This method blocks until the initial configuration is received. (Or until all pool urls fail.)
+            </summary>
+        </member>
+        <member name="M:Couchbase.BucketConfigListener.ReleaseListener(Couchbase.MessageStreamListener)">
+            <summary>
+            Unsubscibes from a pooled listener, and destrpys it if no additionals subscribers are present.
+            </summary>
+            <param name="listener"></param>
+        </member>
+        <member name="M:Couchbase.BucketConfigListener.GetPooledListener">
+            <summary>
+            Returns a MessageStreamListener instance based on this instance's configuratino (timeout, bucket name etc.)
+            
+            When multiple listeners are requested with the exact same parameters (usually when multiple clients are instantiated from the same configuration),
+            the same listener will be returned each time.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="P:Couchbase.BucketConfigListener.Timeout">
+            <summary>
+            Connection timeout in milliseconds for connecting the pool.
+            </summary>
+        </member>
+        <member name="P:Couchbase.BucketConfigListener.DeadTimeout">
+            <summary>
+            Time to wait in milliseconds to reconnect to the pool when all nodes are down.
+            </summary>
+        </member>
+        <member name="E:Couchbase.BucketConfigListener.ClusterConfigChanged">
+            <summary>
+            Raised when the pool's configuration changes.
+            </summary>
+        </member>
+        <member name="M:Couchbase.ConfigHelper.DeserializeUri``1(System.Net.WebClient,System.Uri,System.Collections.Generic.IEnumerable{System.Web.Script.Serialization.JavaScriptConverter})">
+            <summary>
+            Deserializes the content of an url as a json object
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="uri"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Couchbase.ConfigHelper.ResolveBucket(System.Net.WebClient,System.Uri,System.String)">
+            <summary>
+            Asks the cluster for the specified bucket's configuration.
+            </summary>
+            <param name="bootstrapUri"></param>
+            <param name="name"></param>
+            <returns></returns>
+        </member>
+        <member name="F:Couchbase.Configuration.BucketPortType.Proxy">
+            <summary>
+            Connect to the nodes using moxy
+            </summary>
+        </member>
+        <member name="F:Couchbase.Configuration.BucketPortType.Direct">
+            <summary>
+            Connect to the nodes directly using the Memcached port
+            </summary>
+        </member>
+        <member name="T:Couchbase.Configuration.IHeartbeatMonitorConfiguration">
+            <summary>
+            Defines an interface for setting Heartbeat monitor attributes
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.IHeartbeatMonitorConfiguration.Interval">
+            <summary>
+            Time between checks, in milliseconds
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.IHeartbeatMonitorConfiguration.Enabled">
+            <summary>
+            Determines whether to run the heartbeat checks
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.HeartbeatMonitorElement.Uri">
+            <summary>
+            Gets or sets the endpoint uri for the heartbeat request
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.HeartbeatMonitorElement.Interval">
+            <summary>
+            Gets or sets the interval between heartbeat requests
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.HeartbeatMonitorElement.Enabled">
+            <summary>
+            Enables or disables the heartbeat requests
+            </summary>
+        </member>
+        <member name="M:Couchbase.Configuration.ICouchbaseClientConfiguration.CreateKeyTransformer">
+            <summary>
+            Creates an <see cref="T:Enyim.Caching.Memcached.IMemcachedKeyTransformer"/> instance which will be used to convert item keys for Memcached.
+            </summary>
+        </member>
+        <member name="M:Couchbase.Configuration.ICouchbaseClientConfiguration.CreateNodeLocator">
+            <summary>
+            Creates an <see cref="T:Enyim.Caching.Memcached.IMemcachedNodeLocator"/> instance which will be used to assign items to Memcached nodes.
+            </summary>
+        </member>
+        <member name="M:Couchbase.Configuration.ICouchbaseClientConfiguration.CreateTranscoder">
+            <summary>
+            Creates an <see cref="T:Enyim.Caching.Memcached.ITranscoder"/> instance which will be used to serialize or deserialize items.
+            </summary>
+        </member>
+        <member name="M:Couchbase.Configuration.ICouchbaseClientConfiguration.CreatePerformanceMonitor">
+            <summary>
+            Creates an <see cref="T:Enyim.Caching.Memcached.IPerformanceMonitor"/> instance which will be used to monitor the performance of the client.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ICouchbaseClientConfiguration.Bucket">
+            <summary>
+            Gets the name of the bucket to be used. If not specified the "default" bucket will be used.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ICouchbaseClientConfiguration.BucketPassword">
+            <summary>
+            Gets the pasword used to connect to the bucket.
+            </summary>
+            <remarks> If null, the bucket name will be used. Set to String.Empty to use an empty password.</remarks>
+        </member>
+        <member name="P:Couchbase.Configuration.ICouchbaseClientConfiguration.Urls">
+            <summary>
+            Gets a list of <see cref="T:IPEndPoint"/> each representing a Memcached server in the pool.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ICouchbaseClientConfiguration.SocketPool">
+            <summary>
+            Gets the configuration of the socket pool.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ICouchbaseClientConfiguration.HeartbeatMonitor">
+            <summary>
+            Gets the configuration of the heartbeat monitor.
+            </summary>
+        </member>
+        <member name="T:Couchbase.Configuration.CouchbaseClientConfiguration">
+            <summary>
+            Configuration class
+            </summary>
+        </member>
+        <member name="M:Couchbase.Configuration.CouchbaseClientConfiguration.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:MemcachedClientConfiguration"/> class.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.Bucket">
+            <summary>
+            Gets or sets the name of the bucket to be used. Can be overriden at the pool's constructor, and if not specified the "default" bucket will be used.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.BucketPassword">
+            <summary>
+            Gets or sets the pasword used to connect to the bucket.
+            </summary>
+            <remarks> If null, the bucket name will be used. Set to String.Empty to use an empty password.</remarks>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.Urls">
+            <summary>
+            Gets a list of <see cref="T:IPEndPoint"/> each representing a Memcached server in the pool.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.SocketPool">
+            <summary>
+            Gets the configuration of the socket pool.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.HeartbeatMonitor">
+            <summary>
+            Gets or sets the configuration of the heartbeat monitor.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.KeyTransformer">
+            <summary>
+            Gets or sets the <see cref="T:Enyim.Caching.Memcached.IMemcachedKeyTransformer"/> which will be used to convert item keys for Memcached.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.NodeLocator">
+            <summary>
+            Gets or sets the Type of the <see cref="T:Enyim.Caching.Memcached.IMemcachedNodeLocator"/> which will be used to assign items to Memcached nodes.
+            </summary>
+            <remarks>If both <see cref="M:NodeLocator"/> and  <see cref="M:NodeLocatorFactory"/> are assigned then the latter takes precedence.</remarks>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.NodeLocatorFactory">
+            <summary>
+            Gets or sets the NodeLocatorFactory instance which will be used to create a new IMemcachedNodeLocator instances.
+            </summary>
+            <remarks>If both <see cref="M:NodeLocator"/> and  <see cref="M:NodeLocatorFactory"/> are assigned then the latter takes precedence.</remarks>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.Transcoder">
+            <summary>
+            Gets or sets the <see cref="T:Enyim.Caching.Memcached.ITranscoder"/> which will be used serialzie or deserialize items.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientConfiguration.PerformanceMonitorFactory">
+            <summary>
+            Gets or sets the <see cref="T:Enyim.Caching.Memcached.IPerformanceMonitor"/> instance which will be used monitor the performance of the client.
+            </summary>
+        </member>
+        <member name="T:Couchbase.Configuration.CouchbaseClientSection">
+            <summary>
+            Configures the <see cref="T:CouchbaseClient"/>. This class cannot be inherited.
+            </summary>
+        </member>
+        <member name="M:Couchbase.Configuration.CouchbaseClientSection.PostDeserialize">
+            <summary>
+            Called after deserialization.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientSection.SocketPool">
+            <summary>
+            Gets or sets the configuration of the socket pool.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientSection.HeartbeatMonitor">
+            <summary>
+            Gets or sets the configuration of the socket pool.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientSection.NodeLocator">
+            <summary>
+            Gets or sets the <see cref="T:Enyim.Caching.Memcached.IMemcachedNodeLocator"/> which will be used to assign items to Memcached nodes.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientSection.KeyTransformer">
+            <summary>
+            Gets or sets the <see cref="T:Enyim.Caching.Memcached.IMemcachedKeyTransformer"/> which will be used to convert item keys for Memcached.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientSection.Transcoder">
+            <summary>
+            Gets or sets the <see cref="T:Enyim.Caching.Memcached.ITranscoder"/> which will be used serialize or deserialize items.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.CouchbaseClientSection.PerformanceMonitorFactory">
+            <summary>
+            Gets or sets the <see cref="T:Enyim.Caching.Memcached.IPerformanceMonitor"/> which will be used monitor the performance of the client.
+            </summary>
+        </member>
+        <member name="T:Couchbase.Configuration.ServersElement">
+            <summary>
+            Configures the <see cref="T:MemcachedClient"/>. This class cannot be inherited.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ServersElement.Bucket">
+            <summary>
+            Gets or sets the name of the bucket to be used. Can be overriden at the pool's constructor, and if not specified the "default" bucket will be used.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ServersElement.BucketPassword">
+            <summary>
+            Gets or sets the pasword used to connect to the bucket.
+            </summary>
+            <remarks> If null, the bucket name will be used. Set to String.Empty to use an empty password.</remarks>
+        </member>
+        <member name="P:Couchbase.Configuration.ServersElement.UserName">
+            <summary>
+            (Obsolete) Gets or sets the user name used to connect to a secured cluster
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ServersElement.Password">
+            <summary>
+            (Obsolete) Gets or sets the password used to connect to a secured cluster
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ServersElement.Urls">
+            <summary>
+            Returns a collection of nodes in the cluster the client should use to retrieve the Memcached nodes.
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.ServersElement.Port">
+            <summary>
+            Determines which port the client should use to connect to the nodes
+            </summary>
+        </member>
+        <member name="T:Couchbase.Configuration.UriElement">
+            <summary>
+            Represents a configuration element that contains a Memcached node address. This class cannot be inherited. 
+            </summary>
+        </member>
+        <member name="P:Couchbase.Configuration.UriElement.Uri">
+            <summary>
+            Gets or sets the ip address of the node.
+            </summary>
+        </member>
+        <member name="T:Couchbase.Configuration.UriElementCollection">
+            <summary>
+            Represents a collection of <see cref="T:EndPointElement"/> instances. This class cannot be inherited.
+            </summary>
+        </member>
+        <member name="M:Couchbase.Configuration.UriElementCollection.CreateNewElement">
+            <summary>
+            Creates a new <see cref="T:ConfigurationElement"/>.
+            </summary>
+            <returns>A new <see cref="T:ConfigurationElement"/>.</returns>
+        </member>
+        <member name="M:Couchbase.Configuration.UriElementCollection.GetElementKey(System.Configuration.ConfigurationElement)">
+            <summary>
+            Gets the element key for a specified configuration element when overridden in a derived class.
+            </summary>
+            <param name="element">The <see cref="T:ConfigurationElement"/> to return the key for. </param>
+            <returns>An <see cref="T:Object"/> that acts as the key for the specified <see cref="T:ConfigurationElement"/>.</returns>
+        </member>
+        <member name="M:Couchbase.Configuration.UriElementCollection.ToUriCollection">
+            <summary>
+            Helper method; converts the collection into an <see cref="T:IPEndPoint"/> collection for the interface implementation.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:Couchbase.MessageStreamListener">
+            <summary>
+            Listens on a streamingUri and processes the messages
+            </summary>
+        </member>
+        <member name="M:Couchbase.MessageStreamListener.#ctor(System.Uri[],System.Uri,System.Int32,System.Boolean,System.Func{Couchbase.WebClientWithTimeout,System.Uri,System.Uri})">
+            <summary>
+            Creates a new instance of MessageStreamListener
+            </summary>
+            <param name="urls"></param>
+            <param name="converter">You use this to redirect the original url into somewhere else. Called only once for each url before the MessageStreamListener starts processing it.</param>
+        </member>
+        <member name="M:Couchbase.MessageStreamListener.Start">
+            <summary>
+            Starts processing the streaming URI
+            </summary>
+        </member>
+        <member name="M:Couchbase.MessageStreamListener.Stop">
+            <summary>
+            Stops processing
+            </summary>
+        </member>
+        <member name="M:Couchbase.MessageStreamListener.SleepUntil(System.Int32)">
+            <summary>
+            Sleeps until the time elapses. Returns false if the sleep was aborted.
+            </summary>
+            <param name="milliseconds"></param>
+            <returns></returns>
+        </member>
+        <member name="P:Couchbase.MessageStreamListener.Credentials">
+            <summary>
+            The credentials used to connect to the urls.
+            </summary>
+        </member>
+        <member name="P:Couchbase.MessageStreamListener.ConnectionTimeout">
+            <summary>
+            Connection timeout in milliseconds for connecting the urls.
+            </summary>
+        </member>
+        <member name="P:Couchbase.MessageStreamListener.DeadTimeout">
+            <summary>
+            The time in milliseconds the listener should wait when retrying after the whole server list goes down.
+            </summary>
+        </member>
+        <member name="T:Couchbase.CouchbaseClient">
+            <summary>
+            Client which can be used to connect to NothScale's Memcached and Couchbase servers.
+            </summary>
+        </member>
+        <member name="M:Couchbase.CouchbaseClient.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Couchbase.CouchbaseClient" /> class using the default configuration and bucket.
+            </summary>
+            <remarks>The configuration is taken from the /configuration/Couchbase section.</remarks>
+        </member>
+        <member name="M:Couchbase.CouchbaseClient.#ctor(System.String,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Couchbase.CouchbaseClient" /> class using the default configuration and the specified bucket.
+            </summary>
+            <remarks>The configuration is taken from the /configuration/Couchbase section.</remarks>
+        </member>
+        <member name="M:Couchbase.CouchbaseClient.#ctor(Couchbase.Configuration.ICouchbaseClientConfiguration)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Couchbase.CouchbaseClient" /> class using a custom configuration provider.
+            </summary>
+            <param name="configuration">The custom configuration provider.</param>
+        </member>
+        <member name="M:Couchbase.CouchbaseClient.#ctor(System.String,System.String,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Couchbase.CouchbaseClient" /> class using the specified configuration 
+            section and the specified bucket.
+            </summary>
+            <param name="sectionName">The name of the configuration section to load.</param>
+            <param name="bucketName">The name of the bucket this client will connect to.</param>
+            <param name="bucketPassword">The password of the bucket this client will connect to.</param>
+        </member>
+        <member name="M:Couchbase.CouchbaseClient.#ctor(Couchbase.Configuration.ICouchbaseClientConfiguration,System.String,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Couchbase.CouchbaseClient" /> class 
+            using a custom configuration provider and the specified bucket name and password.
+            </summary>
+            <param name="configuration">The custom configuration provider.</param>
+            <param name="bucketName">The name of the bucket this client will connect to.</param>
+            <param name="bucketPassword">The password of the bucket this client will connect to.</param>
+        </member>
+        <member name="M:Couchbase.CouchbaseClient.#ctor(System.String)">
+            <summary>Obsolete. Use .ctor(bucket, password) to explicitly set the bucket password.</summary>
+        </member>
+        <member name="M:Couchbase.CouchbaseClient.#ctor(Couchbase.Configuration.ICouchbaseClientConfiguration,System.String)">
+            <summary>Obsolete. Use .ctor(config, bucket, password) to explicitly set the bucket password.</summary>
+        </member>
+        <member name="T:Couchbase.CouchbasePool">
+            <summary>
+            Socket pool using the Couchbase server's dynamic node list
+            </summary>
+        </member>
+        <member name="M:Couchbase.CouchbasePool.#ctor(Couchbase.Configuration.ICouchbaseClientConfiguration)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Couchbase.CouchbasePool" />.
+            </summary>
+            <param name="configuration">The configuration to be used.</param>
+        </member>
+        <member name="M:Couchbase.CouchbasePool.#ctor(Couchbase.Configuration.ICouchbaseClientConfiguration,System.String)">
+            <summary>Obsolete. Use .ctor(config, bucket, password) to explicitly set the bucket password.</summary>
+        </member>
+        <member name="M:Couchbase.CouchbasePool.#ctor(Couchbase.Configuration.ICouchbaseClientConfiguration,System.String,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Couchbase.CouchbasePool" /> class using the specified configuration,
+            bucket name and password.
+            </summary>
+            <param name="configuration">The configuration to be used.</param>
+            <param name="bucketName">The name of the bucket to connect to. Overrides the configuration's Bucket property.</param>
+            <param name="bucketPassword">The password to the bucket. Overrides the configuration's BucketPassword property.</param>
+        </member>
+        <member name="T:Couchbase.VBucketAwareOperationFactory">
+            <summary>
+            Couchbase requires each item operation to have a vbucket index set in the request's "reserved" field. (This is used for replicatiom and failover.) This op factory provides customized operations handling these indexes.
+            </summary>
+        </member>
+        <member name="M:Couchbase.WebClientWithTimeout.GetWebRequest(System.Uri,System.String)">
+            <summary>
+            Returns a <see cref="T:System.Net.WebRequest"/> object for the specified resource. The returned instance will have a custom ConnectionGroup to avoid running into connection limits.
+            </summary>
+            <param name="address">A <see cref="T:System.Uri"/> that identifies the resource to request. </param>
+            <returns>A new <see cref="T:System.Net.WebRequest"/> object for the specified resource. </returns>
+        </member>
+        <member name="P:Couchbase.WebClientWithTimeout.Timeout">
+            <summary>
+            Connection timeout in msec.
+            </summary>
+        </member>
+        <member name="P:Couchbase.WebClientWithTimeout.PreAuthenticate">
+            <summary>
+            This will send the credentials (using basic auth) every time without getting a 401 response from the server.
+            </summary>
+        </member>
+    </members>
+</doc>
