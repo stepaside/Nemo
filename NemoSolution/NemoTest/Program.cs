@@ -67,16 +67,16 @@ namespace NemoTest
             var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
 
             // Simple retrieve with dynamic parameters
-            var retieve_customer_dyn = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" });
+            var retrieve_customer_dyn = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" });
 
             // Simple retrieve with actual parameters
-            var retieve_customer = ObjectFactory.Retrieve<ICustomer>(parameters: new[] { new Param { Name = "CustomerID", Value = "ALFKI" } });
+            var retrieve_customer = ObjectFactory.Retrieve<ICustomer>(parameters: new[] { new Param { Name = "CustomerID", Value = "ALFKI" } });
 
             // Simple retrieve with dynamic parameters and custom operation name
-            var retieve_customers_by_country = ObjectFactory.Retrieve<ICustomer>(operation: "RetrieveByCountry", parameters: new ParamList { Country => "USA" });
+            var retrieve_customers_by_country = ObjectFactory.Retrieve<ICustomer>(operation: "RetrieveByCountry", parameters: new ParamList { Country => "USA" });
 
             // Simple retrieve with sql statement operation
-            var retieve_customer_sql = ObjectFactory.Retrieve<ICustomer>(sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
+            var retrieve_customer_sql = ObjectFactory.Retrieve<ICustomer>(sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
 
             // Advanced!
             // Retrieve customers with orders as object graph
@@ -161,7 +161,7 @@ namespace NemoTest
             using (var test_connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName)))
             {
                 test_connection.Open();
-                var retieve_customer_sql_wth_open_connection = ObjectFactory.Retrieve<ICustomer>(connection: test_connection, sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
+                var retrieve_customer_sql_wth_open_connection = ObjectFactory.Retrieve<ICustomer>(connection: test_connection, sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
             }
 
             var read_only = customer.AsReadOnly();
@@ -281,7 +281,7 @@ namespace NemoTest
 
         private static void RunRetrieve(int count, bool buffered = false)
         {
-            using (new CacheScope(buffered: buffered))
+            using (new CacheScope(buffered: buffered, cacheType: CacheType.Redis))
             {
                 var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
                 var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";

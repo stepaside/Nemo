@@ -4,12 +4,48 @@ using System.Linq;
 using BookSleeve;
 using Nemo.Serialization;
 using Nemo.Utilities;
+using System.Collections.Concurrent;
+using Nemo.Extensions;
 
 namespace Nemo.Caching.Providers
 {
-    public class RedisCacheProvider : CacheProvider, IDisposable
+    public class RedisCacheProvider : CacheProvider
     {
         #region Static Declarations
+
+        private static Dictionary<string, RedisConnection> _redisConnectionList = new Dictionary<string, RedisConnection>();
+
+        private static object _connectionLock = new object();
+
+        public static RedisConnection GetRedisConnection(string hostName)
+        {
+            RedisConnection connection = null;
+            hostName = !string.IsNullOrEmpty(hostName) ? hostName : DefaultHostName;
+            if (hostName.NullIfEmpty() != null)
+            {
+                lock (_connectionLock)
+                {
+                    if (!_redisConnectionList.TryGetValue(hostName, out connection))
+                    {
+                        connection = new RedisConnection(hostName);
+                        _redisConnectionList.Add(hostName, connection);
+                    }
+
+                    if (connection.State == RedisConnectionBase.ConnectionState.Closing 
+                        || connection.State == RedisConnectionBase.ConnectionState.Closed)
+                    {
+                        connection = new RedisConnection(hostName);
+                    }
+
+                    if (connection.State == RedisConnectionBase.ConnectionState.Shiny)
+                    {
+                        var openAsync = connection.Open();
+                        connection.Wait(openAsync);
+                    }
+                }
+            }
+            return connection;
+        }
 
         public static string DefaultHostName
         {
@@ -38,8 +74,7 @@ namespace Nemo.Caching.Providers
         {
             _database = database;
             _hostName = hostName;
-            _connection = new RedisConnection(_hostName);
-            _connection.Open();
+            _connection = GetRedisConnection(_hostName);
         }
 
         public RedisCacheProvider(CacheOptions options = null)
@@ -47,8 +82,7 @@ namespace Nemo.Caching.Providers
         {
             _database = options != null ? options.Database : DefaultDatabase;
             _hostName = options != null ? options.HostName : DefaultHostName;
-            _connection = new RedisConnection(_hostName);
-            _connection.Open();
+            _connection = GetRedisConnection(_hostName);
         }
 
         public override bool IsOutOfProcess
@@ -121,9 +155,14 @@ namespace Nemo.Caching.Providers
         {
             var taskGet = _connection.Strings.Get(_database, key);
             taskGet.Wait();
-            var reader = SerializationReader.CreateReader(taskGet.Result);
-            var result = reader.ReadObject();
-            return result;
+            var buffer = taskGet.Result;
+            if (buffer != null)
+            {
+                var reader = SerializationReader.CreateReader(buffer);
+                var result = reader.ReadObject();
+                return result;
+            }
+            return null;
         }
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
@@ -135,16 +174,15 @@ namespace Nemo.Caching.Providers
             var result = new Dictionary<string, object>();
             for (int i = 0; i < keysArray.Length; i++)
             {
-                var reader = SerializationReader.CreateReader(taskGet.Result[i]);
-                var item = reader.ReadObject();
-                result[keysArray[i]] = item;
+                var buffer = taskGet.Result[i];
+                if (buffer != null)
+                {
+                    var reader = SerializationReader.CreateReader(buffer);
+                    var item = reader.ReadObject();
+                    result[keysArray[i]] = item;
+                }
             }
             return result;
-        }
-
-        void IDisposable.Dispose()
-        {
-            _connection.Close(false);
         }
     }
 }
