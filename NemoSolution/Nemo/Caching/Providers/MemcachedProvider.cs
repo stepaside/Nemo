@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Enyim.Caching;
 using Enyim.Caching.Memcached;
+using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Utilities;
 
@@ -155,7 +156,7 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             var result = _memcachedClient.Get(key);
-            if (SlidingExpiration)
+            if (SlidingExpiration && result != null)
             {
                 Store(StoreMode.Replace, key, result);
             }
@@ -167,12 +168,26 @@ namespace Nemo.Caching.Providers
             var computedKeys = ComputeKey(keys);
             var items = _memcachedClient.Get(computedKeys.Keys);
             items = items.ToDictionary(i => computedKeys[i.Key], i => i.Value);
+            //if (SlidingExpiration && items.Count > 0)
+            //{
+            //    items.Run(delegate(KeyValuePair<string, object> kvp) 
+            //    {
+            //        Store(StoreMode.Replace, kvp.Key, kvp.Value);
+            //    });
+            //}
             return items;
         }
 
         public override bool Touch(string key, TimeSpan lifeSpan)
         {
-            throw new NotImplementedException();
+            var success = false;
+            key = ComputeKey(key);
+            var result = _memcachedClient.Get(key);
+            if (result != null)
+            {
+                success = _memcachedClient.Store(StoreMode.Replace, key, result, lifeSpan);
+            }
+            return success;
         }
 
         private bool Store(StoreMode mode, string key, object val)
