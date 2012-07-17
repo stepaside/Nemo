@@ -11,10 +11,10 @@ namespace Nemo
      * The idea was taken from here:
      * http://piers7.blogspot.com/2005/11/threadstatic-callcontext-and_02.html
      * Basically for each request at the PostAuthenticateRequest stage, 
-     * replace the existing principle with the ThreadedPrinciple like so:
+     * replace the existing principal with the ThreadedPrincipal like so:
      * 
      * Thread.CurrentPrincipal = new ThreadedPrincipal(Thread.CurrentPrincipal) 
-     * HttpContext.Current.User new ThreadedPrincipal(HttpContext.Current.User) 
+     * HttpContext.Current.User = new ThreadedPrincipal(HttpContext.Current.User) 
      * 
      * Then you can use ExecutionContext class anywhere in your application.
      *
