@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 
 namespace Nemo.Fn.Utilities

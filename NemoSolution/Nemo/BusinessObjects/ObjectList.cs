@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using Nemo.Extensions;
+using Nemo.Collections.Extensions;
 using Nemo.Validation;
 
 namespace Nemo.BusinessObjects

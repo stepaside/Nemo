@@ -113,14 +113,13 @@ namespace Nemo.UnitOfWork
 
             var objectType = businessObject.GetType();
             var interfaceType = Reflector.ExtractInterface(objectType);
-            var properties = Reflector.GetAllProperties(interfaceType);
             var propertyMap = Reflector.GetPropertyMap(interfaceType);
 
-            foreach (var property in properties)
+            foreach (var property in propertyMap.Values)
             {
-                if (Reflector.IsNotSimpleCollection(property.PropertyType))
+                if (property.IsBusinessObjectList)
                 {
-                    var childCollection = (IEnumerable)((IBusinessObject)businessObject).Property(property.Name);
+                    var childCollection = (IEnumerable)((IBusinessObject)businessObject).Property(property.PropertyName);
                     if (childCollection != null)
                     {
                         foreach (var item in childCollection)
@@ -129,9 +128,9 @@ namespace Nemo.UnitOfWork
                         }
                     }
                 }
-                else if (Reflector.IsBusinessObject(property.PropertyType))
+                else if (property.IsBusinessObject)
                 {
-                    var childObject = ((IBusinessObject)businessObject).Property(property.Name);
+                    var childObject = ((IBusinessObject)businessObject).Property(property.PropertyName);
                     CascadeToChild(businessObject, childObject, propertyName, propertyValue);
                 }
             }

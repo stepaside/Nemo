@@ -1,9 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Nemo.Extensions;
-using Nemo.Validation;
-using System.Collections;
+using Nemo.Collections.Extensions;
 
 namespace Nemo.Collections
 {

@@ -10,6 +10,7 @@ using System.Xml;
 using System.Xml.Linq;
 using Nemo.Attributes;
 using Nemo.Caching;
+using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Serialization;
@@ -45,60 +46,6 @@ namespace Nemo.Reflection
                                                                                                 typeof(Tuple<,,,,>), typeof(Tuple<,,,,,>), 
                                                                                                 typeof(Tuple<,,,,,,>), typeof(Tuple<,,,,,,,>) });
         #endregion
-
-        public static bool IsCollection(Type type)
-        {
-            bool result = false;
-            if (!_collectionTypes.TryGetValue(type, out result))
-            {
-                if (type.IsArray)
-                {
-                    result = true;
-                }
-                else
-                {
-                    Type interfaceType = type.GetInterface("System.Collections.IEnumerable");
-                    result = interfaceType != null && type.GetMethods(BindingFlags.Instance | BindingFlags.Public).Any(m => m.Name == "Add");
-                }
-                _collectionTypes[type] = result;
-            }
-            return result;
-        }
-
-        public static bool IsSimpleCollection(Type type)
-        {
-            bool result = IsCollection(type);
-            if (result)
-            {
-                result = IsSimpleType(ExtractCollectionElementType(type));
-            }
-            return result;
-        }
-
-        public static bool IsNotSimpleCollection(Type type)
-        {
-            bool result = IsCollection(type);
-            if (result)
-            {
-                result = !IsSimpleType(ExtractCollectionElementType(type));
-            }
-            return result;
-        }
-
-        public static bool IsGenericEnumerable(Type type)
-        {
-            var genericArguments = type.GetGenericArguments();
-            if (genericArguments != null && genericArguments.Length == 1 &&
-                typeof(IEnumerable<>).MakeGenericType(genericArguments).IsAssignableFrom(type)
-            )
-            {
-                return true;
-            }
-            else
-            {
-                return type.BaseType != null && IsGenericEnumerable(type.BaseType);
-            }
-        }
 
         public static bool InheritsFrom(this Type thisType, Type baseType)
         {
@@ -142,24 +89,6 @@ namespace Nemo.Reflection
         public static bool IsBusinessObject(Type objectType)
         {
             return typeof(IBusinessObject).IsAssignableFrom(objectType);
-        }
-
-        public static bool IsBusinessObjectCollection(Type objectType, out Type elementType)
-        {
-            var result = false;
-            if (Reflector.IsCollection(objectType))
-            {
-                elementType = Reflector.ExtractCollectionElementType(objectType);
-                if (elementType != null && Reflector.IsBusinessObject(elementType))
-                {
-                    result = true;
-                }
-            }
-            else
-            {
-                elementType = null;
-            }
-            return result;
         }
 
         public static bool IsBusinessObjectList(Type objectType, out Type elementType)
@@ -616,25 +545,7 @@ namespace Nemo.Reflection
         {
             return Type.GetType(typeName, false, true);
         }
-
-        public static string GetDisplayName(this Type type)
-        {
-            if (Reflector.IsSimpleNullableType(type))
-            {
-                var underlyingType = Nullable.GetUnderlyingType(type);
-                return string.Format("{0}?", underlyingType.Name);
-            }
-            else if (Reflector.IsCollection(type) && !Reflector.IsDictionary(type))
-            {
-                var elementType = Reflector.ExtractCollectionElementType(type);
-                if (elementType != null)
-                {
-                    return GetDisplayName(elementType);
-                }
-            }
-            return type.Name;
-        }
-        
+                
         #region CLR to DB Type
 
         private static readonly Dictionary<Type, DbType> _clrToDbTypeLookup = new Dictionary<Type, DbType>
@@ -964,7 +875,6 @@ namespace Nemo.Reflection
                 il.Emit(OpCodes.Ldc_I4, value);
             }
         }
-
 
         #endregion
 

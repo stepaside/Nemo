@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Collections;
-using Nemo.Extensions;
+﻿using System.Collections.Generic;
 using System.Runtime.Caching;
+using Nemo.Collections.Extensions;
 
 namespace Nemo.Caching.Providers
 {

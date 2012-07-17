@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Nemo.Attributes;
+using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Reflection;
 using Nemo.Serialization;

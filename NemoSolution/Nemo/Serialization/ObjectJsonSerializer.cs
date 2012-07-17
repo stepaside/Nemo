@@ -9,6 +9,7 @@ using System.Text;
 using System.Xml;
 using Nemo.Attributes;
 using Nemo.Collections;
+using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;

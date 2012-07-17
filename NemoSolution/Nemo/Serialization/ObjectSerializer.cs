@@ -9,7 +9,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using Nemo.Attributes;
 using Nemo.Collections;
-using Nemo.Extensions;
+using Nemo.Collections.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
 

@@ -1,4 +1,4 @@
-﻿using Nemo.Extensions;
+﻿using Nemo.Collections.Extensions;
 using Nemo.Fn;
 
 namespace Nemo.Utilities

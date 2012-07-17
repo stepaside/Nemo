@@ -11,6 +11,7 @@ using System.Transactions;
 using Nemo.Attributes;
 using Nemo.Caching;
 using Nemo.Collections;
+using Nemo.Collections.Extensions;
 using Nemo.Configuration;
 using Nemo.Data;
 using Nemo.Extensions;

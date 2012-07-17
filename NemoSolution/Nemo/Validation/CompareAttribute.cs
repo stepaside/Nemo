@@ -45,7 +45,7 @@ namespace Nemo.Validation
                 }
                 else
                 {
-                    operatorValue = "not" + string.Join(" ", Regex.Split(this.Operator.ToString(), "(?=[A-Z])").ToArray()).ToLower();
+                    operatorValue = "not " + string.Join(" ", Regex.Split(this.Operator.ToString(), "(?=[A-Z])").ToArray()).ToLower();
                 }
                 this.DefaultErrorMessage = string.Format(DEFAULT_ERROR_MESSAGE, operatorValue, this.PropertyName);
             }

@@ -112,10 +112,11 @@
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
     <Compile Include="Collections\Comparers\ReverseComparer.cs" />
     <Compile Include="Collections\Extensions\DictionaryExtensions.cs" />
+    <Compile Include="Collections\Extensions\SetExtensions.cs" />
     <Compile Include="Collections\List.cs" />
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
-    <Compile Include="Extensions\SortingExtensions.cs" />
+    <Compile Include="Collections\Extensions\SortingExtensions.cs" />
     <Compile Include="Fn\Extensions\FunctionExtensions.cs" />
     <Compile Include="Fn\Maybe.cs" />
     <Compile Include="Fn\MaybeExtensions.cs" />
@@ -211,8 +212,7 @@
     <Compile Include="Collections\Comparers\ElementComparer.cs" />
     <Compile Include="Collections\OrderedEnumerable.cs" />
     <Compile Include="Collections\OrderedEnumerableConverter.cs" />
-    <Compile Include="Collections\PowerSet.cs" />
-    <Compile Include="Extensions\LinqExtensions.cs" />
+    <Compile Include="Collections\Extensions\LinqExtensions.cs" />
     <Compile Include="ExecutionContext.cs" />
     <Compile Include="Extensions\ObjectExtensions.cs" />
     <Compile Include="ObjectFactory.cs" />
@@ -246,8 +246,8 @@
     <Compile Include="Utilities\Log.cs" />
     <Compile Include="BusinessObjects\IValidatableBusinessObjectList.cs" />
     <Compile Include="Utilities\Numbers.cs" />
-    <Compile Include="Utilities\Pool.cs" />
     <Compile Include="Utilities\StringStream.cs" />
+    <Compile Include="Utilities\ThreadSafeRandom.cs" />
     <Compile Include="Utilities\Xml.cs" />
     <Compile Include="Utilities\Xsd.cs" />
     <Compile Include="Validation\IValidatableList.cs" />

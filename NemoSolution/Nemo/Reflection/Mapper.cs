@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Reflection.Emit;
 using System.Collections.Concurrent;
-using Nemo.Extensions;
-using System.Collections;
+using System.Linq;
+using System.Reflection.Emit;
 using Nemo.Attributes;
+using Nemo.Collections.Extensions;
 
 namespace Nemo.Reflection
 {

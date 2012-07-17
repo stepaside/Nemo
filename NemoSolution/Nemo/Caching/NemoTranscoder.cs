@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Enyim.Caching.Memcached;
-using System.IO;
-using Nemo.Extensions;
+using Nemo.Collections.Extensions;
 using Nemo.Serialization;
 
 namespace Nemo.Caching

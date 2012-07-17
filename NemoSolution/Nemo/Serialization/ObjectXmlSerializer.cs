@@ -11,6 +11,7 @@ using System.Xml;
 using System.Xml.Serialization;
 using Nemo.Attributes;
 using Nemo.Collections;
+using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
