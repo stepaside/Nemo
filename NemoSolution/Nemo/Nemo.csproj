@@ -250,6 +250,8 @@
     <Compile Include="Utilities\ThreadSafeRandom.cs" />
     <Compile Include="Utilities\Xml.cs" />
     <Compile Include="Utilities\Xsd.cs" />
+    <Compile Include="Validation\IResourceKeyProvider.cs" />
+    <Compile Include="Validation\ISeverityTypeProvider.cs" />
     <Compile Include="Validation\IValidatableList.cs" />
     <Compile Include="Validation\ValidationAttributeBase.cs" />
     <Compile Include="Validation\ValidationError.cs" />
@@ -264,7 +266,7 @@
     <Compile Include="Validation\DataTypeAttribute.cs" />
     <Compile Include="BusinessObjects\IValidatableBusinessObject.cs" />
     <Compile Include="Validation\IValidatable.cs" />
-    <Compile Include="Validation\ICustomValidator.cs" />
+    <Compile Include="Validation\CustomValidator.cs" />
     <Compile Include="Validation\RangeAttribute.cs" />
     <Compile Include="Validation\RegularExpressionAttribute.cs" />
     <Compile Include="Validation\RequiredAttribute.cs" />

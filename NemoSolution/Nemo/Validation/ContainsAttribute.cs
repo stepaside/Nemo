@@ -13,13 +13,16 @@ namespace Nemo.Validation
 
         private HashSet<string> _valueSet = null;
 
-        public ContainsAttribute(string values) : base() 
+        public ContainsAttribute(string values, char delimiter = ',') : base() 
         {
             this.Values = values;
+            this.Delimiter = delimiter;
             this.InitializeDefaultErrorMessage();
         }
 
-        public string Values { get; set; }
+        public string Values { get; private set; }
+
+        public char Delimiter { get; private set; }
 
         protected override void InitializeDefaultErrorMessage()
         {
@@ -33,7 +36,7 @@ namespace Nemo.Validation
         {
             if (_valueSet == null && !string.IsNullOrEmpty(this.Values))
             {
-                _valueSet = new HashSet<string>(this.Values.Split(','));
+                _valueSet = new HashSet<string>(this.Values.Split(this.Delimiter));
             }
             else
             {

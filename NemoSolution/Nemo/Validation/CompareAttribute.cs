@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Collections;
 
 namespace Nemo.Validation
 {
@@ -34,6 +35,8 @@ namespace Nemo.Validation
 
         public CompareOperator Operator { get; set; }
 
+        public Type ComparerType { get; set; }
+
         protected override void InitializeDefaultErrorMessage()
         {
             if (string.IsNullOrEmpty(this.DefaultErrorMessage))
@@ -63,7 +66,17 @@ namespace Nemo.Validation
 
                     if (v1 != null && v2 != null && v1.GetType() == v2.GetType())
                     {
-                        var comparer = Comparer<IComparable>.Default;
+                        IComparer comparer = null;
+                        if (ComparerType != null && typeof(IComparer).IsAssignableFrom(ComparerType))
+                        {
+                            var createComparer = Reflection.Activator.CreateDelegate(ComparerType, Type.EmptyTypes);
+                            comparer = (IComparer)createComparer();
+                        }
+                        else
+                        {
+                            comparer = Comparer<IComparable>.Default;
+                        }
+
                         switch (this.Operator)
                         {
                             case CompareOperator.Equal:
@@ -71,25 +84,41 @@ namespace Nemo.Validation
                             case CompareOperator.NotEqual:
                                 return !object.Equals(v1, v2);
                             case CompareOperator.GreaterThan:
-                                if (v1 is IComparable && v2 is IComparable)
+                                if (ComparerType != null)
+                                {
+                                    return comparer.Compare(v1, v2) > 0;
+                                }
+                                else if (v1 is IComparable && v2 is IComparable)
                                 {
                                     return comparer.Compare((IComparable)v1, (IComparable)v2) > 0;
                                 }
                                 return false;
                             case CompareOperator.GreaterThanOrEqual:
-                                if (v1 is IComparable && v2 is IComparable)
+                                if (ComparerType != null)
+                                {
+                                    return comparer.Compare(v1, v2) >= 0;
+                                }
+                                else if (v1 is IComparable && v2 is IComparable)
                                 {
                                     return comparer.Compare((IComparable)v1, (IComparable)v2) >= 0;
                                 }
                                 return false;
                             case CompareOperator.LessThan:
-                                if (v1 is IComparable && v2 is IComparable)
+                                if (ComparerType != null)
+                                {
+                                    return comparer.Compare(v1, v2) < 0;
+                                }
+                                else if (v1 is IComparable && v2 is IComparable)
                                 {
                                     return comparer.Compare((IComparable)v1, (IComparable)v2) < 0;
                                 }
                                 return false;
                             case CompareOperator.LessThanOrEqual:
-                                if (v1 is IComparable && v2 is IComparable)
+                                if (ComparerType != null)
+                                {
+                                    return comparer.Compare(v1, v2) <= 0;
+                                }
+                                else if (v1 is IComparable && v2 is IComparable)
                                 {
                                     return comparer.Compare((IComparable)v1, (IComparable)v2) <= 0;
                                 }

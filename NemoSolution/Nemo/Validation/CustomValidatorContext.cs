@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Nemo.Validation
 {
-    public class CustomValidatorContext
+    public sealed class CustomValidatorContext
     {
         public CustomValidatorContext(object instance, string propertyName)
             : this(instance, propertyName, null)

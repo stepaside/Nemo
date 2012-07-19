@@ -81,6 +81,10 @@ namespace Nemo.Validation
             {
                 value = ((DateTime)value).AddMilliseconds(increment ? double.Epsilon : -double.Epsilon);
             }
+            else if (type == typeof(DateTimeOffset))
+            {
+                value = ((DateTimeOffset)value).AddMilliseconds(increment ? double.Epsilon : -double.Epsilon);
+            }
             else if (type == typeof(double))
             {
                 value = ((double)value) + (increment ? double.Epsilon : -double.Epsilon);

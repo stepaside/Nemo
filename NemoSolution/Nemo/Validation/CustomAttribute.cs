@@ -4,19 +4,19 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Nemo.Reflection;
 
 namespace Nemo.Validation
 {
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
     public class CustomAttribute : ValidationAttribute, ISeverityTypeProvider, IResourceKeyProvider
     {
-        private MethodInfo _validationMethod = null;
-        private ICustomValidator _validator = null;
+        private RuntimeMethodHandle? _validationMethodHandle = null;
+        private CustomValidator _validator = null;
         private string _resourceKey = null;
 
-        public Type ValidationType { get; set; }
+        public Type ValidatorType { get; set; }
         public string ValidationFunction { get; set; }
-        public string ClientValidationFunction { get; set; }
 
         public SeverityType SeverityType
         {
@@ -44,21 +44,20 @@ namespace Nemo.Validation
                 object[] values = (object[])value;
                 if (values.Length > 1)
                 {
-                    object context = values[0];
+                    var context = (CustomValidatorContext)values[0];
                     object propertyValue = values[1];
-                    object instance = ((CustomValidatorContext)context).Instance;
 
-                    if (this.ValidationType != null)
+                    if (this.ValidatorType != null)
                     {
                         // Check if validation type implements IValidator interface.
                         // If it does use an instance of IValidator to validate the property value.
-                        if (_validator != null || this.ValidationType.GetInterfaces().Contains(typeof(ICustomValidator)))
+                        if (_validator != null || typeof(CustomValidator).IsAssignableFrom(ValidatorType))
                         {
                             if (_validator == null)
                             {
-                                _validator = (ICustomValidator)Activator.CreateInstance(this.ValidationType);
+                                var createCustomValidtor = Nemo.Reflection.Activator.CreateDelegate(this.ValidatorType, typeof(CustomValidatorContext));
+                                _validator = (CustomValidator)createCustomValidtor(context);
                             }
-                            _validator.Context = (CustomValidatorContext)context;
                             var result = _validator.Validate(propertyValue);
                             return result == null || result.Count == 0;
                         }
@@ -70,30 +69,24 @@ namespace Nemo.Validation
                             // find a static public method in the validation type provided
                             // which returns boolean and accepts two arguments: 
                             // an object instance and a value to validate
-                            if (_validationMethod == null)
+                            if (_validationMethodHandle == null)
                             {
-                                _validationMethod = this.ValidationType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static).Where(m => m.Name == this.ValidationFunction).FirstOrDefault();
-                                if (_validationMethod != null)
+                                var validationMethod = this.ValidatorType.GetMethod(this.ValidationFunction);
+                                if (validationMethod != null && validationMethod.ReturnType == typeof(bool))
                                 {
-                                    if (_validationMethod.ReturnType != typeof(bool))
+                                    var parameters = validationMethod.GetParameters();
+                                    if (parameters.Length == 2 && parameters[0].ParameterType == typeof(CustomValidatorContext))
                                     {
-                                        _validationMethod = null;
-                                    }
-                                    else
-                                    {
-                                        var parameters = _validationMethod.GetParameters();
-                                        if (parameters.Length != 2 || !instance.GetType().IsAssignableFrom(parameters[0].ParameterType))
-                                        {
-                                            _validationMethod = null;
-                                        }
+                                        _validationMethodHandle = validationMethod.MethodHandle;
                                     }
                                 }
                             }
                         }
 
-                        if (_validationMethod != null)
+                        if (_validationMethodHandle.HasValue)
                         {
-                            return (bool)_validationMethod.Invoke(null, new object[] { instance, propertyValue });
+                            var validator = Reflector.Method.CreateDelegate(_validationMethodHandle.Value);
+                            return (bool)validator(null, new object[] { context, propertyValue });
                         }
                     }
                 }
@@ -101,9 +94,9 @@ namespace Nemo.Validation
             return true;
         }
 
-        public bool IsValid<T>(object instance, T propertyValue)
+        public bool IsValid<T>(object instance, string propertyName, T propertyValue)
         {
-            return IsValid(new object[] { instance, propertyValue });
+            return IsValid(new object[] { new CustomValidatorContext(instance, propertyName, this), propertyValue });
         }
     }
 }

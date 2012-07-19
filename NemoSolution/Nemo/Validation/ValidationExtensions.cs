@@ -14,8 +14,6 @@ namespace Nemo.Validation
         /// <summary>
         /// Validate method implements property validation based on attributes
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
         /// <returns>
         /// Returns a dictionary of properties and error messages
         /// </returns>
@@ -32,7 +30,7 @@ namespace Nemo.Validation
                          {
                              PropertyName = prop.Name,
                              ErrorMessage = attribute.FormatErrorMessage(string.Join(" ", Regex.Split(prop.Name, "(?=[A-Z])").ToArray())),
-                             Object = businessObject,
+                             TargetInstance = businessObject,
                              ValidationType = attribute.GetValidationType(),
                              SeverityType = attribute is ISeverityTypeProvider ? ((ISeverityTypeProvider)attribute).SeverityType : SeverityType.Error
                          };
