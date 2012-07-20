@@ -281,7 +281,7 @@ namespace NemoTest
 
         private static void RunRetrieve(int count, bool buffered = false)
         {
-            using (new CacheScope(buffered: buffered, cacheType: CacheType.Redis))
+            using (new CacheScope(buffered: buffered))
             {
                 var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
                 var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
