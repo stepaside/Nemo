@@ -24,6 +24,11 @@
     </FileUpgradeFlags>
     <OldToolsVersion>3.5</OldToolsVersion>
     <UpgradeBackupLocation />
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <TargetFrameworkProfile />
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'" />
+    <RestorePackages>true</RestorePackages>
+    <BuildPackage>true</BuildPackage>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -36,13 +41,8 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkProfile />
-    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'" />
-    <RestorePackages>true</RestorePackages>
-    <BuildPackage>true</BuildPackage>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -127,7 +127,6 @@
     <Compile Include="Reflection\ReflectedProperty.cs" />
     <Compile Include="Attributes\SelectableAttribute.cs" />
     <Compile Include="Attributes\TableAttribute.cs" />
-    <Compile Include="BusinessObjects\BusinessObjectListExtensions.cs" />
     <Compile Include="Data\SqlServerLegacyDialectProvider.cs" />
     <Compile Include="Id\GuidGenerator.cs" />
     <Compile Include="Id\UniqueNegativeNumberGenerator.cs" />
@@ -164,8 +163,6 @@
     <Compile Include="Collections\TypeArray.cs" />
     <Compile Include="Configuration\DefaultConfiguration.cs" />
     <Compile Include="Configuration\IConfiguration.cs" />
-    <Compile Include="BusinessObjects\BusinessObject.cs" />
-    <Compile Include="BusinessObjects\ObjectList.cs" />
     <Compile Include="Attributes\CacheAttribute.cs" />
     <Compile Include="Attributes\CacheKeyAttribute.cs" />
     <Compile Include="Attributes\PersistentAttribute.cs" />
@@ -176,7 +173,6 @@
     <Compile Include="Attributes\ReferencesAttribute.cs" />
     <Compile Include="Attributes\GenerateAttribute.cs" />
     <Compile Include="Attributes\PrimaryKeyAttribute.cs" />
-    <Compile Include="BusinessObjects\ReadOnlyObjectList.cs" />
     <Compile Include="UnitOfWork\ObjectScope.cs" />
     <Compile Include="UnitOfWork\ObjectScopeItem.cs" />
     <Compile Include="OperationParameter.cs" />
@@ -190,7 +186,6 @@
     <Compile Include="Caching\ICachedObjectProvider.cs" />
     <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Extensions\CastExtensions.cs" />
-    <Compile Include="BusinessObjects\CachedBusinessObject.cs" />
     <Compile Include="OperationType.cs" />
     <Compile Include="Reflection\Adapter.cs" />
     <Compile Include="Data\ExpressionVisitor.cs" />
@@ -206,7 +201,6 @@
     <Compile Include="Caching\CacheItem.cs" />
     <Compile Include="Caching\CacheKey.cs" />
     <Compile Include="Serialization\ObjectSerializer.cs" />
-    <Compile Include="BusinessObjects\ObjectLazyList.cs" />
     <Compile Include="Collections\BinaryHeap.cs" />
     <Compile Include="Collections\Comparers\ProjectionComparer.cs" />
     <Compile Include="Collections\Comparers\ElementComparer.cs" />
@@ -244,7 +238,6 @@
     <Compile Include="Utilities\Http.cs" />
     <Compile Include="Utilities\Json.cs" />
     <Compile Include="Utilities\Log.cs" />
-    <Compile Include="BusinessObjects\IValidatableBusinessObjectList.cs" />
     <Compile Include="Utilities\Numbers.cs" />
     <Compile Include="Utilities\StringStream.cs" />
     <Compile Include="Utilities\ThreadSafeRandom.cs" />
@@ -264,7 +257,6 @@
     <Compile Include="Validation\CustomAttribute.cs" />
     <Compile Include="Validation\CustomValidatorContext.cs" />
     <Compile Include="Validation\DataTypeAttribute.cs" />
-    <Compile Include="BusinessObjects\IValidatableBusinessObject.cs" />
     <Compile Include="Validation\IValidatable.cs" />
     <Compile Include="Validation\CustomValidator.cs" />
     <Compile Include="Validation\RangeAttribute.cs" />
