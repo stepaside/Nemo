@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Nemo")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription(".Net Enterprise Micro-ORM")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Advertising Specialty Institute, Inc.")]
+[assembly: AssemblyCompany("Stepaside, Inc.")]
 [assembly: AssemblyProduct("Nemo")]
-[assembly: AssemblyCopyright("Copyright © Advertising Specialty Institute, Inc. 2008")]
+[assembly: AssemblyCopyright("Copyright © Max Stepanskiy 2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("25d42943-6382-476e-bff1-6786568883ee")]
+[assembly: Guid("52d19521-556d-46fc-b823-3e0668d6962f")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("7.3.1.0")]
-[assembly: AssemblyFileVersion("7.3.1.0")]
+[assembly: AssemblyVersion("0.9.0")]
+[assembly: AssemblyFileVersion("0.9.0")]
