@@ -69,13 +69,6 @@ namespace Nemo.Reflection
                     continue;
                 }
 
-                if (!IsComparable && item is ComparableAttribute)
-                {
-                    IsComparable = true;
-                    CustomComparer = ((ComparableAttribute)item).CustomComparer;
-                    continue;
-                }
-
                 if (!IsCacheKey && item is CacheKeyAttribute)
                 {
                     IsCacheKey = true;
@@ -190,19 +183,7 @@ namespace Nemo.Reflection
             get;
             private set;
         }
-
-        public bool IsComparable
-        {
-            get;
-            private set;
-        }
-
-        public Type CustomComparer
-        {
-            get;
-            private set;
-        }
-
+        
         public bool IsCacheKey
         {
             get;
