@@ -685,7 +685,7 @@ namespace Nemo.Serialization
                                         }
                                         else
                                         {
-                                            list = List.Create(property.ElementType);
+                                            list = List.Create(property.ElementType, property.Distinct, property.Sorted);
                                         }
                                         var child = current.FirstChild;
                                         while (child != null)

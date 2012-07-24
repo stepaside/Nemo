@@ -892,7 +892,7 @@ namespace Nemo.Reflection
             static PropertyCache()
             {
                 Properties = Reflector.CacheProperties<T>();
-                Map = Properties.Values.ToDictionary(p => p, p => new ReflectedProperty(p, p.GetCustomAttributes(typeof(PropertyAttribute), true).Cast<PropertyAttribute>()));
+                Map = Properties.Values.ToDictionary(p => p, p => new ReflectedProperty(p));
                 NameMap = Map.ToDictionary(p => p.Key.Name, p => p.Value);
             }
             public static readonly Dictionary<string, PropertyInfo> Properties;

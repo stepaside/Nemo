@@ -17,22 +17,22 @@ namespace Nemo.Attributes.Converters
 		/// <param name="typeConverterTypeList"></param>
 		public TypeConverterAttribute(params Type[] typeConverterTypes)
 		{
-            if (typeConverterTypes == null || typeConverterTypes.Length == 0)
+			if (typeConverterTypes == null || typeConverterTypes.Length == 0)
 			{
-                _typeConverterType = null;
+				_typeConverterType = null;
 			}
-            else if (typeConverterTypes.Length == 1)
+			else if (typeConverterTypes.Length == 1)
 			{
-                _typeConverterType = typeConverterTypes[0];
+				_typeConverterType = typeConverterTypes[0];
 			}
 			else
 			{	//	Compose the converters into one
 				int i = 1;
 
-                _typeConverterType = typeConverterTypes[0];
-                while (i < typeConverterTypes.Length)
+				_typeConverterType = typeConverterTypes[0];
+				while (i < typeConverterTypes.Length)
 				{
-                    _typeConverterType = ComposeConverters(_typeConverterType, typeConverterTypes[i]);
+					_typeConverterType = ComposeConverters(_typeConverterType, typeConverterTypes[i]);
 					++i;
 				}
 			}
@@ -49,7 +49,7 @@ namespace Nemo.Attributes.Converters
 		/// <returns></returns>
 		public static TypeConverterAttribute GetTypeConverter(PropertyInfo property)
 		{
-            return property.GetCustomAttributes(typeof(TypeConverterAttribute), false).Cast<TypeConverterAttribute>().FirstOrDefault();
+			return property.GetCustomAttributes(typeof(TypeConverterAttribute), false).Cast<TypeConverterAttribute>().FirstOrDefault();
 		}
 
 		/// <summary>Returns the expected converter interface type, given from and to types.</summary>

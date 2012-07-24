@@ -6,7 +6,13 @@ using Nemo.Collections.Extensions;
 
 namespace Nemo.Collections
 {
-    public class SortedList<T> : IList<T>, IList
+    public interface ISortedList
+    {
+        bool Distinct { get; }
+        Type Comparer { get; }
+    }
+
+    public class SortedList<T> : IList<T>, IList, ISortedList
     {
         private List<T> _list;
         private IComparer<T> _comparer;
@@ -46,6 +52,14 @@ namespace Nemo.Collections
             get
             {
                 return _distinct;
+            }
+        }
+
+        public Type Comparer
+        {
+            get
+            {
+                return _comparer.GetType();
             }
         }
 

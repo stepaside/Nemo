@@ -217,7 +217,7 @@ namespace Nemo.Serialization
         {
             WriteObject(value, value != null ? Reflector.GetObjectTypeCode(value.GetType()) : ObjectTypeCode.Empty);
         }
-        
+
         public void WriteObject(object value, ObjectTypeCode typeCode)
         {
             if (value == null)
@@ -302,17 +302,30 @@ namespace Nemo.Serialization
                     case ObjectTypeCode.BusinessObjectList:
                         {
                             var items = (IList)value;
-                            if (items.Count > 0)
+
+                            Write(items.Count);
+                            if (value is ISortedList)
                             {
-                                Write(items.Count);
-                                var elementType = items[0].GetType();
-                                var serializer = CreateDelegate(elementType, value.GetType());
-                                serializer(this, items, items.Count);
+                                Write(((ISortedList)value).Distinct);
+                                Write(true);
+                                Write(((ISortedList)value).Comparer.FullName);
+                            }
+                            else if (value is ISet)
+                            {
+                                Write(true);
+                                Write(false);
+                                Write(((ISet)value).Comparer.FullName);
                             }
                             else
                             {
-                                Write(0);
+                                Write(false);
+                                Write(false);
                             }
+
+                            var containerType = value.GetType();
+                            var elementType = items.Count > 0 ? items[0].GetType() : Reflector.ExtractGenericCollectionElementType(containerType);
+                            var serializer = CreateDelegate(elementType, containerType);
+                            serializer(this, items, items.Count);
                         }
                         break;
                     
@@ -321,7 +334,6 @@ namespace Nemo.Serialization
                             var items = (IList)value;
                             Write(value.GetType().AssemblyQualifiedName);
                             WriteList(items);
-
                         }
                         break;
                     
@@ -445,7 +457,7 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Ldc_I4_0);
                 il.Emit(OpCodes.Callvirt, writeFlag);
             }
-
+            
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldc_I4, properties.Length);
             il.Emit(OpCodes.Callvirt, writeLength);
@@ -796,6 +808,28 @@ namespace Nemo.Serialization
                 case ObjectTypeCode.BusinessObjectList:
                     {
                         var itemCount = skip ? _itemCount : ReadInt32();
+                        var isDistinct = ReadBoolean();
+                        var isSorted = ReadBoolean();
+                        DistinctAttribute distinctAttribute = null;
+                        SortedAttribute sortedAttribute = null;
+                        Type comparerType = null;
+                        if (isDistinct || isSorted)
+                        {
+                            comparerType = GetType(ReadString());
+                            if (isSorted)
+                            {
+                                sortedAttribute = new SortedAttribute { ComparerType = comparerType };
+                                if (isDistinct)
+                                {
+                                    distinctAttribute = new DistinctAttribute();
+                                }
+                            }
+                            else if (isDistinct)
+                            {
+                                distinctAttribute = new DistinctAttribute { EqualityComparerType = comparerType };
+                            }
+                        }
+
                         var businessObjectType = GetType(skip ? _objectTypeName : ReadString());
                         var hasElementType = ReadBoolean();
                         Type elementType = null;
@@ -805,12 +839,11 @@ namespace Nemo.Serialization
                         }
                         var deserializer = CreateDelegate(businessObjectType);
                         var businessObjects = deserializer(this, itemCount);
-                        var list = List.Create(elementType ?? businessObjectType);
+                        var list = List.Create(elementType ?? businessObjectType, distinctAttribute, sortedAttribute);
                         foreach (var item in businessObjects)
                         {
                             list.Add(item);
                         }
-
                         return list;
                     }
                 case ObjectTypeCode.TypeUnion:

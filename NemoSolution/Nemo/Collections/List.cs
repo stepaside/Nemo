@@ -11,28 +11,54 @@ namespace Nemo.Collections
 {
     public static class List
     {
-        private static ConcurrentDictionary<Tuple<Type, bool, bool>, Type> _listTypes = new ConcurrentDictionary<Tuple<Type, bool, bool>, Type>();
+        private static ConcurrentDictionary<Type, Type> _listTypes = new ConcurrentDictionary<Type, Type>();
+        private static ConcurrentDictionary<Type, Type> _distinctListTypes = new ConcurrentDictionary<Type, Type>();
+        private static ConcurrentDictionary<Type, Type> _distinctSortedListTypes = new ConcurrentDictionary<Type, Type>();
+        private static ConcurrentDictionary<Type, Type> _sortedListTypes = new ConcurrentDictionary<Type, Type>();
 
-        public static IList Create(Type elementType, DistinctAttribute distinctAttribute = null, SortedAttribute sortedAttribute = null)
+        public static IList Create(Type elementType, DistinctAttribute distinctAttribute, SortedAttribute sortedAttribute)
         {
-            var isDisitnct = distinctAttribute != null;
+            var isDistinct = distinctAttribute != null;
             var isSorted = sortedAttribute != null;
 
-            var listTypeKey = Tuple.Create(elementType, isDisitnct, isSorted);
-
-            var listCreator = Nemo.Reflection.Activator.CreateDelegate(_listTypes.GetOrAdd(listTypeKey,
-                                                                        t => t.Item3 ? typeof(SortedList<>).MakeGenericType(t.Item1) 
-                                                                            : (t.Item2 ? typeof(HashList<>).MakeGenericType(t.Item1) 
-                                                                                : typeof(List<>).MakeGenericType(t.Item1))));
             if (isSorted)
             {
-                var comparerTypeCreator = Nemo.Reflection.Activator.CreateDelegate(sortedAttribute.ComparerType);
-                return (IList)listCreator(new object[] { comparerTypeCreator, isDisitnct });
+                return CreateSorted(elementType, sortedAttribute.ComparerType, isDistinct);
             }
-            else if (isDisitnct)
+            else if (isDistinct)
             {
-                var comparerTypeCreator = Nemo.Reflection.Activator.CreateDelegate(distinctAttribute.EqualityComparerType);
-                return (IList)listCreator(new object[] { comparerTypeCreator });
+                return CreateDistinct(elementType, distinctAttribute.EqualityComparerType);
+            }
+            else
+            {
+                return Create(elementType);
+            }
+        }
+
+        public static IList Create(Type elementType)
+        {
+            var listCreator = Nemo.Reflection.Activator.CreateDelegate(_listTypes.GetOrAdd(elementType, t => typeof(List<>).MakeGenericType(t)));
+            return (IList)listCreator(new object[] { });
+        }
+
+        public static IList CreateDistinct(Type elementType, Type comparerType)
+        {
+            Type[] types;
+            if (comparerType != null)
+            {
+                types = new[] { comparerType };
+            }
+            else
+            {
+                types = Type.EmptyTypes;
+            }
+            var listCreator = Nemo.Reflection.Activator.CreateDelegate(_distinctListTypes.GetOrAdd(elementType, t => typeof(HashList<>).MakeGenericType(t)), types);
+
+            if (comparerType != null)
+            {
+                var comparerTypeCreator = Nemo.Reflection.Activator.CreateDelegate(comparerType);
+                var comparer = comparerTypeCreator();
+                return (IList)listCreator(new object[] { comparer });
             }
             else
             {
@@ -40,6 +66,40 @@ namespace Nemo.Collections
             }
         }
 
+        public static IList CreateSorted(Type elementType, Type comparerType, bool distintct)
+        {
+            Type[] types;
+            if (comparerType != null)
+            {
+                types = new[] { comparerType, typeof(bool) };
+            }
+            else
+            {
+                types = new[] { typeof(bool) };
+            }
+
+            Nemo.Reflection.Activator.ObjectActivator listCreator;
+            if (distintct)
+            {
+                listCreator = Nemo.Reflection.Activator.CreateDelegate(_distinctSortedListTypes.GetOrAdd(elementType, t => typeof(SortedList<>).MakeGenericType(t)), types);
+            }
+            else
+            {
+                listCreator = Nemo.Reflection.Activator.CreateDelegate(_sortedListTypes.GetOrAdd(elementType, t => typeof(SortedList<>).MakeGenericType(t)), types);
+            }
+
+            if (comparerType != null)
+            {
+                var comparerTypeCreator = Nemo.Reflection.Activator.CreateDelegate(comparerType);
+                var comparer = comparerTypeCreator();
+                return (IList)listCreator(new object[] { comparer, false });
+            }
+            else
+            {
+                return (IList)listCreator(new object[] { false });
+            }
+        }
+        
         public static void AddIf<T>(this IList<T> list, T item, Func<T, bool> predicate)
         {
             if (predicate(item))

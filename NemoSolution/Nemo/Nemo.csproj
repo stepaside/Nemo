@@ -153,7 +153,6 @@
     <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="UnitOfWork\ChangeTrackingMode.cs" />
     <Compile Include="UnitOfWork\ObjectScopeExtensions.cs" />
-    <Compile Include="ObjectEqualityComparer.cs" />
     <Compile Include="Caching\CacheOptions.cs" />
     <Compile Include="Caching\CacheLink.cs" />
     <Compile Include="Caching\ContextLevelCacheType.cs" />

@@ -1151,7 +1151,7 @@ namespace Nemo
                                     }
                                     else
                                     {
-                                        list = List.Create(elementType);
+                                        list = List.Create(elementType, p.Value.Distinct, p.Value.Sorted);
                                     }
 
                                     foreach (var item in items)

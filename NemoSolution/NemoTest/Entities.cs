@@ -20,6 +20,7 @@ namespace NemoTest
         string Id { get; set; }
         [StringLength(50), Persistent(false), XmlAttribute]
         string CompanyName { get; set; }
+        //[Distinct]
         IList<IOrder> Orders { get; set; }
         [DoNotSerialize]
         TypeUnion<int, string, double> TypeUnionTest { get; set; }
@@ -41,7 +42,6 @@ namespace NemoTest
     public class CustomerOrderMapper
     {
         public ICustomer _current;
-        public ObjectEqualityComparer<ICustomer> _comparer = new ObjectEqualityComparer<ICustomer>();
         public ICustomer Map(ICustomer c, IOrder o)
         {
             // Terminating call.  Since we can return null from this function
@@ -51,7 +51,7 @@ namespace NemoTest
                 return _current;
 
             // Is this the same customer as the current one we're processing
-            if (_current != null && _comparer.Equals(_current, c))
+            if (_current != null && _current.Id == c.Id)
             {
                 // Yes, just add this order to the current customer's collection of orders
                 _current.Orders.Add(o);

@@ -653,7 +653,7 @@ namespace Nemo.Serialization
                         }
                         else
                         {
-                            list = List.Create(elementType);
+                            list = List.Create(elementType, property.Distinct, property.Sorted);
                         }
                         states.AddLast(new SerializationReaderState { Name = name, List = list, ElementType = elementType, PropertyMap = propertyMap });
 

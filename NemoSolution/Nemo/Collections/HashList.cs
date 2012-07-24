@@ -1,13 +1,20 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace Nemo.Collections
 {
-    public class HashList<T> : IList<T>, IList
+    public interface ISet 
+    {
+        Type Comparer { get; }
+    }
+
+    public class HashList<T> : IList<T>, IList, ISet<T>, ISet
     {
         private HashSet<T> _set;
         private List<T> _list;
+        private IEqualityComparer<T> _comparer;
 
         public HashList() : this(EqualityComparer<T>.Default) { }
 
@@ -15,14 +22,24 @@ namespace Nemo.Collections
 
         public HashList(IEqualityComparer<T> comparer)
         {
-            _set = new HashSet<T>(comparer);
+            _comparer = comparer;
+            _set = new HashSet<T>(_comparer);
             _list = new List<T>();
         }
 
         public HashList(IEnumerable<T> items, IEqualityComparer<T> comparer)
         {
-            _set = new HashSet<T>(items, comparer);
+            _comparer = comparer;
+            _set = new HashSet<T>(items, _comparer);
             _list = _set.ToList();
+        }
+
+        public Type Comparer
+        {
+            get
+            {
+                return _comparer.GetType();
+            }
         }
 
         #region IList<T> Members
@@ -226,6 +243,69 @@ namespace Nemo.Collections
             {
                 return null;
             }
+        }
+
+        #endregion
+
+        #region ISet<T> Members
+
+        bool ISet<T>.Add(T item)
+        {
+            return this.Add((object)item) > -1;
+        }
+
+        void ISet<T>.ExceptWith(IEnumerable<T> other)
+        {
+            _set.ExceptWith(other);
+            _list = _list.Except(other, _set.Comparer).ToList();
+        }
+
+        void ISet<T>.IntersectWith(IEnumerable<T> other)
+        {
+            _set.IntersectWith(other);
+            _list = _list.Intersect(other, _set.Comparer).ToList();
+        }
+
+        bool ISet<T>.IsProperSubsetOf(IEnumerable<T> other)
+        {
+            return _set.IsProperSubsetOf(other);
+        }
+
+        bool ISet<T>.IsProperSupersetOf(IEnumerable<T> other)
+        {
+            return _set.IsProperSupersetOf(other);
+        }
+
+        bool ISet<T>.IsSubsetOf(IEnumerable<T> other)
+        {
+            return _set.IsSubsetOf(other);
+        }
+
+        bool ISet<T>.IsSupersetOf(IEnumerable<T> other)
+        {
+            return _set.IsSupersetOf(other);
+        }
+
+        bool ISet<T>.Overlaps(IEnumerable<T> other)
+        {
+            return _set.Overlaps(other);
+        }
+
+        bool ISet<T>.SetEquals(IEnumerable<T> other)
+        {
+            return _set.SetEquals(other);
+        }
+
+        void ISet<T>.SymmetricExceptWith(IEnumerable<T> other)
+        {
+            _set.SymmetricExceptWith(other);
+            _list = _list.Except(other, _set.Comparer).Union(other.Except(_list, _set.Comparer)).ToList();
+        }
+
+        void ISet<T>.UnionWith(IEnumerable<T> other)
+        {
+            _set.UnionWith(other);
+            _list = _list.Union(other, _set.Comparer).ToList();
         }
 
         #endregion
