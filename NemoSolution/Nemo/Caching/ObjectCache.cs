@@ -77,8 +77,9 @@ namespace Nemo.Caching
 
             var links = new List<CacheLink>();
             var attrList = Reflector.GetAttributeList<T, CacheLinkAttribute>();
-            foreach (var attr in attrList)
+            for (int i = 0; i < attrList.Count; i++ )
             {
+                var attr = attrList[i];
                 links.Add(new CacheLink { DependentType = attr.DependentType, DependentParameter = attr.DependentParameter, ValueProperty = attr.ValueProperty });
             }
             return links;
@@ -154,8 +155,9 @@ namespace Nemo.Caching
             var parametersForCaching = new SortedDictionary<string, object>();
             if (parameters != null)
             {
-                foreach(var parameter in parameters)
+                for (int i = 0; i < parameters.Count; i++)
                 {
+                    var parameter = parameters[i];
                     parametersForCaching.Add(parameter.Name, parameter.Value);
                 }
             }

@@ -11,5 +11,6 @@
     <description>$description$</description>
     <copyright>Copyright © Max Stepanskiy 2012</copyright>
     <tags>ORM micro-ORM sql mapper</tags>
+	<releaseNotes>Added aspects for IList&lt;&gt; properties. Modified serialization to support the aspects.</releaseNotes>
   </metadata>
 </package>

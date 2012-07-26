@@ -840,9 +840,9 @@ namespace Nemo.Serialization
                         var deserializer = CreateDelegate(businessObjectType);
                         var businessObjects = deserializer(this, itemCount);
                         var list = List.Create(elementType ?? businessObjectType, distinctAttribute, sortedAttribute);
-                        foreach (var item in businessObjects)
+                        for (int i = 0; i < businessObjects.Length; i++ )
                         {
-                            list.Add(item);
+                            list.Add(businessObjects[i]);
                         }
                         return list;
                     }
