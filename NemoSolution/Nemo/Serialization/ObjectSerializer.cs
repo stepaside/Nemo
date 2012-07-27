@@ -308,13 +308,13 @@ namespace Nemo.Serialization
                             {
                                 Write(((ISortedList)value).Distinct);
                                 Write(true);
-                                Write(((ISortedList)value).Comparer.FullName);
+                                Write(((ISortedList)value).Comparer.AssemblyQualifiedName);
                             }
                             else if (value is ISet)
                             {
                                 Write(true);
                                 Write(false);
-                                Write(((ISet)value).Comparer.FullName);
+                                Write(((ISet)value).Comparer.AssemblyQualifiedName);
                             }
                             else
                             {
