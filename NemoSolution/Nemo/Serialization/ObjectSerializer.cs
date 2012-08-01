@@ -49,6 +49,13 @@ namespace Nemo.Serialization
         ProtocolBuffer = 255
     }
 
+    public enum ListAspectType : byte
+    {
+        None = 1,
+        Distinct = 2,
+        Sorted = 4
+    }
+
     /// <summary> SerializationWriter.  Extends BinaryWriter to add additional data types,
     /// handle null strings and simplify use with ISerializable. </summary>
     public class SerializationWriter : BinaryWriter
@@ -306,20 +313,24 @@ namespace Nemo.Serialization
                             Write(items.Count);
                             if (value is ISortedList)
                             {
-                                Write(((ISortedList)value).Distinct);
-                                Write(true);
+                                if (((ISortedList)value).Distinct)
+                                {
+                                    Write((byte)(ListAspectType.Sorted | ListAspectType.Distinct));
+                                }
+                                else
+                                {
+                                    Write((byte)ListAspectType.Sorted);
+                                }
                                 Write(((ISortedList)value).Comparer.AssemblyQualifiedName);
                             }
                             else if (value is ISet)
                             {
-                                Write(true);
-                                Write(false);
+                                Write((byte)ListAspectType.Distinct);
                                 Write(((ISet)value).Comparer.AssemblyQualifiedName);
                             }
                             else
                             {
-                                Write(false);
-                                Write(false);
+                                Write((byte)ListAspectType.None);
                             }
 
                             var containerType = value.GetType();
@@ -808,25 +819,25 @@ namespace Nemo.Serialization
                 case ObjectTypeCode.BusinessObjectList:
                     {
                         var itemCount = skip ? _itemCount : ReadInt32();
-                        var isDistinct = ReadBoolean();
-                        var isSorted = ReadBoolean();
+                        
+                        var listAspectType = (ListAspectType)ReadByte();
                         DistinctAttribute distinctAttribute = null;
                         SortedAttribute sortedAttribute = null;
                         Type comparerType = null;
-                        if (isDistinct || isSorted)
+                        if (listAspectType != ListAspectType.None)
                         {
                             comparerType = GetType(ReadString());
-                            if (isSorted)
-                            {
-                                sortedAttribute = new SortedAttribute { ComparerType = comparerType };
-                                if (isDistinct)
-                                {
-                                    distinctAttribute = new DistinctAttribute();
-                                }
-                            }
-                            else if (isDistinct)
+                            if (listAspectType == ListAspectType.Distinct)
                             {
                                 distinctAttribute = new DistinctAttribute { EqualityComparerType = comparerType };
+                            }
+                            else if (listAspectType == ListAspectType.Sorted || listAspectType == (ListAspectType.Sorted | ListAspectType.Distinct))
+                            {
+                                sortedAttribute = new SortedAttribute { ComparerType = comparerType };
+                                if (listAspectType != ListAspectType.Sorted)
+                                {
+                                    distinctAttribute = new DistinctAttribute();
+                                } 
                             }
                         }
 

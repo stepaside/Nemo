@@ -10,6 +10,8 @@ namespace Nemo.Caching
 
     public enum CacheExpirationType { Never, DateTime, TimeSpan, TimeOfDay };
 
+    public enum CacheContentionMitigationType { None, DistributedLocking, UseStaleCache }
+
     public class CacheFactory
     {
         private static HashSet<string> _cacheTypes = new HashSet<string>(Enum.GetNames(typeof(CacheType)), StringComparer.OrdinalIgnoreCase);

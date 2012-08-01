@@ -33,7 +33,7 @@ namespace NemoTest
                 .SetDefaultOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
                 .SetDefaultHashAlgorithm(HashAlgorithmName.Jenkins)
-                .ToggleDistributedLocking(false)
+                .SetCacheContentionMitigation(CacheContentionMitigationType.None)
                 .ToggleLogging(false)
                 .ToggleCacheCollisionDetection(false)
                 .ToggleDistributedLockVerification(false);

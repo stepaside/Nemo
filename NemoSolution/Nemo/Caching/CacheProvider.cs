@@ -130,7 +130,7 @@ namespace Nemo.Caching
             }
         }
 
-        public TimeSpan LifeSpan
+        public virtual TimeSpan LifeSpan
         {
             get
             {
@@ -145,7 +145,7 @@ namespace Nemo.Caching
             }
         }
 
-        public DateTimeOffset ExpiresAt
+        public virtual DateTimeOffset ExpiresAt
         {
             get
             {
@@ -179,7 +179,7 @@ namespace Nemo.Caching
             }
         }
 
-        public Maybe<DateTimeOffset> ExpiresAtSpecificTime
+        public virtual Maybe<DateTimeOffset> ExpiresAtSpecificTime
         {
             get
             {
@@ -187,7 +187,7 @@ namespace Nemo.Caching
             }
         }
 
-        private  Maybe<DateTimeOffset> ParseTimeOfDay(string timeOfDay, bool adjustForSave)
+        protected Maybe<DateTimeOffset> ParseTimeOfDay(string timeOfDay, bool adjustForSave)
         {
             if (!string.IsNullOrEmpty(timeOfDay))
             {

@@ -3,19 +3,22 @@ using System.Collections.Generic;
 using System.Threading;
 using Nemo.Caching.Providers;
 using Nemo.Utilities;
+using Nemo.Fn;
 
 namespace Nemo.Caching
 {
     public abstract class DistributedCacheProvider<TLockManager> : CacheProvider, IDistributedCacheProvider
-        where TLockManager : CacheProvider, IDistributedCacheProvider
+        where TLockManager : CacheProvider, IDistributedCacheProvider, IDistributedCounter
     {
         private static object _cacheLock = new object();
-
+        
         public abstract bool CheckAndSave(string key, object val, ulong cas);
         public abstract Tuple<object, ulong> RetrieveWithCas(string key);
         public abstract IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys);
         public abstract bool Touch(string key, TimeSpan lifeSpan);
-
+        public abstract object RetrieveStale(string key);
+        public abstract IDictionary<string, object> RetrieveStale(IEnumerable<string> keys);
+        
         public Tuple<object, bool> RetrieveAndTouch(string key, TimeSpan lifeSpan)
         {
             var result = Retrieve(key);
@@ -28,13 +31,13 @@ namespace Nemo.Caching
         }
 
         private const int LOCK_DEFAULT_RETRIES = 4;
-        private const int LOCK_DEFAULT_EXPIRES = 2;
-
+        private const double LOCK_DEFAULT_MAXDELAY = 0.7;
+        
         protected DistributedCacheProvider(TLockManager lockManager, CacheType cacheType, CacheOptions options)
             : base(cacheType, options)
         {
             LockManager = lockManager;
-            LockManager.LifeSpan = TimeSpan.FromMinutes(LOCK_DEFAULT_EXPIRES);
+            LockManager.LifeSpan = TimeSpan.FromMinutes(ObjectFactory.Configuration.DistributedLockTimeout);
         }
 
         protected TLockManager LockManager
@@ -58,10 +61,11 @@ namespace Nemo.Caching
                 return true;
             }
 
+            var isStaleCacheEnabled = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache;
+            
             var originalKey = key;
             key = ComputeKey(key);
-
-            key = "LOCK::" + key;
+            key = (isStaleCacheEnabled ? "STALE::" : "LOCK::") + key;
 
             var stored = false;
             if (ObjectFactory.Configuration.DistributedLockVerification)
@@ -88,6 +92,10 @@ namespace Nemo.Caching
             }
             else
             {
+                if (!isStaleCacheEnabled)
+                {
+                    LockManager.Increment(key);
+                }
                 Log.Capture(() => string.Format("Failed to acquire lock for {0}", originalKey));
             }
             return stored;
@@ -99,6 +107,7 @@ namespace Nemo.Caching
 
             object result = null;
             double totalSleepTime = 0;
+            var sleepTime = TimeSpan.Zero;
             count = count <= 0 ? 1 : count;
             for (int i = 0; i < count; i++)
             {
@@ -109,7 +118,15 @@ namespace Nemo.Caching
                     break;
                 }
 
-                var sleepTime = TimeSpan.FromSeconds(Math.Pow(2, i) / 3.5);
+                if (sleepTime == TimeSpan.Zero)
+                {
+                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((int)LockManager.Retrieve("LOCK::" + key) - 0.5), LOCK_DEFAULT_MAXDELAY));
+                }
+                else
+                {
+                    sleepTime = TimeSpan.FromSeconds(sleepTime.TotalSeconds / 2);
+                }
+
                 totalSleepTime += sleepTime.TotalSeconds;
                 Log.Capture(() => string.Format("Waiting for locked key {0} (sleep time {1} s)", key, sleepTime.TotalSeconds));
                 Thread.Sleep(sleepTime);
@@ -125,10 +142,11 @@ namespace Nemo.Caching
                 return true;
             }
 
+            var isStaleCacheEnabled = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache;
+
             var originalKey = key;
             key = ComputeKey(key);
-
-            key = "LOCK::" + key;
+            key = (isStaleCacheEnabled ? "STALE::" : "LOCK::") + key;
 
             var removed = LockManager.Clear(key);
             if (removed)
@@ -140,6 +158,81 @@ namespace Nemo.Caching
                 Log.Capture(() => string.Format("Failed to remove lock for {0}", originalKey));
             }
             return removed;
+        }
+
+        protected object ComputeValue(object value, DateTimeOffset currentDateTime)
+        {
+            if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache)
+            {
+                switch (ExpirationType)
+                {
+                    case CacheExpirationType.TimeOfDay:
+                        return new TemporalValue { Value = value, ExpiresAt = base.ExpiresAtSpecificTime.Value.DateTime };
+                    case CacheExpirationType.DateTime:
+                        return new TemporalValue { Value = value, ExpiresAt = base.ExpiresAt.DateTime };
+                    case CacheExpirationType.TimeSpan:
+                        return new TemporalValue { Value = value, ExpiresAt = currentDateTime.Add(LifeSpan).DateTime };
+                    default:
+                        return value;
+                }
+            }
+            else
+            {
+                return value;
+            }
+        }
+
+        public override DateTimeOffset ExpiresAt
+        {
+            get
+            {
+                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache)
+                {
+                    return base.ExpiresAt.AddMinutes(ObjectFactory.Configuration.StaleCacheTimeout);
+                }
+                else
+                {
+                    return base.ExpiresAt;
+                }
+            }
+            protected internal set
+            {
+                base.ExpiresAt = value;
+            }
+        }
+
+        public override Maybe<DateTimeOffset> ExpiresAtSpecificTime
+        {
+            get
+            {
+                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache)
+                {
+                    return base.ExpiresAtSpecificTime.Do(d => d.AddMinutes(ObjectFactory.Configuration.StaleCacheTimeout));
+                }
+                else
+                {
+                    return base.ExpiresAtSpecificTime;
+                }
+            }
+        }
+
+        public override TimeSpan LifeSpan
+        {
+            get
+            {
+                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache)
+                {
+                    return base.LifeSpan.Add(TimeSpan.FromMinutes(ObjectFactory.Configuration.StaleCacheTimeout));
+                }
+                else
+                {
+                    return base.LifeSpan;
+                }
+            }
+            protected internal set
+            {
+                base.LifeSpan = value;
+            }
         }
     }
 }

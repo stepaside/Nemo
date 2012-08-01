@@ -9,7 +9,7 @@ using Enyim.Caching.Memcached;
 
 namespace Nemo.Caching.Providers
 {
-    public class CouchbaseCacheProvider : DistributedCacheProvider<CouchbaseCacheProvider>
+    public class CouchbaseCacheProvider : DistributedCacheProvider<CouchbaseCacheProvider>, IDistributedCounter
     {
         #region Static Declarations
 
@@ -66,6 +66,7 @@ namespace Nemo.Caching.Providers
         public override bool CheckAndSave(string key, object val, ulong cas)
         {
             key = ComputeKey(key);
+            val = ComputeValue(val, DateTimeOffset.Now);
             CasResult<bool> result;
             switch (ExpirationType)
             {
@@ -88,15 +89,36 @@ namespace Nemo.Caching.Providers
         public override Tuple<object, ulong> RetrieveWithCas(string key)
         {
             key = ComputeKey(key);
-            var result = _couchbaseClient.GetWithCas(key);
-            return Tuple.Create(result.Result, result.Cas);
+            var casResult = _couchbaseClient.GetWithCas(key);
+            var result = casResult.Result;
+            if (result != null && result is TemporalValue)
+            {
+                var staleValue = (TemporalValue)result;
+                if (staleValue.IsValid())
+                {
+                    result = staleValue.Value;
+                }
+                else
+                {
+                    result = null;
+                }
+            }
+            return Tuple.Create(result, casResult.Cas);
         }
 
         public override IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys)
         {
             var computedKeys = ComputeKey(keys);
             var items = _couchbaseClient.GetWithCas(computedKeys.Keys);
-            var result = items.ToDictionary(i => computedKeys[i.Key], i => Tuple.Create(i.Value.Result, i.Value.Cas));
+            var result = items
+                            .Where(i => !(i.Value.Result is TemporalValue) || ((TemporalValue)i.Value.Result).IsValid())
+                            .ToDictionary
+                            (
+                                i => computedKeys[i.Key],
+                                i => Tuple.Create(i.Value.Result is TemporalValue
+                                                    ? ((TemporalValue)i.Value.Result).Value
+                                                    : i.Value.Result, i.Value.Cas)
+                            );
             return result;
         }
 
@@ -130,14 +152,14 @@ namespace Nemo.Caching.Providers
         public override bool AddNew(string key, object val)
         {
             key = ComputeKey(key);
-            var success = Store(StoreMode.Add, key, val);
+            var success = Store(StoreMode.Add, key, val, DateTimeOffset.Now);
             return success;
         }
 
         public override bool Save(string key, object val)
         {
             key = ComputeKey(key);
-            var success = Store(StoreMode.Set, key, val);
+            var success = Store(StoreMode.Set, key, val, DateTimeOffset.Now);
             return success; ;
         }
 
@@ -145,9 +167,10 @@ namespace Nemo.Caching.Providers
         {
             var keys = ComputeKey(items.Keys);
             var success = true;
+            var currentDateTime = DateTimeOffset.Now;
             foreach (var k in keys)
             {
-                success = success && Store(StoreMode.Set, k.Key, items[k.Value]);
+                success = success && Store(StoreMode.Set, k.Key, items[k.Value], currentDateTime);
             }
             return success;
         }
@@ -156,9 +179,21 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             var result = _couchbaseClient.Get(key);
-            if (SlidingExpiration)
+            if (result != null && result is TemporalValue)
             {
-                Store(StoreMode.Replace, key, result);
+                var staleValue = (TemporalValue)result;
+                if (staleValue.IsValid())
+                {
+                    return staleValue.Value;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else if (SlidingExpiration && result != null)
+            {
+                Store(StoreMode.Replace, key, result, DateTimeOffset.Now);
             }
             return result;
         }
@@ -167,7 +202,7 @@ namespace Nemo.Caching.Providers
         {
             var computedKeys = ComputeKey(keys);
             var items = _couchbaseClient.Get(computedKeys.Keys);
-            items = items.ToDictionary(i => computedKeys[i.Key], i => i.Value);
+            items = items.Where(i => !(i.Value is TemporalValue) || ((TemporalValue)i.Value).IsValid()).ToDictionary(i => computedKeys[i.Key], i => i.Value is TemporalValue ? ((TemporalValue)i.Value).Value : i.Value);
             return items;
         }
 
@@ -177,9 +212,34 @@ namespace Nemo.Caching.Providers
             return true;
         }
 
-        private bool Store(StoreMode mode, string key, object val)
+        public override object RetrieveStale(string key)
+        {
+            key = ComputeKey(key);
+            var result = _couchbaseClient.Get(key);
+            return ((TemporalValue)result).Value;
+        }
+
+        public override IDictionary<string, object> RetrieveStale(IEnumerable<string> keys)
+        {
+            var computedKeys = ComputeKey(keys);
+            var items = _couchbaseClient.Get(computedKeys.Keys);
+            return items.ToDictionary(i => computedKeys[i.Key], i => ((TemporalValue)i.Value).Value);
+        }
+
+        public ulong Increment(string key, ulong delta = 1)
+        {
+            return _couchbaseClient.Increment(key, 1, delta == 0 ? 1 : delta);
+        }
+
+        public ulong Decrement(string key, ulong delta = 1)
+        {
+            return _couchbaseClient.Decrement(key, 1, delta == 0 ? 1 : delta);
+        }
+
+        private bool Store(StoreMode mode, string key, object val, DateTimeOffset currentDateTime)
         {
             var success = false;
+            val = ComputeValue(val, currentDateTime);
             switch (ExpirationType)
             {
                 case CacheExpirationType.TimeOfDay:

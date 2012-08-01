@@ -18,7 +18,9 @@ namespace Nemo.Configuration
         OperationNamingConvention DefaultOperationNamingConvention { get; }
         HashAlgorithmName DefaultHashAlgorithm { get; }
         string SecretKey { get; }
-        bool DistributedLocking { get; }
+        CacheContentionMitigationType CacheContentionMitigation { get; }
+        int StaleCacheTimeout { get; }
+        int DistributedLockTimeout { get; }
 
         IConfiguration ToggleDistributedLockVerification(bool value);
         IConfiguration SetContextLevelCache(ContextLevelCacheType value);
@@ -33,6 +35,8 @@ namespace Nemo.Configuration
         IConfiguration SetDefaultOperationNamingConvention(OperationNamingConvention value);
         IConfiguration SetDefaultHashAlgorithm(HashAlgorithmName value);
         IConfiguration SetSecretKey(string value);
-        IConfiguration ToggleDistributedLocking(bool value);
+        IConfiguration SetCacheContentionMitigation(CacheContentionMitigationType value);
+        IConfiguration SetStaleCacheTimeout(int value);
+        IConfiguration SetDistributedLockTimeout(int value);
     }
 }

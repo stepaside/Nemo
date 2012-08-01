@@ -14,5 +14,7 @@ namespace Nemo.Caching
         bool TryAcquireLock(string key);
         object WaitForItems(string key, int count = -1);
         bool ReleaseLock(string key);
+        object RetrieveStale(string key);
+        IDictionary<string, object> RetrieveStale(IEnumerable<string> keys);
     }
 }

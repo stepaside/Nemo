@@ -186,44 +186,60 @@ namespace Nemo.Caching
 
         #region Query Lookup Methods
 
-        internal static List<string> LookupKeys(Type objectType, string queryKey)
+        internal static List<string> LookupKeys(Type objectType, string queryKey, bool allowStale = false)
         {
             if (!string.IsNullOrEmpty(queryKey))
             {
                 var cacheType = GetCacheType(objectType);
                 if (cacheType != CacheType.None)
                 {
-                    return CacheFactory.GetProvider(cacheType).Retrieve(queryKey) as List<string>;
+                    var cache = CacheFactory.GetProvider(cacheType);
+                    if (cache.IsDistributed && allowStale)
+                    {
+                        return ((IDistributedCacheProvider)cache).RetrieveStale(queryKey) as List<string>;
+                    }
+                    else
+                    {
+                        return cache.Retrieve(queryKey) as List<string>;
+                    }
                 }
             }
             return null;
         }
 
-        internal static List<string> LookupKeys<T>(string operation, IList<Param> parameters, OperationReturnType returnType)
+        internal static List<string> LookupKeys<T>(string operation, IList<Param> parameters, OperationReturnType returnType, bool allowStale = false)
             where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(operation, parameters, returnType);
-            return ObjectCache.LookupKeys(typeof(T), queryKey);
+            return ObjectCache.LookupKeys(typeof(T), queryKey, allowStale);
         }
         
         #endregion
 
         #region Item Lookup Methods
 
-        internal static T Lookup<T>(CacheKey key)
+        internal static T Lookup<T>(CacheKey key, bool allowStale = false)
             where T : class, IBusinessObject
         {
-            return Lookup<T>(key.Value);
+            return Lookup<T>(key.Value, allowStale);
         }
 
-        public static T Lookup<T>(string key)
+        public static T Lookup<T>(string key, bool allowStale = false)
             where T : class, IBusinessObject
         {
             var cacheType = GetCacheType(typeof(T));
             CacheItem item = null;
             if (cacheType != CacheType.None)
             {
-                item = (CacheItem)CacheFactory.GetProvider(cacheType).Retrieve(key);
+                var cache = CacheFactory.GetProvider(cacheType);
+                if (cache.IsDistributed && allowStale)
+                {
+                    item = (CacheItem)((IDistributedCacheProvider)cache).RetrieveStale(key);
+                }
+                else
+                {
+                    item = (CacheItem)cache.Retrieve(key);
+                }
             }
 
             if (item != null)
@@ -233,13 +249,13 @@ namespace Nemo.Caching
             return default(T);
         }
 
-        internal static IList<CacheItem> Lookup<T>(IEnumerable<CacheKey> keys)
+        internal static IList<CacheItem> Lookup<T>(IEnumerable<CacheKey> keys, bool allowStale = false)
             where T : class, IBusinessObject
         {
-            return Lookup<T>(keys.Select(k => k.Value));
+            return Lookup<T>(keys.Select(k => k.Value), allowStale);
         }
 
-        public static IList<CacheItem> Lookup<T>(IEnumerable<string> keys)
+        public static IList<CacheItem> Lookup<T>(IEnumerable<string> keys, bool allowStale = false)
             where T : class, IBusinessObject
         {
             var cacheType = GetCacheType(typeof(T));
@@ -251,7 +267,16 @@ namespace Nemo.Caching
                 {
                     if (keyCount == 1)
                     {
-                        var item = cache.Retrieve(keys.First());
+                        object item;
+                        if (cache.IsDistributed && allowStale)
+                        {
+                            item = ((IDistributedCacheProvider)cache).RetrieveStale(keys.First());
+                        }
+                        else
+                        {
+                            item = cache.Retrieve(keys.First());
+                        }
+                        
                         if (item != null)
                         {
                             return new List<CacheItem> { (CacheItem)item };
@@ -259,7 +284,16 @@ namespace Nemo.Caching
                     }
                     else
                     {
-                        var map = cache.Retrieve(keys);
+                        IDictionary<string, object> map;
+                        if (cache.IsDistributed && allowStale)
+                        {
+                            map = ((IDistributedCacheProvider)cache).RetrieveStale(keys);
+                        }
+                        else
+                        {
+                            map = cache.Retrieve(keys);
+                        }
+                    
                         if (map != null && map.Count == keyCount)
                         {
                             // Enforce original order on multiple items returned from memcached using multi-get
@@ -269,10 +303,19 @@ namespace Nemo.Caching
                 }
                 else
                 {
-                    var items = cache.Retrieve(keys).Values.Where(i => i != null).Cast<CacheItem>().ToList();
-                    if (items.Count == keyCount)
+                    IDictionary<string, object> map;
+                    if (cache.IsDistributed && allowStale)
                     {
-                        return items;
+                        map = ((IDistributedCacheProvider)cache).RetrieveStale(keys);
+                    }
+                    else
+                    {
+                        map = cache.Retrieve(keys);
+                    }
+
+                    if (map != null && map.Count == keyCount)
+                    {
+                        return map.Values.Where(i => i != null).Cast<CacheItem>().ToList();
                     }
                 }
             }
@@ -510,8 +553,8 @@ namespace Nemo.Caching
 
                 if (cache.IsDistributed)
                 {
-                    var isLockingEnabled = ObjectFactory.Configuration.DistributedLocking;
-                    if (!isLockingEnabled || ((IDistributedCacheProvider)cache).TryAcquireLock(queryKey))
+                    var cacheContentMitigation = ObjectFactory.Configuration.CacheContentionMitigation;
+                    if (cacheContentMitigation == CacheContentionMitigationType.None || ((IDistributedCacheProvider)cache).TryAcquireLock(queryKey))
                     {
                         try
                         {
@@ -519,13 +562,17 @@ namespace Nemo.Caching
                         }
                         finally
                         {
-                            if (isLockingEnabled)
+                            if (cacheContentMitigation != CacheContentionMitigationType.None)
                             {
                                 ((IDistributedCacheProvider)cache).ReleaseLock(queryKey);
                             }
                         }
                     }
-                    else if (isLockingEnabled)
+                    else if (cacheContentMitigation == CacheContentionMitigationType.UseStaleCache)
+                    {
+                        keys = ((IDistributedCacheProvider)cache).RetrieveStale(queryKey) as List<string>;
+                    }
+                    else if (cacheContentMitigation == CacheContentionMitigationType.DistributedLocking)
                     {
                         keys = ((IDistributedCacheProvider)cache).WaitForItems(queryKey) as List<string>;
                     }

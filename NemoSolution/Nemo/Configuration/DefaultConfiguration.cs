@@ -24,7 +24,9 @@ namespace Nemo.Configuration
         private OperationNamingConvention _defaultOperationNamingConvention = OperationNamingConvention.PrefixTypeName_Operation;
         private HashAlgorithmName _defaultHashAlgorithm = HashAlgorithmName.Jenkins;
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
-        private bool _distributedLocking = Config.AppSettings("EnableDistributedLocking", true);
+        private CacheContentionMitigationType _cacheContentionMitigation = CacheContentionMitigationType.None;
+        private int _staleCacheTimeout = 2;
+        private int _distributedLockTimeout = 2;
 
         private DefaultConfiguration() { }
 
@@ -132,11 +134,27 @@ namespace Nemo.Configuration
             }
         }
 
-        public bool DistributedLocking
+        public CacheContentionMitigationType CacheContentionMitigation
         {
             get
             {
-                return _distributedLocking;
+                return _cacheContentionMitigation;
+            }
+        }
+
+        public int StaleCacheTimeout
+        {
+            get
+            {
+                return _staleCacheTimeout;
+            }
+        }
+
+        public int DistributedLockTimeout
+        {
+            get
+            {
+                return _distributedLockTimeout;
             }
         }
 
@@ -241,9 +259,29 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration ToggleDistributedLocking(bool value)
+        public IConfiguration SetCacheContentionMitigation(CacheContentionMitigationType value)
         {
-            _distributedLocking = value;
+            _cacheContentionMitigation = value;
+            return this;
+        }
+
+        public IConfiguration SetStaleCacheTimeout(int value)
+        {
+            if (value < 1)
+            {
+                value = 1;
+            }
+            _staleCacheTimeout = value;
+            return this;
+        }
+
+        public IConfiguration SetDistributedLockTimeout(int value)
+        {
+            if (value < 1)
+            {
+                value = 1;
+            }
+            _distributedLockTimeout = value;
             return this;
         }
 
