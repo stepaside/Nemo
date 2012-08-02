@@ -120,7 +120,7 @@ namespace Nemo.Caching
 
                 if (sleepTime == TimeSpan.Zero)
                 {
-                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((int)LockManager.Retrieve("LOCK::" + key) - 0.5), LOCK_DEFAULT_MAXDELAY));
+                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((ulong)LockManager.Retrieve("LOCK::" + key) - 0.5), LOCK_DEFAULT_MAXDELAY));
                 }
                 else
                 {
