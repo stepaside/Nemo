@@ -67,6 +67,11 @@ namespace Nemo.Data
             return string.Format(VariableAssignment, VariablePrefix, variableName, result);
         }
 
+        public override string EvaluateVariable(string variableName)
+        {
+            return variableName;
+        }
+
         public override string GetTemporaryTableName(string tableName)
         {
             if (tableName.StartsWith("#"))

@@ -558,7 +558,7 @@ namespace Nemo.UnitOfWork
                     if (autoGenParameter != null)
                     {
                         sql.AppendFormat(dialect.ComputeAutoIncrement(autoGenParameter.Name)).AppendLine();
-                        sql.AppendFormat("INSERT INTO " + tempTableName + " ({4}StatementId{5}, {4}GeneratedId{5}, {4}ParameterName{5}, {4}PropertyName{5}) VALUES ({0}, {1}, '{2}', '{3}')", statementId, dialect.ParameterPrefix + autoGenParameter.Name, autoGenParameter.Name, autoGenProperty.Name, dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter).AppendLine();
+                        sql.AppendFormat("INSERT INTO " + tempTableName + " ({4}StatementId{5}, {4}GeneratedId{5}, {4}ParameterName{5}, {4}PropertyName{5}) VALUES ({0}, {1}, '{2}', '{3}')", statementId, dialect.EvaluateVariable(dialect.ParameterPrefix + autoGenParameter.Name), autoGenParameter.Name, autoGenProperty.Name, dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter).AppendLine();
                     }
 
                     statementId++;

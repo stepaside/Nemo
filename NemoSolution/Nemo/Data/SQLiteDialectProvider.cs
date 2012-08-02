@@ -8,42 +8,43 @@ using Nemo.Reflection;
 
 namespace Nemo.Data
 {
-    public class MySqlDialectProvider : DialectProvider
+    public class SQLiteDialectProvider : DialectProvider
     {
-        public readonly static MySqlDialectProvider Instance = new MySqlDialectProvider();
+        public readonly static SQLiteDialectProvider Instance = new SQLiteDialectProvider();
 
-        protected MySqlDialectProvider()
+        protected SQLiteDialectProvider()
             : base()
         {
-            this.AutoIncrementComputation = "LAST_INSERT_ID()";
-            this.BigIntDefinition = "BIGINT";
+            this.AutoIncrementComputation = "last_insert_rowid()";
+            this.BigIntDefinition = "INTEGER";
             this.BlobDefition = "BLOB";
-            this.ByteDefinition = "TINYINT";
-            this.ClobDefition = "TEXT";
-            this.DoubleDefinition = "DOUBLE";
-            this.SingleDefinition = "FLOAT";
-            this.GuidDefinition = "VARCHAR(36)";
-            this.StringDefinition = "VARCHAR(65535)";
-            this.AnsiStringDefinition = "VARCHAR(65535)";
-            this.DateDefinition = "DATE";
+            this.ByteDefinition = "INTEGER";
+            this.ClobDefition = "BLOB";
+            this.DoubleDefinition = "REAL";
+            this.SingleDefinition = "REAL";
+            this.GuidDefinition = "TEXT";
+            this.StringDefinition = "TEXT";
+            this.AnsiStringDefinition = "TEXT";
+            this.DateDefinition = "DATETIME";
             this.DateTimeDefinition = "DATETIME";
-            this.TimeDefinition = "TIME";
-            this.TemporaryTableCreation = "CREATE TEMPORARY TABLE {0} ({1});";
+            this.TimeDefinition = "DATETIME";
+            this.TemporaryTableCreation = "CREATE TEMP TABLE IF NOT EXISTS {0} ({1});";
             this.UseOrderedParameters = false;
-            this.VariableDeclaration = "DECLARE {0}{1} {2};";
-            this.VariableAssignment = "SET {0}{1} = {2};";
-            this.VariablePrefix = "@";
+            this.VariableDeclaration = "CREATE TEMP TABLE IF NOT EXISTS __VARS (name TEXT, value TEXT)";
+            this.VariableAssignment = "INSERT INTO __VARS (name, value) VALUES ('{0}{1}', '{2}');";
+            this.VariableEvaluation = "(SELECT value FROM __VARS WHERE name = '{0}')";
+            this.VariablePrefix = "";
             this.ParameterPrefix = "@";
-            this.StringConcatenationFunction = "CONCAT";
-            this.SubstringFunction = "SUBSTRING";
-            this.IdentifierEscapeStartCharacter = "`";
-            this.IdentifierEscapeEndCharacter = "`";
+            this.StringConcatenationOperator = "||";
+            this.SubstringFunction = "SUBSTR";
+            this.IdentifierEscapeStartCharacter = "\"";
+            this.IdentifierEscapeEndCharacter = "\"";
             this.SupportsTemporaryTables = true;
         }
 
         public override string ComputeAutoIncrement(string variableName)
         {
-            return string.Format("SET {0}{1} = {2};", VariablePrefix, variableName, AutoIncrementComputation);
+            return string.Format("INSERT INTO __VARS (name, value) VALUES ('{0}{1}', {2});", VariablePrefix, variableName, AutoIncrementComputation);
         }
 
         public override string CreateTemporaryTable(string tableName, Dictionary<string, DbType> coulmns)
@@ -69,7 +70,7 @@ namespace Nemo.Data
 
         public override string EvaluateVariable(string variableName)
         {
-            return variableName;
+            return string.Format(VariableEvaluation, variableName);
         }
 
         public override string GetTemporaryTableName(string tableName)

@@ -122,6 +122,7 @@
     <Compile Include="Collections\List.cs" />
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Collections\SortedList.cs" />
+    <Compile Include="Data\SQLiteDialectProvider.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />
     <Compile Include="Fn\Extensions\FunctionExtensions.cs" />

@@ -28,6 +28,7 @@ namespace Nemo.Data
         public string TemporaryTableCreation { get; protected set; }
         public string VariableDeclaration { get; protected set; }
         public string VariableAssignment { get; protected set; }
+        public string VariableEvaluation { get; protected set; }
         public string VariablePrefix { get; protected set; }
         public string ParameterPrefix { get; protected set; }
         public bool UseOrderedParameters { get; protected set; }
@@ -57,6 +58,11 @@ namespace Nemo.Data
         }
 
         public virtual string AssignVariable(string variableName, object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual string EvaluateVariable(string variableName)
         {
             throw new NotImplementedException();
         }
