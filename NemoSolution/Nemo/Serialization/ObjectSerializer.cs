@@ -62,8 +62,8 @@ namespace Nemo.Serialization
     {
         public delegate void ObjectSerializer(SerializationWriter writer, IList values, int count);
 
-        private static ConcurrentDictionary<Tuple<Type, Type>, ObjectSerializer> _serializers = new ConcurrentDictionary<Tuple<Type, Type>, ObjectSerializer>();
-        private static ConcurrentDictionary<Tuple<Type, Type>, ObjectSerializer> _serializersWithAllProperties = new ConcurrentDictionary<Tuple<Type, Type>, ObjectSerializer>();
+        private static ConcurrentDictionary<Type, ObjectSerializer> _serializers = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllProperties = new ConcurrentDictionary<Type, ObjectSerializer>();
 
         private bool _serializeAll;
 
@@ -301,7 +301,7 @@ namespace Nemo.Serialization
 
                     case ObjectTypeCode.BusinessObject:
                         {
-                            var serializer = CreateDelegate(value.GetType(), null);
+                            var serializer = CreateDelegate(value.GetType());
                             serializer(this, new object[] { value }, 1);
                         }
                         break;
@@ -333,9 +333,7 @@ namespace Nemo.Serialization
                                 Write((byte)ListAspectType.None);
                             }
 
-                            var containerType = value.GetType();
-                            var elementType = items.Count > 0 ? items[0].GetType() : Reflector.ExtractGenericCollectionElementType(containerType);
-                            var serializer = CreateDelegate(elementType, containerType);
+                            var serializer = CreateDelegate(value.GetType());
                             serializer(this, items, items.Count);
                         }
                         break;
@@ -401,21 +399,21 @@ namespace Nemo.Serialization
             info.AddValue("X", buffer, typeof(byte[]));
         }
 
-        private ObjectSerializer CreateDelegate(Type objectType, Type containerType)
+        private ObjectSerializer CreateDelegate(Type objectType)
         {
             //var reflectedType = Reflector.GetReflectedType(objectType);
             //return _serializers.GetOrAdd(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, k => GenerateDelegate(k, objectType));
             if (!_serializeAll)
             {
-                return _serializers.GetOrAdd(Tuple.Create(objectType, containerType), t => GenerateDelegate(t.Item1, t.Item2, false));
+                return _serializers.GetOrAdd(objectType, t => GenerateDelegate(t, false));
             }
             else
             {
-                return _serializersWithAllProperties.GetOrAdd(Tuple.Create(objectType, containerType), t => GenerateDelegate(t.Item1, t.Item2, true));
+                return _serializersWithAllProperties.GetOrAdd(objectType, t => GenerateDelegate(t, true));
             }
         }
 
-        private ObjectSerializer GenerateDelegate(Type objectType, Type containerType, bool serializeAll)
+        private ObjectSerializer GenerateDelegate(Type objectType, bool serializeAll)
         {
             var method = new DynamicMethod("Serialize_" + objectType.Name, null, new[] { typeof(SerializationWriter), typeof(IList), typeof(int) }, typeof(SerializationWriter).Module);
             var il = method.GetILGenerator();
@@ -426,23 +424,45 @@ namespace Nemo.Serialization
             var writeName = this.GetType().GetMethod("Write", new[] { typeof(string) });
             var getItem = typeof(IList).GetMethod("get_Item");
 
-            var interfaceType = objectType;
-            if (Reflector.IsEmitted(objectType) && !interfaceType.IsInterface)
+            Type containerType = null;
+            Type elementType = null;
+            Type interfaceType = null;
+            var isEmitted = false;
+
+            if (Reflector.IsList(objectType))
             {
-                interfaceType = Reflector.ExtractInterface(objectType);
-                if (interfaceType == null)
-                {
-                    interfaceType = objectType;
-                }
+                containerType = objectType;
+                elementType = Reflector.ExtractCollectionElementType(objectType);
+                interfaceType = elementType;
+                isEmitted = Reflector.IsEmitted(elementType);
+            }
+            else
+            {
+                interfaceType = objectType;
+                isEmitted = Reflector.IsEmitted(objectType);
             }
 
-            Type elementType = null;
-            if (containerType != null)
+            if (isEmitted && !interfaceType.IsInterface)
             {
-                elementType = Reflector.ExtractCollectionElementType(containerType);
-                if (elementType == interfaceType)
+                if (elementType != null)
                 {
-                    elementType = null;
+                    interfaceType = Reflector.ExtractInterface(elementType);
+                }
+                else
+                {
+                    interfaceType = Reflector.ExtractInterface(objectType);
+                }
+
+                if (interfaceType == null)
+                {
+                    if (elementType != null)
+                    {
+                        interfaceType = elementType;
+                    }
+                    else
+                    {
+                        interfaceType = objectType;
+                    }
                 }
             }
 
@@ -451,24 +471,7 @@ namespace Nemo.Serialization
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldstr, interfaceType.FullName);
             il.Emit(OpCodes.Callvirt, writeName);
-
-            if (elementType != null)
-            {
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldc_I4_1);
-                il.Emit(OpCodes.Callvirt, writeFlag);
-
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldstr, elementType.FullName);
-                il.Emit(OpCodes.Callvirt, writeName);
-            }
-            else
-            {
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldc_I4_0);
-                il.Emit(OpCodes.Callvirt, writeFlag);
-            }
-            
+                        
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldc_I4, properties.Length);
             il.Emit(OpCodes.Callvirt, writeLength);
@@ -804,7 +807,6 @@ namespace Nemo.Serialization
                 case ObjectTypeCode.BusinessObject:
                     {
                         var businessObjectType = GetType(skip ? _objectTypeName : ReadString());
-                        ReadBoolean(); // Skip element type
                         var deserializer = CreateDelegate(businessObjectType);
                         var businessObjects = deserializer(this, 1);
                         if (businessObjects != null && businessObjects.Length > 0)
@@ -842,15 +844,9 @@ namespace Nemo.Serialization
                         }
 
                         var businessObjectType = GetType(skip ? _objectTypeName : ReadString());
-                        var hasElementType = ReadBoolean();
-                        Type elementType = null;
-                        if (hasElementType)
-                        {
-                            elementType = GetType(ReadString());
-                        }
                         var deserializer = CreateDelegate(businessObjectType);
                         var businessObjects = deserializer(this, itemCount);
-                        var list = List.Create(elementType ?? businessObjectType, distinctAttribute, sortedAttribute);
+                        var list = List.Create(businessObjectType, distinctAttribute, sortedAttribute);
                         for (int i = 0; i < businessObjects.Length; i++ )
                         {
                             list.Add(businessObjects[i]);

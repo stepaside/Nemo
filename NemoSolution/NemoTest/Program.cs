@@ -187,6 +187,9 @@ namespace NemoTest
             //RunRetrieve(500, false);
             //RunNativeWithMapper(500);
 
+            //var buffer = customer.Serialize();
+            //var new_customer = SerializationExtensions.Deserialize<ICustomer>(buffer);
+
             Console.WriteLine();
             Console.WriteLine("Simple Object Serialization Benchmark");
 
@@ -545,10 +548,10 @@ namespace NemoTest
             return list;
         }
 
-        public static void RunSerializationBenchmark<T, TResult>(List<T> objectList, Func<T, TResult> toJson, Func<TResult, T> fromJson, string name, Func<TResult, int> getLength)
+        public static void RunSerializationBenchmark<T, TResult>(List<T> objectList, Func<T, TResult> serialize, Func<TResult, T> deserialize, string name, Func<TResult, int> getLength)
         {
             // Warm-up
-            var json = toJson(objectList[0]);
+            var json = serialize(objectList[0]);
             var jsonList = new List<TResult>();
             var stimeList = new List<double>();
             var dtimeList = new List<double>();
@@ -558,7 +561,7 @@ namespace NemoTest
             for (int i = 0; i < objectList.Count; i++)
             {
                 t.Start();
-                json = toJson(objectList[i]);
+                json = serialize(objectList[i]);
                 t.Stop();
                 jsonList.Add(json);
                 stimeList.Add(t.GetElapsedTimeInMicroseconds());
@@ -567,14 +570,14 @@ namespace NemoTest
             }
 
             // Warm-up
-            var item_copy = fromJson(jsonList[0]);
+            var item_copy = deserialize(jsonList[0]);
 
             t.Reset();
 
             for (int i = 0; i < jsonList.Count; i++)
             {
                 t.Start();
-                item_copy = fromJson(jsonList[i]);
+                item_copy = deserialize(jsonList[i]);
                 t.Stop();
                 dtimeList.Add(t.GetElapsedTimeInMicroseconds());
                 t.Reset();
