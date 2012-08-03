@@ -17,6 +17,7 @@ using Nemo.Fn;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Utilities;
+using System.Collections.Generic;
 
 namespace NemoTest
 {
@@ -186,24 +187,111 @@ namespace NemoTest
             RunNativeWithMapper(500);
 
             Console.WriteLine();
-            
-            var customer_legacy = CustomerLegacy.Make(customer);
-            //item_legacy.Values = new List<int> { 1, 2, 3 };
+            Console.WriteLine("Simple Object Serialization Benchmark");
 
-            RunSerialization(customer, 1000);
-            RunNativeSerialization(customer_legacy, 1000);
-            RunProtocolBufferSerialization(customer_legacy, 1000);
+            var simpleObjectList = GenerateSimple(100000);
+            var dcsSimple = new DataContractSerializer(typeof(SimpleObject));
+            var dcjsSimple = new DataContractJsonSerializer(typeof(SimpleObject));
 
-            RunXmlSerialization(customer, 1000);
-            RunDataContractSerialization(customer_legacy, 1000);
-            
-            RunJsonSerialization(customer, 1000);
-            RunDataContractJsonSerialization(customer_legacy, 1000);
-            RunServiceStackJsonSerialization(customer_legacy, 1000);
+            RunSerializationBenchmark(simpleObjectList,
+            s =>
+            {
+                var stream = new MemoryStream();
+                ProtoBuf.Serializer.Serialize<SimpleObject>(stream, s);
+                return stream.GetBuffer();
+            },
+            s => ProtoBuf.Serializer.Deserialize<SimpleObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
 
-            RunJsonParser(json, 1000);
-            RunJsonNetParser(json, 1000);
-            RunServiceStackJsonParser(customer_legacy, 1000);
+            RunSerializationBenchmark(simpleObjectList, s => s.Serialize(), s => SerializationExtensions.Deserialize<SimpleObject>(s), "ObjectSerializer", s => s.Length);
+
+            RunSerializationBenchmark(simpleObjectList, s => s.ToXml(), s => ObjectXmlSerializer.FromXml<SimpleObject>(s).FirstOrDefault(), "ObjectXmlSerializer", s => s.Length);
+            RunSerializationBenchmark(simpleObjectList,
+            s =>
+            {
+                var output = new StringBuilder();
+                using (var writer = XmlWriter.Create(output))
+                {
+                    dcsSimple.WriteObject(writer, s);
+                }
+                return output.ToString();
+            },
+            s =>
+            {
+                using (var reader = XmlReader.Create(new StringReader(s)))
+                {
+                    return (SimpleObject)dcsSimple.ReadObject(reader);
+                }
+            }, "DataContractSerializer", s => s.Length);
+
+            RunSerializationBenchmark(simpleObjectList, s => s.ToJson(), s => ObjectJsonSerializer.FromJson<SimpleObject>(s).FirstOrDefault(), "ObjectJsonSerializer", s => s.Length);
+            RunSerializationBenchmark(simpleObjectList, s => ServiceStack.Text.JsonSerializer.SerializeToString(s),
+                s => ServiceStack.Text.JsonSerializer.DeserializeFromString<SimpleObject>(s), "ServiceStack.Text", s => s.Length);
+            RunSerializationBenchmark(simpleObjectList,
+            s =>
+            {
+                var stream = new MemoryStream();
+                dcjsSimple.WriteObject(stream, s);
+                stream.Position = 0;
+                using (var reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            },
+            s => (SimpleObject)dcjsSimple.ReadObject(new MemoryStream(Encoding.Default.GetBytes(s))), "DataContractJsonSerializer", s => s.Length);
+
+            Console.WriteLine();
+            Console.WriteLine("Complex Object Serialization Benchmark");
+
+            var complexObjectList = GenerateComplex(100000);
+            var dcsComplex = new DataContractSerializer(typeof(ComplexObject));
+            var dcjsComplex = new DataContractJsonSerializer(typeof(ComplexObject));
+
+            RunSerializationBenchmark(complexObjectList,
+            s =>
+            {
+                var stream = new MemoryStream();
+                ProtoBuf.Serializer.Serialize<ComplexObject>(stream, s);
+                return stream.GetBuffer();
+            },
+            s => ProtoBuf.Serializer.Deserialize<ComplexObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
+
+            RunSerializationBenchmark(complexObjectList, s => s.Serialize(), s => SerializationExtensions.Deserialize<ComplexObject>(s), "ObjectSerializer", s => s.Length);
+
+            RunSerializationBenchmark(complexObjectList, s => s.ToXml(), s => ObjectXmlSerializer.FromXml<ComplexObject>(s).FirstOrDefault(), "ObjectXmlSerializer", s => s.Length);
+            RunSerializationBenchmark(complexObjectList,
+            s =>
+            {
+                var output = new StringBuilder();
+                using (var writer = XmlWriter.Create(output))
+                {
+                    dcsComplex.WriteObject(writer, s);
+                }
+                return output.ToString();
+            },
+            s =>
+            {
+                using (var reader = XmlReader.Create(new StringReader(s)))
+                {
+                    return (ComplexObject)dcsComplex.ReadObject(reader);
+                }
+            }, "DataContractSerializer", s => s.Length);
+
+
+            RunSerializationBenchmark(complexObjectList, s => s.ToJson(), s => ObjectJsonSerializer.FromJson<ComplexObject>(s).FirstOrDefault(), "ObjectJsonSerializer", s => s.Length);
+            RunSerializationBenchmark(complexObjectList, s => ServiceStack.Text.JsonSerializer.SerializeToString(s),
+                s => ServiceStack.Text.JsonSerializer.DeserializeFromString<ComplexObject>(s), "ServiceStack.Text", s => s.Length);
+            RunSerializationBenchmark(complexObjectList,
+            s =>
+            {
+                var stream = new MemoryStream();
+                dcjsComplex.WriteObject(stream, s);
+                stream.Position = 0;
+                using (var reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            },
+            s => (ComplexObject)dcjsComplex.ReadObject(new MemoryStream(Encoding.Default.GetBytes(s))), "DataContractJsonSerializer", s => s.Length);
 
             //Console.ReadLine();
         }
@@ -377,324 +465,7 @@ namespace NemoTest
 
             Console.WriteLine("Native+Nemo.Mapper: " + timer.GetElapsedTimeInMicroseconds() / 1000);
         }
-
-        public static void RunSerialization<T>(T item, int count)
-            where T : class, IBusinessObject
-        {
-            // Warm-up
-            var buffer = item.Serialize();
-            var size = buffer.Length;
-
-            var t = new HiPerfTimer(true);
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                buffer = item.Serialize();
-            }
-            t.Stop();
-            var stime = t.GetElapsedTimeInMicroseconds();
-
-            // Warm-up
-            var item_copy = SerializationExtensions.Deserialize<T>(buffer);
-            
-            t.Reset();
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                item_copy = SerializationExtensions.Deserialize<T>(buffer);
-            }
-            t.Stop();
-            var dstime = t.GetElapsedTimeInMicroseconds();
-
-            Console.WriteLine("ObjectSerializer");
-            Console.WriteLine("\tserialization: {0}µs", stime);
-            Console.WriteLine("\tdeserialization: {0}µs", dstime);
-            Console.WriteLine("\tsize: {0} bytes", size);
-        }
-
-        public static void RunProtocolBufferSerialization<T>(T item, int count)
-            where T : class, IBusinessObject
-        {
-            // Warm-up
-            var stream = new MemoryStream();
-            ProtoBuf.Serializer.Serialize<T>(stream, item);
-            var buffer = stream.GetBuffer();
-            var size = buffer.Length;
-
-            var t = new HiPerfTimer(true);
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                stream = new MemoryStream();
-                ProtoBuf.Serializer.Serialize<T>(stream, item);
-                buffer = stream.GetBuffer();
-            }
-            t.Stop();
-            var stime = t.GetElapsedTimeInMicroseconds();
-
-            // Warm-up
-            var item_copy = ProtoBuf.Serializer.Deserialize<T>(new MemoryStream(buffer));
-
-            t.Reset();
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                item_copy = ProtoBuf.Serializer.Deserialize<T>(new MemoryStream(buffer));
-            }
-            t.Stop();
-            var dstime = t.GetElapsedTimeInMicroseconds();
-
-            Console.WriteLine("ProtoBuf.Serializer");
-            Console.WriteLine("\tserialization: {0}µs", stime);
-            Console.WriteLine("\tdeserialization: {0}µs", dstime);
-            Console.WriteLine("\tsize: {0} bytes", size);
-        }
-
-        public static void RunNativeSerialization<T>(T item, int count)
-            where T : class
-        {
-            // Warm-up
-            var ms = new MemoryStream();
-            var formatter = new BinaryFormatter();
-            formatter.Serialize(ms, item);
-            var buffer = ms.GetBuffer();
-            var size = buffer.Length;
-
-            var t = new HiPerfTimer(true);
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                ms = new MemoryStream();
-                formatter.Serialize(ms, item);
-                buffer = ms.GetBuffer();
-            }
-            t.Stop();
-            var stime = t.GetElapsedTimeInMicroseconds();
-
-            // Warm-up
-            var item_copy = (T)formatter.Deserialize(new MemoryStream(buffer));
-            
-            t.Reset();
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                item_copy = (T)formatter.Deserialize(new MemoryStream(buffer));
-            }
-            t.Stop();
-            var dstime = t.GetElapsedTimeInMicroseconds();
-
-            Console.WriteLine("BinaryFormatter");
-            Console.WriteLine("\tserialization: {0}µs", stime);
-            Console.WriteLine("\tdeserialization: {0}µs", dstime);
-            Console.WriteLine("\tsize: {0} bytes", size);
-        }
-
-        public static void RunXmlSerialization<T>(T item, int count)
-           where T : class, IBusinessObject
-        {
-            // Warm-up
-            var xml = item.ToXml();
-            var size = xml.Length;
-
-            var t = new HiPerfTimer(true);
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                xml = item.ToXml();
-            }
-            t.Stop();
-            var stime = t.GetElapsedTimeInMicroseconds();
-
-            // Warm-up
-            var item_copy = ObjectXmlSerializer.FromXml<T>(xml).FirstOrDefault();
-
-            t.Reset();
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                item_copy = ObjectXmlSerializer.FromXml<T>(xml).FirstOrDefault();
-            }
-            t.Stop();
-            var dstime = t.GetElapsedTimeInMicroseconds();
-
-            Console.WriteLine("ObjectXmlSerializer");
-            Console.WriteLine("\tserialization: {0}µs", stime);
-            Console.WriteLine("\tdeserialization: {0}µs", dstime);
-            Console.WriteLine("\tsize: {0} bytes", size);
-        }
-
-        public static void RunJsonSerialization<T>(T item, int count)
-           where T : class, IBusinessObject
-        {
-            // Warm-up
-            var json = item.ToJson();
-            var size = json.Length;
-
-            var t = new HiPerfTimer(true);
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                json = item.ToJson();
-            }
-            t.Stop();
-            var stime = t.GetElapsedTimeInMicroseconds();
-
-            // Warm-up
-            var item_copy = ObjectJsonSerializer.FromJson<T>(json).FirstOrDefault();
-
-            t.Reset();
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                item_copy = ObjectJsonSerializer.FromJson<T>(json).FirstOrDefault();
-            }
-            t.Stop();
-            var dstime = t.GetElapsedTimeInMicroseconds();
-
-            Console.WriteLine("ObjectJsonSerializer");
-            Console.WriteLine("\tserialization: {0}µs", stime);
-            Console.WriteLine("\tdeserialization: {0}µs", dstime);
-            Console.WriteLine("\tsize: {0} bytes", size);
-        }
-
-        public static void RunDataContractSerialization<T>(T item, int count)
-           where T : class
-        {
-            // Warm-up
-            var dcs = new DataContractSerializer(typeof(T));
-
-            var sb = new StringBuilder();
-            using (var writer = XmlWriter.Create(sb))
-            {
-                dcs.WriteObject(writer, item);
-            }
-            var xml = sb.ToString();
-            var size = xml.Length;
-
-            var t = new HiPerfTimer(true);
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                sb = new StringBuilder();
-                using (var writer = XmlWriter.Create(sb))
-                {
-                    dcs.WriteObject(writer, item);
-                }
-                xml = sb.ToString();
-            }
-            t.Stop();
-            var stime = t.GetElapsedTimeInMicroseconds();
-
-            // Warm-up
-            T item_copy;
-            using (var reader = XmlReader.Create(new StringReader(xml)))
-            {
-                item_copy = (T)dcs.ReadObject(reader);
-            }
-
-            t.Reset();
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                using (var reader = XmlReader.Create(new StringReader(xml)))
-                {
-                    item_copy = (T)dcs.ReadObject(reader);
-                }
-            }
-            t.Stop();
-            var dstime = t.GetElapsedTimeInMicroseconds();
-
-            Console.WriteLine("DataContractSerializer");
-            Console.WriteLine("\tserialization: {0}µs", stime);
-            Console.WriteLine("\tdeserialization: {0}µs", dstime);
-            Console.WriteLine("\tsize: {0} bytes", size);
-        }
-
-        public static void RunDataContractJsonSerialization<T>(T item, int count)
-           where T : class
-        {
-            // Warm-up
-            var dcs = new DataContractJsonSerializer(typeof(T));
-
-            var stream = new MemoryStream();
-            dcs.WriteObject(stream, item);
-            stream.Position = 0;
-            var json = string.Empty;
-            using (var reader = new StreamReader(stream))
-            {
-                json = reader.ReadToEnd();
-            }
-            var size = json.Length;
-
-            var t = new HiPerfTimer(true);
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                stream = new MemoryStream();
-                dcs.WriteObject(stream, item);
-                stream.Position = 0;
-                using (var reader = new StreamReader(stream))
-                {
-                    json = reader.ReadToEnd();
-                }
-            }
-            t.Stop();
-            var stime = t.GetElapsedTimeInMicroseconds();
-
-            // Warm-up
-            stream = new MemoryStream(Encoding.Default.GetBytes(json));
-            var item_copy = (T)dcs.ReadObject(stream);
-
-            t.Reset();
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                stream.Position = 0;
-                item_copy = (T)dcs.ReadObject(stream);
-            }
-            t.Stop();
-            var dstime = t.GetElapsedTimeInMicroseconds();
-
-            Console.WriteLine("DataContractJsonSerializer");
-            Console.WriteLine("\tserialization: {0}µs", stime);
-            Console.WriteLine("\tdeserialization: {0}µs", dstime);
-            Console.WriteLine("\tsize: {0} bytes", size);
-        }
-
-        public static void RunServiceStackJsonSerialization<T>(T item, int count)
-           where T : class
-        {
-            // Warm-up
-            var json = ServiceStack.Text.JsonSerializer.SerializeToString(item);
-            var size = json.Length;
-
-            var t = new HiPerfTimer(true);
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                json = ServiceStack.Text.JsonSerializer.SerializeToString(item);
-            }
-            t.Stop();
-            var stime = t.GetElapsedTimeInMicroseconds();
-
-            // Warm-up
-            var item_copy = ServiceStack.Text.JsonSerializer.DeserializeFromString<T>(json);
-
-            t.Reset();
-            t.Start();
-            for (int i = 0; i < count; i++)
-            {
-                item_copy = ServiceStack.Text.JsonSerializer.DeserializeFromString<T>(json);
-            }
-            t.Stop();
-            var dstime = t.GetElapsedTimeInMicroseconds();
-
-            Console.WriteLine("ServiceStack");
-            Console.WriteLine("\tserialization: {0}µs", stime);
-            Console.WriteLine("\tdeserialization: {0}µs", dstime);
-            Console.WriteLine("\tsize: {0} bytes", size);
-        }
-
+        
         public static void RunJsonParser(string json, int count)
         {
             // Warm-up
@@ -747,5 +518,85 @@ namespace NemoTest
 
             Console.WriteLine("ServiceStack Parser: {0}µs", time);
         }
+
+        public static List<SimpleObject> GenerateSimple(int count)
+        {
+            var list = new List<SimpleObject>();
+            for (int i = 0; i < count; i++)
+            {
+                var item = new SimpleObject { Id = i, Name = ComputeRandomString(random.Next(10, 21)),
+                                            DateOfBirth = new DateTime(random.Next(1970, 1990), random.Next(1, 12), random.Next(1, 28))};
+                list.Add(item);
+            }
+            return list;
+        }
+
+        public static List<ComplexObject> GenerateComplex(int count)
+        {
+            var list = new List<ComplexObject>();
+            for (int i = 0; i < count; i++)
+            {
+                var item = new ComplexObject { Id = i, Name = ComputeRandomString(random.Next(10, 21)), 
+                                            DateOfBirth = new DateTime(random.Next(1970, 1990), random.Next(1, 12), random.Next(1, 28)), 
+                                            Children = GenerateSimple(random.Next(15, 31)) };
+                list.Add(item);
+            }
+            return list;
+        }
+
+        public static void RunSerializationBenchmark<T, TResult>(List<T> objectList, Func<T, TResult> toJson, Func<TResult, T> fromJson, string name, Func<TResult, int> getLength)
+        {
+            // Warm-up
+            var json = toJson(objectList[0]);
+            var jsonList = new List<TResult>();
+            var stimeList = new List<double>();
+            var dtimeList = new List<double>();
+            var sizeList = new List<int>();
+
+            var t = new HiPerfTimer(true);
+            for (int i = 0; i < objectList.Count; i++)
+            {
+                t.Start();
+                json = toJson(objectList[i]);
+                t.Stop();
+                jsonList.Add(json);
+                stimeList.Add(t.GetElapsedTimeInMicroseconds());
+                sizeList.Add(getLength(json));
+                t.Reset();
+            }
+
+            // Warm-up
+            var item_copy = fromJson(jsonList[0]);
+
+            t.Reset();
+
+            for (int i = 0; i < jsonList.Count; i++)
+            {
+                t.Start();
+                item_copy = fromJson(jsonList[i]);
+                t.Stop();
+                dtimeList.Add(t.GetElapsedTimeInMicroseconds());
+                t.Reset();
+            }
+
+            Console.WriteLine(name);
+            Console.WriteLine("\tserialization: {0}µs", stimeList.Average());
+            Console.WriteLine("\tdeserialization: {0}µs", dtimeList.Average());
+            Console.WriteLine("\tsize: {0} bytes", sizeList.Average());
+        }
+
+        private static Random random = new Random((int)DateTime.Now.Ticks);
+        private static string ComputeRandomString(int size)
+        {
+            var builder = new StringBuilder();
+            char ch;
+            for (int i = 0; i < size; i++)
+            {
+                ch = Convert.ToChar(Convert.ToInt32(Math.Floor(26 * random.NextDouble() + 65)));                 
+                builder.Append(ch);
+            }
+            return builder.ToString();
+        }
+
     }
 }

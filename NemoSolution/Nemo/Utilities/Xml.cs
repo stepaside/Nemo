@@ -155,16 +155,23 @@ namespace Nemo.Utilities
             var attr = Reflector.GetAttribute<T, XmlRootAttribute>();
             if (attr == null || string.IsNullOrEmpty(attr.ElementName))
             {
-                var objectType = typeof(T);
-                var name = objectType.Name;
-                if (objectType.IsGenericType)
+                var objectType = Reflector.TypeCache<T>.Type;
+                var name = objectType.TypeName;
+                if (!objectType.IsSimpleType)
                 {
-                    var pos = name.IndexOf('`');
-                    return name.Substring(0, pos).TrimStart('I');
-                }
-                else if (objectType.IsInterface)
-                {
-                    return name.TrimStart('I');
+                    if (objectType.IsGenericType)
+                    {
+                        var pos = name.IndexOf('`');
+                        return name.Substring(0, pos).TrimStart('I');
+                    }
+                    else if (objectType.IsInterface)
+                    {
+                        return name.TrimStart('I');
+                    }
+                    else
+                    {
+                        return name;
+                    }
                 }
                 else
                 {

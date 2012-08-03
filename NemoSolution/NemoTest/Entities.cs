@@ -172,7 +172,7 @@ namespace NemoTest
         public IList<IOrder> Orders { get; set; }
         public TypeUnion<int, string, double> TypeUnionTest { get; set; }
     }
-
+    
     public class Order : IOrder
     {
         public int OrderId
@@ -191,5 +191,34 @@ namespace NemoTest
         public ICustomer Customer { get; set; }
 
         public string ShipPostalCode { get; set; }
+    }
+
+    [ProtoContract]
+    public class SimpleObject : IBusinessObject
+    {
+        [ProtoMember(1)]
+        public int Id { get; set; }
+
+        [ProtoMember(2)]
+        public string Name { get; set; }
+
+        [ProtoMember(3)]
+        public DateTime DateOfBirth { get; set; }
+    }
+
+    [ProtoContract]
+    public class ComplexObject : IBusinessObject
+    {
+        [ProtoMember(1)]
+        public int Id { get; set; }
+
+        [ProtoMember(2)]
+        public string Name { get; set; }
+
+        [ProtoMember(3)]
+        public DateTime DateOfBirth { get; set; }
+
+        [ProtoMember(4)]
+        public List<SimpleObject> Children { get; set; }
     }
 }

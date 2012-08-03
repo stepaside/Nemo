@@ -35,13 +35,14 @@ namespace Nemo.Reflection
             IsTuple = Reflector.IsTuple(type);
             IsList = Reflector.IsList(type);
             IsNullableType = Reflector.IsNullableType(type);
-            XmlElementName = Xml.GetElementNameFromType(type);
             IsMarkerInterface = Reflector.IsMarkerInterface(type);
             HashCode = type.GetHashCode();
             if (IsBusinessObject)
             {
                 IsCacheableBusinessObject = Reflector.IsCacheableBusinessObject(type);
             }
+            IsGenericType = type.IsGenericType;
+            IsInterface = type.IsInterface;
         }
 
         public string TypeName
@@ -125,7 +126,7 @@ namespace Nemo.Reflection
         public string XmlElementName
         {
             get;
-            private set;
+            internal set;
         }
 
         public bool IsMarkerInterface
@@ -147,6 +148,18 @@ namespace Nemo.Reflection
         }
 
         public Type[] GenericArguments
+        {
+            get;
+            private set;
+        }
+
+        public bool IsGenericType
+        {
+            get;
+            private set;
+        }
+
+        public bool IsInterface
         {
             get;
             private set;

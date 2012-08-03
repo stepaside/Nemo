@@ -14,6 +14,7 @@ using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Serialization;
+using Nemo.Utilities;
 
 namespace Nemo.Reflection
 {
@@ -938,6 +939,7 @@ namespace Nemo.Reflection
             static TypeCache()
             {
                 Type = new ReflectedType(typeof(T));
+                Type.XmlElementName = Xml.GetElementNameFromType(typeof(T));
             }
 
             public readonly static ReflectedType Type;
