@@ -65,15 +65,17 @@ namespace Nemo.Reflection
                 throw new ArgumentNullException("conversionType");
             }
 
-            conversionType = Nullable.GetUnderlyingType(conversionType);
+            var newConversionType = Nullable.GetUnderlyingType(conversionType);
 
-            if (conversionType != null)
+            if (newConversionType != null)
             {
+                conversionType = newConversionType;
                 if (value == null)
                 {
                     return null;
                 }
             }
+
             return Convert.ChangeType(value, conversionType);
         }
 

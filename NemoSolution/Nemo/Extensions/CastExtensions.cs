@@ -1,10 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Nemo.Reflection;
-using System.Collections.Concurrent;
-using System.Reflection;
 
 namespace Nemo.Extensions
 {
@@ -30,6 +28,16 @@ namespace Nemo.Extensions
         public static T SafeCast<T>(this string source)
         {
             return ((object)source).SafeCast<T>();
+        }
+
+        public static IEnumerable<T> SafeCast<T>(this IEnumerable source)
+        {
+            return source.Cast<object>().Select(i => i.SafeCast<T>());
+        }
+
+        public static IEnumerable<TResult> SafeCast<TSource, TResult>(this IEnumerable<TSource> source)
+        {
+            return source.Select(i => i.SafeCast<TResult>());
         }
 
         public delegate bool ParseDelegate<T>(string source, out T result);

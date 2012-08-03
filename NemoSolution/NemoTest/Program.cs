@@ -12,6 +12,7 @@ using Dapper;
 using Nemo;
 using Nemo.Caching;
 using Nemo.Collections;
+using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Serialization;
@@ -180,11 +181,11 @@ namespace NemoTest
                 var customer_from_xml = ObjectXmlSerializer.FromXml<ICustomer>(reader).FirstOrDefault();
             }
 
-            RunNative(500);
-            RunExecute(500);
-            RunDapper(500, false);
-            RunRetrieve(500, false);
-            RunNativeWithMapper(500);
+            //RunNative(500);
+            //RunExecute(500);
+            //RunDapper(500, false);
+            //RunRetrieve(500, false);
+            //RunNativeWithMapper(500);
 
             Console.WriteLine();
             Console.WriteLine("Simple Object Serialization Benchmark");
@@ -198,7 +199,7 @@ namespace NemoTest
             {
                 var stream = new MemoryStream();
                 ProtoBuf.Serializer.Serialize<SimpleObject>(stream, s);
-                return stream.GetBuffer();
+                return stream.ToArray();
             },
             s => ProtoBuf.Serializer.Deserialize<SimpleObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
 
@@ -578,10 +579,10 @@ namespace NemoTest
                 dtimeList.Add(t.GetElapsedTimeInMicroseconds());
                 t.Reset();
             }
-
+            
             Console.WriteLine(name);
-            Console.WriteLine("\tserialization: {0}µs", stimeList.Average());
-            Console.WriteLine("\tdeserialization: {0}µs", dtimeList.Average());
+            Console.WriteLine("\tserialization: {0}µs", RemoveOutliers(stimeList, StandardDeviation(stimeList), stimeList.Average()).Average());
+            Console.WriteLine("\tdeserialization: {0}µs", RemoveOutliers(dtimeList, StandardDeviation(dtimeList), dtimeList.Average()).Average());
             Console.WriteLine("\tsize: {0} bytes", sizeList.Average());
         }
 
@@ -596,6 +597,26 @@ namespace NemoTest
                 builder.Append(ch);
             }
             return builder.ToString();
+        }
+
+        private static IEnumerable<double> RemoveOutliers(List<double> list, double stdDev, double avg)
+        {
+            return list.Where(i => i.SafeCast<double>() < avg + stdDev * 2 && i.SafeCast<double>() > avg - stdDev * 2);
+        }
+
+        private static double StandardDeviation(List<double> values)
+        {
+            var ret = 0.0;
+            if (values.Count > 0)
+            {
+                //Compute the Average      
+                var avg = values.Average();
+                //Perform the Sum of (value-avg)_2_2      
+                var sum = values.Sum(d => Math.Pow(d - avg, 2));
+                //Put it all together      
+                ret = Math.Sqrt((sum) / (values.Count() - 1));
+            }
+            return ret;
         }
 
     }
