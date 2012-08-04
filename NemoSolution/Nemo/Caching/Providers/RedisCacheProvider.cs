@@ -115,10 +115,7 @@ namespace Nemo.Caching.Providers
 
         public override bool AddNew(string key, object val)
         {
-            var writer = SerializationWriter.CreateWriter(false);
-            writer.WriteObject(val);
-            var data = writer.GetBytes();
-
+            var data = SerializationWriter.WriteObjectWithType(val);
             var taskAdd = _connection.Strings.SetIfNotExists(_database, key, data);
             taskAdd.Wait();
             return taskAdd.Result;
@@ -126,10 +123,7 @@ namespace Nemo.Caching.Providers
 
         public override bool Save(string key, object val)
         {
-            var writer = SerializationWriter.CreateWriter(false);
-            writer.WriteObject(val);
-            var data = writer.GetBytes();
-
+            var data = SerializationWriter.WriteObjectWithType(val);
             var taskAdd = _connection.Strings.Set(_database, key, data);
             taskAdd.Wait();
             return true;
@@ -140,9 +134,7 @@ namespace Nemo.Caching.Providers
             var values = new Dictionary<string, byte[]>();
             foreach (var item in items)
             {
-                var writer = SerializationWriter.CreateWriter(false);
-                writer.WriteObject(item.Value);
-                var data = writer.GetBytes();
+                var data = SerializationWriter.WriteObjectWithType(item.Value);
                 values.Add(item.Key, data);
             }
 
@@ -158,8 +150,7 @@ namespace Nemo.Caching.Providers
             var buffer = taskGet.Result;
             if (buffer != null)
             {
-                var reader = SerializationReader.CreateReader(buffer);
-                var result = reader.ReadObject();
+                var result = SerializationReader.ReadObjectWithType(buffer);
                 return result;
             }
             return null;
@@ -177,8 +168,7 @@ namespace Nemo.Caching.Providers
                 var buffer = taskGet.Result[i];
                 if (buffer != null)
                 {
-                    var reader = SerializationReader.CreateReader(buffer);
-                    var item = reader.ReadObject();
+                    var item = SerializationReader.ReadObjectWithType(buffer);                    
                     result[keysArray[i]] = item;
                 }
             }

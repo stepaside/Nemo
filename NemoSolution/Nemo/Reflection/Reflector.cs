@@ -456,7 +456,7 @@ namespace Nemo.Reflection
 
         public static Type ExtractCollectionElementType(Type collectionType)
         {
-            Type elementType = collectionType.GetElementType();
+            var elementType = collectionType.GetElementType();
             if (elementType == null)
             {
                 elementType = ExtractGenericCollectionElementType(collectionType);
@@ -467,7 +467,7 @@ namespace Nemo.Reflection
         public static Type ExtractGenericCollectionElementType(Type genericCollectionType)
         {
             Type elementType = null;
-            Type[] genericArguments = genericCollectionType.GetGenericArguments();
+            var genericArguments = genericCollectionType.GetGenericArguments();
             if (genericArguments != null && genericArguments.Length == 1)
             {
                 elementType = genericArguments[0];

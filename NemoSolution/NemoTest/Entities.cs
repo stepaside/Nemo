@@ -24,6 +24,10 @@ namespace NemoTest
         IList<IOrder> Orders { get; set; }
         [DoNotSerialize]
         TypeUnion<int, string, double> TypeUnionTest { get; set; }
+        [DoNotSerialize]
+        List<int> ListTest { get; set; }
+        [DoNotSerialize]
+        Dictionary<int, string> MapTest { get; set; }
     }
 
     [Table("Orders"), ProtoContract, ProtoInclude(50, typeof(OrderLegacy))]
@@ -97,6 +101,11 @@ namespace NemoTest
         public List<int> Values { get; set; }
         [ProtoIgnore]
         public TypeUnion<int, string, double> TypeUnionTest { get; set; }
+        [ProtoIgnore]
+        public List<int> ListTest { get; set; }
+        [ProtoIgnore]
+        public Dictionary<int, string> MapTest { get; set; }
+
         public static CustomerLegacy Make(ICustomer customer)
         {
             var customer_legacy = new CustomerLegacy();
@@ -171,6 +180,8 @@ namespace NemoTest
         public string CompanyName { get; set; }
         public IList<IOrder> Orders { get; set; }
         public TypeUnion<int, string, double> TypeUnionTest { get; set; }
+        public List<int> ListTest { get; set; }
+        public Dictionary<int, string> MapTest { get; set; }   
     }
     
     public class Order : IOrder
@@ -193,7 +204,7 @@ namespace NemoTest
         public string ShipPostalCode { get; set; }
     }
 
-    [ProtoContract]
+    [ProtoContract, Serializable]
     public class SimpleObject : IBusinessObject
     {
         [ProtoMember(1)]
@@ -206,7 +217,7 @@ namespace NemoTest
         public DateTime DateOfBirth { get; set; }
     }
 
-    [ProtoContract]
+    [ProtoContract, Serializable]
     public class ComplexObject : IBusinessObject
     {
         [ProtoMember(1)]

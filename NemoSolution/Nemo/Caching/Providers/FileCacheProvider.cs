@@ -5,6 +5,8 @@ using System.Linq;
 using Nemo.Extensions;
 using Nemo.Serialization;
 using Nemo.Utilities;
+using System.Text;
+using Nemo.Collections.Extensions;
 
 namespace Nemo.Caching.Providers
 {
@@ -197,19 +199,16 @@ namespace Nemo.Caching.Providers
             return result;
         }
 
-        private void Write(string file, object val)
+        private void Write(string file, object value)
         {
-            var writer = SerializationWriter.CreateWriter(false);
-            writer.WriteObject(val);
-            var buffer = writer.GetBytes();
+            var buffer = SerializationWriter.WriteObjectWithType(value);
             File.WriteAllBytes(file, buffer);
         }
 
         private object Read(string file)
         {
-            var buffer = File.ReadAllBytes(file); 
-            var reader = SerializationReader.CreateReader(buffer);
-            var result = reader.ReadObject();
+            var buffer = File.ReadAllBytes(file);
+            var result = SerializationReader.ReadObjectWithType(buffer);
             return result;
         }
     }

@@ -117,7 +117,7 @@ namespace NemoTest
 
             var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault(); // ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
             var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>();
-
+            
             // UnitOfWork example
             using (new ObjectScope(customer, autoCommit: false))
             {
@@ -196,6 +196,7 @@ namespace NemoTest
             var simpleObjectList = GenerateSimple(100000);
             var dcsSimple = new DataContractSerializer(typeof(SimpleObject));
             var dcjsSimple = new DataContractJsonSerializer(typeof(SimpleObject));
+            var binform = new BinaryFormatter();
 
             RunSerializationBenchmark(simpleObjectList,
             s =>
@@ -207,6 +208,14 @@ namespace NemoTest
             s => ProtoBuf.Serializer.Deserialize<SimpleObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
 
             RunSerializationBenchmark(simpleObjectList, s => s.Serialize(), s => SerializationExtensions.Deserialize<SimpleObject>(s), "ObjectSerializer", s => s.Length);
+            RunSerializationBenchmark(simpleObjectList,
+            s =>
+            {
+                var stream = new MemoryStream();
+                binform.Serialize(stream, s);
+                return stream.ToArray();
+            },
+            s => (SimpleObject)binform.Deserialize(new MemoryStream(s)), "BinaryFormatter", s => s.Length);
 
             RunSerializationBenchmark(simpleObjectList, s => s.ToXml(), s => ObjectXmlSerializer.FromXml<SimpleObject>(s).FirstOrDefault(), "ObjectXmlSerializer", s => s.Length);
             RunSerializationBenchmark(simpleObjectList,
@@ -260,6 +269,14 @@ namespace NemoTest
             s => ProtoBuf.Serializer.Deserialize<ComplexObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
 
             RunSerializationBenchmark(complexObjectList, s => s.Serialize(), s => SerializationExtensions.Deserialize<ComplexObject>(s), "ObjectSerializer", s => s.Length);
+            RunSerializationBenchmark(complexObjectList,
+            s =>
+            {
+                var stream = new MemoryStream();
+                binform.Serialize(stream, s);
+                return stream.ToArray();
+            },
+            s => (ComplexObject)binform.Deserialize(new MemoryStream(s)), "BinaryFormatter", s => s.Length);
 
             RunSerializationBenchmark(complexObjectList, s => s.ToXml(), s => ObjectXmlSerializer.FromXml<ComplexObject>(s).FirstOrDefault(), "ObjectXmlSerializer", s => s.Length);
             RunSerializationBenchmark(complexObjectList,
@@ -551,8 +568,8 @@ namespace NemoTest
         public static void RunSerializationBenchmark<T, TResult>(List<T> objectList, Func<T, TResult> serialize, Func<TResult, T> deserialize, string name, Func<TResult, int> getLength)
         {
             // Warm-up
-            var json = serialize(objectList[0]);
-            var jsonList = new List<TResult>();
+            var data = serialize(objectList[0]);
+            var dataList = new List<TResult>();
             var stimeList = new List<double>();
             var dtimeList = new List<double>();
             var sizeList = new List<int>();
@@ -561,23 +578,23 @@ namespace NemoTest
             for (int i = 0; i < objectList.Count; i++)
             {
                 t.Start();
-                json = serialize(objectList[i]);
+                data = serialize(objectList[i]);
                 t.Stop();
-                jsonList.Add(json);
+                dataList.Add(data);
                 stimeList.Add(t.GetElapsedTimeInMicroseconds());
-                sizeList.Add(getLength(json));
+                sizeList.Add(getLength(data));
                 t.Reset();
             }
 
             // Warm-up
-            var item_copy = deserialize(jsonList[0]);
+            var item = deserialize(dataList[0]);
 
             t.Reset();
 
-            for (int i = 0; i < jsonList.Count; i++)
+            for (int i = 0; i < dataList.Count; i++)
             {
                 t.Start();
-                item_copy = deserialize(jsonList[i]);
+                item = deserialize(dataList[i]);
                 t.Stop();
                 dtimeList.Add(t.GetElapsedTimeInMicroseconds());
                 t.Reset();

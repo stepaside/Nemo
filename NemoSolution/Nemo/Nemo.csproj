@@ -109,8 +109,8 @@
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
     <Compile Include="Caching\IDistributedCounter.cs" />
-    <Compile Include="Caching\TemporalValue.cs" />
     <Compile Include="Caching\NemoTranscoder.cs" />
+    <Compile Include="Caching\TemporalValue.cs" />
     <Compile Include="Caching\Providers\CouchbaseCacheProvider.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
@@ -122,9 +122,9 @@
     <Compile Include="Collections\List.cs" />
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Collections\SortedList.cs" />
-    <Compile Include="Data\SQLiteDialectProvider.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />
+    <Compile Include="Data\SQLiteDialectProvider.cs" />
     <Compile Include="Fn\Extensions\FunctionExtensions.cs" />
     <Compile Include="Fn\Maybe.cs" />
     <Compile Include="Fn\MaybeExtensions.cs" />

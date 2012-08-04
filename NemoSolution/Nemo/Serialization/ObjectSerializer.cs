@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using Nemo.Attributes;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
@@ -66,6 +67,7 @@ namespace Nemo.Serialization
         private static ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllProperties = new ConcurrentDictionary<Type, ObjectSerializer>();
 
         private bool _serializeAll;
+        private bool _objectTypeWritten;
 
         private SerializationWriter(Stream s, bool serializeAll)
             : base(s)
@@ -218,6 +220,15 @@ namespace Nemo.Serialization
             }
         }
 
+        public void WriteObjectType(string typeName)
+        {
+            if (!_objectTypeWritten)
+            {
+                Write(typeName.GetHashCode());
+                _objectTypeWritten = true;
+            }
+        }
+
         /// <summary> Writes an arbitrary object to the buffer.  Useful where we have something of type "object"
         /// and don't know how to treat it.  This works out the best method to use to write to the buffer. </summary>
         public void WriteObject(object value)
@@ -321,12 +332,12 @@ namespace Nemo.Serialization
                                 {
                                     Write((byte)ListAspectType.Sorted);
                                 }
-                                Write(((ISortedList)value).Comparer.AssemblyQualifiedName);
+                                Write(((ISortedList)value).Comparer.FullName);
                             }
                             else if (value is ISet)
                             {
                                 Write((byte)ListAspectType.Distinct);
-                                Write(((ISet)value).Comparer.AssemblyQualifiedName);
+                                Write(((ISet)value).Comparer.FullName);
                             }
                             else
                             {
@@ -341,14 +352,13 @@ namespace Nemo.Serialization
                     case ObjectTypeCode.ObjectList:
                         {
                             var items = (IList)value;
-                            Write(value.GetType().AssemblyQualifiedName);
                             WriteList(items);
                         }
                         break;
                     
                     case ObjectTypeCode.TypeUnion:
                         var typeUnion = (ITypeUnion)value;
-                        WriteList<string>(typeUnion.AllTypes.Select(t => t.AssemblyQualifiedName).ToList());
+                        Write(typeUnion.AllTypes.FindIndex(t => t== typeUnion.UnionType));
                         WriteObject(typeUnion.GetObject(), Reflector.GetObjectTypeCode(typeUnion.UnionType));
                         break;
                     
@@ -381,7 +391,6 @@ namespace Nemo.Serialization
                     
                     case ObjectTypeCode.ObjectMap:
                         var map = (IDictionary)value;
-                        Write(value.GetType().AssemblyQualifiedName);
                         WriteDictionary(map);
                         break;
 
@@ -390,6 +399,20 @@ namespace Nemo.Serialization
                         break;
                 }
             }
+        }
+
+        public static byte[] WriteObjectWithType(object value)
+        {
+            var writer = SerializationWriter.CreateWriter(false);
+            writer.WriteObject(value);
+            var fullName = value.GetType().FullName;
+            var tdata = Encoding.UTF8.GetBytes(fullName);
+            var data = writer.GetBytes();
+            var buffer = new byte[4 + tdata.Length + data.Length];
+            Buffer.BlockCopy(BitConverter.GetBytes(tdata.Length), 0, buffer, 0, 4);
+            Buffer.BlockCopy(tdata, 0, buffer, 4, tdata.Length);
+            Buffer.BlockCopy(data, 0, buffer, 4 + tdata.Length, data.Length);
+            return buffer;
         }
 
         /// <summary> Adds the SerializationWriter buffer to the SerializationInfo at the end of GetObjectData(). </summary>
@@ -418,6 +441,7 @@ namespace Nemo.Serialization
             var method = new DynamicMethod("Serialize_" + objectType.Name, null, new[] { typeof(SerializationWriter), typeof(IList), typeof(int) }, typeof(SerializationWriter).Module);
             var il = method.GetILGenerator();
 
+            var writeObjectType = this.GetType().GetMethod("WriteObjectType");            
             var writeObject = this.GetType().GetMethod("WriteObject", new[] { typeof(object), typeof(ObjectTypeCode) });
             var writeFlag = this.GetType().GetMethod("Write", new[] { typeof(bool) });
             var writeLength = this.GetType().GetMethod("Write", new[] { typeof(int) });
@@ -468,9 +492,12 @@ namespace Nemo.Serialization
 
             var properties = Reflector.GetAllProperties(interfaceType).Where(p => p.CanRead && p.CanWrite && p.Name != "Indexer" && (serializeAll || !p.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any())).ToArray();
 
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldstr, interfaceType.FullName);
-            il.Emit(OpCodes.Callvirt, writeName);
+            if (Reflector.IsBusinessObject(interfaceType) || Reflector.IsBusinessObjectList(interfaceType, out elementType))
+            {
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldstr, interfaceType.FullName);
+                il.Emit(OpCodes.Callvirt, writeObjectType);
+            }
                         
             il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldc_I4, properties.Length);
@@ -531,7 +558,7 @@ namespace Nemo.Serialization
     /// handle null strings and simplify use with ISerializable. </summary>
     public class SerializationReader : BinaryReader
     {
-        private string _objectTypeName;
+        private int _objectTypeHash;
         private bool _serializeAll;
         private byte? _objectByte;
         private int _itemCount;
@@ -548,12 +575,12 @@ namespace Nemo.Serialization
             _objectByte = ReadByte();
             if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObject)
             {
-                _objectTypeName = ReadString();
+                _objectTypeHash = ReadInt32();
             }
             else if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObjectList)
             {
                 _itemCount = ReadInt32();
-                _objectTypeName = ReadString();
+                _objectTypeHash = ReadInt32();
             }
         }
 
@@ -573,16 +600,16 @@ namespace Nemo.Serialization
         }
 
         /// <summary> Static method to determine the object type </summary>.
-        public static string GetObjectType(byte[] buffer)
+        public static int GetObjectTypeHash(byte[] buffer)
         {
-            return CreateReader(buffer).ObjectTypeName;
+            return CreateReader(buffer).ObjectTypeHash;
         }
 
-        public string ObjectTypeName
+        public int ObjectTypeHash
         {
             get
             {
-                return _objectTypeName;
+                return _objectTypeHash;
             }
         }
 
@@ -661,12 +688,12 @@ namespace Nemo.Serialization
             IList<T> list = new List<T>();
             for (int i = 0; i < count; i++)
             {
-                list.Add((T)ReadObject());
+                list.Add((T)ReadObject(typeof(T)));
             }
             return list;
         }
 
-        public void ReadList(IList list)
+        public void ReadList(IList list, Type elementType)
         {
             int count = ReadInt32();
             if (count < 0)
@@ -675,27 +702,27 @@ namespace Nemo.Serialization
             }
             for (int i = 0; i < count; i++)
             {
-                list.Add(ReadObject());
+                list.Add(ReadObject(elementType));
             }
         }
 
         /// <summary> Reads a generic Dictionary from the buffer. </summary>
-        public IDictionary<T, U> ReadDictionary<T, U>()
+        public IDictionary<TKey, TValue> ReadDictionary<TKey, TValue>()
         {
             int count = ReadInt32();
             if (count < 0)
             {
                 return null;
             }
-            IDictionary<T, U> map = new Dictionary<T, U>();
+            var map = new Dictionary<TKey, TValue>();
             for (int i = 0; i < count; i++)
             {
-                map.Add((T)ReadObject(), (U)ReadObject());
+                map.Add((TKey)ReadObject(typeof(TKey)), (TValue)ReadObject(typeof(TValue)));
             }
             return map;
         }
 
-        public void ReadDictionary(IDictionary map)
+        public void ReadDictionary(IDictionary map, Type keyType, Type valueType)
         {
             int count = ReadInt32();
             if (count < 0)
@@ -704,7 +731,7 @@ namespace Nemo.Serialization
             }
             for (int i = 0; i < count; i++)
             {
-                map.Add(ReadObject(), ReadObject());
+                map.Add(ReadObject(keyType), ReadObject(valueType));
             }
         }
 
@@ -725,7 +752,7 @@ namespace Nemo.Serialization
         }
 
         /// <summary> Reads an object which was added to the buffer by WriteObject. </summary>
-        public object ReadObject()
+        public object ReadObject(Type objectType)
         {
             var skip = false;
             ObjectTypeCode typeCode;
@@ -790,24 +817,22 @@ namespace Nemo.Serialization
                     return new BinaryFormatter().Deserialize(BaseStream);
                 case ObjectTypeCode.ObjectList:
                     {
-                        var simpleCollectionType = GetType(ReadString());
-                        var activator = Reflection.Activator.CreateDelegate(simpleCollectionType);
+                        var activator = Reflection.Activator.CreateDelegate(objectType);
                         var objectList = (IList)activator();
-                        ReadList(objectList);
+                        ReadList(objectList, objectType.GetGenericArguments()[0]);
                         return objectList;
                     }
                 case ObjectTypeCode.ObjectMap:
                     {
-                        var dictionaryType = GetType(ReadString());
-                        var activator = Reflection.Activator.CreateDelegate(dictionaryType);
+                        var activator = Reflection.Activator.CreateDelegate(objectType);
                         var objectMap = (IDictionary)activator();
-                        ReadDictionary(objectMap);
+                        var genericArgs = objectType.GetGenericArguments();
+                        ReadDictionary(objectMap, genericArgs[0], genericArgs[1]);
                         return objectMap;
                     }
                 case ObjectTypeCode.BusinessObject:
                     {
-                        var businessObjectType = GetType(skip ? _objectTypeName : ReadString());
-                        var deserializer = CreateDelegate(businessObjectType);
+                        var deserializer = CreateDelegate(objectType, skip);
                         var businessObjects = deserializer(this, 1);
                         if (businessObjects != null && businessObjects.Length > 0)
                         {
@@ -821,7 +846,7 @@ namespace Nemo.Serialization
                 case ObjectTypeCode.BusinessObjectList:
                     {
                         var itemCount = skip ? _itemCount : ReadInt32();
-                        
+
                         var listAspectType = (ListAspectType)ReadByte();
                         DistinctAttribute distinctAttribute = null;
                         SortedAttribute sortedAttribute = null;
@@ -843,10 +868,9 @@ namespace Nemo.Serialization
                             }
                         }
 
-                        var businessObjectType = GetType(skip ? _objectTypeName : ReadString());
-                        var deserializer = CreateDelegate(businessObjectType);
+                        var list = List.Create(objectType, distinctAttribute, sortedAttribute);
+                        var deserializer = CreateDelegate(objectType, skip);
                         var businessObjects = deserializer(this, itemCount);
-                        var list = List.Create(businessObjectType, distinctAttribute, sortedAttribute);
                         for (int i = 0; i < businessObjects.Length; i++ )
                         {
                             list.Add(businessObjects[i]);
@@ -854,8 +878,9 @@ namespace Nemo.Serialization
                         return list;
                     }
                 case ObjectTypeCode.TypeUnion:
-                    var unionTypes = ReadList<string>().Select(t => GetType(t)).ToArray();
-                    var unionValue = ReadObject();
+                    var unionTypeIndex = ReadInt32();
+                    var unionTypes = objectType.GetGenericArguments();
+                    var unionValue = ReadObject(unionTypes[unionTypeIndex]);
                     var union = TypeUnion.Create(unionTypes, unionValue);
                     return union;
 
@@ -920,7 +945,16 @@ namespace Nemo.Serialization
             return ReadStream(stream, -1);
         }
 
-        private ObjectDeserializer CreateDelegate(Type objectType)
+        public static object ReadObjectWithType(byte[] buffer)
+        {
+            var typeLength = BitConverter.ToInt32(buffer.Slice(0, 4), 0);
+            var typeName = Encoding.UTF8.GetString(buffer.Slice(4, typeLength));
+            var reader = SerializationReader.CreateReader(buffer.Slice(4 + typeLength, buffer.Length - 1));
+            var result = reader.ReadObject(SerializationReader.GetType(typeName));
+            return result;
+        }
+
+        private ObjectDeserializer CreateDelegate(Type objectType, bool skip)
         {
             var exists = true;
             var propertyCount = ReadInt32();
@@ -959,6 +993,7 @@ namespace Nemo.Serialization
             var il = method.GetILGenerator();
 
             var readObject = this.GetType().GetMethod("ReadObject");
+            var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
 
             var interfaceType = objectType;
             if (Reflector.IsEmitted(objectType) && !interfaceType.IsInterface)
@@ -999,6 +1034,16 @@ namespace Nemo.Serialization
                 // Read property value
                 il.Emit(OpCodes.Ldloc_2);
                 il.Emit(OpCodes.Ldarg_0);
+                Type propertyType;
+                if (Reflector.IsBusinessObjectList(property.PropertyType, out propertyType))
+                {
+                    il.Emit(OpCodes.Ldtoken, propertyType);
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldtoken, property.PropertyType);
+                }
+                il.Emit(OpCodes.Call, getTypeFromHandle);
                 il.Emit(OpCodes.Callvirt, readObject);
                 il.EmitCastToReference(property.PropertyType);
                 il.EmitCall(OpCodes.Callvirt, property.GetSetMethod(), null);

@@ -61,7 +61,7 @@ namespace Nemo.Serialization
         {
             T result = default(T);
             SerializationReader reader = SerializationReader.CreateReader(data);
-            result = (T)reader.ReadObject();
+            result = (T)reader.ReadObject(typeof(T));
             reader.Close();
             return result;
         }
@@ -81,20 +81,16 @@ namespace Nemo.Serialization
         internal static bool CheckType<T>(byte[] data)
             where T : class, IBusinessObject
         {
-            string objectTypeName = SerializationReader.GetObjectType(data);
-            if (!string.IsNullOrEmpty(objectTypeName))
+            var objectTypeHash = SerializationReader.GetObjectTypeHash(data);
+            var type = Reflector.TypeCache<T>.Type;
+            if (type.ElementType != null)
             {
-                var type = Reflector.TypeCache<T>.Type;
-                if (type.ElementType != null)
-                {
-                    return type.ElementType.Name == objectTypeName;
-                }
-                else
-                {
-                    return type.TypeName == objectTypeName;
-                }
+                return type.ElementType.FullName.GetHashCode() == objectTypeHash;
             }
-            return true;
+            else
+            {
+                return type.FullTypeName.GetHashCode() == objectTypeHash;
+            }
         }
 
         #endregion
