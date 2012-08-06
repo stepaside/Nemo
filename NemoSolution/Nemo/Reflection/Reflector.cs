@@ -15,6 +15,7 @@ using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Serialization;
 using Nemo.Utilities;
+using Nemo.Collections;
 
 namespace Nemo.Reflection
 {
@@ -26,6 +27,7 @@ namespace Nemo.Reflection
         private static readonly MethodInfo _getPropertyMapMethod = typeof(Reflector).GetMethod("GetPropertyMap", BindingFlags.Static | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
         private static readonly MethodInfo _getPropertyNameMapMethod = typeof(Reflector).GetMethod("GetPropertyNameMap", BindingFlags.Static | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
         private static readonly MethodInfo _getAllPropertiesMethod = typeof(Reflector).GetMethod("GetAllProperties", Type.EmptyTypes);
+        private static readonly MethodInfo _getAllPropertyPositionsMethod = typeof(Reflector).GetMethod("GetAllPropertyPositions", Type.EmptyTypes);
         private static readonly MethodInfo _getPropertyMethod = typeof(Reflector).GetMethod("GetProperty", new Type[] { typeof(string) });
         private static readonly MethodInfo _extractInterfaceMethod = typeof(Reflector).GetMethod("ExtractInterface", Type.EmptyTypes);
         private static readonly MethodInfo _extractInterfacesMethod = typeof(Reflector).GetMethod("ExtractIntefaces", Type.EmptyTypes);
@@ -34,6 +36,7 @@ namespace Nemo.Reflection
         private static ConcurrentDictionary<Type, RuntimeMethodHandle> _getPropertyMapCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
         private static ConcurrentDictionary<Type, RuntimeMethodHandle> _getPropertyNameMapCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
         private static ConcurrentDictionary<Type, RuntimeMethodHandle> _getAllPropertiesCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static ConcurrentDictionary<Type, RuntimeMethodHandle> _getAllPropertyPositionsCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
         private static ConcurrentDictionary<Type, RuntimeMethodHandle> _getPropertyCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
         private static ConcurrentDictionary<Type, RuntimeMethodHandle> _extractInterfaceCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
         private static ConcurrentDictionary<Type, RuntimeMethodHandle> _extractInterfacesCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
@@ -373,7 +376,7 @@ namespace Nemo.Reflection
 
         public static PropertyInfo[] GetAllProperties<T>()
         {
-            Dictionary<string, PropertyInfo> properties = PropertyCache<T>.Properties;
+            var properties = PropertyCache<T>.Properties;
             return properties.Values.ToArray();
         }
 
@@ -386,7 +389,7 @@ namespace Nemo.Reflection
 
         public static PropertyInfo GetProperty<T>(string name)
         {
-            Dictionary<string, PropertyInfo> properties = PropertyCache<T>.Properties;
+           var properties = PropertyCache<T>.Properties;
             PropertyInfo property;
             if (!properties.TryGetValue(name, out property))
             {
@@ -395,49 +398,63 @@ namespace Nemo.Reflection
             return property;
         }
 
-        private static Dictionary<string, PropertyInfo> CacheProperties<T>()
+        public static IDictionary<string, int> GetAllPropertyPositions(Type objectType)
         {
-            HashSet<Type> typeList = new HashSet<Type>();
+            var methodHandle = _getAllPropertyPositionsCache.GetOrAdd(objectType, t => _getAllPropertyPositionsMethod.MakeGenericMethod(t).MethodHandle);
+            var func = Reflector.Method.CreateDelegate(methodHandle);
+            return (IDictionary<string, int>)func(null, new object[] { });
+        }
+
+        public static IDictionary<string, int> GetAllPropertyPositions<T>()
+        {
+            return PropertyCache<T>.Positions;
+        }
+
+        private static Dictionary<string, Tuple<PropertyInfo, int>> CacheProperties<T>()
+        {
+            var typeList = new HashSet<Type>();
             foreach (var interfaceType in Reflector.ExtractInterfaces<T>(/*objectType*/))
             {
                 typeList.Add(interfaceType);
             }
             typeList.Add(typeof(T)/*objectType*/);
 
-            var map = new Dictionary<string, PropertyInfo>();
+            var map = new Dictionary<string, Tuple<PropertyInfo, int>>();
 
+            var index = 0;
             foreach (Type type in typeList)
             {
                 foreach (var property in type.GetProperties())
                 {
-                    map[property.Name] = property;
+                    map[property.Name] = Tuple.Create(property, index);
+                    index++;
                 }
             }
 
             return map;
         }
 
-        internal static Dictionary<PropertyInfo, ReflectedProperty> GetPropertyMap(Type objectType)
+        internal static IDictionary<PropertyInfo, ReflectedProperty> GetPropertyMap(Type objectType)
         {
             //var type = !objectType.IsInterface ? Reflector.ExtractInterface(objectType) : objectType;
             var methodHandle = _getPropertyMapCache.GetOrAdd(objectType, t => _getPropertyMapMethod.MakeGenericMethod(t).MethodHandle);
             var func = Reflector.Method.CreateDelegate(methodHandle);
-            return (Dictionary<PropertyInfo, ReflectedProperty>)func(null, new object[] { });
+            return (IDictionary<PropertyInfo, ReflectedProperty>)func(null, new object[] { });
         }
 
-        internal static Dictionary<PropertyInfo, ReflectedProperty> GetPropertyMap<T>()
+        internal static IDictionary<PropertyInfo, ReflectedProperty> GetPropertyMap<T>()
         {
             return PropertyCache<T>.Map;
         }
 
-        internal static Dictionary<string, ReflectedProperty> GetPropertyNameMap(Type objectType)
+        internal static IDictionary<string, ReflectedProperty> GetPropertyNameMap(Type objectType)
         {
             var methodHandle = _getPropertyNameMapCache.GetOrAdd(objectType, t => _getPropertyNameMapMethod.MakeGenericMethod(t).MethodHandle);
             var func = Reflector.Method.CreateDelegate(methodHandle);
-            return (Dictionary<string, ReflectedProperty>)func(null, new object[] { });
+            return (IDictionary<string, ReflectedProperty>)func(null, new object[] { });
         }
 
-        internal static Dictionary<string, ReflectedProperty> GetPropertyNameMap<T>()
+        internal static IDictionary<string, ReflectedProperty> GetPropertyNameMap<T>()
         {
             return PropertyCache<T>.NameMap;
         }
@@ -894,13 +911,16 @@ namespace Nemo.Reflection
         {
             static PropertyCache()
             {
-                Properties = Reflector.CacheProperties<T>();
-                Map = Properties.Values.ToDictionary(p => p, p => new ReflectedProperty(p));
-                NameMap = Map.ToDictionary(p => p.Key.Name, p => p.Value);
+                var cachedProperties = Reflector.CacheProperties<T>();
+                Properties = new ReadOnlyDictionary<string,PropertyInfo>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item1));
+                Positions = new ReadOnlyDictionary<string, int>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item2));
+                Map = new ReadOnlyDictionary<PropertyInfo, ReflectedProperty>(Properties.Values.ToDictionary(p => p, p => new ReflectedProperty(p, cachedProperties[p.Name].Item2)));
+                NameMap = new ReadOnlyDictionary<string, ReflectedProperty>(Map.ToDictionary(p => p.Key.Name, p => p.Value));
             }
-            public static readonly Dictionary<string, PropertyInfo> Properties;
-            internal static readonly Dictionary<PropertyInfo, ReflectedProperty> Map;
-            internal static readonly Dictionary<string, ReflectedProperty> NameMap;
+            public static readonly ReadOnlyDictionary<string, PropertyInfo> Properties;
+            internal static readonly ReadOnlyDictionary<PropertyInfo, ReflectedProperty> Map;
+            internal static readonly ReadOnlyDictionary<string, ReflectedProperty> NameMap;
+            internal static readonly ReadOnlyDictionary<string, int> Positions;
         }
 
         internal static class ClassAttributeCache<T, A>

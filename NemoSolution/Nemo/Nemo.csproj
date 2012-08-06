@@ -121,6 +121,7 @@
     <Compile Include="Collections\HashList.cs" />
     <Compile Include="Collections\List.cs" />
     <Compile Include="Collections\MapList.cs" />
+    <Compile Include="Collections\ReadOnlyDictionary.cs" />
     <Compile Include="Collections\SortedList.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />

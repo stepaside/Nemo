@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -57,6 +58,13 @@ namespace Nemo.Serialization
         Sorted = 4
     }
 
+    public enum SerializationMode : byte
+    {
+        Compact = 1,
+        SerializeAll = 2,
+        IncludePropertyNames = 4
+    }
+    
     /// <summary> SerializationWriter.  Extends BinaryWriter to add additional data types,
     /// handle null strings and simplify use with ISerializable. </summary>
     public class SerializationWriter : BinaryWriter
@@ -64,23 +72,29 @@ namespace Nemo.Serialization
         public delegate void ObjectSerializer(SerializationWriter writer, IList values, int count);
 
         private static ConcurrentDictionary<Type, ObjectSerializer> _serializers = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static ConcurrentDictionary<Type, ObjectSerializer> _serializersNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
         private static ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllProperties = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
 
-        private bool _serializeAll;
+        private readonly SerializationMode _mode;
+        private readonly bool _serializeAll;
+        private readonly bool _includePropertyNames;
         private bool _objectTypeWritten;
 
-        private SerializationWriter(Stream s, bool serializeAll)
+        private SerializationWriter(Stream s, SerializationMode mode)
             : base(s)
         {
-            _serializeAll = serializeAll;
-            Write(_serializeAll);
+            _mode = mode;
+            _serializeAll = (mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
+            _includePropertyNames = (mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
+            Write((byte)_mode);
         }
 
         /// <summary> Static method to initialise the writer with a suitable MemoryStream. </summary>
-        public static SerializationWriter CreateWriter(bool serializeAll)
+        public static SerializationWriter CreateWriter(SerializationMode mode)
         {
             Stream ms = new MemoryStream(1024);
-            return new SerializationWriter(ms, serializeAll);
+            return new SerializationWriter(ms, mode);
         }
 
         public byte[] GetBytes()
@@ -144,7 +158,7 @@ namespace Nemo.Serialization
         /// <summary> Writes a DateTime to the buffer. <summary>
         public void Write(DateTime value)
         {
-            Write(value.Ticks);
+            Write(value.ToBinary());
         }
 
         /// <summary> Writes a TimeSpan to the buffer. <summary>
@@ -156,8 +170,8 @@ namespace Nemo.Serialization
         /// <summary> Writes a DateTimeOffset to the buffer. <summary>
         public void Write(DateTimeOffset value)
         {
-            Write(value.DateTime.Ticks);
-            Write(value.Offset.Ticks);
+            Write(value.DateTime);
+            Write(value.Offset);
         }
 
         /// <summary> Writes a generic ICollection (such as an IList<T>) to the buffer. </summary>
@@ -403,7 +417,7 @@ namespace Nemo.Serialization
 
         public static byte[] WriteObjectWithType(object value)
         {
-            var writer = SerializationWriter.CreateWriter(false);
+            var writer = SerializationWriter.CreateWriter(SerializationMode.Compact);
             writer.WriteObject(value);
             var fullName = value.GetType().FullName;
             var tdata = Encoding.UTF8.GetBytes(fullName);
@@ -428,15 +442,29 @@ namespace Nemo.Serialization
             //return _serializers.GetOrAdd(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, k => GenerateDelegate(k, objectType));
             if (!_serializeAll)
             {
-                return _serializers.GetOrAdd(objectType, t => GenerateDelegate(t, false));
+                if (_includePropertyNames)
+                {
+                    return _serializers.GetOrAdd(objectType, t => GenerateDelegate(t));
+                }
+                else
+                {
+                    return _serializersNoHeader.GetOrAdd(objectType, t => GenerateDelegate(t));
+                }
             }
             else
             {
-                return _serializersWithAllProperties.GetOrAdd(objectType, t => GenerateDelegate(t, true));
+                if (_includePropertyNames)
+                {
+                    return _serializersWithAllProperties.GetOrAdd(objectType, t => GenerateDelegate(t));
+                }
+                else
+                {
+                    return _serializersWithAllPropertiesNoHeader.GetOrAdd(objectType, t => GenerateDelegate(t));
+                }
             }
         }
 
-        private ObjectSerializer GenerateDelegate(Type objectType, bool serializeAll)
+        private ObjectSerializer GenerateDelegate(Type objectType)
         {
             var method = new DynamicMethod("Serialize_" + objectType.Name, null, new[] { typeof(SerializationWriter), typeof(IList), typeof(int) }, typeof(SerializationWriter).Module);
             var il = method.GetILGenerator();
@@ -490,7 +518,9 @@ namespace Nemo.Serialization
                 }
             }
 
-            var properties = Reflector.GetAllProperties(interfaceType).Where(p => p.CanRead && p.CanWrite && p.Name != "Indexer" && (serializeAll || !p.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any())).ToArray();
+            var properties = Reflector.GetAllProperties(interfaceType).Where(p => p.CanRead && p.CanWrite && p.Name != "Indexer" && (_serializeAll || !p.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any()));
+            var propertyPositions = Reflector.GetAllPropertyPositions(interfaceType).OrderBy(p => p.Value).Select(p => p.Key);
+            var orderedProperties = _includePropertyNames ? properties.ToArray() : properties.Arrange(propertyPositions, p => p.Name).ToArray();
 
             if (Reflector.IsBusinessObject(interfaceType) || Reflector.IsBusinessObjectList(interfaceType, out elementType))
             {
@@ -498,21 +528,24 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Ldstr, interfaceType.FullName);
                 il.Emit(OpCodes.Callvirt, writeObjectType);
             }
-                        
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldc_I4, properties.Length);
-            il.Emit(OpCodes.Callvirt, writeLength);
 
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldc_I4, properties.Sum(p => Encoding.UTF8.GetByteCount(p.Name)));
-            il.Emit(OpCodes.Callvirt, writeLength);
-            
-            foreach (var property in properties)
+            if (_includePropertyNames)
             {
-                //Write property name
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldstr, property.Name);
-                il.Emit(OpCodes.Callvirt, writeName);
+                il.Emit(OpCodes.Ldc_I4, orderedProperties.Length);
+                il.Emit(OpCodes.Callvirt, writeLength);
+
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldc_I4, orderedProperties.Sum(p => Encoding.UTF8.GetByteCount(p.Name)));
+                il.Emit(OpCodes.Callvirt, writeLength);
+
+                foreach (var property in properties)
+                {
+                    //Write property name
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldstr, property.Name);
+                    il.Emit(OpCodes.Callvirt, writeName);
+                }
             }
 
             var enterLoop = il.DefineLabel();
@@ -524,7 +557,7 @@ namespace Nemo.Serialization
             il.Emit(OpCodes.Br, exitLoop);
             il.MarkLabel(enterLoop);
 
-            foreach (var property in properties)
+            foreach (var property in orderedProperties)
             {
                 // Write property value
                 il.Emit(OpCodes.Ldarg_0);
@@ -559,19 +592,25 @@ namespace Nemo.Serialization
     public class SerializationReader : BinaryReader
     {
         private int _objectTypeHash;
-        private bool _serializeAll;
+        private readonly SerializationMode _mode;
+        private readonly bool _serializeAll;
+        private readonly bool _includePropertyNames;
         private byte? _objectByte;
         private int _itemCount;
         private static ConcurrentDictionary<string, Type> _types = new ConcurrentDictionary<string, Type>();
         
         public delegate object[] ObjectDeserializer(SerializationReader reader, int count);
         private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializers = new ConcurrentDictionary<Type, ObjectDeserializer>();
+        private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializersNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
         private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllProperties = new ConcurrentDictionary<Type, ObjectDeserializer>();
+        private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
 
         private SerializationReader(Stream s)
             : base(s)
         {
-            _serializeAll = ReadBoolean();
+            _mode = (SerializationMode)ReadByte();
+            _serializeAll = (_mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
+            _includePropertyNames = (_mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
             _objectByte = ReadByte();
             if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObject)
             {
@@ -646,7 +685,7 @@ namespace Nemo.Serialization
         /// <summary> Reads a DateTime from the buffer. </summary>
         public DateTime ReadDateTime()
         {
-            return new DateTime(ReadInt64());
+            return DateTime.FromBinary(ReadInt64());
         }
 
         /// <summary> Reads a TimeSpan from the buffer. </summary>
@@ -658,7 +697,7 @@ namespace Nemo.Serialization
         /// <summary> Writes a DateTimeOffset to the buffer. <summary>
         public DateTimeOffset ReadDateTimeOffset()
         {
-            return new DateTimeOffset(ReadInt64(), new TimeSpan(ReadInt64()));
+            return new DateTimeOffset(ReadDateTime(), ReadTimeSpan());
         }
 
         /// <summary> Reads a Guid from the buffer. </summary>
@@ -957,18 +996,37 @@ namespace Nemo.Serialization
         private ObjectDeserializer CreateDelegate(Type objectType, bool skip)
         {
             var exists = true;
-            var propertyCount = ReadInt32();
-            var propertyLength = ReadInt32();
+            var propertyCount = -1; 
+            var propertyLength = -1;
+            if (_includePropertyNames)
+            {
+                propertyCount = ReadInt32();
+                propertyLength = ReadInt32();
+            }
             ObjectDeserializer deserializer;
             if (!_serializeAll)
             {
-                deserializer = _deserializers.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
+                if (_includePropertyNames)
+                {
+                    deserializer = _deserializers.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
+                }
+                else
+                {
+                    deserializer = _deserializersNoHeader.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
+                }
             }
             else
             {
-                deserializer = _deserializersWithAllProperties.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
+                if (_includePropertyNames)
+                {
+                    deserializer = _deserializersWithAllProperties.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
+                }
+                else
+                {
+                    deserializer = _deserializersWithAllPropertiesNoHeader.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
+                }
             }
-            if (exists)
+            if (exists && _includePropertyNames)
             {
                 Skip(propertyCount + propertyLength);
             }
@@ -979,9 +1037,12 @@ namespace Nemo.Serialization
         {
             var businessObject = ObjectFactory.Create(objectType);
             var propertyNames = new List<string>();
-            for (int i = 0; i < propertyCount; i++)
+            if (_includePropertyNames)
             {
-                propertyNames.Add(this.ReadString());
+                for (int i = 0; i < propertyCount; i++)
+                {
+                    propertyNames.Add(this.ReadString());
+                }
             }
             exists = false;
             return GenerateDelegate(businessObject.GetType(), propertyNames);
@@ -1006,7 +1067,16 @@ namespace Nemo.Serialization
             }
 
             var properties = Reflector.GetAllProperties(interfaceType);
-            var orderedProperties = properties.Where(p => propertyNames.Contains(p.Name)).Arrange(propertyNames, p => p.Name).ToArray();
+            PropertyInfo[] orderedProperties;
+            if(_includePropertyNames)
+            {
+                orderedProperties = properties.Where(p => propertyNames.Contains(p.Name)).Arrange(propertyNames, p => p.Name).ToArray();
+            }
+            else
+            {
+                var propertyPositions = Reflector.GetAllPropertyPositions(interfaceType).OrderBy(p => p.Value).Select(p => p.Key);
+                orderedProperties = properties.Where(p => p.CanRead && p.CanWrite && p.Name != "Indexer" && (_serializeAll || !p.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any())).Arrange(propertyPositions, p => p.Name).ToArray();
+            }
 
             var enterLoop = il.DefineLabel();
             var exitLoop = il.DefineLabel();

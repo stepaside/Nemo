@@ -10,7 +10,7 @@ namespace Nemo.Reflection
 {
     internal class ReflectedProperty
     {
-        internal ReflectedProperty(PropertyInfo property)
+        internal ReflectedProperty(PropertyInfo property, int position = -1)
         {
             PropertyName = property.Name;
             PropertyType = property.PropertyType;
@@ -43,6 +43,7 @@ namespace Nemo.Reflection
             MappedPropertyName = MapPropertyAttribute.GetMappedPropertyName(property);
             CanWrite = property.CanWrite;
             CanRead = property.CanRead;
+            Position = position;
 
             if (IsListInterface)
             {
@@ -256,6 +257,12 @@ namespace Nemo.Reflection
         }
 
         public DistinctAttribute Distinct
+        {
+            get;
+            private set;
+        }
+
+        public int Position
         {
             get;
             private set;

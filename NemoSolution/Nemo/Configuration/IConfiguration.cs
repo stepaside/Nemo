@@ -1,5 +1,6 @@
 ﻿using Nemo.Caching;
 using Nemo.UnitOfWork;
+using Nemo.Serialization;
 
 namespace Nemo.Configuration
 {
@@ -21,6 +22,7 @@ namespace Nemo.Configuration
         CacheContentionMitigationType CacheContentionMitigation { get; }
         int StaleCacheTimeout { get; }
         int DistributedLockTimeout { get; }
+        SerializationMode DefaultSerializationMode { get; }
 
         IConfiguration ToggleDistributedLockVerification(bool value);
         IConfiguration SetContextLevelCache(ContextLevelCacheType value);
@@ -38,5 +40,6 @@ namespace Nemo.Configuration
         IConfiguration SetCacheContentionMitigation(CacheContentionMitigationType value);
         IConfiguration SetStaleCacheTimeout(int value);
         IConfiguration SetDistributedLockTimeout(int value);
+        IConfiguration SetDefaultSerializationMode(SerializationMode value);
     }
 }

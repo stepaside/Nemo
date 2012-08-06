@@ -14,7 +14,7 @@ namespace Nemo.Serialization
         internal ITypeUnion Union { get; set; }
         internal object Value { get; set; }
         internal Type ElementType { get; set; }
-        internal Dictionary<string, ReflectedProperty> PropertyMap { get; set; }
+        internal IDictionary<string, ReflectedProperty> PropertyMap { get; set; }
         internal bool IsSimple { get; set; }
     }
 }

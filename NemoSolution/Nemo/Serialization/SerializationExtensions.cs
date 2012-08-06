@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Xml.XPath;
+﻿using System.Collections.Generic;
 using Nemo.Reflection;
 
 namespace Nemo.Serialization
@@ -18,15 +10,15 @@ namespace Nemo.Serialization
         public static byte[] Serialize<T>(this T businessObject)
             where T : class, IBusinessObject
         {
-            return Serialize(businessObject, false);
+            return Serialize(businessObject, ObjectFactory.Configuration.DefaultSerializationMode);
         }
 
-        internal static byte[] Serialize<T>(this T businessObject, bool serializeAll)
+        internal static byte[] Serialize<T>(this T businessObject, SerializationMode mode)
             where T : class, IBusinessObject
         {
             byte[] buffer = null;
 
-            using (var writer = SerializationWriter.CreateWriter(serializeAll))
+            using (var writer = SerializationWriter.CreateWriter(mode))
             {
                 writer.WriteObject(businessObject, ObjectTypeCode.BusinessObject);
                 buffer = writer.GetBytes();
@@ -39,17 +31,17 @@ namespace Nemo.Serialization
         public static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection)
             where T : class, IBusinessObject
         {
-            return Serialize(businessObjectCollection, false);
+            return Serialize(businessObjectCollection, ObjectFactory.Configuration.DefaultSerializationMode);
         }
 
-        internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection, bool serializeAll)
+        internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection, SerializationMode mode)
             where T : class, IBusinessObject
         {
             foreach (T businessObject in businessObjectCollection)
             {
                 if (businessObject != null)
                 {
-                    yield return businessObject.Serialize(serializeAll);
+                    yield return businessObject.Serialize(mode);
                 }
             }
         }

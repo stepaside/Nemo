@@ -36,10 +36,11 @@ namespace NemoTest
                 .SetOperationPrefix("spDTO_")
                 .SetDefaultHashAlgorithm(HashAlgorithmName.Jenkins)
                 .SetCacheContentionMitigation(CacheContentionMitigationType.None)
+                .SetDefaultSerializationMode(SerializationMode.Compact)
                 .ToggleLogging(false)
                 .ToggleCacheCollisionDetection(false)
                 .ToggleDistributedLockVerification(false);
-
+                
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
 

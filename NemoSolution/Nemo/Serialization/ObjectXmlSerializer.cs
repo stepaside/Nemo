@@ -550,7 +550,7 @@ namespace Nemo.Serialization
             IList list = null;
             ITypeUnion union = null;
             Type elementType = null;
-            Dictionary<string, ReflectedProperty> propertyMap = null;
+            IDictionary<string, ReflectedProperty> propertyMap = null;
             var isSimple = false;
             string name = null;
 

@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Nemo.Caching;
+﻿using Nemo.Caching;
 using Nemo.Extensions;
+using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Utilities;
 
@@ -27,6 +24,7 @@ namespace Nemo.Configuration
         private CacheContentionMitigationType _cacheContentionMitigation = CacheContentionMitigationType.None;
         private int _staleCacheTimeout = 2;
         private int _distributedLockTimeout = 2;
+        private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
 
         private DefaultConfiguration() { }
 
@@ -158,6 +156,14 @@ namespace Nemo.Configuration
             }
         }
 
+        public SerializationMode DefaultSerializationMode
+        {
+            get
+            {
+                return _defaultSerializationMode;
+            }
+        }
+
         public static IConfiguration New()
         {
             return new DefaultConfiguration();
@@ -282,6 +288,12 @@ namespace Nemo.Configuration
                 value = 1;
             }
             _distributedLockTimeout = value;
+            return this;
+        }
+
+        public IConfiguration SetDefaultSerializationMode(SerializationMode value)
+        {
+            _defaultSerializationMode = value;
             return this;
         }
 

@@ -418,7 +418,7 @@ namespace Nemo.Serialization
                 return result;
             }
 
-            Dictionary<string, ReflectedProperty> propertyMap = null;
+            IDictionary<string, ReflectedProperty> propertyMap = null;
             if (elementType != null)
             {
                 propertyMap = Reflector.GetPropertyNameMap(elementType);
