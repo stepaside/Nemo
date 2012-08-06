@@ -11,6 +11,10 @@
     <description>$description$</description>
     <copyright>Copyright © Max Stepanskiy 2012</copyright>
     <tags>ORM micro-ORM sql mapper</tags>
-	<releaseNotes>Added aspects for IList&lt;&gt; properties. Modified serialization to support the aspects.</releaseNotes>
+	<releaseNotes>
+	Improved binary serialization (both speed and size)
+	Added support for SQLite for unit of work implementation and ObjectFactory.Select methods
+	Added options for distributed cache contention mitigation (distributed locking vs. use of stale cache)
+	</releaseNotes>
   </metadata>
 </package>
