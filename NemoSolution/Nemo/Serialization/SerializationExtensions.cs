@@ -26,10 +26,12 @@ namespace Nemo.Serialization
         {
             byte[] buffer = null;
 
-            SerializationWriter writer = SerializationWriter.CreateWriter(serializeAll);
-            writer.WriteObject(businessObject, ObjectTypeCode.BusinessObject);
-            buffer = writer.GetBytes();
-            writer.Close();
+            using (var writer = SerializationWriter.CreateWriter(serializeAll))
+            {
+                writer.WriteObject(businessObject, ObjectTypeCode.BusinessObject);
+                buffer = writer.GetBytes();
+                writer.Close();
+            }
 
             return buffer;
         }
@@ -60,9 +62,11 @@ namespace Nemo.Serialization
             where T : class, IBusinessObject
         {
             T result = default(T);
-            SerializationReader reader = SerializationReader.CreateReader(data);
-            result = (T)reader.ReadObject(typeof(T));
-            reader.Close();
+            using (var reader = SerializationReader.CreateReader(data))
+            {
+                result = (T)reader.ReadObject(typeof(T));
+                reader.Close();
+            }
             return result;
         }
 

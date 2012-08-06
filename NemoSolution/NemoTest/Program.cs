@@ -201,9 +201,11 @@ namespace NemoTest
             RunSerializationBenchmark(simpleObjectList,
             s =>
             {
-                var stream = new MemoryStream();
-                ProtoBuf.Serializer.Serialize<SimpleObject>(stream, s);
-                return stream.ToArray();
+                using (var stream = new MemoryStream())
+                {
+                    ProtoBuf.Serializer.Serialize<SimpleObject>(stream, s);
+                    return stream.ToArray();
+                }
             },
             s => ProtoBuf.Serializer.Deserialize<SimpleObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
 
@@ -211,9 +213,11 @@ namespace NemoTest
             RunSerializationBenchmark(simpleObjectList,
             s =>
             {
-                var stream = new MemoryStream();
-                binform.Serialize(stream, s);
-                return stream.ToArray();
+                using (var stream = new MemoryStream())
+                {
+                    binform.Serialize(stream, s);
+                    return stream.ToArray();
+                }
             },
             s => (SimpleObject)binform.Deserialize(new MemoryStream(s)), "BinaryFormatter", s => s.Length);
 
@@ -262,21 +266,37 @@ namespace NemoTest
             RunSerializationBenchmark(complexObjectList,
             s =>
             {
-                var stream = new MemoryStream();
-                ProtoBuf.Serializer.Serialize<ComplexObject>(stream, s);
-                return stream.GetBuffer();
+                using (var stream = new MemoryStream())
+                {
+                    ProtoBuf.Serializer.Serialize<ComplexObject>(stream, s);
+                    return stream.GetBuffer();
+                }
             },
-            s => ProtoBuf.Serializer.Deserialize<ComplexObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
+            s =>
+            {
+                using (var stream = new MemoryStream(s))
+                {
+                    return ProtoBuf.Serializer.Deserialize<ComplexObject>(stream);
+                }
+            }, "ProtoBuf", s => s.Length);
 
             RunSerializationBenchmark(complexObjectList, s => s.Serialize(), s => SerializationExtensions.Deserialize<ComplexObject>(s), "ObjectSerializer", s => s.Length);
             RunSerializationBenchmark(complexObjectList,
             s =>
             {
-                var stream = new MemoryStream();
-                binform.Serialize(stream, s);
-                return stream.ToArray();
+                using (var stream = new MemoryStream())
+                {
+                    binform.Serialize(stream, s);
+                    return stream.ToArray();
+                }
             },
-            s => (ComplexObject)binform.Deserialize(new MemoryStream(s)), "BinaryFormatter", s => s.Length);
+            s => 
+            {
+                using (var stream = new MemoryStream(s))
+                {
+                    return (ComplexObject)binform.Deserialize(stream);
+                }
+            }, "BinaryFormatter", s => s.Length);
 
             RunSerializationBenchmark(complexObjectList, s => s.ToXml(), s => ObjectXmlSerializer.FromXml<ComplexObject>(s).FirstOrDefault(), "ObjectXmlSerializer", s => s.Length);
             RunSerializationBenchmark(complexObjectList,
