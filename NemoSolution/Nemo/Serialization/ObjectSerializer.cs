@@ -504,7 +504,7 @@ namespace Nemo.Serialization
             il.Emit(OpCodes.Callvirt, writeLength);
 
             il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldc_I4, properties.Sum(p => p.Name.Length));
+            il.Emit(OpCodes.Ldc_I4, properties.Sum(p => Encoding.UTF8.GetByteCount(p.Name)));
             il.Emit(OpCodes.Callvirt, writeLength);
             
             foreach (var property in properties)
