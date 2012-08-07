@@ -41,6 +41,7 @@ namespace Nemo.Serialization
         DateTimeOffset = 33,
         Guid = 34,
         Version = 35,
+        Uri = 36,
         ByteArray = 64,
         CharArray = 65,
         ObjectList = 66,
@@ -158,7 +159,16 @@ namespace Nemo.Serialization
         /// <summary> Writes a DateTime to the buffer. <summary>
         public void Write(DateTime value)
         {
+            //if (value.TimeOfDay == TimeSpan.Zero)
+            //{
+            //    Write(false);
+            //    Write(value.Year * 10000 + value.Month * 100 + value.Day);
+            //}
+            //else
+            //{
+            //    Write(true);
             Write(value.ToBinary());
+            //}
         }
 
         /// <summary> Writes a TimeSpan to the buffer. <summary>
@@ -243,6 +253,58 @@ namespace Nemo.Serialization
             }
         }
 
+        public void WriteSignedNumber(long value)
+        {
+            if (value >= 0)
+            {
+                WriteUnsignedNumber((ulong)value);
+            }
+            else if (value >= sbyte.MinValue)
+            {
+                Write((byte)ObjectTypeCode.SByte);
+                Write((sbyte)value);
+            }
+            else if (value >= short.MinValue)
+            {
+                Write((byte)ObjectTypeCode.Int16);
+                Write((short)value);
+            }
+            else if (value >= int.MinValue)
+            {
+                Write((byte)ObjectTypeCode.Int32);
+                Write((int)value);
+            }
+            else
+            {
+                Write((byte)ObjectTypeCode.Int64);
+                Write(value);
+            }
+        }
+
+        public void WriteUnsignedNumber(ulong value)
+        {
+            if (value <= byte.MaxValue)
+            {
+                Write((byte)ObjectTypeCode.Byte);
+                Write((byte)value);
+            }
+            else if (value <= ushort.MaxValue)
+            {
+                Write((byte)ObjectTypeCode.UInt16);
+                Write((ushort)value);
+            }
+            else if (value <= uint.MaxValue)
+            {
+                Write((byte)ObjectTypeCode.UInt32);
+                Write((uint)value);
+            }
+            else 
+            {
+                Write((byte)ObjectTypeCode.UInt64);
+                Write(value);
+            }
+        }
+
         /// <summary> Writes an arbitrary object to the buffer.  Useful where we have something of type "object"
         /// and don't know how to treat it.  This works out the best method to use to write to the buffer. </summary>
         public void WriteObject(object value)
@@ -258,7 +320,12 @@ namespace Nemo.Serialization
             }
             else
             {
+                //if (typeCode != ObjectTypeCode.UInt16 && typeCode != ObjectTypeCode.UInt32 && typeCode != ObjectTypeCode.UInt64
+                //    && typeCode != ObjectTypeCode.Int16 && typeCode != ObjectTypeCode.Int32 && typeCode != ObjectTypeCode.Int64)
+                //{
                 Write((byte)typeCode);
+                //}
+
                 switch (typeCode)
                 {
                     case ObjectTypeCode.Boolean:
@@ -269,31 +336,37 @@ namespace Nemo.Serialization
                         Write((byte)value);
                         break;
 
-                    case ObjectTypeCode.UInt16:
-                        Write((ushort)value);
-                        break;
-
-                    case ObjectTypeCode.UInt32:
-                        Write((uint)value);
-                        break;
-
-                    case ObjectTypeCode.UInt64:
-                        Write((ulong)value);
-                        break;
-
                     case ObjectTypeCode.SByte:
                         Write((sbyte)value);
                         break;
 
+                    case ObjectTypeCode.UInt16:
+                        //WriteUnsignedNumber((ushort)value);
+                        Write((ushort)value);
+                        break;
+
+                    case ObjectTypeCode.UInt32:
+                        //WriteUnsignedNumber((uint)value);
+                        Write((uint)value);
+                        break;
+
+                    case ObjectTypeCode.UInt64:
+                        //WriteUnsignedNumber((ulong)value);
+                        Write((ulong)value);
+                        break;
+
                     case ObjectTypeCode.Int16:
+                        //WriteSignedNumber((short)value);
                         Write((short)value);
                         break;
 
                     case ObjectTypeCode.Int32:
+                        //WriteSignedNumber((int)value);
                         Write((int)value);
                         break;
 
                     case ObjectTypeCode.Int64:
+                        //WriteSignedNumber((long)value);
                         Write((long)value);
                         break;
 
@@ -401,6 +474,10 @@ namespace Nemo.Serialization
                         Write(((Version)value).Minor);
                         Write(((Version)value).Build);
                         Write(((Version)value).Revision);
+                        break;
+
+                    case ObjectTypeCode.Uri:
+                        Write(((Uri)value).AbsoluteUri);
                         break;
                     
                     case ObjectTypeCode.ObjectMap:
@@ -685,7 +762,16 @@ namespace Nemo.Serialization
         /// <summary> Reads a DateTime from the buffer. </summary>
         public DateTime ReadDateTime()
         {
+            //var hasTime = ReadBoolean();
+            //if (hasTime)
+            //{
             return DateTime.FromBinary(ReadInt64());
+            //}
+            //else
+            //{
+            //    var value = ReadInt32();
+            //    return new DateTime(value / 10000, value % 10000 / 100, value % 100);
+            //}
         }
 
         /// <summary> Reads a TimeSpan from the buffer. </summary>
@@ -714,6 +800,12 @@ namespace Nemo.Serialization
             var build = ReadInt32();
             var revision = ReadInt32();
             return new Version(major, minor, build, revision);
+        }
+
+        public Uri ReadUri()
+        {
+            var absoluteUri = ReadString();
+            return new Uri(absoluteUri);
         }
 
         /// <summary> Reads a generic list from the buffer. </summary>
@@ -790,8 +882,235 @@ namespace Nemo.Serialization
             base.Read(buffer, 0, count);
         }
 
-        /// <summary> Reads an object which was added to the buffer by WriteObject. </summary>
+        private object ReadUnsignedNumber(ObjectTypeCode typeCode, ObjectTypeCode expectedTypeCode)
+        {
+            object result = null;
+
+            switch (typeCode)
+            {
+                case ObjectTypeCode.Byte:
+                    result = Convert(ReadByte(), expectedTypeCode);
+                    break;
+                case ObjectTypeCode.UInt16:
+                    result = Convert(ReadUInt16(), expectedTypeCode);
+                    break;
+                case ObjectTypeCode.UInt32:
+                    result = Convert(ReadUInt32(), expectedTypeCode);
+                    break;
+                case ObjectTypeCode.UInt64:
+                    result = Convert(ReadUInt64(), expectedTypeCode);
+                    break;
+            }
+
+            return result;
+        }
+
+        private object ReadSignedNumber(ObjectTypeCode typeCode, ObjectTypeCode expectedTypeCode)
+        {
+            object result = null;
+
+            switch (typeCode)
+            {
+                case ObjectTypeCode.SByte:
+                    result = Convert(ReadSByte(), expectedTypeCode);
+                    break;
+                case ObjectTypeCode.Int16:
+                    result = Convert(ReadInt16(), expectedTypeCode);
+                    break;
+                case ObjectTypeCode.Int32:
+                    result = Convert(ReadInt32(), expectedTypeCode);
+                    break;
+                case ObjectTypeCode.Int64:
+                    result = Convert(ReadInt64(), expectedTypeCode);
+                    break;
+            }
+
+            return result;
+        }
+
+        private object Convert(byte number, ObjectTypeCode expectedTypeCode)
+        {
+            switch (expectedTypeCode)
+            {
+                case ObjectTypeCode.SByte:
+                    return (sbyte)number;
+                case ObjectTypeCode.UInt16:
+                    return (ushort)number;
+                case ObjectTypeCode.UInt32:
+                    return (uint)number;
+                case ObjectTypeCode.UInt64:
+                    return (ulong)number;
+                case ObjectTypeCode.Int16:
+                    return (short)number;
+                case ObjectTypeCode.Int32:
+                    return (int)number;
+                case ObjectTypeCode.Int64:
+                    return (long)number;
+            }
+            return number;
+        }
+
+        private object Convert(sbyte number, ObjectTypeCode expectedTypeCode)
+        {
+            switch (expectedTypeCode)
+            {
+                case ObjectTypeCode.Byte:
+                    return (byte)number;
+                case ObjectTypeCode.UInt16:
+                    return (ushort)number;
+                case ObjectTypeCode.UInt32:
+                    return (uint)number;
+                case ObjectTypeCode.UInt64:
+                    return (ulong)number;
+                case ObjectTypeCode.Int16:
+                    return (short)number;
+                case ObjectTypeCode.Int32:
+                    return (int)number;
+                case ObjectTypeCode.Int64:
+                    return (long)number;
+            }
+            return number;
+        }
+
+        private object Convert(ushort number, ObjectTypeCode expectedTypeCode)
+        {
+            switch (expectedTypeCode)
+            {
+                case ObjectTypeCode.Byte:
+                    return (byte)number;
+                case ObjectTypeCode.SByte:
+                    return (sbyte)number;
+                case ObjectTypeCode.UInt32:
+                    return (uint)number;
+                case ObjectTypeCode.UInt64:
+                    return (ulong)number;
+                case ObjectTypeCode.Int16:
+                    return (short)number;
+                case ObjectTypeCode.Int32:
+                    return (int)number;
+                case ObjectTypeCode.Int64:
+                    return (long)number;
+            }
+            return number;
+        }
+
+        private object Convert(uint number, ObjectTypeCode expectedTypeCode)
+        {
+            switch (expectedTypeCode)
+            {
+                case ObjectTypeCode.Byte:
+                    return (byte)number;
+                case ObjectTypeCode.SByte:
+                    return (sbyte)number;
+                case ObjectTypeCode.UInt16:
+                    return (ushort)number;
+                case ObjectTypeCode.UInt64:
+                    return (ulong)number;
+                case ObjectTypeCode.Int16:
+                    return (short)number;
+                case ObjectTypeCode.Int32:
+                    return (int)number;
+                case ObjectTypeCode.Int64:
+                    return (long)number;
+            }
+            return number;
+        }
+
+        private object Convert(ulong number, ObjectTypeCode expectedTypeCode)
+        {
+            switch (expectedTypeCode)
+            {
+                case ObjectTypeCode.Byte:
+                    return (byte)number;
+                case ObjectTypeCode.SByte:
+                    return (sbyte)number;
+                case ObjectTypeCode.UInt16:
+                    return (ushort)number;
+                case ObjectTypeCode.UInt32:
+                    return (uint)number;
+                case ObjectTypeCode.Int16:
+                    return (short)number;
+                case ObjectTypeCode.Int32:
+                    return (int)number;
+                case ObjectTypeCode.Int64:
+                    return (long)number;
+            }
+            return number;
+        }
+
+        private object Convert(short number, ObjectTypeCode expectedTypeCode)
+        {
+            switch (expectedTypeCode)
+            {
+                case ObjectTypeCode.Byte:
+                    return (byte)number;
+                case ObjectTypeCode.SByte:
+                    return (sbyte)number;
+                case ObjectTypeCode.UInt16:
+                    return (ushort)number;
+                case ObjectTypeCode.UInt32:
+                    return (uint)number;
+                case ObjectTypeCode.UInt64:
+                    return (ulong)number;
+                case ObjectTypeCode.Int32:
+                    return (int)number;
+                case ObjectTypeCode.Int64:
+                    return (long)number;
+            }
+            return number;
+        }
+
+        private object Convert(int number, ObjectTypeCode expectedTypeCode)
+        {
+            switch (expectedTypeCode)
+            {
+                case ObjectTypeCode.Byte:
+                    return (byte)number;
+                case ObjectTypeCode.SByte:
+                    return (sbyte)number;
+                case ObjectTypeCode.UInt16:
+                    return (ushort)number;
+                case ObjectTypeCode.UInt32:
+                    return (uint)number;
+                case ObjectTypeCode.UInt64:
+                    return (ulong)number;
+                case ObjectTypeCode.Int16:
+                    return (short)number;
+                case ObjectTypeCode.Int64:
+                    return (long)number;
+            }
+            return number;
+        }
+
+        private object Convert(long number, ObjectTypeCode expectedTypeCode)
+        {
+            switch (expectedTypeCode)
+            {
+                case ObjectTypeCode.Byte:
+                    return (byte)number;
+                case ObjectTypeCode.SByte:
+                    return (sbyte)number;
+                case ObjectTypeCode.UInt16:
+                    return (ushort)number;
+                case ObjectTypeCode.UInt32:
+                    return (uint)number;
+                case ObjectTypeCode.UInt64:
+                    return (ulong)number;
+                case ObjectTypeCode.Int16:
+                    return (short)number;
+                case ObjectTypeCode.Int32:
+                    return (int)number;
+            }
+            return number;
+        }
+
         public object ReadObject(Type objectType)
+        {
+            return ReadObject(objectType, _objectByte.HasValue ? (ObjectTypeCode)_objectByte.Value : Reflector.GetObjectTypeCode(objectType));
+        }
+
+        /// <summary> Reads an object which was added to the buffer by WriteObject. </summary>
+        public object ReadObject(Type objectType, ObjectTypeCode expectedTypeCode)
         {
             var skip = false;
             ObjectTypeCode typeCode;
@@ -808,6 +1127,18 @@ namespace Nemo.Serialization
 
             switch (typeCode)
             {
+                //case ObjectTypeCode.Byte:
+                //case ObjectTypeCode.UInt16:
+                //case ObjectTypeCode.UInt32:
+                //case ObjectTypeCode.UInt64:
+                //    return ReadUnsignedNumber(typeCode, expectedTypeCode);
+
+                //case ObjectTypeCode.SByte:
+                //case ObjectTypeCode.Int16:
+                //case ObjectTypeCode.Int32:
+                //case ObjectTypeCode.Int64:
+                //    return ReadSignedNumber(typeCode, expectedTypeCode);
+
                 case ObjectTypeCode.Boolean:
                     return ReadBoolean();
                 case ObjectTypeCode.Byte:
@@ -850,6 +1181,8 @@ namespace Nemo.Serialization
                     return ReadGuid();
                 case ObjectTypeCode.Version:
                     return ReadVersion();
+                case ObjectTypeCode.Uri:
+                    return ReadUri();
                 case ObjectTypeCode.DBNull:
                     return DBNull.Value;
                 case ObjectTypeCode.Object:
@@ -1053,7 +1386,7 @@ namespace Nemo.Serialization
             var method = new DynamicMethod("Deserialize_" + objectType.Name, typeof(object[]), new[] { typeof(SerializationReader), typeof(int) }, typeof(SerializationReader).Module);
             var il = method.GetILGenerator();
 
-            var readObject = this.GetType().GetMethod("ReadObject");
+            var readObject = this.GetType().GetMethod("ReadObject", new[] { typeof(Type), typeof(ObjectTypeCode) });
             var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
 
             var interfaceType = objectType;
@@ -1105,15 +1438,13 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Ldloc_2);
                 il.Emit(OpCodes.Ldarg_0);
                 Type propertyType;
-                if (Reflector.IsBusinessObjectList(property.PropertyType, out propertyType))
+                if (!Reflector.IsBusinessObjectList(property.PropertyType, out propertyType))
                 {
-                    il.Emit(OpCodes.Ldtoken, propertyType);
+                    propertyType = property.PropertyType;
                 }
-                else
-                {
-                    il.Emit(OpCodes.Ldtoken, property.PropertyType);
-                }
+                il.Emit(OpCodes.Ldtoken, propertyType);
                 il.Emit(OpCodes.Call, getTypeFromHandle);
+                il.Emit(OpCodes.Ldc_I4, (int)Reflector.GetObjectTypeCode(propertyType));
                 il.Emit(OpCodes.Callvirt, readObject);
                 il.EmitCastToReference(property.PropertyType);
                 il.EmitCall(OpCodes.Callvirt, property.GetSetMethod(), null);

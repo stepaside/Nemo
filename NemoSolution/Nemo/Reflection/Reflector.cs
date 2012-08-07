@@ -798,6 +798,10 @@ namespace Nemo.Reflection
                     {
                         return  ObjectTypeCode.Version;
                     }
+                    else if (name == "Uri")
+                    {
+                        return ObjectTypeCode.Uri;
+                    }
                     else if (Reflector.IsDictionary(type))
                     {
                         return ObjectTypeCode.ObjectMap;
