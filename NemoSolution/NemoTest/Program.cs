@@ -205,7 +205,8 @@ namespace NemoTest
                 using (var stream = new MemoryStream())
                 {
                     ProtoBuf.Serializer.Serialize<SimpleObject>(stream, s);
-                    return stream.ToArray();
+                    var data = stream.ToArray();
+                    return data;
                 }
             },
             s => ProtoBuf.Serializer.Deserialize<SimpleObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
@@ -270,7 +271,8 @@ namespace NemoTest
                 using (var stream = new MemoryStream())
                 {
                     ProtoBuf.Serializer.Serialize<ComplexObject>(stream, s);
-                    return stream.GetBuffer();
+                    var data = stream.ToArray();
+                    return data;
                 }
             },
             s =>
