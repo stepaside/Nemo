@@ -581,8 +581,7 @@ namespace Nemo.Serialization
 
             var writeObjectType = this.GetType().GetMethod("WriteObjectType");            
             var writeObject = this.GetType().GetMethod("WriteObject", new[] { typeof(object), typeof(ObjectTypeCode) });
-            var writeFlag = this.GetType().GetMethod("Write", new[] { typeof(bool) });
-            var writeLength = this.GetType().GetMethod("Write", new[] { typeof(int) });
+            var writeLength = this.GetType().GetMethod("Write", new[] { typeof(uint) });
             var writeName = this.GetType().GetMethod("Write", new[] { typeof(string) });
             var getItem = typeof(IList).GetMethod("get_Item");
 
@@ -643,6 +642,7 @@ namespace Nemo.Serialization
             {
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldc_I4, orderedProperties.Length);
+                il.Emit(OpCodes.Conv_U4);
                 il.Emit(OpCodes.Callvirt, writeLength);
 
                 var orderedPropertiesWithLength = orderedProperties.Select(p => Tuple.Create(p, Encoding.UTF8.GetByteCount(p.Name))).ToList();
@@ -650,6 +650,7 @@ namespace Nemo.Serialization
 
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldc_I4, orderedPropertiesWithLength.Sum(p => p.Item2) + overhead);
+                il.Emit(OpCodes.Conv_U4);
                 il.Emit(OpCodes.Callvirt, writeLength);
 
                 foreach (var property in properties)
@@ -1205,8 +1206,8 @@ namespace Nemo.Serialization
             var propertyLength = -1;
             if (_includePropertyNames)
             {
-                propertyCount = ReadInt32();
-                propertyLength = ReadInt32();
+                propertyCount = (int)ReadUInt32();
+                propertyLength = (int)ReadUInt32();
             }
             ObjectDeserializer deserializer;
             if (!_serializeAll)
