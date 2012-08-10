@@ -666,5 +666,39 @@ namespace Nemo.Extensions
         }
 
         #endregion
+
+        #region Clone Methods
+
+        /// <summary>
+        /// Creates a deep copy of the interface instance. 
+        /// NOTE: The object must be serializable.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="instance"></param>
+        /// <returns></returns>
+        public static T Clone<T>(this T instance)
+            where T : class, IBusinessObject
+        {
+            var data = instance.Serialize(SerializationMode.SerializeAll);
+            var value = SerializationExtensions.Deserialize<T>(data);
+            return value;
+        }
+
+        /// <summary>
+        /// Creates a deep copy of the collection of interface instances. 
+        /// NOTE: The object must be serializable.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="instance"></param>
+        /// <returns></returns>
+        public static IEnumerable<T> Clone<T>(this IEnumerable<T> collection)
+            where T : class, IBusinessObject
+        {
+            var data = collection.Serialize(SerializationMode.SerializeAll);
+            var value = SerializationExtensions.Deserialize<T>(data);
+            return value;
+        }
+
+        #endregion
     }
 }

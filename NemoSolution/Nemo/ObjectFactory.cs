@@ -123,41 +123,7 @@ namespace Nemo
         }
 
         #endregion
-
-        #region Copy Methods
-
-        /// <summary>
-        /// Creates a deep copy of the interface instance. 
-        /// NOTE: The object must be serializable.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="instance"></param>
-        /// <returns></returns>
-        public static T Copy<T>(T instance)
-            where T : class, IBusinessObject
-        {
-            var data = instance.Serialize();
-            var value = SerializationExtensions.Deserialize<T>(data);
-            return value;
-        }
-
-        /// <summary>
-        /// Creates a deep copy of the collection of interface instances. 
-        /// NOTE: The object must be serializable.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="instance"></param>
-        /// <returns></returns>
-        public static IEnumerable<T> Copy<T>(IEnumerable<T> collection)
-            where T : class, IBusinessObject
-        {
-            var data = collection.Serialize();
-            var value = SerializationExtensions.Deserialize<T>(data);
-            return value;
-        }
-
-        #endregion
-
+        
         #region Map Methods
 
         private static ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?> _mapMethods = new ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?>();
