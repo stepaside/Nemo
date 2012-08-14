@@ -529,22 +529,7 @@ namespace Nemo.Collections.Extensions
                 yield return items.Take(count);
             }
         }
-
-        public static T[] Slice<T>(this T[] source, int start, int end)
-        {
-            // Handles negative ends.
-            if (end < 0)
-            {
-                end = source.Length + end;
-            }
-            int len = end - start;
-
-            // Return new array.
-            T[] res = new T[len];
-            Buffer.BlockCopy(source, start, res, 0, len);
-            return res;
-        }
-
+        
         private static object _partitionLock = new object(); 
 
         public static Tuple<IList<T>, IList<T>> Partition<T>(this IEnumerable<T> source, Func<T, bool> predicate, bool parallel = false)
@@ -586,7 +571,14 @@ namespace Nemo.Collections.Extensions
             else
             {
                 var stream = source.AsStream();
-                return Tuple.Create((IList<T>)stream.Where(s => predicate(s)).ToList(), (IList<T>)stream.Where(s => !predicate(s)).ToList());
+                if (stream != null)
+                {
+                    return Tuple.Create((IList<T>)stream.Where(s => predicate(s)).ToList(), (IList<T>)stream.Where(s => !predicate(s)).ToList());
+                }
+                else
+                {
+                    return Tuple.Create((IList<T>)new T[0], (IList<T>)new T[0]);
+                }
             }
         }
 

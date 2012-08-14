@@ -427,7 +427,7 @@ namespace Nemo.Serialization
             while (current != null)
             {
                 ReflectedProperty property = null;
-                if (propertyMap == null || propertyMap.TryGetValue(current.Name, out property))
+                if (propertyMap == null || (current.Name != null && propertyMap.TryGetValue(current.Name, out property)))
                 {
                     switch (current.Type)
                     {

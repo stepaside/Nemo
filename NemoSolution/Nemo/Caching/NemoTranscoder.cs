@@ -9,7 +9,7 @@ namespace Nemo.Caching
     {
         protected override object DeserializeObject(ArraySegment<byte> value)
         {
-            var data = value.Array.Slice(value.Offset, value.Offset + value.Count);
+            var data = value.ToArray();
             var result = SerializationReader.ReadObjectWithType(data);
             return result;
         }

@@ -19,6 +19,7 @@ using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Utilities;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace NemoTest
 {
@@ -568,8 +569,13 @@ namespace NemoTest
             var list = new List<SimpleObject>();
             for (int i = 0; i < count; i++)
             {
-                var item = new SimpleObject { Id = i, Name = ComputeRandomString(random.Next(10, 21)),
-                                            DateOfBirth = new DateTime(random.Next(1970, 1990), random.Next(1, 12), random.Next(1, 28))};
+                var item = new SimpleObject
+                {
+                    Id = i,
+                    Name = ComputeRandomString(random.Next(10, 21)),
+                    DateOfBirth = new DateTime(random.Next(1970, 1990), random.Next(1, 12), random.Next(1, 28)),
+                    Income = random.NextDouble() * random.Next(100000, 200000)
+                };
                 list.Add(item);
             }
             return list;
@@ -580,9 +586,14 @@ namespace NemoTest
             var list = new List<ComplexObject>();
             for (int i = 0; i < count; i++)
             {
-                var item = new ComplexObject { Id = i, Name = ComputeRandomString(random.Next(10, 21)), 
-                                            DateOfBirth = new DateTime(random.Next(1970, 1990), random.Next(1, 12), random.Next(1, 28)), 
-                                            Children = GenerateSimple(random.Next(15, 31)) };
+                var item = new ComplexObject
+                {
+                    Id = i,
+                    Name = ComputeRandomString(random.Next(10, 21)),
+                    DateOfBirth = new DateTime(random.Next(1970, 1990), random.Next(1, 12), random.Next(1, 28)),
+                    Income = random.NextDouble() * random.Next(100000, 200000),
+                    Children = GenerateSimple(random.Next(15, 31))
+                };
                 list.Add(item);
             }
             return list;
@@ -624,8 +635,8 @@ namespace NemoTest
             }
             
             Console.WriteLine(name);
-            Console.WriteLine("\tserialization: {0}µs", RemoveOutliers(stimeList, StandardDeviation(stimeList), stimeList.Average()).Average());
-            Console.WriteLine("\tdeserialization: {0}µs", RemoveOutliers(dtimeList, StandardDeviation(dtimeList), dtimeList.Average()).Average());
+            Console.WriteLine("\tserialization: {0}µs", stimeList.Average());
+            Console.WriteLine("\tdeserialization: {0}µs", dtimeList.Average());
             Console.WriteLine("\tsize: {0} bytes", sizeList.Average());
         }
 

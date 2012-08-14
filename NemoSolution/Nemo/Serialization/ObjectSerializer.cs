@@ -15,6 +15,12 @@ using Nemo.Collections.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
 
+/*
+ * 1. DateTime/TimeSpan serialization are taken from protobuf-net
+ * 2. Integer serialiation/deserialization are taken from NetSerializer
+ * 
+ */
+
 namespace Nemo.Serialization
 {
     public enum ObjectTypeCode : byte
@@ -42,7 +48,6 @@ namespace Nemo.Serialization
         Guid = 34,
         Version = 35,
         Uri = 36,
-        Date = 37,
         ByteArray = 64,
         CharArray = 65,
         ObjectList = 66,
@@ -66,15 +71,24 @@ namespace Nemo.Serialization
         SerializeAll = 2,
         IncludePropertyNames = 4
     }
+
+    public enum TemporalScale : byte
+    {
+        Days = 0,
+        Hours = 1,
+        Minutes = 2,
+        Seconds = 3,
+        Milliseconds = 4,
+        Ticks = 5,
+        MinMax = 15
+    }
     
     public static class UnixDateTime
     {
         public static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     }
 
-    /// <summary> SerializationWriter.  Extends BinaryWriter to add additional data types,
-    /// handle null strings and simplify use with ISerializable. </summary>
-    public class SerializationWriter : BinaryWriter
+    public class SerializationWriter : IDisposable
     {
         public delegate void ObjectSerializer(SerializationWriter writer, IList values, int count);
 
@@ -87,117 +101,280 @@ namespace Nemo.Serialization
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
         private bool _objectTypeWritten;
+        private Stream _stream;
+        private Encoding _encoding;
 
-        private SerializationWriter(Stream s, SerializationMode mode)
-            : base(s)
+        private SerializationWriter(Stream stream, SerializationMode mode, Encoding encoding)
         {
+            _stream = stream ?? new MemoryStream(512);
+            _encoding = encoding ?? new UTF8Encoding();
             _mode = mode;
             _serializeAll = (mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
             Write((byte)_mode);
         }
 
-        /// <summary> Static method to initialise the writer with a suitable MemoryStream. </summary>
+        private static uint EncodeZigZag32(int n)
+        {
+            return (uint)((n << 1) ^ (n >> 31));
+        }
+
+        private static ulong EncodeZigZag64(long n)
+        {
+            return (ulong)((n << 1) ^ (n >> 63));
+        }
+
+        private void WriteFixed32(uint value)
+        {
+            var buffer = new byte[4];
+            buffer[0] = (byte)value;
+            buffer[1] = (byte)(value >> 8);
+            buffer[2] = (byte)(value >> 16);
+            buffer[3] = (byte)(value >> 24);
+            _stream.Write(buffer, 0, 4);
+        }
+
+        private void WriteFixed64(ulong value)
+        {
+            var buffer = new byte[8];
+            buffer[0] = (byte)value;
+            buffer[1] = (byte)(value >> 8);
+            buffer[2] = (byte)(value >> 16);
+            buffer[3] = (byte)(value >> 24);
+            buffer[4] = (byte)(value >> 32);
+            buffer[5] = (byte)(value >> 40);
+            buffer[6] = (byte)(value >> 48);
+            buffer[7] = (byte)(value >> 56);
+            _stream.Write(buffer, 0, 8);
+        }
+        
         public static SerializationWriter CreateWriter(SerializationMode mode)
         {
-            Stream ms = new MemoryStream(1024);
-            return new SerializationWriter(ms, mode);
+            return new SerializationWriter(null, mode, null);
         }
 
         public byte[] GetBytes()
         {
-            var ms = (MemoryStream)this.BaseStream;
-            var data = ms.ToArray();
-            return data;
-        }
-
-        /// <summary> Writes a string to the buffer.  Overrides the base implementation so it can cope with nulls </summary>
-        public override void Write(string value)
-        {
-            if (value == null)
+            if (_stream is MemoryStream)
             {
-                Write((byte)ObjectTypeCode.Empty);
+                var data = ((MemoryStream)_stream).ToArray();
+                return data;
             }
             else
             {
-                base.Write(value);
+                return new byte[0];
             }
         }
 
-        /// <summary> Writes a byte array to the buffer.  Overrides the base implementation to
-        /// send the length of the array which is needed when it is retrieved </summary>
-        public override void Write(byte[] value)
+        public void Write(byte value)
+        {
+            _stream.WriteByte(value);
+        }
+
+        public void Write(sbyte value)
+        {
+            _stream.WriteByte((byte)value);
+        }
+
+        public void Write(bool value)
+        {
+            _stream.WriteByte(value ? (byte)1 : (byte)0);
+        }
+
+        public void Write(short value)
+        {
+            Write((int)value);
+        }
+
+        public void Write(int value)
+        {
+            Write(EncodeZigZag32(value));
+        }
+
+        public void Write(long value)
+        {
+            Write(EncodeZigZag64(value));
+        }
+
+        public void Write(ushort value)
+        {
+            Write((uint)value);
+        }
+
+        public void Write(uint value)
+        {
+            for (; value >= 0x80u; value >>= 7)
+            {
+                _stream.WriteByte((byte)(value | 0x80u));
+            }
+            _stream.WriteByte((byte)value);
+        }
+
+        public void Write(ulong value)
+        {
+            for (; value >= 0x80u; value >>= 7)
+            {
+                _stream.WriteByte((byte)(value | 0x80u));
+            }
+            _stream.WriteByte((byte)value);
+        }
+
+        public unsafe void Write(float value)
+        {
+            var v = *(uint*)(&value);
+            WriteFixed32(v);
+        }
+
+        public unsafe void Write(double value)
+        {
+            var v = *(ulong*)(&value);
+            WriteFixed64(v);
+        }
+
+        public void Write(decimal value)
+        {
+            var bits = decimal.GetBits(value);
+            Write(bits[0]);
+            Write(bits[1]);
+            Write(bits[2]);
+            Write(bits[3]);
+        }
+
+        public void Write(char value)
+        {
+            Write((uint)value);
+        }
+
+        public void Write(string value)
         {
             if (value == null)
             {
-                Write(-1);
+                Write(0u);
             }
             else
             {
-                int length = value.Length;
-                Write(length);
+                var chars = value.ToCharArray();
+                var length = _encoding.GetByteCount(chars);
+                Write((uint)length + 1);
                 if (length > 0)
                 {
-                    base.Write(value);
+                    var buffer = new byte[length];
+                    _encoding.GetBytes(chars, 0, length, buffer, 0);
+                    _stream.Write(buffer, 0, length);
                 }
             }
         }
 
-        /// <summary> Writes a char array to the buffer.  Overrides the base implementation to
-        /// sends the length of the array which is needed when it is read. </summary>
-        public override void Write(char[] value)
+        public void Write(byte[] value)
         {
             if (value == null)
             {
-                Write(-1);
+                Write(0u);
             }
             else
             {
-                int length = value.Length;
-                Write(length);
+                var length = value.Length;
+                Write((uint)length + 1);
                 if (length > 0)
                 {
-                    base.Write(value);
+                    _stream.Write(value, 0, length);
                 }
             }
         }
 
-        /// <summary> Writes a DateTime to the buffer. <summary>
+        public void Write(char[] value)
+        {
+            if (value == null)
+            {
+                Write(0u);
+            }
+            else
+            {
+                var length = value.Length;
+                Write((uint)length + 1);
+                for (int i = 0; i < length; i++)
+                {
+                    Write(value[i]);
+                }
+            }
+        }
+        
         public void Write(DateTime value)
         {
-            Write(value.Ticks);
+            if (value == DateTime.MaxValue)
+            {
+                Write(TimeSpan.MaxValue);
+            }
+            else if (value == DateTime.MinValue)
+            {
+                Write(TimeSpan.MinValue);
+            }
+            else
+            {
+                Write(value - UnixDateTime.Epoch);
+            }
         }
-
-        public void WriteShortDate(DateTime value)
-        {
-            Write((ushort)value.Year);
-            Write((byte)value.Month);
-            Write((byte)value.Day);
-        }
-
-        /// <summary> Writes a TimeSpan to the buffer. <summary>
+        
         public void Write(TimeSpan value)
         {
-            Write(value.Ticks);
+            var ticks = value.Ticks;
+            var scale = TemporalScale.Ticks;
+
+            if (value == TimeSpan.MaxValue)
+            {
+                scale = TemporalScale.MinMax;
+                ticks = 1;
+            }
+            else if (value == TimeSpan.MinValue)
+            {
+                scale = TemporalScale.MinMax;
+                ticks = -1;
+            }
+            else if (ticks % TimeSpan.TicksPerDay == 0)
+            {
+                scale = TemporalScale.Days;
+                ticks /= TimeSpan.TicksPerDay;
+            }
+            else if (ticks % TimeSpan.TicksPerHour == 0)
+            {
+                scale = TemporalScale.Hours;
+                ticks /= TimeSpan.TicksPerHour;
+            }
+            else if (ticks % TimeSpan.TicksPerMinute == 0)
+            {
+                scale = TemporalScale.Minutes;
+                ticks /= TimeSpan.TicksPerMinute;
+            }
+            else if (ticks % TimeSpan.TicksPerSecond == 0)
+            {
+                scale = TemporalScale.Seconds;
+                ticks /= TimeSpan.TicksPerSecond;
+            }
+            else if (ticks % TimeSpan.TicksPerMillisecond == 0)
+            {
+                scale = TemporalScale.Milliseconds;
+                ticks /= TimeSpan.TicksPerMillisecond;
+            }
+
+            Write((byte)scale);
+            Write(ticks);
         }
 
-        /// <summary> Writes a DateTimeOffset to the buffer. <summary>
         public void Write(DateTimeOffset value)
         {
             Write(value.DateTime);
             Write(value.Offset);
         }
 
-        /// <summary> Writes a generic ICollection (such as an IList<T>) to the buffer. </summary>
         public void WriteList(IList items)
         {
             if (items == null)
             {
-                Write(-1);
+                Write(0u);
             }
             else
             {
-                Write(items.Count);
+                Write((uint)items.Count + 1);
                 for (int i = 0; i < items.Count; i++)
                 {
                     WriteObject(items[i]);
@@ -205,13 +382,11 @@ namespace Nemo.Serialization
             }
         }
 
-        /// <summary> Writes a generic ICollection (such as an IList<T>) to the buffer. </summary>
         public void WriteList<T>(IList<T> items)
         {
             WriteList((IList)items);
         }
 
-        /// <summary> Writes a generic IDictionary to the buffer. </summary>
         public void WriteDictionary<T, U>(IDictionary<T, U> map)
         {
             if (map == null)
@@ -220,7 +395,7 @@ namespace Nemo.Serialization
             }
             else
             {
-                Write(map.Count);
+                Write((uint)map.Count + 1);
                 foreach (var pair in map)
                 {
                     WriteObject(pair.Key);
@@ -229,16 +404,15 @@ namespace Nemo.Serialization
             }
         }
 
-        /// <summary> Writes a generic IDictionary to the buffer. </summary>
         public void WriteDictionary(IDictionary map)
         {
             if (map == null)
             {
-                Write(-1);
+                Write(0u);
             }
             else
             {
-                Write(map.Count);
+                Write((uint)map.Count + 1);
                 var iterator = map.GetEnumerator();
                 while(iterator.MoveNext())
                 {
@@ -248,59 +422,15 @@ namespace Nemo.Serialization
             }
         }
 
-        public void WriteObjectType(string typeName)
+        public void WriteObjectType(int typeHash)
         {
             if (!_objectTypeWritten)
             {
-                Write(typeName.GetHashCode());
+                Write(typeHash);
                 _objectTypeWritten = true;
             }
         }
 
-        public override void Write(ushort value)
-        {
-            do
-            {
-                var b = (byte)(value & 0x7f);
-                value >>= 7;
-                if (value != 0)
-                {
-                    b |= 0x80;
-                }
-                Write(b);
-            } while (value != 0);
-        }
-
-        public override void Write(uint value)
-        {
-            do
-            {
-                var b = (byte)(value & 0x7f);
-                value >>= 7;
-                if (value != 0)
-                {
-                    b |= 0x80;
-                }
-                Write(b);
-            } while (value != 0);
-        }
-
-        public override void Write(ulong value)
-        {
-            do
-            {
-                var b = (byte)(value & 0x7f);
-                value >>= 7;
-                if (value != 0)
-                {
-                    b |= 0x80;
-                }
-                Write(b);
-            } while (value != 0);
-        }
-
-        /// <summary> Writes an arbitrary object to the buffer.  Useful where we have something of type "object"
-        /// and don't know how to treat it.  This works out the best method to use to write to the buffer. </summary>
         public void WriteObject(object value)
         {
             WriteObject(value, value != null ? Reflector.GetObjectTypeCode(value.GetType()) : ObjectTypeCode.Empty);
@@ -314,11 +444,7 @@ namespace Nemo.Serialization
             }
             else
             {
-                if (typeCode != ObjectTypeCode.Int16 && typeCode != ObjectTypeCode.Int32 && typeCode != ObjectTypeCode.Int64 && typeCode != ObjectTypeCode.DateTime)
-                {
-                    Write((byte)typeCode);
-                }
-
+                Write((byte)typeCode);
                 switch (typeCode)
                 {
                     case ObjectTypeCode.Boolean:
@@ -346,56 +472,23 @@ namespace Nemo.Serialization
                         break;
 
                     case ObjectTypeCode.Int16:
-                        {
-                            if ((short)value >= 0)
-                            {
-                                Write((byte)ObjectTypeCode.UInt16);
-                                Write((ushort)(short)value);
-                            }
-                            else
-                            {
-                                Write((byte)typeCode);
-                                Write((short)value);
-                            }
-                            break;
-                        }
+                        Write((short)value);
+                        break;
 
                     case ObjectTypeCode.Int32:
-                        {
-                            if ((int)value >= 0)
-                            {
-                                Write((byte)ObjectTypeCode.UInt32);
-                                Write((uint)(int)value);
-                            }
-                            else
-                            {
-                                Write((byte)typeCode);
-                                Write((int)value);
-                            }
-                            break;
-                        }
+                        Write((int)value);
+                        break;
 
                     case ObjectTypeCode.Int64:
-                        {
-                            if ((long)value >= 0)
-                            {
-                                Write((byte)ObjectTypeCode.UInt64);
-                                Write((ulong)(long)value);
-                            }
-                            else
-                            {
-                                Write((byte)typeCode);
-                                Write((long)value);
-                            }
-                            break;
-                        }
+                        Write((long)value);
+                        break;
 
                     case ObjectTypeCode.Char:
-                        base.Write((char)value);
+                        Write((char)value);
                         break;
 
                     case ObjectTypeCode.String:
-                        base.Write((string)value);
+                        Write((string)value);
                         break;
 
                     case ObjectTypeCode.Single:
@@ -411,21 +504,8 @@ namespace Nemo.Serialization
                         break;
 
                     case ObjectTypeCode.DateTime:
-                        {
-                            var date = (DateTime)value;
-                            if (date.TimeOfDay.Ticks == 0)
-                            {
-                                Write((byte)ObjectTypeCode.Date);
-                                WriteShortDate(date);
-                            }
-                            else
-                            {
-                                Write((byte)ObjectTypeCode.DateTime);
-                                Write(date);
-                            }
-                            break;
-                        }
-                        
+                        Write((DateTime)value);
+                        break;
 
                     case ObjectTypeCode.DBNull:
                         break;
@@ -503,11 +583,14 @@ namespace Nemo.Serialization
                         break;
 
                     case ObjectTypeCode.Version:
-                        Write(((Version)value).Major);
-                        Write(((Version)value).Minor);
-                        Write(((Version)value).Build);
-                        Write(((Version)value).Revision);
-                        break;
+                        {
+                            var version = (Version)value;
+                            Write((uint)version.Major);
+                            Write((uint)version.Minor);
+                            Write((uint)version.Build);
+                            Write((uint)version.Revision);
+                            break;
+                        }
 
                     case ObjectTypeCode.Uri:
                         Write(((Uri)value).AbsoluteUri);
@@ -519,7 +602,7 @@ namespace Nemo.Serialization
                         break;
 
                     default:
-                        new BinaryFormatter().Serialize(BaseStream, value);
+                        new BinaryFormatter().Serialize(_stream, value);
                         break;
                 }
             }
@@ -539,13 +622,12 @@ namespace Nemo.Serialization
             return buffer;
         }
 
-        /// <summary> Adds the SerializationWriter buffer to the SerializationInfo at the end of GetObjectData(). </summary>
         public void AddToSerializationInfo(SerializationInfo info)
         {
             byte[] buffer = this.GetBytes();
             info.AddValue("X", buffer, typeof(byte[]));
         }
-
+        
         private ObjectSerializer CreateDelegate(Type objectType)
         {
             //var reflectedType = Reflector.GetReflectedType(objectType);
@@ -634,7 +716,7 @@ namespace Nemo.Serialization
             if (Reflector.IsBusinessObject(interfaceType) || Reflector.IsBusinessObjectList(interfaceType, out elementType))
             {
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldstr, interfaceType.FullName);
+                il.Emit(OpCodes.Ldc_I4, interfaceType.FullName.GetHashCode());
                 il.Emit(OpCodes.Callvirt, writeObjectType);
             }
 
@@ -699,11 +781,18 @@ namespace Nemo.Serialization
             var serializer = (ObjectSerializer)method.CreateDelegate(typeof(ObjectSerializer));
             return serializer;
         }
+
+        #region IDisposable Members
+
+        public void Dispose()
+        {
+            _stream.Dispose();
+        }
+
+        #endregion
     }
 
-    /// <summary> SerializationReader.  Extends BinaryReader to add additional data types,
-    /// handle null strings and simplify use with ISerializable. </summary>
-    public class SerializationReader : BinaryReader
+    public class SerializationReader : IDisposable
     {
         private int _objectTypeHash;
         private readonly SerializationMode _mode;
@@ -711,6 +800,8 @@ namespace Nemo.Serialization
         private readonly bool _includePropertyNames;
         private byte? _objectByte;
         private int _itemCount;
+        private Stream _stream;
+        private Encoding _encoding;
         private static ConcurrentDictionary<string, Type> _types = new ConcurrentDictionary<string, Type>();
         
         public delegate object[] ObjectDeserializer(SerializationReader reader, int count);
@@ -719,9 +810,10 @@ namespace Nemo.Serialization
         private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllProperties = new ConcurrentDictionary<Type, ObjectDeserializer>();
         private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
 
-        private SerializationReader(Stream s)
-            : base(s)
+        private SerializationReader(Stream stream, Encoding encoding)
         {
+            _stream = stream;
+            _encoding = encoding ?? new UTF8Encoding();
             _mode = (SerializationMode)ReadByte();
             _serializeAll = (_mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (_mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
@@ -737,22 +829,45 @@ namespace Nemo.Serialization
             }
         }
 
-        /// <summary> Static method to take a SerializationInfo object (an input to an ISerializable constructor)
-        /// and produce a SerializationReader from which serialized objects can be read </summary>.
+        private static int DecodeZigZag32(uint n)
+        {
+            return (int)(n >> 1) ^ -(int)(n & 1);
+        }
+
+        private static long DecodeZigZag64(ulong n)
+        {
+            return (long)(n >> 1) ^ -(long)(n & 1);
+        }
+
+        private uint ReadFixed32()
+        {
+            var buffer = new byte[4];
+            _stream.Read(buffer, 0, 4);
+            var v = (uint)((int)buffer[0] | (int)buffer[1] << 8 | (int)buffer[2] << 16 | (int)buffer[3] << 24);
+            return v;
+        }
+
+        private ulong ReadFixed64()
+        {
+            var buffer = new byte[8];
+            _stream.Read(buffer, 0, 8);
+            var v1 = (uint)((int)buffer[0] | (int)buffer[1] << 8 | (int)buffer[2] << 16 | (int)buffer[3] << 24);
+            var v2 = (uint)((int)buffer[4] | (int)buffer[5] << 8 | (int)buffer[6] << 16 | (int)buffer[7] << 24);
+            var v = (ulong)v2 << 32 | (ulong)v1;
+            return v;
+        }
+
         public static SerializationReader CreateReader(SerializationInfo info)
         {
             byte[] buffer = (byte[])info.GetValue("X", typeof(byte[]));
             return SerializationReader.CreateReader(buffer);
         }
 
-        /// <summary> Static method to take a SerializationInfo object (an input to an ISerializable constructor)
-        /// and produce a SerializationReader from which serialized objects can be read </summary>.
         public static SerializationReader CreateReader(byte[] buffer)
         {
-            return new SerializationReader(new MemoryStream(buffer));
+            return new SerializationReader(new MemoryStream(buffer), null);
         }
 
-        /// <summary> Static method to determine the object type </summary>.
         public static int GetObjectTypeHash(byte[] buffer)
         {
             return CreateReader(buffer).ObjectTypeHash;
@@ -766,72 +881,265 @@ namespace Nemo.Serialization
             }
         }
 
-        /// <summary> Reads a byte array from the buffer, handling nulls and the array length. </summary>
-        public byte[] ReadByteArray()
+        public byte ReadByte()
         {
-            int length = ReadInt32();
-            if (length > 0)
+            return (byte)_stream.ReadByte();
+        }
+
+        public sbyte ReadSByte()
+        {
+            return (sbyte)_stream.ReadByte();
+        }
+
+        public bool ReadBoolean()
+        {
+            var b = _stream.ReadByte();
+            return b != 0;
+        }
+
+        public char ReadChar()
+        {
+            return (char)ReadUInt32();
+        }
+
+        public short ReadInt16()
+        {
+            return (short)DecodeZigZag32(ReadUInt32());
+        }
+
+        public int ReadInt32()
+        {
+            return DecodeZigZag32(ReadUInt32());
+        }
+
+        public long ReadInt64()
+        {
+            return DecodeZigZag64(ReadUInt64());
+        }
+
+        public ushort ReadUInt16()
+        {
+            return (ushort)ReadUInt32();
+        }
+
+        public uint ReadUInt32()
+        {
+            int result = 0;
+            int offset = 0;
+
+            for (; offset < 32; offset += 7)
             {
-                return ReadBytes(length);
+                var b = _stream.ReadByte();
+                if (b == -1)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                result |= (b & 0x7f) << offset;
+
+                if ((b & 0x80) == 0)
+                {
+                    return (uint)result;
+                }
             }
-            if (length < 0)
+
+            throw new InvalidDataException();
+        }
+
+        public ulong ReadUInt64()
+        {
+            long result = 0;
+            int offset = 0;
+
+            for (; offset < 64; offset += 7)
+            {
+                var b = _stream.ReadByte();
+                if (b == -1)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                result |= ((long)(b & 0x7f)) << offset;
+
+                if ((b & 0x80) == 0)
+                {
+                    return (ulong)result;
+                }
+            }
+
+            throw new InvalidDataException();
+        }
+
+        public unsafe float ReadSingle()
+        {
+            var v = ReadFixed32();
+            return *(float*)(&v);
+        }
+
+        public unsafe double ReadDouble()
+        {
+            var v = ReadFixed64();
+            return *(double*)(&v);
+        }
+
+        public decimal ReadDecimal()
+        {
+            var bits = new int[4];
+            bits[0] = ReadInt32();
+            bits[1] = ReadInt32();
+            bits[2] = ReadInt32();
+            bits[3] = ReadInt32();
+            return new decimal(bits);
+        }
+
+        public byte[] ReadBytes()
+        {
+            var length = ReadUInt32();
+            if (length == 0)
             {
                 return null;
             }
-            return new byte[0];
+            else if (length == 1)
+            {
+                return new byte[0];
+            }
+            else
+            {
+                length -= 1;
+                var buffer = new byte[length];
+                int l = 0;
+                while (l < length)
+                {
+                    int r = _stream.Read(buffer, l, (int)length - l);
+                    if (r == 0)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    l += r;
+                }
+                return buffer;
+            }
         }
 
-        /// <summary> Reads a char array from the buffer, handling nulls and the array length. </summary>
-        public char[] ReadCharArray()
+        public char[] ReadChars()
         {
-            int length = ReadInt32();
-            if (length > 0)
-            {
-                return ReadChars(length);
-            }
-            if (length < 0)
+            var length = ReadUInt32();
+            if (length == 0)
             {
                 return null;
             }
-            return new char[0];
+            else if (length == 1)
+            {
+                return new char[0];
+            }
+            else
+            {
+                length -= 1;
+                var buffer = new char[length];
+                for (int i = 0; i < length; i++)
+                {
+                    buffer[i] = ReadChar();
+                }
+                return buffer;
+            }
         }
 
-        /// <summary> Reads a DateTime from the buffer. </summary>
+        public string ReadString()
+        {
+            var length = ReadUInt32();
+            if (length == 0)
+            {
+                return null;
+            }
+            else if (length == 1)
+            {
+                return string.Empty;
+            }
+            else
+            {
+                length -= 1;
+                var buffer = new byte[length];
+                int l = 0;
+                while (l < length)
+                {
+                    int r = _stream.Read(buffer, l, (int)length - l);
+                    if (r == 0)
+                    {
+                        throw new EndOfStreamException();
+                    }
+                    l += r;
+                }
+                return _encoding.GetString(buffer);
+            }
+        }
+
         public DateTime ReadDateTime()
         {
-            return new DateTime(ReadInt64());
+            var ticks = ReadTicks();
+            if (ticks == long.MinValue) return DateTime.MinValue;
+            if (ticks == long.MaxValue) return DateTime.MaxValue;
+            return UnixDateTime.Epoch.AddTicks(ticks);
         }
-
-        public DateTime ReadShortDate()
-        {
-            return new DateTime((int)ReadUInt32(), ReadByte(), ReadByte());
-        }
-
-        /// <summary> Reads a TimeSpan from the buffer. </summary>
+        
         public TimeSpan ReadTimeSpan()
         {
-            return new TimeSpan(ReadInt64());
+            var ticks = ReadTicks();
+            if (ticks == long.MinValue) return TimeSpan.MinValue;
+            if (ticks == long.MaxValue) return TimeSpan.MaxValue;
+            return TimeSpan.FromTicks(ticks);
         }
 
-        /// <summary> Writes a DateTimeOffset to the buffer. <summary>
+        private long ReadTicks()
+        {
+            var scale = (TemporalScale)ReadByte();
+            var ticks = ReadInt64();
+
+            switch (scale)
+            {
+                case TemporalScale.Days:
+                    ticks *= TimeSpan.TicksPerDay;
+                    break;
+                case TemporalScale.Hours:
+                    ticks *= TimeSpan.TicksPerHour;
+                    break;
+                case TemporalScale.Minutes:
+                    ticks *= TimeSpan.TicksPerMinute;
+                    break;
+                case TemporalScale.Seconds:
+                    ticks *= TimeSpan.TicksPerSecond;
+                    break;
+                case TemporalScale.Milliseconds:
+                    ticks *= TimeSpan.TicksPerMillisecond;
+                    break;
+                case TemporalScale.Ticks:
+                    break;
+                case TemporalScale.MinMax:
+                    switch (ticks)
+                    {
+                        case 1: return long.MaxValue;
+                        case -1: return long.MinValue;
+                    }
+                    break;
+            }
+            return ticks;
+        }
+
         public DateTimeOffset ReadDateTimeOffset()
         {
             return new DateTimeOffset(ReadDateTime(), ReadTimeSpan());
         }
 
-        /// <summary> Reads a Guid from the buffer. </summary>
         public Guid ReadGuid()
         {
-            return new Guid(ReadByteArray());
+            return new Guid(ReadBytes());
         }
 
-        /// <summary> Reads a Guid from the buffer. </summary>
         public Version ReadVersion()
         {
-            var major = ReadInt32();
-            var minor = ReadInt32();
-            var build = ReadInt32();
-            var revision = ReadInt32();
+            var major = (int)ReadUInt32();
+            var minor = (int)ReadUInt32();
+            var build = (int)ReadUInt32();
+            var revision = (int)ReadUInt32();
             return new Version(major, minor, build, revision);
         }
 
@@ -841,59 +1149,74 @@ namespace Nemo.Serialization
             return new Uri(absoluteUri);
         }
 
-        /// <summary> Reads a generic list from the buffer. </summary>
         public IList<T> ReadList<T>()
         {
-            int count = ReadInt32();
-            if (count < 0)
+            var count = ReadUInt32();
+            if (count == 0)
             {
                 return null;
             }
-            IList<T> list = new List<T>();
-            for (int i = 0; i < count; i++)
+            else if (count == 1)
             {
-                list.Add((T)ReadObject(typeof(T)));
+                return new List<T>();
             }
-            return list;
+            else
+            {
+                IList<T> list = new List<T>();
+                for (int i = 0; i < count - 1; i++)
+                {
+                    list.Add((T)ReadObject(typeof(T)));
+                }
+                return list;
+            }
         }
 
         public void ReadList(IList list, Type elementType)
         {
-            int count = ReadInt32();
-            if (count < 0)
+            var count = ReadUInt32();
+            if (count == 0 || count == 1)
             {
                 return;
             }
-            for (int i = 0; i < count; i++)
+            else
             {
-                list.Add(ReadObject(elementType));
+                for (int i = 0; i < count - 1; i++)
+                {
+                    list.Add(ReadObject(elementType));
+                }
             }
         }
 
-        /// <summary> Reads a generic Dictionary from the buffer. </summary>
         public IDictionary<TKey, TValue> ReadDictionary<TKey, TValue>()
         {
-            int count = ReadInt32();
-            if (count < 0)
+            var count = ReadUInt32();
+            if (count == 0)
             {
                 return null;
             }
-            var map = new Dictionary<TKey, TValue>();
-            for (int i = 0; i < count; i++)
+            else if (count == 1)
             {
-                map.Add((TKey)ReadObject(typeof(TKey)), (TValue)ReadObject(typeof(TValue)));
+                return new Dictionary<TKey, TValue>();
             }
-            return map;
+            else
+            {
+                var map = new Dictionary<TKey, TValue>();
+                for (int i = 0; i < count - 1; i++)
+                {
+                    map.Add((TKey)ReadObject(typeof(TKey)), (TValue)ReadObject(typeof(TValue)));
+                }
+                return map;
+            }
         }
 
         public void ReadDictionary(IDictionary map, Type keyType, Type valueType)
         {
-            int count = ReadInt32();
-            if (count < 0)
+            var count = ReadUInt32();
+            if (count == 0 || count == 1)
             {
                 return;
             }
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < count - 1; i++)
             {
                 map.Add(ReadObject(keyType), ReadObject(valueType));
             }
@@ -912,66 +1235,14 @@ namespace Nemo.Serialization
         private void Skip(int count)
         {
             var buffer = new byte[count];
-            base.Read(buffer, 0, count);
+            _stream.Read(buffer, 0, count);
         }
-
-        public override ushort ReadUInt16()
-        {
-            ushort result = 0;
-            var shift = 0;
-            while (true)
-            {
-                var b = ReadByte();
-                result |= (ushort)((b & 0x7f) << shift);
-                if ((b & 0x80) == 0)
-                {
-                    break;
-                }
-                shift += 7;
-            }
-            return result;
-        }
-
-        public override uint ReadUInt32()
-        {
-            uint result = 0;
-            var shift = 0;
-            while (true)
-            {
-                var b = ReadByte();
-                result |= (uint)((b & 0x7f) << shift);
-                if ((b & 0x80) == 0)
-                {
-                    break;
-                }
-                shift += 7;
-            }
-            return result;
-        }
-
-        public override ulong ReadUInt64()
-        {
-            ulong result = 0;
-            var shift = 0;
-            while (true)
-            {
-                var b = ReadByte();
-                result |= (uint)((b & 0x7f) << shift);
-                if ((b & 0x80) == 0)
-                {
-                    break;
-                }
-                shift += 7;
-            }
-            return result;
-        }
-
+        
         public object ReadObject(Type objectType)
         {
             return ReadObject(objectType, _objectByte.HasValue ? (ObjectTypeCode)_objectByte.Value : Reflector.GetObjectTypeCode(objectType));
         }
 
-        /// <summary> Reads an object which was added to the buffer by WriteObject. </summary>
         public object ReadObject(Type objectType, ObjectTypeCode expectedTypeCode)
         {
             var skip = false;
@@ -994,32 +1265,11 @@ namespace Nemo.Serialization
                 case ObjectTypeCode.Byte:
                     return ReadByte();
                 case ObjectTypeCode.UInt16:
-                    {
-                        var value = ReadUInt16();
-                        if (expectedTypeCode == ObjectTypeCode.Int16)
-                        {
-                            return (short)value;
-                        }
-                        return value;
-                    }
+                    return ReadUInt16();
                 case ObjectTypeCode.UInt32:
-                    {
-                        var value = ReadUInt32();
-                        if (expectedTypeCode == ObjectTypeCode.Int32)
-                        {
-                            return (int)value;
-                        }
-                        return value;
-                    }
+                    return ReadUInt32();
                 case ObjectTypeCode.UInt64:
-                    {
-                        var value = ReadUInt64();
-                        if (expectedTypeCode == ObjectTypeCode.Int64)
-                        {
-                            return (long)value;
-                        }
-                        return value;
-                    }
+                    return ReadUInt64();
                 case ObjectTypeCode.SByte:
                     return ReadSByte();
                 case ObjectTypeCode.Int16:
@@ -1040,12 +1290,10 @@ namespace Nemo.Serialization
                     return ReadDecimal();
                 case ObjectTypeCode.DateTime:
                     return ReadDateTime();
-                case ObjectTypeCode.Date:
-                    return ReadShortDate();
                 case ObjectTypeCode.ByteArray:
-                    return ReadByteArray();
+                    return ReadBytes();
                 case ObjectTypeCode.CharArray:
-                    return ReadCharArray();
+                    return ReadChars();
                 case ObjectTypeCode.TimeSpan:
                     return ReadTimeSpan();
                 case ObjectTypeCode.DateTimeOffset:
@@ -1059,7 +1307,7 @@ namespace Nemo.Serialization
                 case ObjectTypeCode.DBNull:
                     return DBNull.Value;
                 case ObjectTypeCode.Object:
-                    return new BinaryFormatter().Deserialize(BaseStream);
+                    return new BinaryFormatter().Deserialize(_stream);
                 case ObjectTypeCode.ObjectList:
                     {
                         var activator = Reflection.Activator.CreateDelegate(objectType);
@@ -1150,7 +1398,7 @@ namespace Nemo.Serialization
                 initialLength = 32768;
             }
 
-            byte[] buffer = new byte[initialLength];
+            var buffer = new byte[initialLength];
             int read = 0;
 
             int chunk;
@@ -1172,17 +1420,17 @@ namespace Nemo.Serialization
 
                     // Nope. Resize the buffer, put in the byte we've just
                     // read, and continue
-                    byte[] newBuffer = new byte[buffer.Length * 2];
-                    Array.Copy(buffer, newBuffer, buffer.Length);
+                    var newBuffer = new byte[buffer.Length * 2];
+                    Buffer.BlockCopy(buffer, 0, newBuffer, 0, buffer.Length);
                     newBuffer[read] = (byte)nextByte;
                     buffer = newBuffer;
                     read++;
                 }
             }
             // Buffer is now too big. Shrink it.
-            byte[] ret = new byte[read];
-            Array.Copy(buffer, ret, read);
-            return ret;
+            var result = new byte[read];
+            Buffer.BlockCopy(buffer, 0, result, 0, read);
+            return result;
         }
 
         public static byte[] ReadStream(Stream stream)
@@ -1344,5 +1592,14 @@ namespace Nemo.Serialization
             var deserializer = (ObjectDeserializer)method.CreateDelegate(typeof(ObjectDeserializer));
             return deserializer;
         }
+
+        #region IDisposable Members
+
+        public void Dispose()
+        {
+            _stream.Dispose();
+        }
+
+        #endregion
     }
 }

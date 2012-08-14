@@ -22,7 +22,6 @@ namespace Nemo.Serialization
             {
                 writer.WriteObject(businessObject, ObjectTypeCode.BusinessObject);
                 buffer = writer.GetBytes();
-                writer.Close();
             }
 
             return buffer;
@@ -56,8 +55,7 @@ namespace Nemo.Serialization
             T result = default(T);
             using (var reader = SerializationReader.CreateReader(data))
             {
-                result = (T)reader.ReadObject(typeof(T));
-                reader.Close();
+                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.BusinessObject);
             }
             return result;
         }

@@ -215,6 +215,9 @@ namespace NemoTest
 
         [ProtoMember(3)]
         public DateTime DateOfBirth { get; set; }
+
+        [ProtoMember(4)]
+        public double Income { get; set; }
     }
 
     [ProtoContract, Serializable]
@@ -230,6 +233,9 @@ namespace NemoTest
         public DateTime DateOfBirth { get; set; }
 
         [ProtoMember(4)]
+        public double Income { get; set; }
+
+        [ProtoMember(5)]
         public List<SimpleObject> Children { get; set; }
     }
 }
