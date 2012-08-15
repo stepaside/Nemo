@@ -431,6 +431,31 @@ namespace Nemo.Serialization
             }
         }
 
+        public void WriteListAspectType(IList value)
+        {
+            if (value is ISortedList)
+            {
+                if (((ISortedList)value).Distinct)
+                {
+                    Write((byte)(ListAspectType.Sorted | ListAspectType.Distinct));
+                }
+                else
+                {
+                    Write((byte)ListAspectType.Sorted);
+                }
+                Write(((ISortedList)value).Comparer.FullName);
+            }
+            else if (value is ISet)
+            {
+                Write((byte)ListAspectType.Distinct);
+                Write(((ISet)value).Comparer.FullName);
+            }
+            else
+            {
+                Write((byte)ListAspectType.None);
+            }
+        }
+
         public void WriteObject(object value)
         {
             WriteObject(value, value != null ? Reflector.GetObjectTypeCode(value.GetType()) : ObjectTypeCode.Empty);
@@ -520,30 +545,6 @@ namespace Nemo.Serialization
                     case ObjectTypeCode.BusinessObjectList:
                         {
                             var items = (IList)value;
-
-                            Write((uint)items.Count);
-                            if (value is ISortedList)
-                            {
-                                if (((ISortedList)value).Distinct)
-                                {
-                                    Write((byte)(ListAspectType.Sorted | ListAspectType.Distinct));
-                                }
-                                else
-                                {
-                                    Write((byte)ListAspectType.Sorted);
-                                }
-                                Write(((ISortedList)value).Comparer.FullName);
-                            }
-                            else if (value is ISet)
-                            {
-                                Write((byte)ListAspectType.Distinct);
-                                Write(((ISet)value).Comparer.FullName);
-                            }
-                            else
-                            {
-                                Write((byte)ListAspectType.None);
-                            }
-
                             var serializer = CreateDelegate(value.GetType());
                             serializer(this, items, items.Count);
                         }
@@ -661,7 +662,8 @@ namespace Nemo.Serialization
             var method = new DynamicMethod("Serialize_" + objectType.Name, null, new[] { typeof(SerializationWriter), typeof(IList), typeof(int) }, typeof(SerializationWriter).Module);
             var il = method.GetILGenerator();
 
-            var writeObjectType = this.GetType().GetMethod("WriteObjectType");            
+            var writeObjectType = this.GetType().GetMethod("WriteObjectType");
+            var writeListAspectType = this.GetType().GetMethod("WriteListAspectType");                        
             var writeObject = this.GetType().GetMethod("WriteObject", new[] { typeof(object), typeof(ObjectTypeCode) });
             var writeLength = this.GetType().GetMethod("Write", new[] { typeof(uint) });
             var writeName = this.GetType().GetMethod("Write", new[] { typeof(string) });
@@ -712,12 +714,25 @@ namespace Nemo.Serialization
             var properties = Reflector.GetAllProperties(interfaceType).Where(p => p.CanRead && p.CanWrite && p.Name != "Indexer" && (_serializeAll || !p.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any()));
             var propertyPositions = Reflector.GetAllPropertyPositions(interfaceType).OrderBy(p => p.Value).Select(p => p.Key);
             var orderedProperties = _includePropertyNames ? properties.ToArray() : properties.Arrange(propertyPositions, p => p.Name).ToArray();
+            var objectTypeCode = Reflector.GetObjectTypeCode(objectType);
 
-            if (Reflector.IsBusinessObject(interfaceType) || Reflector.IsBusinessObjectList(interfaceType, out elementType))
+            if (objectTypeCode == ObjectTypeCode.BusinessObject || objectTypeCode == ObjectTypeCode.BusinessObjectList)
             {
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldc_I4, interfaceType.FullName.GetHashCode());
                 il.Emit(OpCodes.Callvirt, writeObjectType);
+
+                if (objectTypeCode == ObjectTypeCode.BusinessObjectList)
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldarg_2);
+                    il.Emit(OpCodes.Conv_U4);
+                    il.Emit(OpCodes.Callvirt, writeLength);
+
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldarg_1);
+                    il.Emit(OpCodes.Callvirt, writeListAspectType);
+                }
             }
 
             if (_includePropertyNames)
@@ -799,7 +814,6 @@ namespace Nemo.Serialization
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
         private byte? _objectByte;
-        private int _itemCount;
         private Stream _stream;
         private Encoding _encoding;
         private static ConcurrentDictionary<string, Type> _types = new ConcurrentDictionary<string, Type>();
@@ -818,13 +832,8 @@ namespace Nemo.Serialization
             _serializeAll = (_mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (_mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
             _objectByte = ReadByte();
-            if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObject)
+            if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObject || _objectByte.Value == (byte)ObjectTypeCode.BusinessObjectList)
             {
-                _objectTypeHash = ReadInt32();
-            }
-            else if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObjectList)
-            {
-                _itemCount = (int)ReadUInt32();
                 _objectTypeHash = ReadInt32();
             }
         }
@@ -1245,13 +1254,11 @@ namespace Nemo.Serialization
 
         public object ReadObject(Type objectType, ObjectTypeCode expectedTypeCode)
         {
-            var skip = false;
             ObjectTypeCode typeCode;
             if (_objectByte.HasValue)
             {
                 typeCode = (ObjectTypeCode)_objectByte.Value;
                 _objectByte = null;
-                skip = true;
             }
             else
             {
@@ -1325,7 +1332,7 @@ namespace Nemo.Serialization
                     }
                 case ObjectTypeCode.BusinessObject:
                     {
-                        var deserializer = CreateDelegate(objectType, skip);
+                        var deserializer = CreateDelegate(objectType);
                         var businessObjects = deserializer(this, 1);
                         if (businessObjects != null && businessObjects.Length > 0)
                         {
@@ -1338,7 +1345,7 @@ namespace Nemo.Serialization
                     }
                 case ObjectTypeCode.BusinessObjectList:
                     {
-                        var itemCount = skip ? _itemCount : (int)ReadUInt32();
+                        var itemCount = (int)ReadUInt32();
 
                         var listAspectType = (ListAspectType)ReadByte();
                         DistinctAttribute distinctAttribute = null;
@@ -1362,7 +1369,7 @@ namespace Nemo.Serialization
                         }
 
                         var list = List.Create(objectType, distinctAttribute, sortedAttribute);
-                        var deserializer = CreateDelegate(objectType, skip);
+                        var deserializer = CreateDelegate(objectType);
                         var businessObjects = deserializer(this, itemCount);
                         for (int i = 0; i < businessObjects.Length; i++ )
                         {
@@ -1447,7 +1454,7 @@ namespace Nemo.Serialization
             return result;
         }
 
-        private ObjectDeserializer CreateDelegate(Type objectType, bool skip)
+        private ObjectDeserializer CreateDelegate(Type objectType)
         {
             var exists = true;
             var propertyCount = -1; 
