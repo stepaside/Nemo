@@ -34,7 +34,7 @@ namespace Nemo.Extensions
         {
             if (encoding == null)
             {
-                return Encoding.Default.GetBytes(value);
+                return Encoding.UTF8.GetBytes(value);
             }
             else
             {

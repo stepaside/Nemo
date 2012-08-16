@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Nemo
 {
-    public enum OperationReturnType
+    public enum OperationReturnType : byte
     {
         Guess, 
         NonQuery, 

@@ -204,38 +204,38 @@ namespace NemoTest
         public string ShipPostalCode { get; set; }
     }
 
-    [ProtoContract, Serializable]
+    [ProtoContract, Serializable, DataContract]
     public class SimpleObject : IBusinessObject
     {
-        [ProtoMember(1)]
+        [ProtoMember(1), DataMember(Order = 1)]
         public int Id { get; set; }
 
-        [ProtoMember(2)]
+        [ProtoMember(2), DataMember(Order = 2)]
         public string Name { get; set; }
 
-        [ProtoMember(3)]
+        [ProtoMember(3), DataMember(Order = 3)]
         public DateTime DateOfBirth { get; set; }
 
-        [ProtoMember(4)]
+        [ProtoMember(4), DataMember(Order = 4)]
         public double Income { get; set; }
     }
 
-    [ProtoContract, Serializable]
+    [ProtoContract, Serializable, DataContract]
     public class ComplexObject : IBusinessObject
     {
-        [ProtoMember(1)]
+        [ProtoMember(1), DataMember(Order = 1)]
         public int Id { get; set; }
 
-        [ProtoMember(2)]
+        [ProtoMember(2), DataMember(Order = 2)]
         public string Name { get; set; }
 
-        [ProtoMember(3)]
+        [ProtoMember(3), DataMember(Order = 3)]
         public DateTime DateOfBirth { get; set; }
 
-        [ProtoMember(4)]
+        [ProtoMember(4), DataMember(Order = 4)]
         public double Income { get; set; }
 
-        [ProtoMember(5)]
+        [ProtoMember(5), DataMember(Order = 5)]
         public List<SimpleObject> Children { get; set; }
     }
 }

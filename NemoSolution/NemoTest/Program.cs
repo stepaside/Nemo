@@ -183,11 +183,11 @@ namespace NemoTest
                 var customer_from_xml = ObjectXmlSerializer.FromXml<ICustomer>(reader).FirstOrDefault();
             }
 
-            //RunNative(500);
-            //RunExecute(500);
-            //RunDapper(500, false);
-            //RunRetrieve(500, false);
-            //RunNativeWithMapper(500);
+            RunNative(500);
+            RunExecute(500);
+            RunDapper(500, false);
+            RunRetrieve(500, false);
+            RunNativeWithMapper(500);
 
             //var buffer = customer.Serialize();
             //var new_customer = SerializationExtensions.Deserialize<ICustomer>(buffer);
@@ -228,18 +228,21 @@ namespace NemoTest
             RunSerializationBenchmark(simpleObjectList,
             s =>
             {
-                var output = new StringBuilder();
-                using (var writer = XmlWriter.Create(output))
+                using (var stream = new MemoryStream())
                 {
-                    dcsSimple.WriteObject(writer, s);
+                    dcsSimple.WriteObject(stream, s);
+                    stream.Position = 0;
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        return reader.ReadToEnd();
+                    }
                 }
-                return output.ToString();
             },
             s =>
             {
-                using (var reader = XmlReader.Create(new StringReader(s)))
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(s)))
                 {
-                    return (SimpleObject)dcsSimple.ReadObject(reader);
+                    return (SimpleObject)dcsSimple.ReadObject(stream);
                 }
             }, "DataContractSerializer", s => s.Length);
 
@@ -249,20 +252,28 @@ namespace NemoTest
             RunSerializationBenchmark(simpleObjectList,
             s =>
             {
-                var stream = new MemoryStream();
-                dcjsSimple.WriteObject(stream, s);
-                stream.Position = 0;
-                using (var reader = new StreamReader(stream))
+                using (var stream = new MemoryStream())
                 {
-                    return reader.ReadToEnd();
+                    dcjsSimple.WriteObject(stream, s);
+                    stream.Position = 0;
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        return reader.ReadToEnd();
+                    }
                 }
             },
-            s => (SimpleObject)dcjsSimple.ReadObject(new MemoryStream(Encoding.Default.GetBytes(s))), "DataContractJsonSerializer", s => s.Length);
+            s =>
+            {
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(s)))
+                {
+                    return (SimpleObject)dcjsSimple.ReadObject(stream);
+                }
+            }, "DataContractJsonSerializer", s => s.Length);
 
             Console.WriteLine();
             Console.WriteLine("Complex Object Serialization Benchmark");
 
-            var complexObjectList = GenerateComplex(100000);
+            var complexObjectList = GenerateComplex(10000);
             var dcsComplex = new DataContractSerializer(typeof(ComplexObject));
             var dcjsComplex = new DataContractJsonSerializer(typeof(ComplexObject));
 
@@ -306,18 +317,21 @@ namespace NemoTest
             RunSerializationBenchmark(complexObjectList,
             s =>
             {
-                var output = new StringBuilder();
-                using (var writer = XmlWriter.Create(output))
+                using (var stream = new MemoryStream())
                 {
-                    dcsComplex.WriteObject(writer, s);
+                    dcsComplex.WriteObject(stream, s);
+                    stream.Position = 0;
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        return reader.ReadToEnd();
+                    }
                 }
-                return output.ToString();
             },
             s =>
             {
-                using (var reader = XmlReader.Create(new StringReader(s)))
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(s)))
                 {
-                    return (ComplexObject)dcsComplex.ReadObject(reader);
+                    return (ComplexObject)dcsComplex.ReadObject(stream);
                 }
             }, "DataContractSerializer", s => s.Length);
 
@@ -328,15 +342,23 @@ namespace NemoTest
             RunSerializationBenchmark(complexObjectList,
             s =>
             {
-                var stream = new MemoryStream();
-                dcjsComplex.WriteObject(stream, s);
-                stream.Position = 0;
-                using (var reader = new StreamReader(stream))
+                using (var stream = new MemoryStream())
                 {
-                    return reader.ReadToEnd();
+                    dcjsComplex.WriteObject(stream, s);
+                    stream.Position = 0;
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        return reader.ReadToEnd();
+                    }
                 }
             },
-            s => (ComplexObject)dcjsComplex.ReadObject(new MemoryStream(Encoding.Default.GetBytes(s))), "DataContractJsonSerializer", s => s.Length);
+            s =>
+            {
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(s)))
+                {
+                    return (ComplexObject)dcjsComplex.ReadObject(stream);
+                }
+            }, "DataContractJsonSerializer", s => s.Length);
 
             //Console.ReadLine();
         }

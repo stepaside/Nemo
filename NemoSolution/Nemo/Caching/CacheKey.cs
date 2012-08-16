@@ -87,14 +87,20 @@ namespace Nemo.Caching
             else
             {
                 Func<KeyValuePair<string, object>, IEnumerable<byte>> func = k => BitConverter.GetBytes(k.Key.GetHashCode()).Append((byte)'=').Concat(BitConverter.GetBytes(k.Value.GetHashCode())).Append((byte)'&');
-                var keyValue = (sorted ? key.Select(func) : key.OrderBy(k => k.Key).Select(func)).Flatten();
+                var keyValue = (sorted ? key.Select(func) : key.OrderBy(k => k.Key).Select(func)).Flatten().ToArray();
                 if (!string.IsNullOrEmpty(operation))
                 {
-                    _data = BitConverter.GetBytes(typeName.GetHashCode()).Concat(BitConverter.GetBytes(operation.GetHashCode())).Concat(BitConverter.GetBytes((int)returnType)).Concat(keyValue).ToArray();
+                    _data = new byte[4 + 4 + 1 + keyValue.Length];
+                    Buffer.BlockCopy(BitConverter.GetBytes(typeName.GetHashCode()), 0, _data, 0, 4);
+                    Buffer.BlockCopy(BitConverter.GetBytes(operation.GetHashCode()), 0, _data, 4, 4);
+                    Buffer.BlockCopy(new[] { (byte)returnType }, 0, _data, 8, 1);
+                    Buffer.BlockCopy(keyValue, 0, _data, 9, keyValue.Length);
                 }
                 else
                 {
-                    _data = BitConverter.GetBytes(typeName.GetHashCode()).Concat(keyValue).ToArray();
+                    _data = new byte[4 + keyValue.Length];
+                    Buffer.BlockCopy(BitConverter.GetBytes(typeName.GetHashCode()), 0, _data, 0 , 4);
+                    Buffer.BlockCopy(keyValue, 0, _data, 4 , keyValue.Length);
                 }
             }
         }
@@ -176,7 +182,7 @@ namespace Nemo.Caching
                         break;
                     case HashAlgorithmName.None:
                         value = maxSize > _value.Length ? _value : _value.Substring(0, maxSize);
-                        data = Encoding.Default.GetBytes(value);
+                        data = Encoding.UTF8.GetBytes(value);
                         break;
                     case HashAlgorithmName.Native:
                         var h3 = this.GetHashCode();

@@ -104,7 +104,7 @@ namespace Nemo.Utilities
         {
             if (encoding == null)
             {
-                encoding = Encoding.Default;
+                encoding = Encoding.UTF8;
             }
             return encoding.GetString(bytes);
         }
