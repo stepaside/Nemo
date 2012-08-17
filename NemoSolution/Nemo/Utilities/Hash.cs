@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using Nemo.Serialization;
 
 namespace Nemo.Utilities
 {
@@ -9,18 +8,18 @@ namespace Nemo.Utilities
     {
         internal static class ForEnumerable
         {
-            internal static uint Compute<T>(IEnumerable<T> values, Func<T, int> hashFunction = null)
+            internal static uint Compute<T>(IEnumerable<T> values, Func<T, uint> hashFunction = null)
             {
-                uint hash = 0;
+                var hash = 0u;
                 foreach (var value in values)
                 {
                     if (hashFunction != null)
                     {
-                        hash += unchecked((uint)hashFunction(value));
+                        hash += hashFunction(value);
                     }
                     else
                     {
-                        hash += unchecked((uint)value.GetHashCode());
+                        hash += (uint)value.GetHashCode();
                     }
                     hash += (hash << 10);
                     hash ^= (hash >> 6);
@@ -33,7 +32,7 @@ namespace Nemo.Utilities
             }
         }
 
-        internal class Jenkins96
+        internal class Jenkins
         {
             static uint a, b, c;
 
@@ -197,6 +196,126 @@ namespace Nemo.Utilities
                     hash *= 3;
                 }
                 return hash;
+            }
+        }
+
+        internal class SuperFastHash
+        {
+            public unsafe static uint Compute(byte[] data)
+            {
+                var dataLength = data.Length;
+                if (dataLength == 0)
+                    return 0;
+                var hash = (uint)dataLength;
+                var remainingBytes = dataLength & 3; // mod 4
+                var numberOfLoops = dataLength >> 2; // div 4
+
+                fixed (byte* firstByte = &(data[0]))
+                {
+                    /* Main loop */
+                    ushort* readlData = (ushort*)firstByte;
+                    for (; numberOfLoops > 0; numberOfLoops--)
+                    {
+                        hash += *readlData;
+                        var tmp = (uint)(*(readlData + 1) << 11) ^ hash;
+                        hash = (hash << 16) ^ tmp;
+                        readlData += 2;
+                        hash += hash >> 11;
+                    }
+                    switch (remainingBytes)
+                    {
+                        case 3: hash += *readlData;
+                            hash ^= hash << 16;
+                            hash ^= ((uint)(*(((byte*)(readlData)) + 2))) << 18;
+                            hash += hash >> 11;
+                            break;
+                        case 2: hash += *readlData;
+                            hash ^= hash << 11;
+                            hash += hash >> 17;
+                            break;
+                        case 1:
+                            hash += *((byte*)readlData);
+                            hash ^= hash << 10;
+                            hash += hash >> 1;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                /* Force "avalanching" of final 127 bits */
+                hash ^= hash << 3;
+                hash += hash >> 5;
+                hash ^= hash << 4;
+                hash += hash >> 17;
+                hash ^= hash << 25;
+                hash += hash >> 6;
+
+                return hash;
+            }
+        }
+
+        internal class MurmurHash2
+        {
+            const uint m = 0x5bd1e995;
+            const int r = 24;
+
+            public static uint Compute(byte[] data)
+            {
+                return Compute(data, 0xc58f1a7b);
+            }
+
+            public unsafe static uint Compute(byte[] data, uint seed)
+            {
+                var length = data.Length;
+                if (length == 0)
+                    return 0;
+                uint h = seed ^ (uint)length;
+                var remainingBytes = length & 3; // mod 4
+                var numberOfLoops = length >> 2; // div 4
+                fixed (byte* firstByte = &(data[0]))
+                {
+                    uint* realData = (uint*)firstByte;
+                    while (numberOfLoops != 0)
+                    {
+                        var k = *realData;
+                        k *= m;
+                        k ^= k >> r;
+                        k *= m;
+
+                        h *= m;
+                        h ^= k;
+                        numberOfLoops--;
+                        realData++;
+                    }
+                    switch (remainingBytes)
+                    {
+                        case 3:
+                            h ^= (ushort)(*realData);
+                            h ^= ((uint)(*(((byte*)(realData)) + 2))) << 16;
+                            h *= m;
+                            break;
+                        case 2:
+                            h ^= (ushort)(*realData);
+                            h *= m;
+                            break;
+                        case 1:
+                            h ^= *((byte*)realData);
+                            h *= m;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                // Do a few final mixes of the hash to ensure the last few
+                // bytes are well-incorporated.
+
+                h ^= h >> 13;
+                h *= m;
+                h ^= h >> 15;
+
+                return h;
             }
         }
     }

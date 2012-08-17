@@ -19,7 +19,7 @@ namespace Nemo.Configuration
         private MaterializationMode _defaultMaterializationMode = MaterializationMode.Partial;
         private ChangeTrackingMode _defaultChangeTrackingMode = ChangeTrackingMode.Automatic;
         private OperationNamingConvention _defaultOperationNamingConvention = OperationNamingConvention.PrefixTypeName_Operation;
-        private HashAlgorithmName _defaultHashAlgorithm = HashAlgorithmName.Jenkins;
+        private HashAlgorithmName _defaultHashAlgorithm = HashAlgorithmName.JenkinsHash;
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
         private CacheContentionMitigationType _cacheContentionMitigation = CacheContentionMitigationType.None;
         private int _staleCacheTimeout = 2;

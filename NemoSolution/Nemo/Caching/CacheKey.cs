@@ -12,7 +12,6 @@ namespace Nemo.Caching
 {
     public class CacheKey
     {
-        private static HashSet<string> _algorithms = new HashSet<string>(new[] { "Default", "Native", "MD5", "SHA1", "SHA2", "Jenkins", "Tiger", "FNV", "SBox", "HMAC_SHA1", "None" }, StringComparer.OrdinalIgnoreCase);
         private HashAlgorithmName _hashAlgorithm = ObjectFactory.Configuration.DefaultHashAlgorithm;
 
         public CacheKey() { }
@@ -29,12 +28,8 @@ namespace Nemo.Caching
             _data = data;
         }
 
-        //private string _operation;
-        //private string _typeName;
-        //private string _keyValue;
         private string _value;
         private byte[] _data;
-        //private OperationReturnType _returnType;
         private Tuple<string, byte[]> _hash;
 
         public CacheKey(IBusinessObject businessObject, string operation, OperationReturnType returnType, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
@@ -166,28 +161,46 @@ namespace Nemo.Caching
                         data = this.ComputeHash(new HMACSHA1(ObjectFactory.Configuration.SecretKey.ToByteArray()));
                         break;
                     case HashAlgorithmName.Default:
-                    case HashAlgorithmName.Jenkins:
-                        var h1 = Hash.Jenkins96.Compute(_data);
-                        data = BitConverter.GetBytes(h1);
-                        break;
+                    case HashAlgorithmName.JenkinsHash:
+                        {
+                            var h = Hash.Jenkins.Compute(_data);
+                            data = BitConverter.GetBytes(h);
+                            break;
+                        }
                     case HashAlgorithmName.SBox:
-                        var h2 = Hash.SBox.Compute(_data);
-                        data = BitConverter.GetBytes(h2);
-                        break;
-                    case HashAlgorithmName.Tiger:
+                        {
+                            var h = Hash.SBox.Compute(_data);
+                            data = BitConverter.GetBytes(h);
+                            break;
+                        }
+                    case HashAlgorithmName.SuperFastHash:
+                        {
+                            var h = Hash.SuperFastHash.Compute(_data);
+                            data = BitConverter.GetBytes(h);
+                            break;
+                        }
+                    case HashAlgorithmName.MurmurHash:
+                        {
+                            var h = Hash.MurmurHash2.Compute(_data);
+                            data = BitConverter.GetBytes(h);
+                            break;
+                        }
+                    case HashAlgorithmName.TigerHash:
                         data = this.ComputeHash(Enyim.TigerHash.Create());
                         break;
                     case HashAlgorithmName.FNV:
                         data = this.ComputeHash(Enyim.ModifiedFNV.Create());
                         break;
                     case HashAlgorithmName.None:
-                        value = maxSize > _value.Length ? _value : _value.Substring(0, maxSize);
+                        value = maxSize >= _value.Length ? _value : _value.Substring(0, maxSize);
                         data = Encoding.UTF8.GetBytes(value);
                         break;
                     case HashAlgorithmName.Native:
-                        var h3 = this.GetHashCode();
-                        data = BitConverter.GetBytes(h3);
-                        break;
+                        {
+                            var h = this.GetHashCode();
+                            data = BitConverter.GetBytes(h);
+                            break;
+                        }
                 }
                 _hash = Tuple.Create(value ?? Bytes.ToHex(data), data);
             }
