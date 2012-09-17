@@ -538,15 +538,7 @@ namespace Nemo.Extensions
         private static ConcurrentDictionary<Type, string[]> _primaryKeys = new ConcurrentDictionary<Type, string[]>();
         private static ConcurrentDictionary<Type, string[]> _primaryAndCacheKeys = new ConcurrentDictionary<Type, string[]>();
         private static ConcurrentDictionary<Tuple<Type, PropertyInfo, Type>, IIdGenerator> _idGenerators = new ConcurrentDictionary<Tuple<Type, PropertyInfo, Type>, IIdGenerator>();
-
-        private static string[] ExtractProperties(Type interfaceType, bool includeCacheKey)
-        {
-            var propertyMap = Reflector.GetPropertyMap(interfaceType);
-
-            // Get primary key properties
-            return propertyMap.Values.Where(p => p.CanRead && (p.IsPrimaryKey || (includeCacheKey && p.IsCacheKey))).Select(p => p.PropertyName).ToArray();
-        }
-
+        
         /// <summary>
         /// GetPrimaryKey method returns primary key of a business object (if available)
         /// </summary>
@@ -569,11 +561,11 @@ namespace Nemo.Extensions
             {
                 if (includeCacheKey)
                 {
-                    primaryKeyProperties = _primaryAndCacheKeys.GetOrAdd(interfaceType, type => ExtractProperties(type, true));
+                    primaryKeyProperties = _primaryAndCacheKeys.GetOrAdd(interfaceType, type => ObjectFactory.GetPrimaryKeyProperties(type, true));
                 }
                 else
                 {
-                    primaryKeyProperties = _primaryKeys.GetOrAdd(interfaceType, type => ExtractProperties(type, false));
+                    primaryKeyProperties = _primaryKeys.GetOrAdd(interfaceType, type => ObjectFactory.GetPrimaryKeyProperties(type, false));
                 }
             }
             else

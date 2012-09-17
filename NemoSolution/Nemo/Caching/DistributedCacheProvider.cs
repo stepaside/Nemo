@@ -80,6 +80,7 @@ namespace Nemo.Caching
             }
             else
             {
+                // Only one thread at a time can access lock manager 
                 lock (_cacheLock)
                 {
                     stored = LockManager.AddNew(key, 1);

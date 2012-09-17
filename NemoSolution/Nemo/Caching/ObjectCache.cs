@@ -579,6 +579,7 @@ namespace Nemo.Caching
                 }
                 else
                 {
+                    // Threads are blocked if there is a contention on a key
                     var cacheLock = _cacheLocks.GetOrAdd(queryKey, k => new object());
 
                     lock (cacheLock)
