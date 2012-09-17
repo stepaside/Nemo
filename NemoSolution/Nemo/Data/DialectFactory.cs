@@ -52,8 +52,6 @@ namespace Nemo.Data
                     }
                 case PROVIDER_INVARIANT_MYSQL:
                     return MySqlDialectProvider.Instance;
-                case PROVIDER_INVARIANT_SQLITE:
-                    return SQLiteDialectProvider.Instance;
                 default:
                     throw new NotSupportedException();
             }

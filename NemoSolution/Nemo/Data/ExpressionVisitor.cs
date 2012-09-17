@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using Nemo.Extensions;
@@ -149,21 +148,10 @@ namespace Nemo.Data
 
         private static string VisitMemberAccess<T>(MemberExpression m, DialectProvider dialect)
         {
-            Type elementType = null;
             if (m.Expression != null && m.Expression.Type == typeof(T))
             {
                 //return m.Member.Name;
                 return ObjectFactory.GetColumnName((PropertyInfo)m.Member);
-            }
-            else if (m.Expression != null && Reflector.IsBusinessObjectList(m.Expression.Type, out elementType) && m.Member.Name == "Count")
-            {
-                var parentTable = ObjectFactory.GetTableName(typeof(T));
-                var childTable = ObjectFactory.GetTableName(elementType);
-                
-                var parentPropertyMap = Reflector.GetPropertyMap(typeof(T));
-                var whereClause = parentPropertyMap.Where(p => p.Value.IsPrimaryKey).Select(p => string.Format("{0}{3}{1}.{0}{2}{1} = {0}{4}{1}.{0}{2}{1}", dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter, p.Value.MappedColumnName, parentTable, childTable)).ToDelimitedString(" AND ");
-
-                return string.Format("(SELECT COUNT(*) FROM {0}{1}{2} WHERE {3})", dialect.IdentifierEscapeStartCharacter, childTable, dialect.IdentifierEscapeEndCharacter, whereClause);
             }
             else
             {

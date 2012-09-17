@@ -333,39 +333,6 @@ namespace Nemo
 
         #endregion
 
-        #region Count Methods
-
-        public static Maybe<int> Count<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
-            where T : class, IBusinessObject
-        {
-            string providerName = null;
-            if (connection == null)
-            {
-                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                connection = DbFactory.CreateConnection(connectionName, typeof(T));
-            }
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
-            var sql = SqlBuilder.GetSelectCountStatement<T>(predicate, DialectFactory.GetProvider(connection, providerName));
-
-            var request = new OperationRequest { Operation = sql, OperationType = Nemo.OperationType.Sql, ReturnType = OperationReturnType.Scalar, Connection = connection };
-            var response = ObjectFactory.Execute<T>(request);
-
-            var value = response.Value;
-            if (value == null)
-            {
-                return Maybe<int>.Empty;
-            }
-            else
-            {
-                return ((int)value).ToMaybe();
-            }
-        }
-
-        #endregion
-
         #region Select Methods
 
         public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0)
@@ -385,11 +352,36 @@ namespace Nemo
             var result = RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection);
             return result;
         }
-        
+
+        //public static IEnumerable<TResult> Select<T1, T2, TResult>(Expression<Func<T1, T2, bool>> predicate, Action<T1, T2> map)
+        //{
+        //}
+
+        //public static IEnumerable<TResult> Select<T1, T2, T3, TResult>(Expression<Func<T1, T2, T3, bool>> predicate, Action<T1, T2, T3> map)
+        //{
+        //}
+
+        //public static IEnumerable<TResult> Select<T1, T2, T3, T4, TResult>(Expression<Func<T1, T2, T3, T4, bool>> predicate, Action<T1, T2, T3, T4> map)
+        //{
+        //}
+
+        //public static IEnumerable<TResult> Select<T1, T2, T3, T4, T5, TResult>(Expression<Func<T1, T2, T3, T4, T5, bool>> predicate, Action<T1, T2, T3, T4, T5> map)
+        //{
+        //}
+
         #endregion
 
         #region Retrieve Methods
 
+        /// <summary>
+        /// Executes an operation which returns a scalar using provided rule parameters.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="I"></typeparam>
+        /// <param name="operation"></param>
+        /// <param name="parameters"></param>
+        /// <param name="connectionSuffix"></param>
+        /// <returns></returns>
         public static Maybe<T> RetrieveScalar<T, I>(string operation, Param[] parameters = null, string connectionName = null)
             where T : struct
             where I : class, IBusinessObject
@@ -404,7 +396,7 @@ namespace Nemo
             }
             else
             {
-                return ((T)value).ToMaybe();
+                return new Maybe<T>((T)value);
             }
         }
 
@@ -1462,12 +1454,6 @@ namespace Nemo
                 }
             }
             return tableName;
-        }
-
-        internal static string[] GetPrimaryKeyProperties(Type interfaceType, bool includeCacheKey)
-        {
-            var propertyMap = Reflector.GetPropertyMap(interfaceType);
-            return propertyMap.Values.Where(p => p.CanRead && (p.IsPrimaryKey || (includeCacheKey && p.IsCacheKey))).Select(p => p.PropertyName).ToArray();
         }
 
         #endregion

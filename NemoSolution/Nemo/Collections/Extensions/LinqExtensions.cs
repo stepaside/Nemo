@@ -530,6 +530,8 @@ namespace Nemo.Collections.Extensions
             }
         }
         
+        private static object _partitionLock = new object(); 
+
         public static Tuple<IList<T>, IList<T>> Partition<T>(this IEnumerable<T> source, Func<T, bool> predicate, bool parallel = false)
         {
             source.ThrowIfNull("source");
@@ -539,7 +541,6 @@ namespace Nemo.Collections.Extensions
             {
                 var trueList = new List<T>();
                 var falseList = new List<T>();
-                var partitionLock = new object(); 
 
                 var items = source is IList<T> ? (IList<T>)source : (IList<T>)source.ToList();
                 Parallel.For(0, items.Count,
@@ -558,7 +559,7 @@ namespace Nemo.Collections.Extensions
                     },
                     tuple =>
                     {
-                        lock (partitionLock)
+                        lock (_partitionLock)
                         {
                             trueList.AddRange(tuple.Item1);
                             falseList.AddRange(tuple.Item2);
