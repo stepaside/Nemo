@@ -69,6 +69,9 @@ namespace NemoTest
             var selected_customers_10 = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
             //var selected_customers_10_repeat = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
             var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
+            var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
+
+            var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 
             // Simple retrieve with dynamic parameters
             var retrieve_customer_dyn = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" });

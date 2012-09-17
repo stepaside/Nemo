@@ -15,6 +15,7 @@ namespace Nemo.Data
         private const string SQL_SELECT_PAGING_FORMAT_MSSQL_LEGACY = "SELECT * FROM (SELECT TOP {5} * FROM (SELECT TOP {6} {1} FROM {0}{4} ORDER BY {2}) AS t1 ORDER BY {3}) as t2 ORDER BY {2}";
         private const string SQL_SELECT_PAGING_FORMAT = "SELECT {1} FROM {0}{2} LIMIT {3} OFFSET {4}";
         private const string SQL_SELECT_FORMAT = "SELECT {1} FROM {0}";
+        private const string SQL_SELECT_COUNT_FORMAT = "SELECT COUNT(*) FROM {0}";
         private const string SQL_WHERE_FORMAT = " WHERE {0}";
         private const string SQL_INNER_JOIN_FORMAT = "{0} INNER JOIN {1} ON {2} {3} {4}";
         private const string SQL_OUTER_JOIN_FORMAT = "{0} LEFT OUTER JOIN {1} ON {2} {3} {4}";
@@ -55,6 +56,7 @@ namespace Nemo.Data
                 var expression = _predicateCache.GetOrAdd(Tuple.Create(typeof(T), predicate.ToString(), dialect.GetType()), t => ExpressionVisitor.Visit<T>(predicate, dialect));
                 whereClause = string.Format(SQL_WHERE_FORMAT, expression);
             }
+
             if (page > 0 && pageSize > 0)
             {
                 if (dialect is SqlServerDialectProvider)
@@ -80,6 +82,22 @@ namespace Nemo.Data
             {
                 sql = string.Format(SQL_SELECT_FORMAT, tableName, selection) + whereClause;
             }
+            return sql;
+        }
+
+        internal static string GetSelectCountStatement<T>(Expression<Func<T, bool>> predicate, DialectProvider dialect)
+        {
+            var tableName = GetTableNameForSql(typeof(T), dialect);
+
+            var sql = string.Empty;
+            var whereClause = string.Empty;
+            if (predicate != null)
+            {
+                var expression = _predicateCache.GetOrAdd(Tuple.Create(typeof(T), predicate.ToString(), dialect.GetType()), t => ExpressionVisitor.Visit<T>(predicate, dialect));
+                whereClause = string.Format(SQL_WHERE_FORMAT, expression);
+            }
+
+            sql = string.Format(SQL_SELECT_COUNT_FORMAT, tableName) + whereClause;
             return sql;
         }
 
