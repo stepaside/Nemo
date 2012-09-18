@@ -23,6 +23,9 @@ namespace Nemo.Configuration
         int StaleCacheTimeout { get; }
         int DistributedLockTimeout { get; }
         SerializationMode DefaultSerializationMode { get; }
+        bool GenerateDeleteSql { get; }
+        bool GenerateInsertSql { get; }
+        bool GenerateUpdateSql { get; }
 
         IConfiguration ToggleDistributedLockVerification(bool value);
         IConfiguration SetContextLevelCache(ContextLevelCacheType value);
@@ -41,5 +44,8 @@ namespace Nemo.Configuration
         IConfiguration SetStaleCacheTimeout(int value);
         IConfiguration SetDistributedLockTimeout(int value);
         IConfiguration SetDefaultSerializationMode(SerializationMode value);
+        IConfiguration ToggleGenerateDeleteSql(bool value);
+        IConfiguration ToggleGenerateInsertSql(bool value);
+        IConfiguration ToggleGenerateUpdateSql(bool value);
     }
 }

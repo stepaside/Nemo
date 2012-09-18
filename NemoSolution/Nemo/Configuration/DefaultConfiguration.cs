@@ -25,6 +25,9 @@ namespace Nemo.Configuration
         private int _staleCacheTimeout = 2;
         private int _distributedLockTimeout = 2;
         private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
+        private bool _generateDeleteSql = false;
+        private bool _generateInsertSql = false;
+        private bool _generateUpdateSql = false;
 
         private DefaultConfiguration() { }
 
@@ -164,6 +167,30 @@ namespace Nemo.Configuration
             }
         }
 
+        public bool GenerateDeleteSql
+        {
+            get
+            {
+                return _generateDeleteSql;
+            }
+        }
+
+        public bool GenerateInsertSql
+        {
+            get
+            {
+                return _generateInsertSql;
+            }
+        }
+
+        public bool GenerateUpdateSql
+        {
+            get
+            {
+                return _generateUpdateSql;
+            }
+        }
+
         public static IConfiguration New()
         {
             return new DefaultConfiguration();
@@ -294,6 +321,24 @@ namespace Nemo.Configuration
         public IConfiguration SetDefaultSerializationMode(SerializationMode value)
         {
             _defaultSerializationMode = value;
+            return this;
+        }
+
+        public IConfiguration ToggleGenerateDeleteSql(bool value)
+        {
+            _generateDeleteSql = value;
+            return this;
+        }
+
+        public IConfiguration ToggleGenerateInsertSql(bool value)
+        {
+            _generateInsertSql = value;
+            return this;
+        }
+
+        public IConfiguration ToggleGenerateUpdateSql(bool value)
+        {
+            _generateUpdateSql = value;
             return this;
         }
 

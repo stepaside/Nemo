@@ -723,7 +723,17 @@ namespace Nemo
         public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false)
             where T : class, IBusinessObject
         {
-            var request = new OperationRequest { Operation = OPERATION_INSERT, Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            if (ObjectFactory.Configuration.GenerateInsertSql)
+            {
+                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName));
+                request.OperationType = OperationType.Sql;
+            }
+            else
+            {
+                request.Operation = OPERATION_INSERT;
+                request.OperationType = OperationType.StoredProcedure;
+            }
             var response = Execute<T>(request);
             return response;
         }
@@ -737,7 +747,26 @@ namespace Nemo
         public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false)
             where T : class, IBusinessObject
         {
-            var request = new OperationRequest { Operation = OPERATION_UPDATE, Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            if (ObjectFactory.Configuration.GenerateUpdateSql)
+            {
+                var partition = parameters.Partition(p => p.IsPrimaryKey);
+                // if p.IsPrimaryKey is not set then
+                // we need to infer it from reflected property 
+                if (partition.Item1.Count == 0)
+                {
+                    var propertyMap = Reflector.GetPropertyMap<T>();
+                    var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).Select(p => p.ParameterName ?? p.PropertyName).ToHashSet();
+                    partition = parameters.Partition(p => pimaryKeySet.Contains(p.Name));
+                }
+                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName));
+                request.OperationType = OperationType.Sql;
+            }
+            else
+            {
+                request.Operation = OPERATION_UPDATE;
+                request.OperationType = OperationType.StoredProcedure;
+            }
             var response = Execute<T>(request);
             return response;
         }
@@ -751,7 +780,17 @@ namespace Nemo
         public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false)
             where T : class, IBusinessObject
         {
-            var request = new OperationRequest { Operation = OPERATION_DELETE, Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            if (ObjectFactory.Configuration.GenerateDeleteSql)
+            {
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName));
+                request.OperationType = OperationType.Sql;
+            }
+            else
+            {
+                request.Operation = OPERATION_DELETE;
+                request.OperationType = OperationType.StoredProcedure;
+            }
             var response = Execute<T>(request);
             return response;
         }
@@ -765,7 +804,17 @@ namespace Nemo
         public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false)
             where T : class, IBusinessObject
         {
-            var request = new OperationRequest { Operation = OPERATION_DESTROY, Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            if (ObjectFactory.Configuration.GenerateDeleteSql)
+            {
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName));
+                request.OperationType = OperationType.Sql;
+            }
+            else
+            {
+                request.Operation = OPERATION_DESTROY;
+                request.OperationType = OperationType.StoredProcedure;
+            }
             var response = Execute<T>(request);
             return response;
         }
