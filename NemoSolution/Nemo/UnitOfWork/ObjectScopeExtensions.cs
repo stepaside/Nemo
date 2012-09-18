@@ -47,7 +47,7 @@ namespace Nemo.UnitOfWork
                         connection.Open();
                         var changes = CompareObjects(businessObject, businessObject.Old());
                         var statement = GetCommitStatement<T>(changes, connection);
-                        Debug.WriteLine(statement.Item1);
+                        Console.WriteLine(statement.Item1);
                     }
                 }
 
