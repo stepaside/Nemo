@@ -48,6 +48,11 @@ namespace Nemo.Extensions
             return exception;
         }
 
+        public static void Rethrow(this Exception exception)
+        {
+            throw exception.PrepareForRethrow();
+        }
+
         public static IEnumerable<Exception> Traverse(this Exception exception)
         {
             yield return exception;
