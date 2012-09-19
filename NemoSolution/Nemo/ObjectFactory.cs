@@ -878,7 +878,7 @@ namespace Nemo
                     var dbParam = command.CreateParameter();
                     dbParam.ParameterName = parameter.Name.TrimStart('@', '?', ':');
                     dbParam.Direction = parameter.Direction;
-                    dbParam.Value = parameter.Value;
+                    dbParam.Value = parameter.Value ?? DBNull.Value;
                     if (parameter.Size > -1)
                     {
                         dbParam.Size = parameter.Size;
