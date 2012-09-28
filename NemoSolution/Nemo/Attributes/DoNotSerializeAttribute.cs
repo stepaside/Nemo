@@ -6,6 +6,6 @@ using System.Text;
 namespace Nemo.Attributes
 {
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-    public class DoNotSerializeAttribute : Attribute
+    public class DoNotSerializeAttribute : PropertyAttribute
     { }
 }

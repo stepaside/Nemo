@@ -57,6 +57,7 @@ namespace Nemo.Reflection
                 if (item is PrimaryKeyAttribute)
                 {
                     IsPrimaryKey = true;
+                    KeyPosition = ((PrimaryKeyAttribute)item).Position;
                 }
                 else if (item is Generate.UsingAttribute)
                 {
@@ -69,6 +70,7 @@ namespace Nemo.Reflection
                 else if (item is ReferencesAttribute)
                 {
                     Parent = ((ReferencesAttribute)item).Parent;
+                    RefPosition = ((ReferencesAttribute)item).Position;
                 }
                 else if (item is CacheKeyAttribute)
                 {
@@ -79,13 +81,17 @@ namespace Nemo.Reflection
                     ParameterName = ((ParameterAttribute)item).Name;
                     Direction = ((ParameterAttribute)item).Direction;
                 }
-                else if (item is PersistentAttribute)
+                else if (item is DoNotPersistAttribute)
                 {
-                    IsPersistent = ((PersistentAttribute)item).Value;
+                    IsPersistent = false;
                 }
-                else if (item is SelectableAttribute)
+                else if (item is DoNotSelectAttribute)
                 {
-                    IsSelectable = ((SelectableAttribute)item).Value;
+                    IsSelectable = false;
+                }
+                else if (item is DoNotSerializeAttribute)
+                {
+                    IsSelectable = false;
                 }
             }
 
@@ -97,6 +103,11 @@ namespace Nemo.Reflection
             if (!IsSelectable.HasValue)
             {
                 IsSelectable = true;
+            }
+
+            if (!IsSerializable.HasValue)
+            {
+                IsSerializable = true;
             }
         }
 
@@ -143,6 +154,12 @@ namespace Nemo.Reflection
         }
 
         public Maybe<bool> IsPersistent
+        {
+            get;
+            private set;
+        }
+
+        public Maybe<bool> IsSerializable
         {
             get;
             private set;
@@ -263,6 +280,18 @@ namespace Nemo.Reflection
         }
 
         public int Position
+        {
+            get;
+            private set;
+        }
+
+        internal int KeyPosition
+        {
+            get;
+            private set;
+        }
+
+        internal int RefPosition
         {
             get;
             private set;

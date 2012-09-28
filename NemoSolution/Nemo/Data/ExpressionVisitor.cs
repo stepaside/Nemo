@@ -13,6 +13,7 @@ using System.Text;
 using Nemo.Extensions;
 using System.Reflection;
 using Nemo.Reflection;
+using Nemo.Attributes;
 
 namespace Nemo.Data
 {
@@ -153,7 +154,7 @@ namespace Nemo.Data
             if (m.Expression != null && m.Expression.Type == typeof(T))
             {
                 //return m.Member.Name;
-                return ObjectFactory.GetColumnName((PropertyInfo)m.Member);
+                return MapColumnAttribute.GetMappedColumnName((PropertyInfo)m.Member);
             }
             else if (m.Expression != null && Reflector.IsBusinessObjectList(m.Expression.Type, out elementType) && m.Member.Name == "Count")
             {

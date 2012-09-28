@@ -105,8 +105,9 @@
   <ItemGroup>
     <Compile Include="Attributes\CacheLinkAttribute.cs" />
     <Compile Include="Attributes\ConnectionAttribute.cs" />
-    <Compile Include="Attributes\SortedAttribute.cs" />
     <Compile Include="Attributes\DoNotSerializeAttribute.cs" />
+    <Compile Include="Attributes\DoNotPersistAttribute.cs" />
+    <Compile Include="Attributes\SortedAttribute.cs" />
     <Compile Include="Attributes\PropertyAttribute.cs" />
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
@@ -137,7 +138,7 @@
     <Compile Include="Fn\Tuple.cs" />
     <Compile Include="Fn\TypeUnion.cs" />
     <Compile Include="Reflection\ReflectedProperty.cs" />
-    <Compile Include="Attributes\SelectableAttribute.cs" />
+    <Compile Include="Attributes\DoNotSelectAttribute.cs" />
     <Compile Include="Attributes\TableAttribute.cs" />
     <Compile Include="Data\SqlServerLegacyDialectProvider.cs" />
     <Compile Include="Id\GuidGenerator.cs" />
@@ -176,7 +177,6 @@
     <Compile Include="Configuration\IConfiguration.cs" />
     <Compile Include="Attributes\CacheAttribute.cs" />
     <Compile Include="Attributes\CacheKeyAttribute.cs" />
-    <Compile Include="Attributes\PersistentAttribute.cs" />
     <Compile Include="Attributes\ParameterAttribute.cs" />
     <Compile Include="Attributes\ReferencesAttribute.cs" />
     <Compile Include="Attributes\GenerateAttribute.cs" />

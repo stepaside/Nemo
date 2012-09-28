@@ -18,5 +18,7 @@ namespace Nemo.Attributes
             get;
             private set;
         }
+
+        public int Position { get; set; }
     }
 }

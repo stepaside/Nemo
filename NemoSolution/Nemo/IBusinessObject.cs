@@ -15,7 +15,7 @@ namespace Nemo
 
     public interface IChangeTrackingBusinessObject : IBusinessObject
     {
-        [Persistent(false), Selectable(false)]
+        [DoNotPersist, DoNotSelect]
         ObjectState ObjectState
         {
             get;

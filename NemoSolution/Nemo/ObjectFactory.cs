@@ -1370,48 +1370,38 @@ namespace Nemo
                 tableName = GetTableName(objectType);
             }
 
-            var primaryKey = propertyMap.Where(p => p.Value.IsPrimaryKey).Select(p => p.Key).ToList();
-            var references = propertyMap.Where(p => p.Value.IsBusinessObject || p.Value.IsBusinessObjectList).Select(p => new { Property = p.Key, IsList = p.Value.IsBusinessObjectList });
+            var primaryKey = propertyMap.Where(p => p.Value.IsPrimaryKey).OrderBy(p => p.Value.KeyPosition).Select(p => p.Value).ToList();
+            var references = propertyMap.Where(p => p.Value.IsBusinessObject || p.Value.IsBusinessObjectList).Select(p => p.Value);
             foreach (var reference in references)
             {
                 Type elementType;
-                if (reference.IsList)
+                if (reference.IsBusinessObjectList)
                 {
-                    elementType = Reflector.ExtractGenericCollectionElementType(reference.Property.PropertyType);
+                    elementType = Reflector.ExtractGenericCollectionElementType(reference.PropertyType);
                 }
                 else
                 {
-                    elementType = reference.Property.PropertyType;
+                    elementType = reference.PropertyType;
                 }
 
                 var referencedPropertyMap = Reflector.GetPropertyMap(elementType);
-                var referencedProperties = referencedPropertyMap.Where(p => p.Value != null && p.Value.Parent == objectType).Select(p => p.Key).ToList();
+                var referencedProperties = referencedPropertyMap.Where(p => p.Value != null && p.Value.Parent == objectType).OrderBy(p => p.Value.RefPosition).Select(p => p.Value).ToList();
                 if (referencedProperties.Count > 0)
                 {
                     var referencedTableName = GetTableName(elementType);
 
                     if (set.Tables.Contains(tableName) && set.Tables.Contains(referencedTableName))
                     {
-                        var sourceColumns = primaryKey.Select(p => set.Tables[tableName].Columns[GetColumnName(p)]).ToArray();
-                        var targetColumns = referencedProperties.Select(p => set.Tables[referencedTableName].Columns[GetColumnName(p)]).ToArray();
-                        var relation = new DataRelation("_" + reference.Property.Name, sourceColumns, targetColumns, false);
+                        var sourceColumns = primaryKey.Select(p => set.Tables[tableName].Columns[p.MappedColumnName]).ToArray();
+                        var targetColumns = referencedProperties.Select(p => set.Tables[referencedTableName].Columns[p.MappedColumnName]).ToArray();
+                        var relation = new DataRelation("_" + reference.PropertyName, sourceColumns, targetColumns, false);
                         set.Relations.Add(relation);
                         InferRelations(set, elementType, referencedTableName);
                     }
                 }
             }
         }
-
-        internal static string GetColumnName(PropertyInfo property)
-        {
-            var propertyMapping = property.GetCustomAttributes(typeof(MapAttribute), false).Cast<MapAttribute>().FirstOrDefault();
-            if (propertyMapping != null)
-            {
-                return propertyMapping.SourceName;
-            }
-            return property.Name;
-        }
-
+        
         public static TransactionScope CreateTransactionScope(System.Transactions.IsolationLevel isolationLevel = System.Transactions.IsolationLevel.ReadCommitted)
         {
             var options = new TransactionOptions();

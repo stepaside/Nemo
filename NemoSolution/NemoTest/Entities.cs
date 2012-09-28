@@ -18,15 +18,15 @@ namespace NemoTest
     {
         [PrimaryKey, MapColumn("CustomerID"), Parameter("CustomerID")]
         string Id { get; set; }
-        [StringLength(50), Persistent(false), XmlAttribute]
+        [StringLength(50), DoNotPersist, XmlAttribute]
         string CompanyName { get; set; }
         //[Distinct]
         IList<IOrder> Orders { get; set; }
-        [DoNotSerialize]
+        [DoNotPersist, DoNotSerialize]
         TypeUnion<int, string, double> TypeUnionTest { get; set; }
-        [DoNotSerialize]
+        [DoNotPersist, DoNotSerialize]
         List<int> ListTest { get; set; }
-        [DoNotSerialize]
+        [DoNotPersist, DoNotSerialize]
         Dictionary<int, string> MapTest { get; set; }
     }
 
@@ -37,7 +37,7 @@ namespace NemoTest
         int OrderId { get; set; }
         [MapColumn("CustomerID"), References(typeof(ICustomer)), ProtoMember(2)]
         string CustomerId { get; set; }
-        [DoNotSerialize]
+        [DoNotPersist, DoNotSerialize]
         ICustomer Customer { get; set; }
         [ProtoMember(3)]
         string ShipPostalCode { get; set; }

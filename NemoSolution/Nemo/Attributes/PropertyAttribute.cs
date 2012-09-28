@@ -6,6 +6,5 @@ using System.Text;
 namespace Nemo.Attributes
 {
     public abstract class PropertyAttribute : Attribute
-    {
-    }
+    { }
 }
