@@ -24,5 +24,11 @@ namespace Nemo.Attributes
             get;
             set;
         }
+
+        public string SoftDeleteColumn
+        {
+            get;
+            set;
+        }
     }
 }

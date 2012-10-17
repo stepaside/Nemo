@@ -783,7 +783,8 @@ namespace Nemo
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
             if (ObjectFactory.Configuration.GenerateDeleteSql)
             {
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName));
+                var attr = Reflector.GetAttribute<T, TableAttribute>();
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName), attr != null ? attr.SoftDeleteColumn : null);
                 request.OperationType = OperationType.Sql;
             }
             else

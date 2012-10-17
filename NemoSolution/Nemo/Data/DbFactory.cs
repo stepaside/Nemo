@@ -46,7 +46,7 @@ namespace Nemo.Data
             for (int i = 0; i < ConfigurationManager.ConnectionStrings.Count; i++)
             {
                 var config = ConfigurationManager.ConnectionStrings[i];
-                if (config.ConnectionString == connectionString)
+                if (string.Equals(config.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
                 {
                     return config.ProviderName;
                 }
@@ -77,17 +77,12 @@ namespace Nemo.Data
 
         internal static DbDataAdapter CreateDataAdapter(DbConnection connection)
         {
-            string providerName = string.Empty;
-            for (int i = 0; i < ConfigurationManager.ConnectionStrings.Count; i++)
+            var providerName = GetProviderInvariantNameByConnectionString(connection.ConnectionString);
+            if (providerName != null)
             {
-                var config = ConfigurationManager.ConnectionStrings[i];
-                if (string.Equals(config.ConnectionString, connection.ConnectionString, StringComparison.OrdinalIgnoreCase))
-                {
-                    providerName = config.ProviderName;
-                    break;
-                }
+                return DbProviderFactories.GetFactory(providerName).CreateDataAdapter();
             }
-            return DbProviderFactories.GetFactory(providerName).CreateDataAdapter();
+            return null;
         }
     }
 }

@@ -21,9 +21,12 @@ namespace Nemo.Data
         private const string SQL_OUTER_JOIN_FORMAT = "{0} LEFT OUTER JOIN {1} ON {2} {3} {4}";
         private const string SQL_INSERT_FORMAT = "INSERT INTO {0} ({1}) VALUES ({2})";
         private const string SQL_UPDATE_FORMAT = "UPDATE {0} SET {1} WHERE {2}";
-        private const string SQL_SOFT_DELETE_FORMAT = "UPDATE {0} SET __deleted = 1 WHERE {0}";
+        private const string SQL_SOFT_DELETE_FORMAT = "UPDATE {0} SET {1} = 1 WHERE {2}";
         private const string SQL_DELETE_FORMAT = "DELETE {0} WHERE {1}";
         private const string SQL_SET_FORMAT = "{2}{0}{3} = {1}";
+
+        public const string DefaultSoftDeleteColumn = "__deleted";
+        public const string DefaultTimestampColumn = "__timestamp";
 
         private static ConcurrentDictionary<Tuple<Type, string, Type>, string> _predicateCache = new ConcurrentDictionary<Tuple<Type, string, Type>, string>();
 
@@ -121,12 +124,20 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetDeleteStatement(Type objectType, Param[] primaryKey, DialectProvider dialect)
+        internal static string GetDeleteStatement(Type objectType, Param[] primaryKey, DialectProvider dialect, string softDeleteColumn = null)
         {
             var tableName = GetTableNameForSql(objectType, dialect);
             var where = primaryKey.Select(p => string.Format(SQL_SET_FORMAT, p.Source, dialect.ParameterPrefix + p.Name, dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter)).ToDelimitedString(" AND ");
 
-            var sql = string.Format(SQL_DELETE_FORMAT, tableName, where);
+            string sql;
+            if (!string.IsNullOrEmpty(softDeleteColumn))
+            {
+                sql = string.Format(SQL_SOFT_DELETE_FORMAT, tableName, softDeleteColumn, where);
+            }
+            else
+            {
+                sql = string.Format(SQL_DELETE_FORMAT, tableName, where);
+            }
             return sql;
         }
     }
