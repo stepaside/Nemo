@@ -15,21 +15,25 @@ namespace Nemo.Caching
         [NonSerialized]
         private IBusinessObject _dataObject;
 
-        public CacheItem() { }
-
-        public CacheItem(string key) 
-        {
-            _key = key;
-        }
-
         internal CacheItem(IBusinessObject dataObject)
         {
             _dataObject = dataObject;
         }
 
-        internal CacheItem(IBusinessObject dataObject, string key)
+        internal CacheItem(string key, IBusinessObject dataObject)
         {
             _dataObject = dataObject;
+            _key = key;
+        }
+
+        internal CacheItem(byte[] data)
+        {
+            _data = data;
+        }
+
+        internal CacheItem(string key, byte[] data)
+        {
+            _data = data;
             _key = key;
         }
 
@@ -38,10 +42,6 @@ namespace Nemo.Caching
             get
             {
                 return _data;
-            }
-            internal set
-            {
-                _data = value;
             }
         }
 

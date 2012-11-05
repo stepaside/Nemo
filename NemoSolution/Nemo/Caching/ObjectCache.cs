@@ -234,11 +234,15 @@ namespace Nemo.Caching
                 var cache = CacheFactory.GetProvider(cacheType);
                 if (cache.IsDistributed && allowStale)
                 {
-                    item = (CacheItem)((IDistributedCacheProvider)cache).RetrieveStale(key);
+                    item = new CacheItem(key, (byte[])((IDistributedCacheProvider)cache).RetrieveStale(key));
+                }
+                else if (cache.IsOutOfProcess)
+                {
+                    item = new CacheItem(key, (byte[])cache.Retrieve(key));
                 }
                 else
                 {
-                    item = (CacheItem)cache.Retrieve(key);
+                    item = new CacheItem(key, (T)cache.Retrieve(key));
                 }
             }
 
@@ -267,55 +271,56 @@ namespace Nemo.Caching
                 {
                     if (keyCount == 1)
                     {
-                        object item;
+                        var key = keys.First();
+                        CacheItem item;
                         if (cache.IsDistributed && allowStale)
                         {
-                            item = ((IDistributedCacheProvider)cache).RetrieveStale(keys.First());
+                            item = new CacheItem(key, (byte[])((IDistributedCacheProvider)cache).RetrieveStale(key));
                         }
                         else
                         {
-                            item = cache.Retrieve(keys.First());
+                            item = new CacheItem(key, (byte[])cache.Retrieve(key));
                         }
                         
                         if (item != null)
                         {
-                            return new List<CacheItem> { (CacheItem)item };
+                            return new List<CacheItem> { item };
                         }
                     }
                     else
                     {
-                        IDictionary<string, object> map;
+                        IDictionary<string, CacheItem> map;
                         if (cache.IsDistributed && allowStale)
                         {
-                            map = ((IDistributedCacheProvider)cache).RetrieveStale(keys);
+                            map = ((IDistributedCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
                         }
                         else
                         {
-                            map = cache.Retrieve(keys);
+                            map = cache.Retrieve(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
                         }
                     
                         if (map != null && map.Count == keyCount)
                         {
                             // Enforce original order on multiple items returned from memcached using multi-get
-                            return map.Values.Cast<CacheItem>().Arrange(keys, i => i.GetKey<T>()).ToList();
+                            return map.Values.Arrange(keys, i => i.GetKey<T>()).ToList();
                         }
                     }
                 }
                 else
                 {
-                    IDictionary<string, object> map;
+                    IDictionary<string, CacheItem> map;
                     if (cache.IsDistributed && allowStale)
                     {
-                        map = ((IDistributedCacheProvider)cache).RetrieveStale(keys);
+                        map = ((IDistributedCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
                     }
                     else
                     {
-                        map = cache.Retrieve(keys);
+                        map = cache.Retrieve(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (T)p.Value));
                     }
 
                     if (map != null && map.Count == keyCount)
                     {
-                        return map.Values.Where(i => i != null).Cast<CacheItem>().ToList();
+                        return map.Values.ToList();
                     }
                 }
             }
@@ -522,18 +527,16 @@ namespace Nemo.Caching
                             result = true;
                             foreach (var key in keyMap.Keys)
                             {
-                                CacheItem cacheItem;
-
+                                object item;
                                 if (cache.IsOutOfProcess)
                                 {
-                                    cacheItem = new CacheItem(key);
-                                    cacheItem.Data = keyMap[key].Serialize();
+                                    item = keyMap[key].Serialize();
                                 }
                                 else
                                 {
-                                    cacheItem = new CacheItem(keyMap[key]);
+                                    item = keyMap[key];
                                 }
-                                result = result && cache.Save(key, cacheItem);
+                                result = result && cache.Save(key, item);
                             }
                         }
 
@@ -591,14 +594,14 @@ namespace Nemo.Caching
             return Tuple.Create(result, values, keys);
         }
 
-        internal static Tuple<bool, IEnumerable<T>, List<string>> AddOperation<T>(string operation, IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
+        internal static Tuple<bool, IEnumerable<T>, List<string>> Add<T>(string operation, IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
             where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(operation, parameters, returnType);
             return Add<T>(queryKey, parameters, retrieveItems, forceRetrieve);
         }
 
-        internal static Tuple<bool, IEnumerable<T>, List<string>> AddOperation<T>(IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
+        internal static Tuple<bool, IEnumerable<T>, List<string>> Add<T>(IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
            where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(parameters, returnType);
@@ -619,11 +622,11 @@ namespace Nemo.Caching
 
                     if (cache.IsOutOfProcess)
                     {
-                        return cache.AddNew(key, new CacheItem(key) { Data = item.Serialize() });
+                        return cache.AddNew(key, item.Serialize());
                     }
                     else
                     {
-                        return cache.AddNew(key, new CacheItem(item));
+                        return cache.AddNew(key, item);
                     }
                 }
             }
@@ -802,11 +805,11 @@ namespace Nemo.Caching
 
                     if (cache.IsOutOfProcess)
                     {
-                        return cache.Save(key, new CacheItem(key) { Data = item.Serialize() });
+                        return cache.Save(key, item.Serialize());
                     }
                     else 
                     {
-                        return cache.Save(key, new CacheItem(item));
+                        return cache.Save(key, item);
                     }
                 }
             }
