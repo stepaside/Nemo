@@ -68,9 +68,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BookSleeve, Version=1.1.0.7, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="BookSleeve, Version=1.2.0.2, Culture=neutral, PublicKeyToken=9056fda458ff61cf, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\BookSleeve.1.1.0.7\lib\BookSleeve.dll</HintPath>
+      <HintPath>packages\BookSleeve.1.2.0.2\lib\BookSleeve.dll</HintPath>
     </Reference>
     <Reference Include="Couchbase">
       <HintPath>packages\CouchbaseNetClient.1.1.6\lib\net35\Couchbase.dll</HintPath>

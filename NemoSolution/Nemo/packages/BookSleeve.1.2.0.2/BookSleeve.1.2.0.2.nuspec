@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>BookSleeve</id>
+    <version>1.2.0.2</version>
+    <authors>Marc Gravell</authors>
+    <owners>Marc Gravell</owners>
+    <licenseUrl>http://booksleeve.googlecode.com/hg/license.txt</licenseUrl>
+    <projectUrl>http://code.google.com/p/booksleeve/</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Fully asynchronous Redis client, capable of pipelined operations; this acts as a multiplexer, allowing high-performance parallel usage of a single connection (or few connections) without being blocked on each separate request. All core redis opeations are supported. This library can also be used from C# 5.0/async very effectively.</description>
+    <summary>Efficient, fully asynchronous Redis client</summary>
+    <releaseNotes>* 1.2.0.2 - added additional ConnectionUtils overloads to control master/slave behavior more granularly
+      * 1.2.0.1 - adds SORT support (under Keys)
+      * 1.2.0.0 - BREAKING CHANGE: SortedSets.{Rank|Score} now return nullable values
+      *         - adds bindings for redis 2.6 commands
+      *         - now strong-named
+      *         - cumulative bug-fixes</releaseNotes>
+    <language>en-US</language>
+    <tags>Async Redis NoSQL Client Distributed Cache PubSub Messaging</tags>
+  </metadata>
+</package>
