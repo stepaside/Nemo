@@ -12,9 +12,15 @@
     <copyright>Copyright © Max Stepanskiy 2012</copyright>
     <tags>ORM micro-ORM sql mapper</tags>
 	<releaseNotes>
-	Improved binary serialization (both speed and size)
-	Added support for SQLite for unit of work implementation and ObjectFactory.Select methods
-	Added options for distributed cache contention mitigation (distributed locking vs. use of stale cache)
+	* Updated object cache to get rid of not needed serialization and object creation
+	* Output generated SQL to the console when calling ObjectScope.Commit() with change tracking mode set to Debug
+	* Added ability to generate INSERT/UPDATE/DELETE statements (with support for "soft" deletes) instead of using naming convention and stored procedures
+	* BREAKING CHANGE - Modified binary serialization format to improve serialization performance
+	* Enabled SQLite provider
+	* Removed unnecessary locking
+	* Added additional ObjectFactory methods:
+	  - ObjectFactory.Count - added support for select count(*) from Customers [where ...]
+	  - ObjectFactory.Select - added support for ObjectFactory.Select&lt;Customer>(c => c.Orders.Count > 0)
 	</releaseNotes>
   </metadata>
 </package>
