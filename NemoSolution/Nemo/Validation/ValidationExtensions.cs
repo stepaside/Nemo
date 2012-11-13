@@ -24,12 +24,12 @@ namespace Nemo.Validation
             var properties = Reflector.GetAllProperties<T>();
 
             var errors = from prop in properties
-                         from attribute in prop.GetCustomAttributes(typeof(ValidationAttribute), false).OfType<ValidationAttribute>()
+                         from attribute in prop.GetCustomAttributes(typeof(ValidationAttribute), false).Cast<ValidationAttribute>()
                          where !IsValid(businessObject, prop.Name, prop.PropertyType, attribute)
                          select new ValidationError
                          {
                              PropertyName = prop.Name,
-                             ErrorMessage = attribute.FormatErrorMessage(string.Join(" ", Regex.Split(prop.Name, "(?=[A-Z])").ToArray())),
+                             ErrorMessage = attribute.FormatErrorMessage(string.Join(" ", Regex.Split(prop.Name, "(?=[A-Z])"))),
                              TargetInstance = businessObject,
                              ValidationType = attribute.GetValidationType(),
                              SeverityType = attribute is ISeverityTypeProvider ? ((ISeverityTypeProvider)attribute).SeverityType : SeverityType.Error

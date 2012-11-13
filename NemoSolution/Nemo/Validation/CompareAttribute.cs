@@ -21,7 +21,7 @@ namespace Nemo.Validation
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class CompareAttribute : ValidationAttributeBase
     {
-        private const string DEFAULT_ERROR_MESSAGE = "The field {{0}} is {0} to {1}.";
+        private const string DEFAULT_ERROR_MESSAGE = "The field {{0}} is {0} {1}.";
         
         public CompareAttribute(CompareOperator compareOperator, string propertyName)
             : base()
@@ -44,11 +44,15 @@ namespace Nemo.Validation
                 string operatorValue = null;
                 if (this.Operator == CompareOperator.NotEqual)
                 {
-                    operatorValue = "equal";
+                    operatorValue = "equal to";
                 }
                 else
                 {
                     operatorValue = "not " + string.Join(" ", Regex.Split(this.Operator.ToString(), "(?=[A-Z])").ToArray()).ToLower();
+                    if (this.Operator != CompareOperator.GreaterThan && this.Operator != CompareOperator.LessThan)
+                    {
+                        operatorValue += " to";
+                    }
                 }
                 this.DefaultErrorMessage = string.Format(DEFAULT_ERROR_MESSAGE, operatorValue, this.PropertyName);
             }
