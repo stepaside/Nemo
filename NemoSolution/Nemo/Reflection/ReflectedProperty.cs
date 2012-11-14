@@ -16,6 +16,7 @@ namespace Nemo.Reflection
             PropertyType = property.PropertyType;
             IsPersistent = Maybe<bool>.Empty;
             IsSelectable = Maybe<bool>.Empty;
+            IsSerializable = Maybe<bool>.Empty;
             IsSimpleList = Reflector.IsSimpleList(property.PropertyType);
             IsBusinessObject = Reflector.IsBusinessObject(property.PropertyType);
             Type elementType;
