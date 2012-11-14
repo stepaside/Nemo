@@ -1,25 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Runtime.InteropServices;
-using Nemo.Extensions;
-using Nemo.Serialization;
-using System.Transactions;
-using Nemo.Reflection;
 using System.Collections;
-using Nemo.Attributes;
-using System.Data.Common;
-using Nemo.Data;
+using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Transactions;
+using Nemo.Attributes;
+using Nemo.Data;
+using Nemo.Extensions;
+using Nemo.Reflection;
+using Nemo.Serialization;
 
 namespace Nemo.UnitOfWork
 {
     public class ObjectScope : IDisposable
     {
         private const string SCOPE_NAME = "OBJECT_SCOPE";
-        internal readonly Dictionary<IBusinessObject, byte[]> Snapshots = new Dictionary<IBusinessObject, byte[]>();
-        internal readonly Dictionary<IBusinessObject, object> DeserializedSnapshots = new Dictionary<IBusinessObject, object>();
+        internal IBusinessObject Item = null;
+        internal byte[] ItemSnapshot = null;
+        internal IBusinessObject OriginalItem = null;
+        internal readonly Type ItemType = null;
         private bool? _hasException = null;
 
         internal static Stack<ObjectScope> Scopes
@@ -49,8 +51,19 @@ namespace Nemo.UnitOfWork
             return item.Serialize(SerializationMode.SerializeAll);
         }
 
-        public ObjectScope(IBusinessObject item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default)
+        public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default)
+            where T : class, IBusinessObject
         {
+            return new ObjectScope(item, autoCommit, mode, typeof(T));
+        }
+
+        private ObjectScope(IBusinessObject item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null)
+        {
+            if (item == null && type == null)
+            {
+                throw new ArgumentException("Invalid ObjectScope definition");
+            }
+
             if (item != null)
             {
                 item.CheckReadOnly();
@@ -58,10 +71,16 @@ namespace Nemo.UnitOfWork
 
             this.AutoCommit = autoCommit;
             this.IsNew = item == null;
+            ItemType = type;
             this.ChangeTracking = mode != ChangeTrackingMode.Default ? mode : ObjectFactory.Configuration.DefaultChangeTrackingMode;
             if (!this.IsNew)
             {
-                this.Snapshots.Add(item, CreateSnapshot(item));
+                if (type == null)
+                {
+                    ItemType = item.GetType();
+                }
+                Item = item;
+                ItemSnapshot = CreateSnapshot(item);
             }
             ObjectScope.Scopes.Push(this);
             Transaction = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions { IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted });
@@ -99,6 +118,13 @@ namespace Nemo.UnitOfWork
             private set;
         }
 
+        internal void Cleanup()
+        {
+            Item = null;
+            ItemSnapshot = null;
+            OriginalItem = null;
+        }
+
         internal bool UpdateOuterSnapshot<T>(T businessObject)
             where T : class, IBusinessObject
         {
@@ -117,9 +143,10 @@ namespace Nemo.UnitOfWork
             var outerScope = ObjectScope.Scopes.ElementAtOrDefault(index);
             if (outerScope != null)
             {
-                if (outerScope.Snapshots.ContainsKey(businessObject))
+                if (outerScope.Item == businessObject)
                 {
-                    outerScope.Snapshots[businessObject] = CreateSnapshot(businessObject);
+                    outerScope.ItemSnapshot = CreateSnapshot(businessObject);
+                    outerScope.OriginalItem = null;
                     return true;
                 }
             }
@@ -136,15 +163,11 @@ namespace Nemo.UnitOfWork
                     _hasException = exceptionCode != 0 && exceptionCode != 0xCCCCCCCC;
                 }
 
-                foreach (var item in this.Snapshots.Keys)
+                if (_hasException.Value || !Item.Commit(ItemType))
                 {
-                    if (_hasException.Value || !item.Commit())
-                    {
-                        item.Rollback();
-                    }
+                    Item.Rollback(ItemType);
                 }
             }
-            Snapshots.Clear();
             Transaction.Dispose();
             ObjectScope.Scopes.Pop();
         }

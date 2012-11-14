@@ -124,7 +124,7 @@ namespace NemoTest
             var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>();
             
             // UnitOfWork example
-            using (new ObjectScope(customer, autoCommit: false))
+            using (ObjectScope.New(customer, autoCommit: false))
             {
                 customer.CompanyName += "Test";
                 customer.Orders[0].ShipPostalCode = "11111";

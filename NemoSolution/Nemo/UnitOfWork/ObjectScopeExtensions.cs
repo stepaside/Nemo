@@ -12,11 +12,15 @@ using Nemo.Extensions;
 using Nemo.Reflection;
 using Nemo.Serialization;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 
 namespace Nemo.UnitOfWork
 {
     public static class ObjectScopeExtensions
     {
+        private static ConcurrentDictionary<Type, RuntimeMethodHandle> _commitMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static ConcurrentDictionary<Type, RuntimeMethodHandle> _rollbackMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+
         public static bool Commit<T>(this T businessObject)
             where T : class, IBusinessObject
         {
@@ -55,7 +59,11 @@ namespace Nemo.UnitOfWork
                 {
                     success = context.UpdateOuterSnapshot(businessObject);
                 }
-                context.Snapshots.Remove(businessObject);
+
+                if (success)
+                {
+                    context.Cleanup();
+                }
             }
 
             if (success && context.Transaction != null)
@@ -65,6 +73,18 @@ namespace Nemo.UnitOfWork
             return success;
         }
         
+        internal static bool Commit(this IBusinessObject businessObject, Type objectType)
+        {
+            var methodHandle = _commitMethods.GetOrAdd(objectType, type => 
+            {
+                var commitMethod = typeof(ObjectScopeExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public).FirstOrDefault(m => m.Name == "Commit");
+                var genericCommitMethod = commitMethod.MakeGenericMethod(type);
+                return genericCommitMethod.MethodHandle;
+            });
+            var invoker = Reflector.Method.CreateDelegate(methodHandle);
+            return (bool)invoker(null, new object[] { businessObject });
+        }
+
         public static bool Rollback<T>(this T businessObject)
             where T : class, IBusinessObject
         {
@@ -75,8 +95,20 @@ namespace Nemo.UnitOfWork
 
             var oldObject = businessObject.Old();
             ObjectFactory.Map(oldObject, businessObject, true);
-            context.Snapshots.Remove(businessObject);
+            context.Cleanup();
             return true;
+        }
+
+        internal static bool Rollback(this IBusinessObject businessObject, Type objectType)
+        {
+            var methodHandle = _rollbackMethods.GetOrAdd(objectType, type =>
+            {
+                var rollbackMethod = typeof(ObjectScopeExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public).FirstOrDefault(m => m.Name == "Rollback");
+                var genericRollbackMethod = rollbackMethod.MakeGenericMethod(type);
+                return genericRollbackMethod.MethodHandle;
+            });
+            var invoker = Reflector.Method.CreateDelegate(methodHandle);
+            return (bool)invoker(null, new object[] { businessObject });
         }
 
         public static T Old<T>(this T businessObject)
@@ -87,15 +119,13 @@ namespace Nemo.UnitOfWork
             var context = ObjectScope.Current;
             if (context == null) return default(T);
 
-            object value;
-            if (context.DeserializedSnapshots.TryGetValue(businessObject, out value))
+            if (context.OriginalItem != null)
             {
-                return value as T;
+                return context.OriginalItem as T;
             }
 
-            byte[] serializedObject = context.Snapshots[businessObject];
-            var result = SerializationExtensions.Deserialize<T>(serializedObject);
-            context.DeserializedSnapshots[businessObject] = result;
+            var result = SerializationExtensions.Deserialize<T>(context.ItemSnapshot);
+            context.OriginalItem = result;
             return result;
         }
 
