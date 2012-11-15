@@ -36,11 +36,14 @@ namespace Nemo.UnitOfWork
                         connection.Open();
                         var changes = CompareObjects(businessObject, businessObject.Old());
                         var statement = GetCommitStatement<T>(changes, connection);
-                        var response = ObjectFactory.Execute<T>(new OperationRequest { Operation = statement.Item1, OperationType = OperationType.Sql, Parameters = statement.Item2, Connection = connection, ReturnType = OperationReturnType.DataTable });
-                        success = response.Value != null;
-                        if (success)
+                        if (!string.IsNullOrEmpty(statement.Item1))
                         {
-                            SetGeneratedPropertyValues(statement.Item3, (DataTable)response.Value);
+                            var response = ObjectFactory.Execute<T>(new OperationRequest { Operation = statement.Item1, OperationType = OperationType.Sql, Parameters = statement.Item2, Connection = connection, ReturnType = OperationReturnType.DataTable });
+                            success = response.Value != null;
+                            if (success)
+                            {
+                                SetGeneratedPropertyValues(statement.Item3, (DataTable)response.Value);
+                            }
                         }
                     }
                 }
