@@ -1,4 +1,3 @@
 Nemo
 ====
-
-.net enterprise micro-ORM
+*.net enterprise micro-ORM*
