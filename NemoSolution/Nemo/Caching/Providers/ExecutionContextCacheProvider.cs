@@ -14,19 +14,19 @@ namespace Nemo.Caching.Providers
 
         public override void RemoveAll()
         {
-            throw new NotSupportedException();
+            ExecutionContext.Clear();
         }
 
         public override object Remove(string key)
         {
             key = ComputeKey(key);
-            return ExecutionContext.Remove(key);
+            return ExecutionContext.Pop(key);
         }
 
         public override bool Clear(string key)
         {
             key = ComputeKey(key);
-            ExecutionContext.Clear(key);
+            ExecutionContext.Remove(key);
             return true;
         }
 

@@ -70,21 +70,22 @@ namespace Nemo.Caching
             var stored = false;
             if (ObjectFactory.Configuration.DistributedLockVerification)
             {
-                // Value is a combination of the machine name, thread id and 
-                var value = Environment.MachineName + "::" + DateTime.Now.Ticks + "::" + new Random().NextDouble();
-                stored = LockManager.AddNew(key, value);
+                // Value is a combination of the machine name, thread id and tandom value
+                var ticket = "TICKET::" + key;
+                var value = Environment.MachineName + "::" + Thread.CurrentThread.ManagedThreadId + "::" + DateTime.Now.Ticks + "::" + new Random().NextDouble();
+                stored = LockManager.AddNew(ticket, value);
                 if (stored)
                 {
-                    stored = value == (string)LockManager.Retrieve(key);
+                    stored = value == (string)LockManager.Retrieve(ticket);
+                    if (stored)
+                    {
+                        LockManager.Increment(key);
+                    }
                 }
             }
             else
             {
-                // Only one thread at a time can access lock manager 
-                lock (_cacheLock)
-                {
-                    stored = LockManager.AddNew(key, 1);
-                }
+                stored = LockManager.AddNew(key, 1);
             }
 
             if (stored)
@@ -152,6 +153,10 @@ namespace Nemo.Caching
             var removed = LockManager.Clear(key);
             if (removed)
             {
+                if (ObjectFactory.Configuration.DistributedLockVerification)
+                {
+                    LockManager.Clear("TICKET::" + key);
+                }
                 Log.Capture(() => string.Format("Removed lock for {0}", originalKey));
             }
             else

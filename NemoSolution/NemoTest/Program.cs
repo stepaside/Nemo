@@ -41,7 +41,7 @@ namespace NemoTest
                 .ToggleLogging(false)
                 .ToggleCacheCollisionDetection(false)
                 .ToggleDistributedLockVerification(false);
-                
+
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
 
@@ -122,7 +122,7 @@ namespace NemoTest
 
             var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault(); // ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
             var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>();
-            
+
             // UnitOfWork example
             using (ObjectScope.New(customer, autoCommit: false))
             {
@@ -181,15 +181,15 @@ namespace NemoTest
             var customer_from_json = ObjectJsonSerializer.FromJson<ICustomer>(json).FirstOrDefault();
 
             var xml = customer.ToXml();
-            using(var reader = XmlReader.Create(new StringReader(xml)))
+            using (var reader = XmlReader.Create(new StringReader(xml)))
             {
                 var customer_from_xml = ObjectXmlSerializer.FromXml<ICustomer>(reader).FirstOrDefault();
             }
 
             RunNative(500);
             RunExecute(500);
-            RunDapper(500, false);
-            RunRetrieve(500, false);
+            RunDapper(1500, false);
+            RunRetrieve(1500, false);
             RunNativeWithMapper(500);
 
             //var buffer = customer.Serialize();
@@ -272,7 +272,7 @@ namespace NemoTest
                     return (SimpleObject)dcjsSimple.ReadObject(stream);
                 }
             }, "DataContractJsonSerializer", s => s.Length);
-
+            
             Console.WriteLine();
             Console.WriteLine("Complex Object Serialization Benchmark");
 

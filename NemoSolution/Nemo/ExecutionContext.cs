@@ -76,7 +76,7 @@ namespace Nemo
             }
         }
 
-        internal static void Clear(string name)
+        internal static void Remove(string name)
         {
             var principal = Thread.CurrentPrincipal;
             if (principal is ThreadedPrincipal)
@@ -89,11 +89,24 @@ namespace Nemo
             }
         }
 
-        internal static object Remove(string name)
+        internal static object Pop(string name)
         {
             var result = Get(name);
-            Clear(name);
+            Remove(name);
             return result;
+        }
+
+        internal static void Clear()
+        {
+            var principal = Thread.CurrentPrincipal;
+            if (principal is ThreadedPrincipal)
+            {
+                ((ThreadedPrincipal)principal).Items.Clear();
+            }
+            else
+            {
+                _callContext.Clear();
+            }
         }
     }
 }

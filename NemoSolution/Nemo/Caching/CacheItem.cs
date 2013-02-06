@@ -4,16 +4,23 @@ using System.Linq;
 using System.Text;
 using Nemo.Reflection;
 using Nemo.Serialization;
+using System.Runtime.Serialization;
 
 namespace Nemo.Caching
 {
     [Serializable]
-    public class CacheItem : IEquatable<CacheItem>
+    public class CacheItem : IEquatable<CacheItem>, ISerializable
     {
         private byte[] _data;
         private string _key;
         [NonSerialized]
         private IBusinessObject _dataObject;
+
+        protected CacheItem(SerializationInfo info, StreamingContext context)
+        {
+            _data = (byte[])info.GetValue("_data", typeof(byte[]));
+            _key = info.GetString("_key");
+        }
 
         internal CacheItem(IBusinessObject dataObject)
         {
@@ -110,6 +117,16 @@ namespace Nemo.Caching
         public bool Equals(CacheItem other)
         {
             return object.Equals(this, other);
+        }
+
+        #endregion
+
+        #region ISerializable Members
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("_data", _data);
+            info.AddValue("_key", _key);
         }
 
         #endregion

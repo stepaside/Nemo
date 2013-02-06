@@ -182,11 +182,41 @@ namespace Nemo.Caching
             return cacheType == CacheType.None || CacheFactory.GetProvider(cacheType).IsOutOfProcess;
         }
 
+        internal static void GetCacheInfo<T>(out bool canBeBuffered, out CacheType cacheType)
+            where T : class, IBusinessObject
+        {
+            canBeBuffered = false;
+            cacheType = CacheType.None;
+
+            if (CacheScope.Current != null)
+            {
+                canBeBuffered = CacheScope.Current.Buffered;
+                cacheType = CacheScope.Current.Type;
+            }
+            else
+            {
+                var attribute = Reflector.GetAttribute<T, CacheAttribute>();
+                if (attribute != null)
+                {
+                    cacheType = attribute.Type;
+                }
+
+                if (ObjectFactory.Configuration.ContextLevelCache == ContextLevelCacheType.None)
+                {
+                    canBeBuffered = false;
+                }
+                else
+                {
+                    canBeBuffered = cacheType == CacheType.None || CacheFactory.GetProvider(cacheType).IsOutOfProcess;
+                }
+            }
+        }
+
         #endregion
 
         #region Query Lookup Methods
 
-        internal static List<string> LookupKeys(Type objectType, string queryKey, bool allowStale = false)
+        internal static string[] LookupKeys(Type objectType, string queryKey, bool allowStale = false)
         {
             if (!string.IsNullOrEmpty(queryKey))
             {
@@ -196,18 +226,18 @@ namespace Nemo.Caching
                     var cache = CacheFactory.GetProvider(cacheType);
                     if (cache.IsDistributed && allowStale)
                     {
-                        return ((IDistributedCacheProvider)cache).RetrieveStale(queryKey) as List<string>;
+                        return ((IDistributedCacheProvider)cache).RetrieveStale(queryKey) as string[];
                     }
                     else
                     {
-                        return cache.Retrieve(queryKey) as List<string>;
+                        return cache.Retrieve(queryKey) as string[];
                     }
                 }
             }
             return null;
         }
 
-        internal static List<string> LookupKeys<T>(string operation, IList<Param> parameters, OperationReturnType returnType, bool allowStale = false)
+        internal static string[] LookupKeys<T>(string operation, IList<Param> parameters, OperationReturnType returnType, bool allowStale = false)
             where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(operation, parameters, returnType);
@@ -253,13 +283,13 @@ namespace Nemo.Caching
             return default(T);
         }
 
-        internal static IList<CacheItem> Lookup<T>(IEnumerable<CacheKey> keys, bool allowStale = false)
+        internal static CacheItem[] Lookup<T>(IEnumerable<CacheKey> keys, bool allowStale = false)
             where T : class, IBusinessObject
         {
             return Lookup<T>(keys.Select(k => k.Value), allowStale);
         }
 
-        public static IList<CacheItem> Lookup<T>(IEnumerable<string> keys, bool allowStale = false)
+        public static CacheItem[] Lookup<T>(IEnumerable<string> keys, bool allowStale = false)
             where T : class, IBusinessObject
         {
             var cacheType = GetCacheType(typeof(T));
@@ -281,10 +311,10 @@ namespace Nemo.Caching
                         {
                             item = new CacheItem(key, (byte[])cache.Retrieve(key));
                         }
-                        
+
                         if (item != null)
                         {
-                            return new List<CacheItem> { item };
+                            return new[] { item };
                         }
                     }
                     else
@@ -302,7 +332,7 @@ namespace Nemo.Caching
                         if (map != null && map.Count == keyCount)
                         {
                             // Enforce original order on multiple items returned from memcached using multi-get
-                            return map.Values.Arrange(keys, i => i.GetKey<T>()).ToList();
+                            return map.Values.Arrange(keys, i => i.GetKey<T>()).ToArray();
                         }
                     }
                 }
@@ -320,7 +350,7 @@ namespace Nemo.Caching
 
                     if (map != null && map.Count == keyCount)
                     {
-                        return map.Values.ToList();
+                        return map.Values.ToArray();
                     }
                 }
             }
@@ -489,71 +519,18 @@ namespace Nemo.Caching
             }
         }
 
-        internal static Tuple<bool, IEnumerable<T>, List<string>> Add<T>(string queryKey, IList<Param> parameters, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
+        internal static Tuple<bool, IEnumerable<T>, string[]> Add<T>(string queryKey, IList<Param> parameters, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
             where T : class, IBusinessObject
         {
             var result = false;
             var values = Enumerable.Empty<T>();
-            List<string> keys = null;
+            string[] keys = null;
             var cacheType = GetCacheType(typeof(T));
 
             if (cacheType != CacheType.None)
             {
                 var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
-
-                Action addToCache = () =>
-                {
-                    keys = ObjectCache.LookupKeys(typeof(T), queryKey);
-
-                    if (keys == null || forceRetrieve)
-                    {
-                        var items = retrieveItems();
-
-                        int count = 0;
-                        var keyMap = new Dictionary<string, T>();
-                        var valueList = new List<T>();
-                        foreach (var item in items)
-                        {
-                            count++;
-                            valueList.Add(item);
-                            keyMap[new CacheKey(item).Value] = item;
-                        }
-
-                        // Cache key collision is not detected
-                        if (count == keyMap.Count)
-                        {
-                            values = keyMap.Values;
-
-                            result = true;
-                            foreach (var key in keyMap.Keys)
-                            {
-                                object item;
-                                if (cache.IsOutOfProcess)
-                                {
-                                    item = keyMap[key].Serialize();
-                                }
-                                else
-                                {
-                                    item = keyMap[key];
-                                }
-                                result = result && cache.Save(key, item);
-                            }
-                        }
-
-                        if (result)
-                        {
-                            // Store a query and corresponding keys
-                            result = result && cache.Save(queryKey, keyMap.Keys.ToList());
-
-                            TrackKeys<T>(queryKey, keyMap.Keys, parameters);
-                        }
-                        else
-                        {
-                            values = valueList;
-                        }
-                    }
-                };
-
+                
                 if (cache.IsDistributed)
                 {
                     var cacheContentMitigation = ObjectFactory.Configuration.CacheContentionMitigation;
@@ -561,7 +538,7 @@ namespace Nemo.Caching
                     {
                         try
                         {
-                            addToCache();
+                            AddToCache<T>(queryKey, parameters, retrieveItems, forceRetrieve, cache, ref keys, ref values, ref result);
                         }
                         finally
                         {
@@ -573,11 +550,11 @@ namespace Nemo.Caching
                     }
                     else if (cacheContentMitigation == CacheContentionMitigationType.UseStaleCache)
                     {
-                        keys = ((IDistributedCacheProvider)cache).RetrieveStale(queryKey) as List<string>;
+                        keys = ((IDistributedCacheProvider)cache).RetrieveStale(queryKey) as string[];
                     }
                     else if (cacheContentMitigation == CacheContentionMitigationType.DistributedLocking)
                     {
-                        keys = ((IDistributedCacheProvider)cache).WaitForItems(queryKey) as List<string>;
+                        keys = ((IDistributedCacheProvider)cache).WaitForItems(queryKey) as string[];
                     }
                 }
                 else
@@ -587,21 +564,21 @@ namespace Nemo.Caching
 
                     lock (cacheLock)
                     {
-                        addToCache();
+                        AddToCache<T>(queryKey, parameters, retrieveItems, forceRetrieve, cache, ref keys, ref values, ref result);
                     }
                 }
             }
             return Tuple.Create(result, values, keys);
         }
 
-        internal static Tuple<bool, IEnumerable<T>, List<string>> Add<T>(string operation, IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
+        internal static Tuple<bool, IEnumerable<T>, string[]> Add<T>(string operation, IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
             where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(operation, parameters, returnType);
             return Add<T>(queryKey, parameters, retrieveItems, forceRetrieve);
         }
 
-        internal static Tuple<bool, IEnumerable<T>, List<string>> Add<T>(IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
+        internal static Tuple<bool, IEnumerable<T>, string[]> Add<T>(IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
            where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(parameters, returnType);
@@ -633,6 +610,67 @@ namespace Nemo.Caching
             return false;
         }
 
+        private static void AddToCache<T>(string queryKey, 
+                                    IList<Param> parameters, 
+                                    Func<IEnumerable<T>> retrieveItems, 
+                                    bool forceRetrieve, 
+                                    CacheProvider cache,
+                                    ref string[] keys, 
+                                    ref IEnumerable<T> values,
+                                    ref bool result)
+            where T : class, IBusinessObject
+        {
+            keys = ObjectCache.LookupKeys(typeof(T), queryKey);
+
+            if (keys == null || forceRetrieve)
+            {
+                var items = retrieveItems();
+
+                int count = 0;
+                var keyMap = new Dictionary<string, T>();
+                var valueList = new List<T>();
+                foreach (var item in items)
+                {
+                    count++;
+                    valueList.Add(item);
+                    keyMap[new CacheKey(item).Value] = item;
+                }
+
+                // Cache key collision is not detected
+                if (count == keyMap.Count)
+                {
+                    values = keyMap.Values;
+
+                    result = true;
+                    foreach (var key in keyMap.Keys)
+                    {
+                        object item;
+                        if (cache.IsOutOfProcess)
+                        {
+                            item = keyMap[key].Serialize();
+                        }
+                        else
+                        {
+                            item = keyMap[key];
+                        }
+                        result = result && cache.Save(key, item);
+                    }
+                }
+
+                if (result)
+                {
+                    // Store a query and corresponding keys
+                    result = result && cache.Save(queryKey, keyMap.Keys.ToArray());
+
+                    TrackKeys<T>(queryKey, keyMap.Keys, parameters);
+                }
+                else
+                {
+                    values = valueList;
+                }
+            }
+        }
+
         #endregion
 
         #region Remove Methods
@@ -646,7 +684,7 @@ namespace Nemo.Caching
                 var success = cache.Clear(queryKey);
                 if (success)
                 {
-                    ExecutionContext.Remove(queryKey);
+                    ExecutionContext.Pop(queryKey);
                 }
                 return success;
             }
@@ -727,7 +765,7 @@ namespace Nemo.Caching
                 queries.Run(queryKey =>
                 {
                     cache.Clear(queryKey);
-                    ExecutionContext.Remove(queryKey);
+                    ExecutionContext.Pop(queryKey);
                 });
 
                 return true;
@@ -745,7 +783,7 @@ namespace Nemo.Caching
                 queries.Run(k =>
                 {
                     cache.Clear(k);
-                    ExecutionContext.Remove(k);
+                    ExecutionContext.Pop(k);
                 });
                 return true;
             }
@@ -766,7 +804,7 @@ namespace Nemo.Caching
                     foreach (var key in keys)
                     {
                         result = cache.Clear(key) && result;
-                        ExecutionContext.Remove(key);
+                        ExecutionContext.Pop(key);
                     }
                 }
                 return result;

@@ -418,8 +418,10 @@ namespace Nemo
             Log.CaptureBegin(() => string.Format("RetrieveImplemenation: {0}::{1}", typeof(TResult).FullName, operation));
             IEnumerable<TResult> result = null;
 
-            var enableCache = ObjectCache.IsCacheable<TResult>();
-            var canBeBuffered = ObjectCache.CanBeBuffered<TResult>();
+            bool canBeBuffered;
+            CacheType cacheType;
+            ObjectCache.GetCacheInfo<TResult>(out canBeBuffered, out cacheType);
+            var enableCache = cacheType != CacheType.None;
 
             CacheProvider bufferCache = null;
             if (canBeBuffered)
@@ -427,9 +429,9 @@ namespace Nemo
                 bufferCache = CacheFactory.GetProvider(CacheType.ExecutionContext);
             }
 
-            IList<CacheItem> cachedItems = null;
+            CacheItem[] cachedItems = null;
             string queryKey = null;
-            List<string> keys = null;
+            string[] keys = null;
             bool collision = false;
 
             if (enableCache || canBeBuffered)
@@ -591,24 +593,36 @@ namespace Nemo
             where TResult : class, IBusinessObject
         {
             var fakeType = typeof(Fake);
-            IList<Type> realTypes = new List<Type>();
-            Func<Type, bool> predicate = t => fakeType != t;
-            realTypes.AddIf(typeof(TResult), predicate);
-            realTypes.AddIf(typeof(T1), predicate);
-            realTypes.AddIf(typeof(T2), predicate);
-            realTypes.AddIf(typeof(T3), predicate);
-            realTypes.AddIf(typeof(T4), predicate);
-            var returnType = OperationReturnType.DataTable;
+            var realTypes = new List<Type>();
+            realTypes.Add(typeof(TResult));
+            if (fakeType != typeof(T1))
+            {
+                realTypes.Add(typeof(T1));
+            }
+            if (fakeType != typeof(T2))
+            {
+                realTypes.Add(typeof(T2));
+            }
+            if (fakeType != typeof(T3))
+            {
+                realTypes.Add(typeof(T3));
+            }
+            if (fakeType != typeof(T4))
+            {
+                realTypes.Add(typeof(T4));
+            }
+
+            var returnType = OperationReturnType.SingleResult;
 
             if (mode == FetchMode.Default) mode = ObjectFactory.Configuration.DefaultFetchMode;
             if (materialization == MaterializationMode.Default) materialization = ObjectFactory.Configuration.DefaultMaterializationMode;
 
             Func<object[], TResult> func = null;
-            if (realTypes.Count > 1 && map == null)
+            if (map == null && realTypes.Count > 1)
             {
                 returnType = mode == FetchMode.Lazy ? OperationReturnType.MultiResult : OperationReturnType.DataSet;
             }
-            else if (realTypes.Count > 1 && map != null)
+            else if (map != null && realTypes.Count > 1)
             {
                 switch (realTypes.Count)
                 {
@@ -625,14 +639,15 @@ namespace Nemo
                         func = args => map.Curry((TResult)args[0], (T1)args[1])(null, null, null);
                         break;
                 }
-                returnType = OperationReturnType.SingleResult;
             }
-            else if (realTypes.Count == 1 && mode == FetchMode.Lazy)
+            else if (mode == FetchMode.Eager && realTypes.Count == 1)
             {
-                returnType = OperationReturnType.SingleResult;
+                returnType = OperationReturnType.DataTable;
             }
 
-            return RetrieveImplemenation<TResult, T1, T2, T3, T4>(sql ?? operation, sql == null ? OperationType.StoredProcedure : OperationType.Sql, parameters, returnType, connectionName, connection, func, realTypes, materialization);
+            var command = sql ?? operation;
+            var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
+            return RetrieveImplemenation<TResult, T1, T2, T3, T4>(command, commandType, parameters, returnType, connectionName, connection, func, realTypes, materialization);
         }
 
         public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OPERATION_RETRIEVE, string sql = null, ParamList parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
@@ -860,7 +875,7 @@ namespace Nemo
                 }
                 else
                 {
-                    returnType = OperationReturnType.DataTable;
+                    returnType = OperationReturnType.SingleResult;
                 }
             }
 
@@ -935,10 +950,10 @@ namespace Nemo
                         }
                         // else MultiResult
                         closeConnection = false;
-                        if (closeConnection)
-                        {
-                            behavior |= CommandBehavior.CloseConnection;
-                        }
+                        //if (closeConnection)
+                        //{
+                        //    behavior |= CommandBehavior.CloseConnection;
+                        //}
                         response.Value = command.ExecuteReader(behavior);
                         break;
                     case OperationReturnType.Scalar:
@@ -1039,8 +1054,7 @@ namespace Nemo
         private static IEnumerable<T> Transform<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool buffered, MaterializationMode mode)
             where T : class, IBusinessObject
         {
-            if (mode == MaterializationMode.Default) mode = ObjectFactory.Configuration.DefaultMaterializationMode;
-            var isInterface = typeof(T).IsInterface;
+            var isInterface = Reflector.GetReflectedType<T>().IsInterface;
 
             object value = response.Value;
             if (value == null)

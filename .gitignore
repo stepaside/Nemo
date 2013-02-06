@@ -4,3 +4,6 @@ obj
 
 # mstest test results
 TestResults
+/NemoSolution\Nemo/Nemo.suo
+/NemoSolution\Nemo/Nemo.sln.docstates.suo
+/NemoSolution\Nemo/packages

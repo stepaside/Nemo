@@ -13,7 +13,7 @@ namespace Nemo
         SingleResult, 
         SingleRow, 
         Scalar, 
-        DataSet, 
+        DataSet,
         DataTable
     }
 }
