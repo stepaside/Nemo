@@ -120,6 +120,9 @@
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
     <Compile Include="Caching\IDistributedCounter.cs" />
+    <Compile Include="Caching\IOptimisticConcurrencyProvider.cs" />
+    <Compile Include="Caching\IPersistentCacheProvider.cs" />
+    <Compile Include="Caching\IStaleCacheProvider.cs" />
     <Compile Include="Caching\NemoTranscoder.cs" />
     <Compile Include="Caching\TemporalValue.cs" />
     <Compile Include="Caching\Providers\CouchbaseCacheProvider.cs" />
@@ -196,7 +199,7 @@
     <Compile Include="OperationReturnType.cs" />
     <Compile Include="OperationResponse.cs" />
     <Compile Include="Caching\CacheFactory.cs" />
-    <Compile Include="Caching\DistributedCacheProvider.cs" />
+    <Compile Include="Caching\DistributedCacheProviderWithLockManager.cs" />
     <Compile Include="Caching\Providers\LocalCacheProvider.cs" />
     <Compile Include="Caching\Providers\DistributedLocalCacheProvider.cs" />
     <Compile Include="Caching\CacheProvider.cs" />

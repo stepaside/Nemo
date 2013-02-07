@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Runtime.Caching;
 using Nemo.Collections.Extensions;
+using System;
 
 namespace Nemo.Caching.Providers
 {
@@ -110,6 +111,11 @@ namespace Nemo.Caching.Providers
         {
             var computedKeys = ComputeKey(keys);
             return MemoryCache.GetValues(keys);
+        }
+
+        public override bool Touch(string key, TimeSpan lifeSpan)
+        {
+            return false;
         }
     }
 }

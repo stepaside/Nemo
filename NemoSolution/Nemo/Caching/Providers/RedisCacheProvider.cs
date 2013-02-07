@@ -6,11 +6,15 @@ using Nemo.Serialization;
 using Nemo.Utilities;
 using System.Collections.Concurrent;
 using Nemo.Extensions;
+using System.Threading;
 
 namespace Nemo.Caching.Providers
 {
-    public class RedisCacheProvider : CacheProvider
+    public class RedisCacheProvider : CacheProvider, IDistributedCacheProvider, IDistributedCounter, IPersistentCacheProvider
     {
+        private const int LOCK_DEFAULT_RETRIES = 4;
+        private const double LOCK_DEFAULT_MAXDELAY = 0.7;
+        
         #region Static Declarations
 
         private static Dictionary<string, RedisConnection> _redisConnectionList = new Dictionary<string, RedisConnection>();
@@ -69,7 +73,7 @@ namespace Nemo.Caching.Providers
         private string _hostName;
         private RedisConnection _connection;
 
-        public RedisCacheProvider(int database, string hostName)
+        internal RedisCacheProvider(int database, string hostName)
             : base(CacheType.Redis, null)
         {
             _database = database;
@@ -100,6 +104,7 @@ namespace Nemo.Caching.Providers
 
         public override object Remove(string key)
         {
+            key = ComputeKey(key);
             var taskGet = _connection.Strings.Get(_database, key);
             var taskRemove = _connection.Keys.Remove(_database, key);
             taskGet.Wait();
@@ -108,6 +113,7 @@ namespace Nemo.Caching.Providers
 
         public override bool Clear(string key)
         {
+            key = ComputeKey(key);
             var taskRemove = _connection.Keys.Remove(_database, key);
             taskRemove.Wait();
             return taskRemove.Result;
@@ -115,6 +121,7 @@ namespace Nemo.Caching.Providers
 
         public override bool AddNew(string key, object val)
         {
+            key = ComputeKey(key);
             var data = SerializationWriter.WriteObjectWithType(val);
             var taskAdd = _connection.Strings.SetIfNotExists(_database, key, data);
             taskAdd.Wait();
@@ -123,6 +130,7 @@ namespace Nemo.Caching.Providers
 
         public override bool Save(string key, object val)
         {
+            key = ComputeKey(key);
             var data = SerializationWriter.WriteObjectWithType(val);
             var taskAdd = _connection.Strings.Set(_database, key, data);
             taskAdd.Wait();
@@ -135,7 +143,7 @@ namespace Nemo.Caching.Providers
             foreach (var item in items)
             {
                 var data = SerializationWriter.WriteObjectWithType(item.Value);
-                values.Add(item.Key, data);
+                values.Add(ComputeKey(item.Key), data);
             }
 
             var taskAdd = _connection.Strings.Set(_database, values);
@@ -144,6 +152,12 @@ namespace Nemo.Caching.Providers
         }
 
         public override object Retrieve(string key)
+        {
+            key = ComputeKey(key);
+            return RetrieveNonModifedKey(key);
+        }
+
+        private object RetrieveNonModifedKey(string key)
         {
             var taskGet = _connection.Strings.Get(_database, key);
             taskGet.Wait();
@@ -158,21 +172,139 @@ namespace Nemo.Caching.Providers
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
         {
-            var keysArray = keys.ToArray();
+            var keyMap = ComputeKey(keys);
+            var keysArray = keyMap.Keys.ToArray();
+            var realKeysArray = keyMap.Values.ToArray();
             var taskGet = _connection.Strings.Get(_database, keysArray);
             taskGet.Wait();
                 
             var result = new Dictionary<string, object>();
-            for (int i = 0; i < keysArray.Length; i++)
+            for (int i = 0; i < realKeysArray.Length; i++)
             {
                 var buffer = taskGet.Result[i];
                 if (buffer != null)
                 {
-                    var item = SerializationReader.ReadObjectWithType(buffer);                    
-                    result[keysArray[i]] = item;
+                    var item = SerializationReader.ReadObjectWithType(buffer);
+                    result[realKeysArray[i]] = item;
                 }
             }
             return result;
         }
+
+        public override bool Touch(string key, TimeSpan lifeSpan)
+        {
+            return false;
+        }
+
+        #region IDistributedCounter Members
+
+        public ulong Increment(string key, ulong delta = 1)
+        {
+            key = ComputeKey(key);
+            var task = _connection.Strings.Increment(_database, key, (long)delta);
+            task.Wait();
+            return (ulong)task.Result;
+        }
+
+        public ulong Decrement(string key, ulong delta = 1)
+        {
+            key = ComputeKey(key);
+            var task = _connection.Strings.Decrement(_database, key, (long)delta);
+            task.Wait();
+            return (ulong)task.Result;
+        }
+
+        #endregion
+
+        #region IDistributedCacheProvider Members
+
+        public void AcquireLock(string key)
+        {
+            if (!TryAcquireLock(key))
+            {
+                throw new ApplicationException(string.Format("Could not acquire lock for '{0}'", key));
+            }
+        }
+
+        public bool TryAcquireLock(string key)
+        {
+            var originalKey = key;
+            key = ComputeKey(key);
+            key = "LOCK::" + key;
+
+            var value = Environment.MachineName + "::" + Thread.CurrentThread.ManagedThreadId + "::" + DateTime.Now.Ticks + "::" + new Random().NextDouble();
+
+            var taskLock = _connection.Strings.TakeLock(_database, key, value, 180);
+            taskLock.Wait();
+            var stored = taskLock.Result;
+
+            if (stored)
+            {
+                Log.Capture(() => string.Format("Acquired lock for {0}", originalKey));
+            }
+            else
+            {
+                Increment(key);
+                Log.Capture(() => string.Format("Failed to acquire lock for {0}", originalKey));
+            }
+            return stored;
+        }
+
+        public object WaitForItems(string key, int count = -1)
+        {
+            if (count < 0) count = LOCK_DEFAULT_RETRIES;
+
+            object result = null;
+            double totalSleepTime = 0;
+            var sleepTime = TimeSpan.Zero;
+            count = count <= 0 ? 1 : count;
+            for (int i = 0; i < count; i++)
+            {
+                // Check if items have been added thus the lock has been released 
+                result = Retrieve(key);
+                if (result != null)
+                {
+                    break;
+                }
+
+                if (sleepTime == TimeSpan.Zero)
+                {
+                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((ulong)RetrieveNonModifedKey("LOCK::" + ComputeKey(key)) - 0.5), LOCK_DEFAULT_MAXDELAY));
+                }
+                else
+                {
+                    sleepTime = TimeSpan.FromSeconds(sleepTime.TotalSeconds / 2);
+                }
+
+                totalSleepTime += sleepTime.TotalSeconds;
+                Log.Capture(() => string.Format("Waiting for locked key {0} (sleep time {1} s)", key, sleepTime.TotalSeconds));
+                Thread.Sleep(sleepTime);
+            }
+            Log.Capture(() => string.Format("Finished waiting for locked key {0} (value is {2}present, total wait time {1} s)", key, totalSleepTime, result == null ? "not " : string.Empty));
+            return result;
+        }
+
+        public bool ReleaseLock(string key)
+        {
+            var originalKey = key;
+            key = ComputeKey(key);
+            key = "LOCK::" + key;
+
+            var task = _connection.Strings.ReleaseLock(_database, key);
+            task.Wait();
+            var removed = task.IsCompleted && !task.IsFaulted && !task.IsCanceled;
+
+            if (removed)
+            {
+                Log.Capture(() => string.Format("Removed lock for {0}", originalKey));
+            }
+            else
+            {
+                Log.Capture(() => string.Format("Failed to remove lock for {0}", originalKey));
+            }
+            return removed;
+        }
+
+        #endregion
     }
 }

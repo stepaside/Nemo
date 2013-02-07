@@ -70,5 +70,10 @@ namespace Nemo.Caching.Providers
             var computedKeys = ComputeKey(keys);
             return computedKeys.ToDictionary(key => key.Value, key => ExecutionContext.Get(key.Key));
         }
+
+        public override bool Touch(string key, TimeSpan lifeSpan)
+        {
+            return false;
+        }
     }
 }

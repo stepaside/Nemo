@@ -64,6 +64,19 @@ namespace Nemo.Caching
         public abstract bool Save(IDictionary<string, object> items);
         public abstract object Retrieve(string key);
         public abstract IDictionary<string, object> Retrieve(IEnumerable<string> keys);
+        public abstract bool Touch(string key, TimeSpan lifeSpan);
+
+        public Tuple<object, bool> RetrieveAndTouch(string key, TimeSpan lifeSpan)
+        {
+            var result = Retrieve(key);
+            var success = false;
+            if (result != null)
+            {
+                success = Touch(key, lifeSpan);
+            }
+            return Tuple.Create(result, success);
+        }
+
         
         public bool IsDistributed
         {

@@ -9,7 +9,11 @@ using Enyim.Caching.Memcached;
 
 namespace Nemo.Caching.Providers
 {
-    public class CouchbaseCacheProvider : DistributedCacheProvider<CouchbaseCacheProvider>, IDistributedCounter
+    public class CouchbaseCacheProvider : DistributedCacheProviderWithLockManager<CouchbaseCacheProvider>
+                                        , IDistributedCounter
+                                        , IOptimisticConcurrencyProvider
+                                        , IStaleCacheProvider
+                                        , IPersistentCacheProvider
     {
         #region Static Declarations
 
@@ -63,7 +67,7 @@ namespace Nemo.Caching.Providers
             }
         }
 
-        public override bool CheckAndSave(string key, object val, ulong cas)
+        public bool CheckAndSave(string key, object val, ulong cas)
         {
             key = ComputeKey(key);
             val = ComputeValue(val, DateTimeOffset.Now);
@@ -86,7 +90,7 @@ namespace Nemo.Caching.Providers
             return result.Result;
         }
 
-        public override Tuple<object, ulong> RetrieveWithCas(string key)
+        public Tuple<object, ulong> RetrieveWithCas(string key)
         {
             key = ComputeKey(key);
             var casResult = _couchbaseClient.GetWithCas(key);
@@ -106,7 +110,7 @@ namespace Nemo.Caching.Providers
             return Tuple.Create(result, casResult.Cas);
         }
 
-        public override IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys)
+        public IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys)
         {
             var computedKeys = ComputeKey(keys);
             var items = _couchbaseClient.GetWithCas(computedKeys.Keys);
@@ -212,14 +216,14 @@ namespace Nemo.Caching.Providers
             return true;
         }
 
-        public override object RetrieveStale(string key)
+        public object RetrieveStale(string key)
         {
             key = ComputeKey(key);
             var result = _couchbaseClient.Get(key);
             return ((TemporalValue)result).Value;
         }
 
-        public override IDictionary<string, object> RetrieveStale(IEnumerable<string> keys)
+        public IDictionary<string, object> RetrieveStale(IEnumerable<string> keys)
         {
             var computedKeys = ComputeKey(keys);
             var items = _couchbaseClient.Get(computedKeys.Keys);

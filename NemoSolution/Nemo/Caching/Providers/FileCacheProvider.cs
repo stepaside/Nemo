@@ -10,7 +10,7 @@ using Nemo.Collections.Extensions;
 
 namespace Nemo.Caching.Providers
 {
-    public class FileCacheProvider : CacheProvider
+    public class FileCacheProvider : CacheProvider, IPersistentCacheProvider
     {
         public const string CACHE_FILE_EXTENSION = ".cache";
         
@@ -197,6 +197,11 @@ namespace Nemo.Caching.Providers
                 }
             }
             return result;
+        }
+
+        public override bool Touch(string key, TimeSpan lifeSpan)
+        {
+            return false;
         }
 
         private void Write(string file, object value)

@@ -7,33 +7,13 @@ using Nemo.Fn;
 
 namespace Nemo.Caching
 {
-    public abstract class DistributedCacheProvider<TLockManager> : CacheProvider, IDistributedCacheProvider
+    public abstract class DistributedCacheProviderWithLockManager<TLockManager> : CacheProvider, IDistributedCacheProvider
         where TLockManager : CacheProvider, IDistributedCacheProvider, IDistributedCounter
     {
-        private static object _cacheLock = new object();
-        
-        public abstract bool CheckAndSave(string key, object val, ulong cas);
-        public abstract Tuple<object, ulong> RetrieveWithCas(string key);
-        public abstract IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys);
-        public abstract bool Touch(string key, TimeSpan lifeSpan);
-        public abstract object RetrieveStale(string key);
-        public abstract IDictionary<string, object> RetrieveStale(IEnumerable<string> keys);
-        
-        public Tuple<object, bool> RetrieveAndTouch(string key, TimeSpan lifeSpan)
-        {
-            var result = Retrieve(key);
-            var success = false;
-            if (result != null)
-            {
-                success = Touch(key, lifeSpan);
-            }
-            return Tuple.Create(result, success);
-        }
-
         private const int LOCK_DEFAULT_RETRIES = 4;
         private const double LOCK_DEFAULT_MAXDELAY = 0.7;
         
-        protected DistributedCacheProvider(TLockManager lockManager, CacheType cacheType, CacheOptions options)
+        protected DistributedCacheProviderWithLockManager(TLockManager lockManager, CacheType cacheType, CacheOptions options)
             : base(cacheType, options)
         {
             LockManager = lockManager;
@@ -61,7 +41,7 @@ namespace Nemo.Caching
                 return true;
             }
 
-            var isStaleCacheEnabled = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache;
+            var isStaleCacheEnabled = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider;
             
             var originalKey = key;
             key = ComputeKey(key);
@@ -144,7 +124,7 @@ namespace Nemo.Caching
                 return true;
             }
 
-            var isStaleCacheEnabled = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache;
+            var isStaleCacheEnabled = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider;
 
             var originalKey = key;
             key = ComputeKey(key);
@@ -168,7 +148,7 @@ namespace Nemo.Caching
 
         protected object ComputeValue(object value, DateTimeOffset currentDateTime)
         {
-            if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache)
+            if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
             {
                 switch (ExpirationType)
                 {
@@ -192,7 +172,7 @@ namespace Nemo.Caching
         {
             get
             {
-                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache)
+                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
                 {
                     return base.ExpiresAt.AddMinutes(ObjectFactory.Configuration.StaleCacheTimeout);
                 }
@@ -211,7 +191,7 @@ namespace Nemo.Caching
         {
             get
             {
-                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache)
+                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
                 {
                     return base.ExpiresAtSpecificTime.Do(d => d.AddMinutes(ObjectFactory.Configuration.StaleCacheTimeout));
                 }
@@ -226,7 +206,7 @@ namespace Nemo.Caching
         {
             get
             {
-                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache)
+                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
                 {
                     return base.LifeSpan.Add(TimeSpan.FromMinutes(ObjectFactory.Configuration.StaleCacheTimeout));
                 }

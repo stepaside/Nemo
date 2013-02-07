@@ -224,9 +224,9 @@ namespace Nemo.Caching
                 if (cacheType != CacheType.None)
                 {
                     var cache = CacheFactory.GetProvider(cacheType);
-                    if (cache.IsDistributed && allowStale)
+                    if (allowStale && cache is IStaleCacheProvider)
                     {
-                        return ((IDistributedCacheProvider)cache).RetrieveStale(queryKey) as string[];
+                        return ((IStaleCacheProvider)cache).RetrieveStale(queryKey) as string[];
                     }
                     else
                     {
@@ -262,9 +262,9 @@ namespace Nemo.Caching
             if (cacheType != CacheType.None)
             {
                 var cache = CacheFactory.GetProvider(cacheType);
-                if (cache.IsDistributed && allowStale)
+                if (allowStale && cache is IStaleCacheProvider)
                 {
-                    item = new CacheItem(key, (byte[])((IDistributedCacheProvider)cache).RetrieveStale(key));
+                    item = new CacheItem(key, (byte[])((IStaleCacheProvider)cache).RetrieveStale(key));
                 }
                 else if (cache.IsOutOfProcess)
                 {
@@ -303,9 +303,9 @@ namespace Nemo.Caching
                     {
                         var key = keys.First();
                         CacheItem item;
-                        if (cache.IsDistributed && allowStale)
+                        if (allowStale && cache is IStaleCacheProvider)
                         {
-                            item = new CacheItem(key, (byte[])((IDistributedCacheProvider)cache).RetrieveStale(key));
+                            item = new CacheItem(key, (byte[])((IStaleCacheProvider)cache).RetrieveStale(key));
                         }
                         else
                         {
@@ -320,9 +320,9 @@ namespace Nemo.Caching
                     else
                     {
                         IDictionary<string, CacheItem> map;
-                        if (cache.IsDistributed && allowStale)
+                        if (allowStale && cache is IStaleCacheProvider)
                         {
-                            map = ((IDistributedCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
+                            map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
                         }
                         else
                         {
@@ -339,9 +339,9 @@ namespace Nemo.Caching
                 else
                 {
                     IDictionary<string, CacheItem> map;
-                    if (cache.IsDistributed && allowStale)
+                    if (allowStale && cache is IStaleCacheProvider)
                     {
-                        map = ((IDistributedCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
+                        map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
                     }
                     else
                     {
@@ -548,9 +548,9 @@ namespace Nemo.Caching
                             }
                         }
                     }
-                    else if (cacheContentMitigation == CacheContentionMitigationType.UseStaleCache)
+                    else if (cacheContentMitigation == CacheContentionMitigationType.UseStaleCache && cache is IStaleCacheProvider)
                     {
-                        keys = ((IDistributedCacheProvider)cache).RetrieveStale(queryKey) as string[];
+                        keys = ((IStaleCacheProvider)cache).RetrieveStale(queryKey) as string[];
                     }
                     else if (cacheContentMitigation == CacheContentionMitigationType.DistributedLocking)
                     {

@@ -9,7 +9,7 @@ using System.Runtime.Caching;
 
 namespace Nemo.Caching.Providers
 {
-    public class DistributedLocalCacheProvider : DistributedCacheProvider<MemcachedProvider>
+    public class DistributedLocalCacheProvider : DistributedCacheProviderWithLockManager<MemcachedProvider>, IStaleCacheProvider
     {
         private MemoryCache MemoryCache = MemoryCache.Default;
         private MemcachedClient _memcachedClient;
@@ -21,21 +21,6 @@ namespace Nemo.Caching.Providers
             : base(new MemcachedProvider(options != null ? options.ClusterName : MemcachedProvider.DefaultClusterName), CacheType.DistributedLocal, options)
         {
             _memcachedClient = MemcachedProvider.GetMemcachedClient(options != null ? options.ClusterName : MemcachedProvider.DefaultClusterName);
-        }
-
-        public override bool CheckAndSave(string key, object val, ulong cas)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override Tuple<object, ulong> RetrieveWithCas(string key)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys)
-        {
-            throw new NotSupportedException();
         }
 
         public override void RemoveAll()
@@ -146,15 +131,15 @@ namespace Nemo.Caching.Providers
 
         public override bool Touch(string key, TimeSpan lifeSpan)
         {
-            throw new NotImplementedException();
+            return false;
         }
 
-        public override object RetrieveStale(string key)
+        public object RetrieveStale(string key)
         {
             return Retrieve(key, true);
         }
 
-        public override IDictionary<string, object> RetrieveStale(IEnumerable<string> keys)
+        public IDictionary<string, object> RetrieveStale(IEnumerable<string> keys)
         {
             return Retrieve(keys, true);
         }

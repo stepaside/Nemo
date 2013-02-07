@@ -10,7 +10,7 @@ using Nemo.Utilities;
 
 namespace Nemo.Caching.Providers
 {
-    public class MemcachedProvider : DistributedCacheProvider<MemcachedProvider>, IDistributedCounter
+    public class MemcachedProvider : DistributedCacheProviderWithLockManager<MemcachedProvider>, IDistributedCounter, IOptimisticConcurrencyProvider, IStaleCacheProvider
     {
         #region Static Declarations
 
@@ -63,7 +63,7 @@ namespace Nemo.Caching.Providers
             }
         }
 
-        public override bool CheckAndSave(string key, object val, ulong cas)
+        public bool CheckAndSave(string key, object val, ulong cas)
         {
             key = ComputeKey(key);
             val = ComputeValue(val, DateTimeOffset.Now);
@@ -86,7 +86,7 @@ namespace Nemo.Caching.Providers
             return result.Result;
         }
 
-        public override Tuple<object, ulong> RetrieveWithCas(string key)
+        public Tuple<object, ulong> RetrieveWithCas(string key)
         {
             key = ComputeKey(key);
             var casResult = _memcachedClient.GetWithCas(key);
@@ -106,7 +106,7 @@ namespace Nemo.Caching.Providers
             return Tuple.Create(result, casResult.Cas);
         }
 
-        public override IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys)
+        public IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys)
         {
             var computedKeys = ComputeKey(keys);
             var items = _memcachedClient.GetWithCas(computedKeys.Keys);
@@ -225,14 +225,14 @@ namespace Nemo.Caching.Providers
             return success;
         }
 
-        public override object RetrieveStale(string key)
+        public object RetrieveStale(string key)
         {
             key = ComputeKey(key);
             var result = _memcachedClient.Get(key);
             return ((TemporalValue)result).Value;
         }
 
-        public override IDictionary<string, object> RetrieveStale(IEnumerable<string> keys)
+        public IDictionary<string, object> RetrieveStale(IEnumerable<string> keys)
         {
             var computedKeys = ComputeKey(keys);
             var items = _memcachedClient.Get(computedKeys.Keys);
