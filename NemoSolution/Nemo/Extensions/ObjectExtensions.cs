@@ -236,7 +236,7 @@ namespace Nemo.Extensions
                     }
                 }
 
-                ObjectCache.RemoveLinks(businessObject);
+                ObjectCache.RemoveDependencies(businessObject);
 
                 SetOutputParameterValues<T>(businessObject, outputProperties, propertyMap, parameters);
 

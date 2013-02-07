@@ -70,7 +70,7 @@ namespace Nemo.Caching
             var stored = false;
             if (ObjectFactory.Configuration.DistributedLockVerification)
             {
-                // Value is a combination of the machine name, thread id and tandom value
+                // Value is a combination of the machine name, thread id and random value
                 var ticket = "TICKET::" + key;
                 var value = Environment.MachineName + "::" + Thread.CurrentThread.ManagedThreadId + "::" + DateTime.Now.Ticks + "::" + new Random().NextDouble();
                 stored = LockManager.AddNew(ticket, value);

@@ -111,7 +111,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Attributes\CacheLinkAttribute.cs" />
+    <Compile Include="Attributes\CacheDependencyAttribute.cs" />
     <Compile Include="Attributes\ConnectionAttribute.cs" />
     <Compile Include="Attributes\DoNotSerializeAttribute.cs" />
     <Compile Include="Attributes\DoNotPersistAttribute.cs" />
@@ -170,7 +170,7 @@
     <Compile Include="UnitOfWork\ChangeTrackingMode.cs" />
     <Compile Include="UnitOfWork\ObjectScopeExtensions.cs" />
     <Compile Include="Caching\CacheOptions.cs" />
-    <Compile Include="Caching\CacheLink.cs" />
+    <Compile Include="Caching\CacheDependency.cs" />
     <Compile Include="Caching\ContextLevelCacheType.cs" />
     <Compile Include="Caching\HashAlgorithmName.cs" />
     <Compile Include="Caching\IDistributedCacheProvider.cs" />
@@ -199,7 +199,6 @@
     <Compile Include="Caching\DistributedCacheProvider.cs" />
     <Compile Include="Caching\Providers\LocalCacheProvider.cs" />
     <Compile Include="Caching\Providers\DistributedLocalCacheProvider.cs" />
-    <Compile Include="Caching\ICachedObjectProvider.cs" />
     <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Extensions\CastExtensions.cs" />
     <Compile Include="OperationType.cs" />

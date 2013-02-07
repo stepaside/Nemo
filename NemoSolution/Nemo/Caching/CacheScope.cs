@@ -38,7 +38,7 @@ namespace Nemo.Caching
             }
         }
 
-        public CacheScope(bool buffered = true, CacheType cacheType = CacheType.None, CacheOptions options = null, CacheLink[] links = null) 
+        public CacheScope(bool buffered = true, CacheType cacheType = CacheType.None, CacheOptions options = null, CacheDependency[] dependencies = null) 
         {
             Provider = CacheFactory.GetProvider(cacheType, options);
             Buffered = buffered;
@@ -51,7 +51,7 @@ namespace Nemo.Caching
                 }
             }
             HashAlgorithm = options != null && options.HashAlgorithm.HasValue ? options.HashAlgorithm.Value : HashAlgorithmName.Default;
-            Links = links;
+            Dependencies = dependencies;
             CacheScope.Scopes.Push(this);
         }
 
@@ -124,7 +124,7 @@ namespace Nemo.Caching
             private set;
         }
 
-        public CacheLink[] Links
+        public CacheDependency[] Dependencies
         {
             get;
             private set;

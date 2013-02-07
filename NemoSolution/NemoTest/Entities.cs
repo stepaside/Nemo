@@ -13,7 +13,7 @@ namespace NemoTest
 {
     [Table("Customers")]
     //[Cache]
-    //[CacheLink(typeof(IOrder), DependentParameter = "CustomerId", ValueProperty = "Id")]
+    //[CacheDependency(typeof(IOrder), DependentProperty = "CustomerId", ValueProperty = "Id")]
     public interface ICustomer : IBusinessObject
     {
         [PrimaryKey, MapColumn("CustomerID"), Parameter("CustomerID")]

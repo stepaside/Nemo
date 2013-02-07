@@ -67,22 +67,22 @@ namespace Nemo.Caching
             return CacheType.None;
         }
 
-        internal static IList<CacheLink> GetCacheLinks<T>()
+        internal static IList<CacheDependency> GetCacheDependencies<T>()
            where T : class, IBusinessObject
         {
             if (CacheScope.Current != null)
             {
-                return CacheScope.Current.Links;
+                return CacheScope.Current.Dependencies;
             }
 
-            var links = new List<CacheLink>();
-            var attrList = Reflector.GetAttributeList<T, CacheLinkAttribute>();
+            var dependencies = new List<CacheDependency>();
+            var attrList = Reflector.GetAttributeList<T, CacheDependencyAttribute>();
             for (int i = 0; i < attrList.Count; i++ )
             {
                 var attr = attrList[i];
-                links.Add(new CacheLink { DependentType = attr.DependentType, DependentParameter = attr.DependentParameter, ValueProperty = attr.ValueProperty });
+                dependencies.Add(new CacheDependency { DependentType = attr.DependentType, DependentProperty = attr.DependentProperty, ValueProperty = attr.ValueProperty });
             }
-            return links;
+            return dependencies;
         }
 
         internal static HashAlgorithmName GetHashAlgorithm(Type objectType)
@@ -711,22 +711,22 @@ namespace Nemo.Caching
                     success = cache.Clear(key);
                     if (success)
                     {
-                        RemoveLinks<T>(item);
+                        RemoveDependencies<T>(item);
                     }
                 }
             }
             return success;
         }
 
-        internal static void RemoveLinks<T>(T item)
+        internal static void RemoveDependencies<T>(T item)
             where T : class, IBusinessObject
         {
             // Clear cache dependencies if there are any
-            var dependencies = GetCacheLinks<T>();
+            var dependencies = GetCacheDependencies<T>();
             if (dependencies != null && dependencies.Count > 0)
             {
-                var validDependecies = dependencies.Where(d => d.DependentType != null && d.DependentParameter.NullIfEmpty() != null && d.ValueProperty.NullIfEmpty() != null);
-                var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param { Name = d.DependentParameter, Value = item.Property(d.ValueProperty) }).ToList());
+                var validDependecies = dependencies.Where(d => d.DependentType != null && d.DependentProperty.NullIfEmpty() != null && d.ValueProperty.NullIfEmpty() != null);
+                var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param { Name = d.DependentProperty, Value = item.Property(d.ValueProperty) }).ToList());
 
                 parameterValuesByType.AsParallel().ForAll(p => 
                 {
