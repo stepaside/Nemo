@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace Nemo.Caching.Providers
 {
-    public class RedisCacheProvider : CacheProvider, IDistributedCacheProvider, IDistributedCounter, IPersistentCacheProvider
+    public class RedisCacheProvider : DistributedCacheProviderWithLockManager<RedisCacheProvider>, IDistributedCounter, IPersistentCacheProvider
     {
         private const int LOCK_DEFAULT_RETRIES = 4;
         private const double LOCK_DEFAULT_MAXDELAY = 0.7;
@@ -74,7 +74,7 @@ namespace Nemo.Caching.Providers
         private RedisConnection _connection;
 
         internal RedisCacheProvider(int database, string hostName)
-            : base(CacheType.Redis, null)
+            : base(null, CacheType.Redis, null)
         {
             _database = database;
             _hostName = hostName;
@@ -82,7 +82,7 @@ namespace Nemo.Caching.Providers
         }
 
         public RedisCacheProvider(CacheOptions options = null)
-            : base(CacheType.Redis, options)
+            : base(new RedisCacheProvider(options != null ? options.Database : DefaultDatabase, options != null ? options.HostName : DefaultHostName), CacheType.Redis, options)
         {
             _database = options != null ? options.Database : DefaultDatabase;
             _hostName = options != null ? options.HostName : DefaultHostName;
@@ -154,10 +154,10 @@ namespace Nemo.Caching.Providers
         public override object Retrieve(string key)
         {
             key = ComputeKey(key);
-            return RetrieveNonModifedKey(key);
+            return RetrieveUsingRawKey(key);
         }
 
-        private object RetrieveNonModifedKey(string key)
+        public override object RetrieveUsingRawKey(string key)
         {
             var taskGet = _connection.Strings.Get(_database, key);
             taskGet.Wait();
@@ -212,97 +212,6 @@ namespace Nemo.Caching.Providers
             var task = _connection.Strings.Decrement(_database, key, (long)delta);
             task.Wait();
             return (ulong)task.Result;
-        }
-
-        #endregion
-
-        #region IDistributedCacheProvider Members
-
-        public void AcquireLock(string key)
-        {
-            if (!TryAcquireLock(key))
-            {
-                throw new ApplicationException(string.Format("Could not acquire lock for '{0}'", key));
-            }
-        }
-
-        public bool TryAcquireLock(string key)
-        {
-            var originalKey = key;
-            key = ComputeKey(key);
-            key = "LOCK::" + key;
-
-            var value = Environment.MachineName + "::" + Thread.CurrentThread.ManagedThreadId + "::" + DateTime.Now.Ticks + "::" + new Random().NextDouble();
-
-            var taskLock = _connection.Strings.TakeLock(_database, key, value, 180);
-            taskLock.Wait();
-            var stored = taskLock.Result;
-
-            if (stored)
-            {
-                Log.Capture(() => string.Format("Acquired lock for {0}", originalKey));
-            }
-            else
-            {
-                Increment(key);
-                Log.Capture(() => string.Format("Failed to acquire lock for {0}", originalKey));
-            }
-            return stored;
-        }
-
-        public object WaitForItems(string key, int count = -1)
-        {
-            if (count < 0) count = LOCK_DEFAULT_RETRIES;
-
-            object result = null;
-            double totalSleepTime = 0;
-            var sleepTime = TimeSpan.Zero;
-            count = count <= 0 ? 1 : count;
-            for (int i = 0; i < count; i++)
-            {
-                // Check if items have been added thus the lock has been released 
-                result = Retrieve(key);
-                if (result != null)
-                {
-                    break;
-                }
-
-                if (sleepTime == TimeSpan.Zero)
-                {
-                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((ulong)RetrieveNonModifedKey("LOCK::" + ComputeKey(key)) - 0.5), LOCK_DEFAULT_MAXDELAY));
-                }
-                else
-                {
-                    sleepTime = TimeSpan.FromSeconds(sleepTime.TotalSeconds / 2);
-                }
-
-                totalSleepTime += sleepTime.TotalSeconds;
-                Log.Capture(() => string.Format("Waiting for locked key {0} (sleep time {1} s)", key, sleepTime.TotalSeconds));
-                Thread.Sleep(sleepTime);
-            }
-            Log.Capture(() => string.Format("Finished waiting for locked key {0} (value is {2}present, total wait time {1} s)", key, totalSleepTime, result == null ? "not " : string.Empty));
-            return result;
-        }
-
-        public bool ReleaseLock(string key)
-        {
-            var originalKey = key;
-            key = ComputeKey(key);
-            key = "LOCK::" + key;
-
-            var task = _connection.Strings.ReleaseLock(_database, key);
-            task.Wait();
-            var removed = task.IsCompleted && !task.IsFaulted && !task.IsCanceled;
-
-            if (removed)
-            {
-                Log.Capture(() => string.Format("Removed lock for {0}", originalKey));
-            }
-            else
-            {
-                Log.Capture(() => string.Format("Failed to remove lock for {0}", originalKey));
-            }
-            return removed;
         }
 
         #endregion

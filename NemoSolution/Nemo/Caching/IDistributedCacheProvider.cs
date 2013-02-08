@@ -7,6 +7,7 @@ namespace Nemo.Caching
 {
     public interface IDistributedCacheProvider
     {
+        object RetrieveUsingRawKey(string key);
         void AcquireLock(string key);
         bool TryAcquireLock(string key);
         object WaitForItems(string key, int count = -1);

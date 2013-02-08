@@ -182,24 +182,7 @@ namespace Nemo.Caching.Providers
         public override object Retrieve(string key)
         {
             key = ComputeKey(key);
-            var result = _couchbaseClient.Get(key);
-            if (result != null && result is TemporalValue)
-            {
-                var staleValue = (TemporalValue)result;
-                if (staleValue.IsValid())
-                {
-                    return staleValue.Value;
-                }
-                else
-                {
-                    return null;
-                }
-            }
-            else if (SlidingExpiration && result != null)
-            {
-                Store(StoreMode.Replace, key, result, DateTimeOffset.Now);
-            }
-            return result;
+            return RetrieveUsingRawKey(key);
         }
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
@@ -260,6 +243,28 @@ namespace Nemo.Caching.Providers
                     break;
             }
             return success;
+        }
+
+        public override object RetrieveUsingRawKey(string key)
+        {
+            var result = _couchbaseClient.Get(key);
+            if (result != null && result is TemporalValue)
+            {
+                var staleValue = (TemporalValue)result;
+                if (staleValue.IsValid())
+                {
+                    return staleValue.Value;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else if (SlidingExpiration && result != null)
+            {
+                Store(StoreMode.Replace, key, result, DateTimeOffset.Now);
+            }
+            return result;
         }
     }
 }

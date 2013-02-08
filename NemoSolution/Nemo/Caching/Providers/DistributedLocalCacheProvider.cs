@@ -162,40 +162,7 @@ namespace Nemo.Caching.Providers
         private object Retrieve(string key, bool allowStale)
         {
             key = ComputeKey(key);
-            object result = null;
-            var globalTimestamp = _memcachedClient.Get(TIMESTAMP_GLOBAL + key);
-            var localTimestamp = MemoryCache.Get(TIMESTAMP_LOCAL + key);
-            if (localTimestamp != null && globalTimestamp != null && (DateTimeOffset)localTimestamp == (DateTimeOffset)globalTimestamp)
-            {
-                result = MemoryCache.Get(key);
-                // if local cache expires we need to remove the global timestamp
-                // thus expiring all local caches
-                if (result == null)
-                {
-                    _memcachedClient.Remove(TIMESTAMP_GLOBAL + key);
-                }
-                else
-                {
-                    if (!allowStale && result is TemporalValue)
-                    {
-                        var staleValue = (TemporalValue)result;
-                        if (staleValue.IsValid())
-                        {
-                            result = staleValue.Value;
-                        }
-                        else
-                        {
-                            result = null;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                MemoryCache.Remove(key);
-            }
-
-            return result;
+            return RetrieveUsingRawKey(key, allowStale);   
         }
 
         private IDictionary<string, object> Retrieve(IEnumerable<string> keys, bool allowStale)
@@ -260,6 +227,49 @@ namespace Nemo.Caching.Providers
 
             items = items.ToDictionary(i => computedKeys[i.Key], i => i.Value);
             return items;
+        }
+
+        public override object RetrieveUsingRawKey(string key)
+        {
+            return RetrieveUsingRawKey(key, false);
+        }
+
+        private object RetrieveUsingRawKey(string key, bool allowStale)
+        {
+            object result = null;
+            var globalTimestamp = _memcachedClient.Get(TIMESTAMP_GLOBAL + key);
+            var localTimestamp = MemoryCache.Get(TIMESTAMP_LOCAL + key);
+            if (localTimestamp != null && globalTimestamp != null && (DateTimeOffset)localTimestamp == (DateTimeOffset)globalTimestamp)
+            {
+                result = MemoryCache.Get(key);
+                // if local cache expires we need to remove the global timestamp
+                // thus expiring all local caches
+                if (result == null)
+                {
+                    _memcachedClient.Remove(TIMESTAMP_GLOBAL + key);
+                }
+                else
+                {
+                    if (!allowStale && result is TemporalValue)
+                    {
+                        var staleValue = (TemporalValue)result;
+                        if (staleValue.IsValid())
+                        {
+                            result = staleValue.Value;
+                        }
+                        else
+                        {
+                            result = null;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                MemoryCache.Remove(key);
+            }
+
+            return result;
         }
     }
 }

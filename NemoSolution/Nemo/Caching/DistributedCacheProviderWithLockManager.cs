@@ -26,6 +26,8 @@ namespace Nemo.Caching
             private set;
         }
 
+        public abstract object RetrieveUsingRawKey(string key);
+
         public void AcquireLock(string key)
         {
             if (!TryAcquireLock(key))
@@ -102,7 +104,7 @@ namespace Nemo.Caching
 
                 if (sleepTime == TimeSpan.Zero)
                 {
-                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((ulong)LockManager.Retrieve("LOCK::" + key) - 0.5), LOCK_DEFAULT_MAXDELAY));
+                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((ulong)LockManager.RetrieveUsingRawKey("LOCK::" + key) - 0.5), LOCK_DEFAULT_MAXDELAY));
                 }
                 else
                 {
