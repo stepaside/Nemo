@@ -408,7 +408,7 @@ namespace Nemo
             }
         }
 
-        private static IEnumerable<TResult> RetrieveImplemenation<TResult, T1, T2, T3, T4>(string operation, OperationType operationType, Param[] parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default)
+        private static IEnumerable<TResult> RetrieveImplemenation<TResult, T1, T2, T3, T4>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default)
             where T1 : class, IBusinessObject
             where T2 : class, IBusinessObject
             where T3 : class, IBusinessObject
@@ -585,7 +585,7 @@ namespace Nemo
         /// <param name="connectionName"></param>
         /// <param name="stream"></param>
         /// <returns></returns>
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OPERATION_RETRIEVE, string sql = null, Param[] parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
             where T1 : class, IBusinessObject
             where T2 : class, IBusinessObject
             where T3 : class, IBusinessObject
@@ -647,20 +647,22 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            return RetrieveImplemenation<TResult, T1, T2, T3, T4>(command, commandType, parameters, returnType, connectionName, connection, func, realTypes, materialization);
+            IList<Param> parameterList = null;
+            if (parameters != null)
+            {
+                if (parameters is ParamList)
+                {
+                    parameterList = ((ParamList)parameters).ExtractParameters(typeof(TResult), operation);
+                }
+                else if (parameters is Param[])
+                {
+                    parameterList = (Param[])parameters;
+                }
+            }
+            return RetrieveImplemenation<TResult, T1, T2, T3, T4>(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OPERATION_RETRIEVE, string sql = null, ParamList parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
-            where T1 : class, IBusinessObject
-            where T2 : class, IBusinessObject
-            where T3 : class, IBusinessObject
-            where T4 : class, IBusinessObject
-            where TResult : class, IBusinessObject
-        {
-            return Retrieve<TResult, T1, T2, T3, T4>(operation, sql, parameters != null ? parameters.ExtractParameters(typeof(TResult), operation) : null, map, connectionName, connection, mode, materialization);
-        }
-
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OPERATION_RETRIEVE, string sql = null, Param[] parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
             where T1 : class, IBusinessObject
             where T2 : class, IBusinessObject
             where T3 : class, IBusinessObject
@@ -670,16 +672,7 @@ namespace Nemo
             return Retrieve<TResult, T1, T2, T3, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OPERATION_RETRIEVE, string sql = null, ParamList parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
-            where T1 : class, IBusinessObject
-            where T2 : class, IBusinessObject
-            where T3 : class, IBusinessObject
-            where TResult : class, IBusinessObject
-        {
-            return Retrieve<TResult, T1, T2, T3>(operation, sql, parameters != null ? parameters.ExtractParameters(typeof(TResult), operation) : null, map, connectionName, connection, mode, materialization);
-        }
-
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OPERATION_RETRIEVE, string sql = null, Param[] parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
             where T1 : class, IBusinessObject
             where T2 : class, IBusinessObject
             where TResult : class, IBusinessObject
@@ -688,15 +681,7 @@ namespace Nemo
             return Retrieve<TResult, T1, T2, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OPERATION_RETRIEVE, string sql = null, ParamList parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
-            where T1 : class, IBusinessObject
-            where T2 : class, IBusinessObject
-            where TResult : class, IBusinessObject
-        {
-            return Retrieve<TResult, T1, T2>(operation, sql, parameters != null ? parameters.ExtractParameters(typeof(TResult), operation) : null, map, connectionName, connection, mode, materialization);
-        }
-
-        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OPERATION_RETRIEVE, string sql = null, Param[] parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
             where T1 : class, IBusinessObject
             where TResult : class, IBusinessObject
         {
@@ -704,14 +689,7 @@ namespace Nemo
             return Retrieve<TResult, T1, Fake, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OPERATION_RETRIEVE, string sql = null, ParamList parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
-            where T1 : class, IBusinessObject
-            where TResult : class, IBusinessObject
-        {
-            return Retrieve<TResult, T1>(operation, sql, parameters != null ? parameters.ExtractParameters(typeof(TResult), operation) : null, map, connectionName, connection, mode, materialization);
-        }
-
-        public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, Param[] parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
             where T : class, IBusinessObject
         {
             var returnType = OperationReturnType.SingleResult;
@@ -723,13 +701,19 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(command, commandType, parameters, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization);
-        }
-
-        public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, ParamList parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
-            where T : class, IBusinessObject
-        {
-            return Retrieve<T>(operation, sql, parameters != null ? parameters.ExtractParameters(typeof(T), operation) : null, connectionName, connection, mode, materialization);
+            IList<Param> parameterList = null;
+            if (parameters != null)
+            {
+                if (parameters is ParamList)
+                {
+                    parameterList = ((ParamList)parameters).ExtractParameters(typeof(T), operation);
+                }
+                else if (parameters is Param[])
+                {
+                    parameterList = (Param[])parameters;
+                }
+            }
+            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization);
         }
 
         internal class Fake : IBusinessObject { }
@@ -897,7 +881,7 @@ namespace Nemo
             command.CommandTimeout = 0;
             if (parameters != null)
             {
-                for (int i = 0; i < parameters.Count; i++)
+                for (int i = 0; i < parameters.Count; ++i)
                 {
                     var parameter = parameters[i];
                     var dbParam = command.CreateParameter();
@@ -1063,14 +1047,15 @@ namespace Nemo
         private static IEnumerable<T> Transform<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool buffered, MaterializationMode mode)
             where T : class, IBusinessObject
         {
-            var isInterface = Reflector.GetReflectedType<T>().IsInterface;
-
             object value = response.Value;
             if (value == null)
             {
                 return Enumerable.Empty<T>();
             }
-            else if (value is IDataReader)
+
+            var isInterface = Reflector.GetReflectedType<T>().IsInterface;
+
+            if (value is IDataReader)
             {
                 if (map == null && types != null && types.Count > 1)
                 {
@@ -1082,34 +1067,38 @@ namespace Nemo
                     return ConvertDataReader<T>((IDataReader)value, map, types, mode, isInterface);
                 }
             }
-            else if (value is DataSet)
+            
+            if (value is DataSet)
             {
                 return ConvertDataSet<T>((DataSet)value, mode, isInterface);
             }
-            else if (value is DataTable)
+            
+            if (value is DataTable)
             {
                 return ConvertDataTable<T>((DataTable)value, mode, isInterface);
             }
-            else if (value is DataRow)
+            
+            if (value is DataRow)
             {
                 return ConvertDataRow<T>((DataRow)value, mode, isInterface).Return();
             }
-            else if (value is T)
+            
+            if (value is T)
             {
                 return ((T)value).Return();
             }
-            else if (value is IList<T>)
+            
+            if (value is IList<T>)
             {
                 return (IList<T>)value;
             }
-            else if (value is IList)
+            
+            if (value is IList)
             {
                 return ((IEnumerable)value).Cast<object>().Select(i => mode == MaterializationMode.Exact ? Map<T>(i) : Bind<T>(i));
             }
-            else
-            {
-                return Bind<T>(value).Return();
-            }
+            
+            return Bind<T>(value).Return();
         }
 
         private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, MaterializationMode mode, bool isInterface)

@@ -5,6 +5,7 @@ using System.Linq;
 using Nemo.Attributes;
 using Nemo.Collections.Extensions;
 using Nemo.Extensions;
+using Nemo.Fn;
 using Nemo.Reflection;
 using Nemo.Serialization;
 
@@ -188,10 +189,11 @@ namespace Nemo.Caching
             canBeBuffered = false;
             cacheType = CacheType.None;
 
-            if (CacheScope.Current != null)
+            var cacheScope = CacheScope.Current;
+            if (cacheScope != null)
             {
-                canBeBuffered = CacheScope.Current.Buffered;
-                cacheType = CacheScope.Current.Type;
+                canBeBuffered = cacheScope.Buffered;
+                cacheType = cacheScope.Type;
             }
             else
             {
@@ -207,7 +209,7 @@ namespace Nemo.Caching
                 }
                 else
                 {
-                    canBeBuffered = cacheType == CacheType.None || CacheFactory.GetProvider(cacheType).IsOutOfProcess;
+                    canBeBuffered = cacheType == CacheType.None || CacheFactory.GetProvider(cacheType).ToMaybe().Let(c => c.HasValue ? c.Value.IsOutOfProcess : false);
                 }
             }
         }
