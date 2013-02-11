@@ -188,9 +188,11 @@ namespace NemoTest
 
             RunNative(500);
             RunExecute(500);
-            RunDapper(1500, false);
-            RunRetrieve(1500, false);
+            RunDapper(500, false);
+            RunRetrieve(500, false);
             RunNativeWithMapper(500);
+
+            return;
 
             //var buffer = customer.Serialize();
             //var new_customer = SerializationExtensions.Deserialize<ICustomer>(buffer);

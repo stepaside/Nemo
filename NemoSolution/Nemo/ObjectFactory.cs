@@ -714,7 +714,16 @@ namespace Nemo
         public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, Param[] parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
             where T : class, IBusinessObject
         {
-            return Retrieve<T, Fake, Fake, Fake, Fake>(operation, sql, parameters, null, connectionName, connection, mode, materialization);
+            var returnType = OperationReturnType.SingleResult;
+
+            if (mode == FetchMode.Default) mode = ObjectFactory.Configuration.DefaultFetchMode;
+            if (mode == FetchMode.Eager) returnType = OperationReturnType.DataTable;
+
+            if (materialization == MaterializationMode.Default) materialization = ObjectFactory.Configuration.DefaultMaterializationMode;
+
+            var command = sql ?? operation;
+            var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
+            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(command, commandType, parameters, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization);
         }
 
         public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, ParamList parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
