@@ -14,8 +14,6 @@ namespace Nemo.Caching
         SHA1, 
         SHA2, 
         JenkinsHash, 
-        TigerHash, 
-        FNV, 
         SBox, 
         HMAC_SHA1,
         SuperFastHash,

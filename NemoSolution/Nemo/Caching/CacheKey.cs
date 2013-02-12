@@ -185,12 +185,6 @@ namespace Nemo.Caching
                             data = BitConverter.GetBytes(h);
                             break;
                         }
-                    case HashAlgorithmName.TigerHash:
-                        data = this.ComputeHash(Enyim.TigerHash.Create());
-                        break;
-                    case HashAlgorithmName.FNV:
-                        data = this.ComputeHash(Enyim.ModifiedFNV.Create());
-                        break;
                     case HashAlgorithmName.None:
                         value = maxSize >= _value.Length ? _value : _value.Substring(0, maxSize);
                         data = Encoding.UTF8.GetBytes(value);
