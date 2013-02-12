@@ -8,6 +8,7 @@ using System.Linq.Expressions;
 using Nemo.Reflection;
 using Nemo.Extensions;
 using System.Collections.Concurrent;
+using Nemo.Utilities;
 
 namespace Nemo
 {
@@ -51,33 +52,36 @@ namespace Nemo
 
         internal Param[] ExtractParameters(Type objectType, string operation)
         {
-            var result = new List<Param>();
-            foreach (var expression in this.ToList())
+            var result = new Param[this.Count];
+            for (int i = 0; i < this.Count; ++i)
             {
-                var key = Tuple.Create(objectType, operation, expression.Parameters[0].Name, expression.Body.Type); 
+                var expression = this[i];
+                var parameterName = expression.Parameters[0].Name;
+                var returnType = expression.Body.Type;
+                var key = Tuple.Create(objectType, operation, parameterName, returnType);
                 Func<Tuple<Type, string, string, Type>, Func<object, object>> valueFactory = t => expression.Compile();
                 var func = _parameterCache.GetOrAdd(key, valueFactory);
 
-                var parameter = new Param { Name = key.Item3};
+                var parameter = new Param { Name = parameterName };
 
-                if (Reflector.IsAnonymousType(key.Item4))
+                if (Reflector.IsAnonymousType(returnType))
                 {
-                    parameter = new Param(Adapter.Bind<Param>(func(null)));
-                    parameter.Name = parameter.Name ?? key.Item3;
+                    parameter = Adapter.Bind<Param>(func(null));
+                    parameter.Name = parameter.Name ?? parameterName;
                 }
-                else if (key.Item4.InheritsFrom(typeof(Param)))
+                else if (returnType.InheritsFrom(typeof(Param)))
                 {
                     parameter = (Param)func(null);
-                    parameter.Name = parameter.Name ?? key.Item3;
+                    parameter.Name = parameter.Name ?? parameterName;
                 }
                 else
                 {
                     parameter.Value = func(null);
                 }
 
-                result.Add(parameter);
+                result[i] = parameter;
             }
-            return result.ToArray();
+            return result;
         }
     }
 }
