@@ -43,6 +43,7 @@ namespace Nemo.Reflection
             }
             IsGenericType = type.IsGenericType;
             IsInterface = type.IsInterface;
+            IsAnonymous = Reflector.IsAnonymousType(type);
         }
 
         public string TypeName
@@ -160,6 +161,12 @@ namespace Nemo.Reflection
         }
 
         public bool IsInterface
+        {
+            get;
+            private set;
+        }
+
+        public bool IsAnonymous
         {
             get;
             private set;

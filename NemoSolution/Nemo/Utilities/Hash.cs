@@ -11,18 +11,26 @@ namespace Nemo.Utilities
             internal static uint Compute<T>(IEnumerable<T> values, Func<T, uint> hashFunction = null)
             {
                 var hash = 0u;
-                foreach (var value in values)
+                if (hashFunction == null)
                 {
-                    if (hashFunction != null)
+                    foreach (var value in values)
+                    {
+                        if ((object)value != null)
+                        {
+                            hash += (uint)value.GetHashCode();
+                        }
+                        hash += (hash << 10);
+                        hash ^= (hash >> 6);
+                    }
+                }
+                else
+                {
+                    foreach (var value in values)
                     {
                         hash += hashFunction(value);
+                        hash += (hash << 10);
+                        hash ^= (hash >> 6);
                     }
-                    else
-                    {
-                        hash += (uint)value.GetHashCode();
-                    }
-                    hash += (hash << 10);
-                    hash ^= (hash >> 6);
                 }
 
                 hash += (hash << 3);

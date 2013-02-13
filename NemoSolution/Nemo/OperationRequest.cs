@@ -15,7 +15,7 @@ namespace Nemo
         private IList<Param> _parameters = new List<Param>();
         private OperationReturnType _returnType = OperationReturnType.Guess;
         private OperationType _operationType = OperationType.Guess;
-        private int? _requestId = null;
+        
         [NonSerialized]
         private DbConnection _connection = null;
         [NonSerialized]
@@ -112,26 +112,7 @@ namespace Nemo
         }
 
         public bool CaptureException { get; set; }
-
-        internal int RequestId
-        {
-            get
-            {
-                if (_requestId == null)
-                {
-                    var hashCode = 17;
-                    hashCode = hashCode * 23 + Connection.ConnectionString.GetHashCode();
-                    hashCode = hashCode * 23 + Operation.GetHashCode();
-                    foreach (var parameter in Parameters.OrderBy(p => p.Name))
-                    {
-                        hashCode = hashCode * 23 + parameter.Name.GetHashCode();
-                    }
-                    _requestId = hashCode;
-                }
-                return _requestId.Value;
-            }
-        }
-
+        
         private static DbConnection GetConnection(string connectionString)
         {
             string providerName = null;

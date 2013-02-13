@@ -64,15 +64,13 @@ namespace Nemo
 
                 var parameter = new Param { Name = parameterName };
 
-                if (Reflector.IsAnonymousType(returnType))
-                {
-                    parameter = Adapter.Bind<Param>(func(null));
-                    parameter.Name = parameter.Name ?? parameterName;
-                }
-                else if (returnType.InheritsFrom(typeof(Param)))
+                if (returnType == typeof(Param))
                 {
                     parameter = (Param)func(null);
-                    parameter.Name = parameter.Name ?? parameterName;
+                    if (parameter.Name == null)
+                    {
+                        parameter.Name = parameterName;
+                    }
                 }
                 else
                 {

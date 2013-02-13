@@ -63,6 +63,14 @@ namespace Nemo.Collections
             }
         }
 
+        public event EventHandler<SortedListEventArguments> ItemAdded;
+        public event EventHandler<SortedListEventArguments> ItemRemoved;
+
+        public class SortedListEventArguments : EventArgs
+        {
+            public T Item { get; internal set; }
+        }
+
         #region IList<T> Members
 
         public int IndexOf(T item)
@@ -108,6 +116,10 @@ namespace Nemo.Collections
             if (!_distinct || notFound)
             {
                 _list.Insert(index, item);
+                if (ItemAdded != null)
+                {
+                    ItemAdded(this, new SortedListEventArguments { Item = item });
+                }
             }
         }
 
@@ -154,6 +166,10 @@ namespace Nemo.Collections
             if (index > -1)
             {
                 _list.RemoveAt(index);
+                if (ItemRemoved != null)
+                {
+                    ItemRemoved(this, new SortedListEventArguments { Item = item });
+                }
                 return true;
             }
             return false;
