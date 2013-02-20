@@ -10,7 +10,7 @@ using Nemo.Utilities;
 
 namespace Nemo.Caching.Providers
 {
-    public class MemcachedProvider : DistributedCacheProviderWithLockManager<MemcachedProvider>
+    public class MemcachedCacheProvider : DistributedCacheProviderWithLockManager<MemcachedCacheProvider>
                                     , IDistributedCounter
                                     , IOptimisticConcurrencyProvider
                                     , IStaleCacheProvider
@@ -45,13 +45,13 @@ namespace Nemo.Caching.Providers
         #region Constructors
 
         // This one is used to provide lock management
-        internal MemcachedProvider(string clusterName) : base(null, null) 
+        internal MemcachedCacheProvider(string clusterName) : base(null, null) 
         {
             _memcachedClient = GetMemcachedClient(clusterName);
         }
 
-        public MemcachedProvider(CacheOptions options = null)
-            : base(new MemcachedProvider(options != null ? options.ClusterName : DefaultClusterName), options)
+        public MemcachedCacheProvider(CacheOptions options = null)
+            : base(new MemcachedCacheProvider(options != null ? options.ClusterName : DefaultClusterName), options)
         {
             _memcachedClient = GetMemcachedClient(options != null ? options.ClusterName : DefaultClusterName);
         }
@@ -128,14 +128,6 @@ namespace Nemo.Caching.Providers
         public override void RemoveAll()
         {
             _memcachedClient.FlushAll();
-        }
-
-        public override void RemoveByNamespace()
-        {
-            if (!string.IsNullOrEmpty(_cacheNamespace))
-            {
-                _namespaceVersion = _memcachedClient.Increment(_cacheNamespace, 1, 1);
-            }
         }
 
         public override object Remove(string key)

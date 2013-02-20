@@ -12,7 +12,7 @@ namespace Nemo.Caching
     {
         private readonly bool _userContext;
         protected readonly string _cacheNamespace;
-        protected ulong? _namespaceVersion = null;
+        private ulong? _namespaceVersion = null;
 
         private bool _slidingExpiration;
         private CacheExpirationType _expirationType = CacheExpirationType.Never;
@@ -50,11 +50,18 @@ namespace Nemo.Caching
             }
         }
 
-        public abstract void RemoveAll();
         public virtual void RemoveByNamespace()
         {
-            throw new NotSupportedException();
+            if (this is IDistributedCounter)
+            {
+                if (!string.IsNullOrEmpty(_cacheNamespace))
+                {
+                    _namespaceVersion = ((IDistributedCounter)this).Increment(_cacheNamespace);
+                }
+            }
         }
+
+        public abstract void RemoveAll();
         public abstract object Remove(string key);
         public abstract bool Clear(string key);
         public abstract bool AddNew(string key, object val);

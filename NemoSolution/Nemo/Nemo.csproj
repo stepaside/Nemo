@@ -180,7 +180,7 @@
     <Compile Include="Caching\CacheScope.cs" />
     <Compile Include="Caching\Providers\FileCacheProvider.cs" />
     <Compile Include="Caching\Providers\ExecutionContextCacheProvider.cs" />
-    <Compile Include="Caching\Providers\MemcachedProvider.cs" />
+    <Compile Include="Caching\Providers\MemcachedCacheProvider.cs" />
     <Compile Include="Caching\Providers\RedisCacheProvider.cs" />
     <Compile Include="Collections\MultiResult.cs" />
     <Compile Include="Collections\TypeArray.cs" />

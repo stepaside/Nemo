@@ -131,14 +131,6 @@ namespace Nemo.Caching.Providers
             _couchbaseClient.FlushAll();
         }
 
-        public override void RemoveByNamespace()
-        {
-            if (!string.IsNullOrEmpty(_cacheNamespace))
-            {
-                _namespaceVersion = _couchbaseClient.Increment(_cacheNamespace, 1, 1);
-            }
-        }
-
         public override object Remove(string key)
         {
             key = ComputeKey(key);

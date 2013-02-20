@@ -9,7 +9,7 @@ using System.Runtime.Caching;
 
 namespace Nemo.Caching.Providers
 {
-    public class DistributedMemoryCacheProvider : DistributedCacheProviderWithLockManager<MemcachedProvider>, IStaleCacheProvider
+    public class DistributedMemoryCacheProvider : DistributedCacheProviderWithLockManager<MemcachedCacheProvider>, IStaleCacheProvider
     {
         private MemoryCache MemoryCache = MemoryCache.Default;
         private MemcachedClient _memcachedClient;
@@ -18,9 +18,9 @@ namespace Nemo.Caching.Providers
         private const string TIMESTAMP_LOCAL = "TIMESTAMP_LOCAL::";
 
         public DistributedMemoryCacheProvider(CacheOptions options = null)
-            : base(new MemcachedProvider(options != null ? options.ClusterName : MemcachedProvider.DefaultClusterName), options)
+            : base(new MemcachedCacheProvider(options != null ? options.ClusterName : MemcachedCacheProvider.DefaultClusterName), options)
         {
-            _memcachedClient = MemcachedProvider.GetMemcachedClient(options != null ? options.ClusterName : MemcachedProvider.DefaultClusterName);
+            _memcachedClient = MemcachedCacheProvider.GetMemcachedClient(options != null ? options.ClusterName : MemcachedCacheProvider.DefaultClusterName);
         }
 
         public override void RemoveAll()
