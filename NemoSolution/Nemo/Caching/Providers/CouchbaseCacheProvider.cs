@@ -46,13 +46,13 @@ namespace Nemo.Caching.Providers
 
         // This one is used to provide lock management
         internal CouchbaseCacheProvider(string bucketName, string bucketPassword)
-            : base(null, CacheType.Couchbase, null) 
+            : base(null, null) 
         {
             _couchbaseClient = GetCouchbaseClient(bucketName, bucketPassword);
         }
 
         public CouchbaseCacheProvider(CacheOptions options = null)
-            : base(new CouchbaseCacheProvider(options != null ? options.ClusterName : DefaultBucketName, options != null ? options.ClusterPassword : null), CacheType.Couchbase, options)
+            : base(new CouchbaseCacheProvider(options != null ? options.ClusterName : DefaultBucketName, options != null ? options.ClusterPassword : null), options)
         {
             _couchbaseClient = GetCouchbaseClient(options != null ? options.ClusterName : DefaultBucketName, options != null ? options.ClusterPassword : null);
         }

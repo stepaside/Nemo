@@ -57,7 +57,7 @@ namespace Nemo.Caching
                         case "hostname":
                             HostName = nvp[key];
                             break;
-                        case "Database":
+                        case "database":
                             Database = nvp[key].SafeCast<int>();
                             break;
                     }

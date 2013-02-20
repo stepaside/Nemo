@@ -9,7 +9,7 @@ namespace Nemo.Caching.Providers
     public class ExecutionContextCacheProvider : CacheProvider
     {
         public ExecutionContextCacheProvider(CacheOptions options = null)
-            : base(CacheType.ExecutionContext, options)
+            : base(options)
         { }
 
         public override void RemoveAll()

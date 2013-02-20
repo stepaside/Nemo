@@ -1,15 +1,6 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Transactions;
-using Nemo.Attributes;
+﻿using Nemo.Attributes;
 using Nemo.Caching;
+using Nemo.Caching.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
@@ -20,6 +11,16 @@ using Nemo.Fn.Extensions;
 using Nemo.Reflection;
 using Nemo.Serialization;
 using Nemo.Utilities;
+using System;
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Transactions;
 using ObjectActivator = Nemo.Reflection.Activator.ObjectActivator;
 
 namespace Nemo
@@ -419,14 +420,14 @@ namespace Nemo
             IEnumerable<TResult> result = null;
 
             bool canBeBuffered;
-            CacheType cacheType;
+            Type cacheType;
             ObjectCache.GetCacheInfo<TResult>(out canBeBuffered, out cacheType);
-            var enableCache = cacheType != CacheType.None;
+            var enableCache = cacheType != null;
 
             CacheProvider bufferCache = null;
             if (canBeBuffered)
             {
-                bufferCache = CacheFactory.GetProvider(CacheType.ExecutionContext);
+                bufferCache = new ExecutionContextCacheProvider();
             }
 
             CacheItem[] cachedItems = null;

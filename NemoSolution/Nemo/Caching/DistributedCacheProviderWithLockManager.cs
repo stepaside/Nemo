@@ -13,8 +13,8 @@ namespace Nemo.Caching
         private const int LOCK_DEFAULT_RETRIES = 4;
         private const double LOCK_DEFAULT_MAXDELAY = 0.7;
         
-        protected DistributedCacheProviderWithLockManager(TLockManager lockManager, CacheType cacheType, CacheOptions options)
-            : base(cacheType, options)
+        protected DistributedCacheProviderWithLockManager(TLockManager lockManager, CacheOptions options)
+            : base(options)
         {
             LockManager = lockManager;
             LockManager.LifeSpan = TimeSpan.FromMinutes(ObjectFactory.Configuration.DistributedLockTimeout);

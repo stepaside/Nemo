@@ -1,6 +1,7 @@
-﻿using Nemo.Caching;
-using Nemo.UnitOfWork;
+﻿using System;
+using Nemo.Caching;
 using Nemo.Serialization;
+using Nemo.UnitOfWork;
 
 namespace Nemo.Configuration
 {
@@ -26,6 +27,7 @@ namespace Nemo.Configuration
         bool GenerateDeleteSql { get; }
         bool GenerateInsertSql { get; }
         bool GenerateUpdateSql { get; }
+        Type DefaultCacheProvider { get; }
 
         IConfiguration ToggleDistributedLockVerification(bool value);
         IConfiguration SetContextLevelCache(ContextLevelCacheType value);
@@ -47,5 +49,6 @@ namespace Nemo.Configuration
         IConfiguration ToggleGenerateDeleteSql(bool value);
         IConfiguration ToggleGenerateInsertSql(bool value);
         IConfiguration ToggleGenerateUpdateSql(bool value);
+        IConfiguration SetDefaultCacheProvider(Type value);
     }
 }

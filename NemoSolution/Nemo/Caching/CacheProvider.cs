@@ -10,7 +10,6 @@ namespace Nemo.Caching
 {
     public abstract class CacheProvider
     {
-        private readonly CacheType _cacheType;
         private readonly bool _userContext;
         protected readonly string _cacheNamespace;
         protected ulong? _namespaceVersion = null;
@@ -21,9 +20,8 @@ namespace Nemo.Caching
         private Maybe<DateTimeOffset> _expiresAt;
         private string _timeOfDay;
         
-        protected CacheProvider(CacheType cacheType, CacheOptions options)
+        protected CacheProvider(CacheOptions options)
         {
-            _cacheType = cacheType;
             if (options != null)
             {
                 _cacheNamespace = options.Namespace;
@@ -91,14 +89,6 @@ namespace Nemo.Caching
             get
             {
                 return false;
-            }
-        }
-
-        public CacheType Type
-        {
-            get
-            {
-                return _cacheType;
             }
         }
 

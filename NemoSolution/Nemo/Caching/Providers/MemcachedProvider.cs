@@ -45,13 +45,13 @@ namespace Nemo.Caching.Providers
         #region Constructors
 
         // This one is used to provide lock management
-        internal MemcachedProvider(string clusterName) : base(null, CacheType.Memcached, null) 
+        internal MemcachedProvider(string clusterName) : base(null, null) 
         {
             _memcachedClient = GetMemcachedClient(clusterName);
         }
 
         public MemcachedProvider(CacheOptions options = null)
-            : base(new MemcachedProvider(options != null ? options.ClusterName : DefaultClusterName), CacheType.Memcached, options)
+            : base(new MemcachedProvider(options != null ? options.ClusterName : DefaultClusterName), options)
         {
             _memcachedClient = GetMemcachedClient(options != null ? options.ClusterName : DefaultClusterName);
         }

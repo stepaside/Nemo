@@ -1,35 +1,36 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using Nemo.Attributes;
+﻿using Nemo.Attributes;
+using Nemo.Caching.Providers;
 using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
 using Nemo.Serialization;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Nemo.Caching
 {
     public static class ObjectCache
     {
         private static ConcurrentDictionary<string, object> _cacheLocks = new ConcurrentDictionary<string, object>();
-        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => CacheFactory.GetProvider(CacheType.Redis), true);
+        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => new RedisCacheProvider(), true);
 
         #region Helper Methods
 
         internal static bool IsCacheable<T>()
             where T : class,IBusinessObject
         {
-            return GetCacheType<T>() != CacheType.None;
+            return GetCacheType<T>() != null;
         }
 
         internal static bool IsCacheable(Type objectType)
         {
-            return GetCacheType(objectType) != CacheType.None;
+            return GetCacheType(objectType) != null;
         }
 
-        internal static CacheType GetCacheType<T>()
+        internal static Type GetCacheType<T>()
             where T : class, IBusinessObject
         {
             if (CacheScope.Current != null)
@@ -42,10 +43,10 @@ namespace Nemo.Caching
             {
                 return attribute.Type;
             }
-            return CacheType.None;
+            return null;
         }
 
-        internal static CacheType GetCacheType(Type objectType)
+        internal static Type GetCacheType(Type objectType)
         {
             if (CacheScope.Current != null)
             {
@@ -62,10 +63,10 @@ namespace Nemo.Caching
                 var attribute = Reflector.GetAttribute<CacheAttribute>(objectType, false);
                 if (attribute != null)
                 {
-                    return attribute.Type;
+                    return attribute.Type ?? ObjectFactory.Configuration.DefaultCacheProvider;
                 }
             }
-            return CacheType.None;
+            return null;
         }
 
         internal static IList<CacheDependency> GetCacheDependencies<T>()
@@ -180,14 +181,14 @@ namespace Nemo.Caching
             }
 
             var cacheType = GetCacheType<T>();
-            return cacheType == CacheType.None || CacheFactory.GetProvider(cacheType).IsOutOfProcess;
+            return cacheType == null || CacheFactory.GetProvider(cacheType).IsOutOfProcess;
         }
 
-        internal static void GetCacheInfo<T>(out bool canBeBuffered, out CacheType cacheType)
+        internal static void GetCacheInfo<T>(out bool canBeBuffered, out Type cacheType)
             where T : class, IBusinessObject
         {
             canBeBuffered = false;
-            cacheType = CacheType.None;
+            cacheType = null;
 
             var cacheScope = CacheScope.Current;
             if (cacheScope != null)
@@ -209,7 +210,7 @@ namespace Nemo.Caching
                 }
                 else
                 {
-                    canBeBuffered = cacheType == CacheType.None || CacheFactory.GetProvider(cacheType).ToMaybe().Let(c => c.HasValue ? c.Value.IsOutOfProcess : false);
+                    canBeBuffered = cacheType == null || CacheFactory.GetProvider(cacheType).ToMaybe().Let(c => c.HasValue ? c.Value.IsOutOfProcess : false);
                 }
             }
         }
@@ -223,7 +224,7 @@ namespace Nemo.Caching
             if (!string.IsNullOrEmpty(queryKey))
             {
                 var cacheType = GetCacheType(objectType);
-                if (cacheType != CacheType.None)
+                if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType);
                     if (allowStale && cache is IStaleCacheProvider)
@@ -261,7 +262,7 @@ namespace Nemo.Caching
         {
             var cacheType = GetCacheType(typeof(T));
             CacheItem item = null;
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var cache = CacheFactory.GetProvider(cacheType);
                 if (allowStale && cache is IStaleCacheProvider)
@@ -296,7 +297,7 @@ namespace Nemo.Caching
         {
             var cacheType = GetCacheType(typeof(T));
             var keyCount = keys.Count();
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
                 if (cache.IsOutOfProcess)
@@ -372,7 +373,7 @@ namespace Nemo.Caching
         public static IEnumerable<string> LookupQueriesByParameterName(Type type, IEnumerable<string> parameters)
         {
             var cacheType = GetCacheType(type);
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var typeKey = GetTypeKey(type, false, false);
                 var keys = parameters.Select(p => string.Concat(typeKey, "::", p.ToUpper()));
@@ -391,7 +392,7 @@ namespace Nemo.Caching
         public static IEnumerable<string> LookupQueriesByParameter(Type type, IList<Param> parameters)
         {
             var cacheType = GetCacheType(type);
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var typeKey = GetTypeKey(type, false, false);
                 var parameterSet = parameters.GroupBy(p => p.Name).ToDictionary(g => string.Concat(typeKey, "::", g.Key.ToUpper()), g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -441,7 +442,7 @@ namespace Nemo.Caching
         {
             var cacheType = GetCacheType(type);
             var typeKey = GetTypeKey(type, queriesOnly, false);
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var typeKeySet = _trackingCache.Value.Retrieve(typeKey) as HashSet<string>;
                 return typeKeySet;
@@ -529,7 +530,7 @@ namespace Nemo.Caching
             string[] keys = null;
             var cacheType = GetCacheType(typeof(T));
 
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
                 
@@ -595,7 +596,7 @@ namespace Nemo.Caching
                 DateTime expiresAt = DateTime.MinValue;
                 var cacheType = GetCacheType(typeof(T));
                 var key = new CacheKey(item).Value;
-                if (cacheType != CacheType.None)
+                if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
 
@@ -680,7 +681,7 @@ namespace Nemo.Caching
         internal static bool Remove(Type objectType, string queryKey)
         {
             var cacheType = GetCacheType(objectType);
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(objectType));
                 var success = cache.Clear(queryKey);
@@ -707,7 +708,7 @@ namespace Nemo.Caching
             {
                 var cacheType = GetCacheType<T>();
                 var key = new CacheKey(item).Value;
-                if (cacheType != CacheType.None)
+                if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
                     success = cache.Clear(key);
@@ -733,7 +734,7 @@ namespace Nemo.Caching
                 parameterValuesByType.AsParallel().ForAll(p => 
                 {
                     var targetCacheType = GetCacheType(p.Key);
-                    if (targetCacheType != CacheType.None)
+                    if (targetCacheType != null)
                     {
                         var keys = LookupQueriesByParameter(p.Key, p.Value);
                         var targetCache = CacheFactory.GetProvider(targetCacheType);
@@ -759,7 +760,7 @@ namespace Nemo.Caching
         internal static bool ClearQueries(Type type, IList<Param> parameters)
         {
             var cacheType = GetCacheType(type);
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(type));
                 var queries = LookupQueriesByParameter(type, parameters);
@@ -778,7 +779,7 @@ namespace Nemo.Caching
         internal static bool ClearQueries(Type type, IEnumerable<string> parameters)
         {
             var cacheType = GetCacheType(type);
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(type));
                 var queries = LookupQueriesByParameterName(type, parameters);
@@ -795,7 +796,7 @@ namespace Nemo.Caching
         internal static bool ClearByType(Type type, bool queriesOnly)
         {
             var cacheType = GetCacheType(type);
-            if (cacheType != CacheType.None)
+            if (cacheType != null)
             {
                 var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(type));
                 var result = true;
@@ -839,7 +840,7 @@ namespace Nemo.Caching
             {
                 var cacheType = GetCacheType(typeof(T));
                 var key = new CacheKey(item).Value;
-                if (cacheType != CacheType.None)
+                if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
 

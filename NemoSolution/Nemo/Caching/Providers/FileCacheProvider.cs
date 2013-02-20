@@ -29,7 +29,7 @@ namespace Nemo.Caching.Providers
         #endregion
 
         public FileCacheProvider(CacheOptions options = null)
-            : base(CacheType.File, options)
+            : base(options)
         {
             if (options != null && options.FilePath.NullIfEmpty() != null)
             {

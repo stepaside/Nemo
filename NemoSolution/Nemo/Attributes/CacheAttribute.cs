@@ -11,19 +11,8 @@ namespace Nemo.Attributes
     public sealed class CacheAttribute : Attribute
     {
         private CacheOptions _options;
-        private CacheType _cacheType = CacheType.Local;
 
-        public CacheType Type
-        {
-            get
-            {
-                return _cacheType;
-            }
-            set
-            {
-                _cacheType = value;
-            }
-        }
+        public Type Type { get; set; }
 
         public string ConfigurationKey { get; set; }
 

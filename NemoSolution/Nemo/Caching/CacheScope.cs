@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Collections.Concurrent;
+using Nemo.Caching.Providers;
 
 namespace Nemo.Caching
 {
@@ -38,7 +39,7 @@ namespace Nemo.Caching
             }
         }
 
-        public CacheScope(bool buffered = true, CacheType cacheType = CacheType.None, CacheOptions options = null, CacheDependency[] dependencies = null) 
+        public CacheScope(bool buffered = true, Type cacheType = null, CacheOptions options = null, CacheDependency[] dependencies = null) 
         {
             Provider = CacheFactory.GetProvider(cacheType, options);
             Buffered = buffered;
@@ -76,7 +77,7 @@ namespace Nemo.Caching
 
             if (Buffered)
             {
-                var bufferProvider = CacheFactory.GetProvider(CacheType.ExecutionContext);
+                var bufferProvider = new ExecutionContextCacheProvider();
                 foreach (var itemKey in _itemKeys)
                 {
                     bufferProvider.Clear(itemKey);
@@ -100,15 +101,15 @@ namespace Nemo.Caching
             private set;
         }
 
-        public CacheType Type
+        public Type Type
         {
             get
             {
                 if (Provider != null)
                 {
-                    return Provider.Type;
+                    return Provider.GetType();
                 }
-                return CacheType.None;
+                return null;
             }
         }
 

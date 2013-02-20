@@ -200,8 +200,8 @@
     <Compile Include="OperationResponse.cs" />
     <Compile Include="Caching\CacheFactory.cs" />
     <Compile Include="Caching\DistributedCacheProviderWithLockManager.cs" />
-    <Compile Include="Caching\Providers\LocalCacheProvider.cs" />
-    <Compile Include="Caching\Providers\DistributedLocalCacheProvider.cs" />
+    <Compile Include="Caching\Providers\MemoryCacheProvider.cs" />
+    <Compile Include="Caching\Providers\DistributedMemoryCacheProvider.cs" />
     <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Extensions\CastExtensions.cs" />
     <Compile Include="OperationType.cs" />

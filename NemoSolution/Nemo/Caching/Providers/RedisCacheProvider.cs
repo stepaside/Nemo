@@ -74,7 +74,7 @@ namespace Nemo.Caching.Providers
         private RedisConnection _connection;
 
         internal RedisCacheProvider(int database, string hostName)
-            : base(null, CacheType.Redis, null)
+            : base(null, null)
         {
             _database = database;
             _hostName = hostName;
@@ -82,7 +82,7 @@ namespace Nemo.Caching.Providers
         }
 
         public RedisCacheProvider(CacheOptions options = null)
-            : base(new RedisCacheProvider(options != null ? options.Database : DefaultDatabase, options != null ? options.HostName : DefaultHostName), CacheType.Redis, options)
+            : base(new RedisCacheProvider(options != null ? options.Database : DefaultDatabase, options != null ? options.HostName : DefaultHostName), options)
         {
             _database = options != null ? options.Database : DefaultDatabase;
             _hostName = options != null ? options.HostName : DefaultHostName;

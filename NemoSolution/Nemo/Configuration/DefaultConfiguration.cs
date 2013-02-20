@@ -1,8 +1,10 @@
 ﻿using Nemo.Caching;
+using Nemo.Caching.Providers;
 using Nemo.Extensions;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Utilities;
+using System;
 
 namespace Nemo.Configuration
 {
@@ -28,6 +30,7 @@ namespace Nemo.Configuration
         private bool _generateDeleteSql = false;
         private bool _generateInsertSql = false;
         private bool _generateUpdateSql = false;
+        private Type _cacheProvider = typeof(MemoryCacheProvider);
 
         private DefaultConfiguration() { }
 
@@ -191,6 +194,14 @@ namespace Nemo.Configuration
             }
         }
 
+        public Type DefaultCacheProvider
+        {
+            get
+            {
+                return _cacheProvider;
+            }
+        }
+
         public static IConfiguration New()
         {
             return new DefaultConfiguration();
@@ -339,6 +350,15 @@ namespace Nemo.Configuration
         public IConfiguration ToggleGenerateUpdateSql(bool value)
         {
             _generateUpdateSql = value;
+            return this;
+        }
+
+        public IConfiguration SetDefaultCacheProvider(Type value)
+        {
+            if (value == null || typeof(CacheProvider).IsAssignableFrom(value))
+            {
+                _cacheProvider = value;
+            }
             return this;
         }
 
