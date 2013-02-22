@@ -10,7 +10,7 @@ namespace Nemo.Utilities
     {
         public static NameValueCollection ParseQueryString(string queryString)
         {
-            var queryParameters = new NameValueCollection();
+            var queryParameters = new NameValueCollection(StringComparer.OrdinalIgnoreCase);
             string[] querySegments = queryString.Split('&');
             foreach (string segment in querySegments)
             {

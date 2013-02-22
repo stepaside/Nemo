@@ -2,6 +2,7 @@
 using System.Web;
 using Nemo.Extensions;
 using Nemo.Fn;
+using Nemo.Collections.Extensions;
 using Nemo.Utilities;
 
 namespace Nemo.Caching
@@ -16,52 +17,28 @@ namespace Nemo.Caching
             if (configValue.NullIfEmpty() != null)
             {
                 var nvp = Http.ParseQueryString(configValue);
-                foreach (var key in nvp.AllKeys)
-                {
-                    switch (key.ToLower())
-                    {
-                        case "namespace":
-                            Namespace = nvp[key];
-                            break;
-                        case "usercontext":
-                            UserContext = nvp[key].SafeCast<bool>();
-                            break;
-                        case "lifespan":
-                            LifeSpan = nvp[key].SafeCast<TimeSpan>();
-                            break;
-                        case "expiresat":
-                            ExpiresAt = nvp[key].SafeCast<DateTimeOffset>();
-                            break;
-                        case "timeofday":
-                            TimeOfDay = nvp[key];
-                            break;
-                        case "slidingexpiration":
-                            SlidingExpiration = nvp[key].SafeCast<bool>();
-                            break;
-                        case "clustername":
-                            ClusterName = nvp[key];
-                            break;
-                        case "clusterpwd":
-                            ClusterPassword = nvp[key];
-                            break;
-                        case "filepath":
-                            FilePath = nvp[key];
-                            break;
-                        case "hashalgorithm":
-                            HashAlgorithmName value;
-                            if (Enum.TryParse<HashAlgorithmName>(nvp[key], true, out value))
-                            {
-                                HashAlgorithm = value;
-                            }
-                            break;
-                        case "hostname":
-                            HostName = nvp[key];
-                            break;
-                        case "database":
-                            Database = nvp[key].SafeCast<int>();
-                            break;
-                    }
-                }
+                Namespace = nvp["namespace"];
+                UserContext = nvp["usercontext"].ToMaybe().Select(s => s.SafeCast<bool>()).Let(m => m.HasValue ? m.Value : false);
+                LifeSpan = nvp["lifespan"].ToMaybe().Select(s => s.SafeCast<TimeSpan>());
+                ExpiresAt = nvp["expiresat"].ToMaybe().Select(s => s.SafeCast<DateTimeOffset>());
+                TimeOfDay = nvp["timeofday"];
+                SlidingExpiration = nvp["slidingexpiration"].ToMaybe().Select(s => s.SafeCast<bool>()).Let(m => m.HasValue ? m.Value : false);
+                ClusterName = nvp["clustername"];
+                ClusterPassword = nvp["clusterpwd"];
+                FilePath = nvp["filepath"];
+                HashAlgorithm = nvp["hashalgorithm"].ToMaybe()
+                                .Select(s =>
+                                            {
+                                                HashAlgorithmName value;
+                                                if (Enum.TryParse<HashAlgorithmName>(s, true, out value))
+                                                {
+                                                    return value.ToMaybe();
+                                                }
+                                                return Maybe<HashAlgorithmName>.Empty;
+                                            });
+                HostName = nvp["hostname"];
+
+                Database = nvp["database"].ToMaybe().Select(s => s.SafeCast<int>()).Let(m => m.HasValue ? m.Value : default(int)); ;
             }
         }
 
