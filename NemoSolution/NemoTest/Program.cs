@@ -34,7 +34,7 @@ namespace NemoTest
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
                 .SetDefaultContextLevelCache(ContextLevelCacheType.LazyList)
                 .SetDefaultHashAlgorithm(HashAlgorithmName.JenkinsHash)
-                .SetDefaultSerializationMode(SerializationMode.Compact)
+                .SetDefaultBinarySerializationMode(BinarySerializationMode.Compact)
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
                 .SetCacheContentionMitigation(CacheContentionMitigationType.None)

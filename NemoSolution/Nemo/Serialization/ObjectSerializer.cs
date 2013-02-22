@@ -65,7 +65,7 @@ namespace Nemo.Serialization
         Sorted = 4
     }
 
-    public enum SerializationMode : byte
+    public enum BinarySerializationMode : byte
     {
         Compact = 1,
         SerializeAll = 2,
@@ -97,20 +97,20 @@ namespace Nemo.Serialization
         private static ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllProperties = new ConcurrentDictionary<Type, ObjectSerializer>();
         private static ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
 
-        private readonly SerializationMode _mode;
+        private readonly BinarySerializationMode _mode;
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
         private bool _objectTypeWritten;
         private Stream _stream;
         private Encoding _encoding;
 
-        private SerializationWriter(Stream stream, SerializationMode mode, Encoding encoding)
+        private SerializationWriter(Stream stream, BinarySerializationMode mode, Encoding encoding)
         {
             _stream = stream ?? new MemoryStream(512);
             _encoding = encoding ?? new UTF8Encoding();
             _mode = mode;
-            _serializeAll = (mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
-            _includePropertyNames = (mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
+            _serializeAll = (mode | BinarySerializationMode.SerializeAll) == BinarySerializationMode.SerializeAll;
+            _includePropertyNames = (mode | BinarySerializationMode.IncludePropertyNames) == BinarySerializationMode.IncludePropertyNames;
             Write((byte)_mode);
         }
 
@@ -148,7 +148,7 @@ namespace Nemo.Serialization
             _stream.Write(buffer, 0, 8);
         }
         
-        public static SerializationWriter CreateWriter(SerializationMode mode)
+        public static SerializationWriter CreateWriter(BinarySerializationMode mode)
         {
             return new SerializationWriter(null, mode, null);
         }
@@ -611,7 +611,7 @@ namespace Nemo.Serialization
 
         public static byte[] WriteObjectWithType(object value)
         {
-            var writer = SerializationWriter.CreateWriter(SerializationMode.Compact);
+            var writer = SerializationWriter.CreateWriter(BinarySerializationMode.Compact);
             writer.WriteObject(value);
             var fullName = value.GetType().FullName;
             var tdata = Encoding.UTF8.GetBytes(fullName);
@@ -810,7 +810,7 @@ namespace Nemo.Serialization
     public class SerializationReader : IDisposable
     {
         private int _objectTypeHash;
-        private readonly SerializationMode _mode;
+        private readonly BinarySerializationMode _mode;
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
         private byte? _objectByte;
@@ -828,9 +828,9 @@ namespace Nemo.Serialization
         {
             _stream = stream;
             _encoding = encoding ?? new UTF8Encoding();
-            _mode = (SerializationMode)ReadByte();
-            _serializeAll = (_mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
-            _includePropertyNames = (_mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
+            _mode = (BinarySerializationMode)ReadByte();
+            _serializeAll = (_mode | BinarySerializationMode.SerializeAll) == BinarySerializationMode.SerializeAll;
+            _includePropertyNames = (_mode | BinarySerializationMode.IncludePropertyNames) == BinarySerializationMode.IncludePropertyNames;
             _objectByte = ReadByte();
             if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObject || _objectByte.Value == (byte)ObjectTypeCode.BusinessObjectList)
             {

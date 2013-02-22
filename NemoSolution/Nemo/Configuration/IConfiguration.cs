@@ -25,7 +25,7 @@ namespace Nemo.Configuration
         int DistributedLockTimeout { get; }
         int DistributedLockRetryCount { get; }
         double DistributedLockWaitTime { get; }
-        SerializationMode DefaultSerializationMode { get; }
+        BinarySerializationMode DefaultBinarySerializationMode { get; }
         bool GenerateDeleteSql { get; }
         bool GenerateInsertSql { get; }
         bool GenerateUpdateSql { get; }
@@ -49,7 +49,7 @@ namespace Nemo.Configuration
         IConfiguration SetDistributedLockTimeout(int value);
         IConfiguration SetDistributedLockRetryCount(int value);
         IConfiguration SetDistributedLockWaitTime(double value);
-        IConfiguration SetDefaultSerializationMode(SerializationMode value);
+        IConfiguration SetDefaultBinarySerializationMode(BinarySerializationMode value);
         IConfiguration SetGenerateDeleteSql(bool value);
         IConfiguration SetGenerateInsertSql(bool value);
         IConfiguration SetGenerateUpdateSql(bool value);

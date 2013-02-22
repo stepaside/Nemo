@@ -13,22 +13,25 @@ namespace Nemo.Configuration
         private string _defaultConnectionName = Config.AppSettings("DefaultConnectionName", "DbConnection");
         private string _operationPrefix = Config.AppSettings("OperationPrefix", string.Empty);
         private bool _distributedLockVerification = Config.AppSettings("EnableDistributedLockVerification", false);
-        private ContextLevelCacheType _contextLevelCache = ParseContextLevelCacheConfig();
         private int _defaultCacheLifeTime = Config.AppSettings("DefaultCacheLifeTime", 900);
         private bool _cacheCollisionDetection = Config.AppSettings("EnableCacheCollisionDetection", false);
         private bool _logging = Config.AppSettings("EnableLogging", false);
-        private FetchMode _defaultFetchMode = FetchMode.Eager;
-        private MaterializationMode _defaultMaterializationMode = MaterializationMode.Partial;
-        private ChangeTrackingMode _defaultChangeTrackingMode = ChangeTrackingMode.Automatic;
-        private OperationNamingConvention _defaultOperationNamingConvention = OperationNamingConvention.PrefixTypeName_Operation;
-        private HashAlgorithmName _defaultHashAlgorithm = HashAlgorithmName.JenkinsHash;
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
-        private CacheContentionMitigationType _cacheContentionMitigation = CacheContentionMitigationType.None;
         private int _staleCacheTimeout = Config.AppSettings("StaleCacheTimeout", 2);
         private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 2);
         private int _distributedLockRetryCount = Config.AppSettings("DistributedLockRetryCount", 4);
         private double _distributedLockWaitTime = Config.AppSettings("DistributedLockWaitTime", 0.7);
-        private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
+        
+        private ContextLevelCacheType _defaultContextLevelCache = ParseContextLevelCacheConfig();
+        private OperationNamingConvention _operationNamingConvention = ParseOperationNamingConventionConfig();
+        private FetchMode _defaultFetchMode = ParseFetchModeConfig();
+        private MaterializationMode _defaultMaterializationMode = ParseMaterializationModeConfig();
+        private ChangeTrackingMode _defaultChangeTrackingMode = ParseChangeTrackingModeConfig();
+        private HashAlgorithmName _defaultHashAlgorithm = ParseHashAlgorithmNameConfig();
+        private CacheContentionMitigationType _cacheContentionMitigation = ParseCacheContentionMitigationTypeConfig();
+        private BinarySerializationMode _defaultBinarySerializationMode = ParseBinarySerializationModeConfig();
+
+       
         private bool _generateDeleteSql = false;
         private bool _generateInsertSql = false;
         private bool _generateUpdateSql = false;
@@ -48,7 +51,7 @@ namespace Nemo.Configuration
         {
             get
             {
-                return _contextLevelCache;
+                return _defaultContextLevelCache;
             }
         }
 
@@ -120,7 +123,7 @@ namespace Nemo.Configuration
         {
             get
             {
-                return _defaultOperationNamingConvention;
+                return _operationNamingConvention;
             }
         }
 
@@ -180,11 +183,11 @@ namespace Nemo.Configuration
             }
         }
 
-        public SerializationMode DefaultSerializationMode
+        public BinarySerializationMode DefaultBinarySerializationMode
         {
             get
             {
-                return _defaultSerializationMode;
+                return _defaultBinarySerializationMode;
             }
         }
 
@@ -233,7 +236,7 @@ namespace Nemo.Configuration
 
         public IConfiguration SetDefaultContextLevelCache(ContextLevelCacheType value)
         {
-            _contextLevelCache = value;
+            _defaultContextLevelCache = value;
             return this;
         }
 
@@ -298,7 +301,7 @@ namespace Nemo.Configuration
         {
             if (value != OperationNamingConvention.Default)
             {
-                _defaultOperationNamingConvention = value;
+                _operationNamingConvention = value;
             }
             return this;
         }
@@ -365,9 +368,9 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetDefaultSerializationMode(SerializationMode value)
+        public IConfiguration SetDefaultBinarySerializationMode(BinarySerializationMode value)
         {
-            _defaultSerializationMode = value;
+            _defaultBinarySerializationMode = value;
             return this;
         }
 
@@ -400,22 +403,91 @@ namespace Nemo.Configuration
         
         private static ContextLevelCacheType ParseContextLevelCacheConfig()
         {
-            var result = ContextLevelCacheType.LazyList;
-            var value = Config.AppSettings("ContextLevelCache");
-            if (value.NullIfEmpty() == null)
+            ContextLevelCacheType result;
+            var value = Config.AppSettings("DefaultContextLevelCache");
+            if (value == null || !Enum.TryParse<ContextLevelCacheType>(value, true, out result))
             {
                 result = ContextLevelCacheType.LazyList;
-            }
-            else if (value.ToLower() == "none")
-            {
-                result = ContextLevelCacheType.None;
-            }
-            else if (value.ToLower() == "list")
-            {
-                result = ContextLevelCacheType.List;
             }
             return result;
         }
 
+        private static OperationNamingConvention ParseOperationNamingConventionConfig()
+        {
+            OperationNamingConvention result;
+            var value = Config.AppSettings("OperationNamingConvention");
+            if (value == null || !Enum.TryParse<OperationNamingConvention>(value, true, out result))
+            {
+                result = OperationNamingConvention.PrefixTypeName_Operation;
+            }
+            return result;
+        }
+
+        private static FetchMode ParseFetchModeConfig()
+        {
+            FetchMode result;
+            var value = Config.AppSettings("DefaultFetchMode");
+            if (value == null || !Enum.TryParse<FetchMode>(value, true, out result))
+            {
+                result = FetchMode.Eager;
+            }
+            return result;
+        }
+
+        private static MaterializationMode ParseMaterializationModeConfig()
+        {
+            MaterializationMode result;
+            var value = Config.AppSettings("DefaultMaterializationMode");
+            if (value == null || !Enum.TryParse<MaterializationMode>(value, true, out result))
+            {
+                result = MaterializationMode.Partial;
+            }
+            return result;
+        }
+
+        private static ChangeTrackingMode ParseChangeTrackingModeConfig()
+        {
+            ChangeTrackingMode result;
+            var value = Config.AppSettings("DefaultChangeTrackingMode");
+            if (value == null || !Enum.TryParse<ChangeTrackingMode>(value, true, out result))
+            {
+                result = ChangeTrackingMode.Automatic;
+            }
+            return result;
+        }
+
+        private static HashAlgorithmName ParseHashAlgorithmNameConfig()
+        {
+            HashAlgorithmName result;
+            var value = Config.AppSettings("DefaultHashAlgorithmName");
+            if (value == null || !Enum.TryParse<HashAlgorithmName>(value, true, out result))
+            {
+                result = HashAlgorithmName.JenkinsHash;
+            }
+            return result;
+        }
+
+
+        private static CacheContentionMitigationType ParseCacheContentionMitigationTypeConfig()
+        {
+            CacheContentionMitigationType result;
+            var value = Config.AppSettings("CacheContentionMitigationType");
+            if (value == null || !Enum.TryParse<CacheContentionMitigationType>(value, true, out result))
+            {
+                result = CacheContentionMitigationType.None;
+            }
+            return result;
+        }
+
+        private static BinarySerializationMode ParseBinarySerializationModeConfig()
+        {
+            BinarySerializationMode result;
+            var value = Config.AppSettings("DefaultBinarySerializationMode");
+            if (value == null || !Enum.TryParse<BinarySerializationMode>(value, true, out result))
+            {
+                result = BinarySerializationMode.IncludePropertyNames;
+            }
+            return result;
+        }
     }
 }
