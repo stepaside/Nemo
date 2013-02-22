@@ -28,19 +28,19 @@ namespace NemoTest
         static void Main(string[] args)
         {
             ObjectFactory.Configure()
-                .SetCacheLifeTime(3600)
+                .SetDefaultCacheLifeTime(3600)
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
                 .SetDefaultFetchMode(FetchMode.Lazy)
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
-                .SetContextLevelCache(ContextLevelCacheType.LazyList)
-                .SetDefaultOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
-                .SetOperationPrefix("spDTO_")
+                .SetDefaultContextLevelCache(ContextLevelCacheType.LazyList)
                 .SetDefaultHashAlgorithm(HashAlgorithmName.JenkinsHash)
-                .SetCacheContentionMitigation(CacheContentionMitigationType.None)
                 .SetDefaultSerializationMode(SerializationMode.Compact)
-                .ToggleLogging(false)
-                .ToggleCacheCollisionDetection(false)
-                .ToggleDistributedLockVerification(false);
+                .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
+                .SetOperationPrefix("spDTO_")
+                .SetCacheContentionMitigation(CacheContentionMitigationType.None)
+                .SetLogging(false)
+                .SetCacheCollisionDetection(false)
+                .SetDistributedLockVerification(false);
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
@@ -51,13 +51,13 @@ namespace NemoTest
 
             // Binding to a legacy object
             var bound_legacy = ObjectFactory.Bind<PersonLegacy, IPerson>(person_legacy);
-
+            
             // Binding to an anonymous object
             var bound_anonymous = ObjectFactory.Bind<IPersonReadOnly>(person_anonymous);
 
             // Mapping to a legacy object
             var mapped_legacy = ObjectFactory.Map<PersonLegacy, IPerson>(person_legacy);
-
+            
             // Mapping to an anonymous object
             try
             {
@@ -122,7 +122,7 @@ namespace NemoTest
 
             var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault(); // ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
             var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>();
-
+            
             // UnitOfWork example
             using (ObjectScope.New(customer, autoCommit: false))
             {

@@ -49,6 +49,22 @@ namespace Nemo.Utilities
 			return result;
 		}
 
+        public static double AppSettings(string name, double defaultValue)
+        {
+            var value = AppSettings(name);
+            if (string.IsNullOrEmpty(value))
+            {
+                return defaultValue;
+            }
+
+            double result;
+            if (!double.TryParse(value, out result))
+            {
+                result = defaultValue;
+            }
+            return result;
+        }
+
 		public static string ConnectionString(string keyName)
 		{
 			ConnectionStringSettings connSettings = ConnectionStringSetting(keyName);

@@ -170,7 +170,7 @@ namespace Nemo.Caching
         internal static bool CanBeBuffered<T>()
             where T : class, IBusinessObject
         {
-            if (ObjectFactory.Configuration.ContextLevelCache == ContextLevelCacheType.None)
+            if (ObjectFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.None)
             {
                 return false;
             }
@@ -204,7 +204,7 @@ namespace Nemo.Caching
                     cacheType = attribute.Type;
                 }
 
-                if (ObjectFactory.Configuration.ContextLevelCache == ContextLevelCacheType.None)
+                if (ObjectFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.None)
                 {
                     canBeBuffered = false;
                 }

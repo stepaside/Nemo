@@ -28,7 +28,7 @@ namespace Nemo.Collections
             _buffered = buffered;
             if (buffered)
             {
-                if (ObjectFactory.Configuration.ContextLevelCache == ContextLevelCacheType.List)
+                if (ObjectFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.List)
                 {
                     _source = source.ToList();
                 }

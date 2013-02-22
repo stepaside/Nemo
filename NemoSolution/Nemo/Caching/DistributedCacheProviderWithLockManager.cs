@@ -10,8 +10,8 @@ namespace Nemo.Caching
     public abstract class DistributedCacheProviderWithLockManager<TLockManager> : CacheProvider, IDistributedCacheProvider
         where TLockManager : CacheProvider, IDistributedCacheProvider, IDistributedCounter
     {
-        private const int LOCK_DEFAULT_RETRIES = 4;
-        private const double LOCK_DEFAULT_MAXDELAY = 0.7;
+        private readonly int _distributedLockRetryCount = ObjectFactory.Configuration.DistributedLockRetryCount;
+        private readonly double _distributedLockWaitTime = ObjectFactory.Configuration.DistributedLockWaitTime;
         
         protected DistributedCacheProviderWithLockManager(TLockManager lockManager, CacheOptions options)
             : base(options)
@@ -87,7 +87,7 @@ namespace Nemo.Caching
 
         public object WaitForItems(string key, int count = -1)
         {
-            if (count < 0) count = LOCK_DEFAULT_RETRIES;
+            if (count < 0) count = _distributedLockRetryCount;
 
             object result = null;
             double totalSleepTime = 0;
@@ -104,7 +104,7 @@ namespace Nemo.Caching
 
                 if (sleepTime == TimeSpan.Zero)
                 {
-                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((ulong)LockManager.RetrieveUsingRawKey("LOCK::" + key) - 0.5), LOCK_DEFAULT_MAXDELAY));
+                    sleepTime = TimeSpan.FromSeconds(Math.Min(0.1 * ((ulong)LockManager.RetrieveUsingRawKey("LOCK::" + key) - 0.5), _distributedLockWaitTime));
                 }
                 else
                 {

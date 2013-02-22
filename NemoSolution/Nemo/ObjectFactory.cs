@@ -546,7 +546,7 @@ namespace Nemo
             {
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
-                    if (ObjectFactory.Configuration.ContextLevelCache == ContextLevelCacheType.List)
+                    if (ObjectFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.List)
                     {
                         result = result.ToList();
                     }
@@ -1428,7 +1428,7 @@ namespace Nemo
         {
             if (operationType == OperationType.StoredProcedure)
             {
-                var namingConvention = ObjectFactory.Configuration.DefaultOperationNamingConvention;
+                var namingConvention = ObjectFactory.Configuration.OperationNamingConvention;
                 var typeName = objectType.Name;
                 if (objectType.IsInterface && typeName[0] == 'I')
                 {

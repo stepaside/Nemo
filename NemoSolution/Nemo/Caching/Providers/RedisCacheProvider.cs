@@ -12,8 +12,8 @@ namespace Nemo.Caching.Providers
 {
     public class RedisCacheProvider : DistributedCacheProviderWithLockManager<RedisCacheProvider>, IDistributedCounter, IPersistentCacheProvider
     {
-        private const int LOCK_DEFAULT_RETRIES = 4;
-        private const double LOCK_DEFAULT_MAXDELAY = 0.7;
+        private readonly int _distributedLockRetryCount = ObjectFactory.Configuration.DistributedLockRetryCount;
+        private readonly double _distributedLockWaitTime = ObjectFactory.Configuration.DistributedLockWaitTime;
         
         #region Static Declarations
 

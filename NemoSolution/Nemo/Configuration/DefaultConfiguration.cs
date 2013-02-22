@@ -14,7 +14,7 @@ namespace Nemo.Configuration
         private string _operationPrefix = Config.AppSettings("OperationPrefix", string.Empty);
         private bool _distributedLockVerification = Config.AppSettings("EnableDistributedLockVerification", false);
         private ContextLevelCacheType _contextLevelCache = ParseContextLevelCacheConfig();
-        private int _cacheLifeTime = Config.AppSettings("CacheLifeTime", 900);
+        private int _defaultCacheLifeTime = Config.AppSettings("DefaultCacheLifeTime", 900);
         private bool _cacheCollisionDetection = Config.AppSettings("EnableCacheCollisionDetection", false);
         private bool _logging = Config.AppSettings("EnableLogging", false);
         private FetchMode _defaultFetchMode = FetchMode.Eager;
@@ -24,14 +24,16 @@ namespace Nemo.Configuration
         private HashAlgorithmName _defaultHashAlgorithm = HashAlgorithmName.JenkinsHash;
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
         private CacheContentionMitigationType _cacheContentionMitigation = CacheContentionMitigationType.None;
-        private int _staleCacheTimeout = 2;
-        private int _distributedLockTimeout = 2;
+        private int _staleCacheTimeout = Config.AppSettings("StaleCacheTimeout", 2);
+        private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 2);
+        private int _distributedLockRetryCount = Config.AppSettings("DistributedLockRetryCount", 4);
+        private double _distributedLockWaitTime = Config.AppSettings("DistributedLockWaitTime", 0.7);
         private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
         private bool _generateDeleteSql = false;
         private bool _generateInsertSql = false;
         private bool _generateUpdateSql = false;
         private Type _cacheProvider = typeof(MemoryCacheProvider);
-
+        
         private DefaultConfiguration() { }
 
         public bool DistributedLockVerification
@@ -42,7 +44,7 @@ namespace Nemo.Configuration
             }
         }
 
-        public ContextLevelCacheType ContextLevelCache
+        public ContextLevelCacheType DefaultContextLevelCache
         {
             get
             {
@@ -50,11 +52,11 @@ namespace Nemo.Configuration
             }
         }
 
-        public int CacheLifeTime
+        public int DefaultCacheLifeTime
         {
             get
             {
-                return _cacheLifeTime;
+                return _defaultCacheLifeTime;
             }
         }
 
@@ -114,7 +116,7 @@ namespace Nemo.Configuration
             }
         }
 
-        public OperationNamingConvention DefaultOperationNamingConvention
+        public OperationNamingConvention OperationNamingConvention
         {
             get
             {
@@ -159,6 +161,22 @@ namespace Nemo.Configuration
             get
             {
                 return _distributedLockTimeout;
+            }
+        }
+
+        public int DistributedLockRetryCount
+        {
+            get
+            {
+                return _distributedLockRetryCount;
+            }
+        }
+
+        public double DistributedLockWaitTime
+        {
+            get
+            {
+                return _distributedLockWaitTime;
             }
         }
 
@@ -207,31 +225,31 @@ namespace Nemo.Configuration
             return new DefaultConfiguration();
         }
 
-        public IConfiguration ToggleDistributedLockVerification(bool value)
+        public IConfiguration SetDistributedLockVerification(bool value)
         {
             _distributedLockVerification = value;
             return this;
         }
 
-        public IConfiguration SetContextLevelCache(ContextLevelCacheType value)
+        public IConfiguration SetDefaultContextLevelCache(ContextLevelCacheType value)
         {
             _contextLevelCache = value;
             return this;
         }
 
-        public IConfiguration SetCacheLifeTime(int value)
+        public IConfiguration SetDefaultCacheLifeTime(int value)
         {
-            _cacheLifeTime = value;
+            _defaultCacheLifeTime = value;
             return this;
         }
 
-        public IConfiguration ToggleCacheCollisionDetection(bool value)
+        public IConfiguration SetCacheCollisionDetection(bool value)
         {
             _cacheCollisionDetection = value;
             return this;
         }
 
-        public IConfiguration ToggleLogging(bool value)
+        public IConfiguration SetLogging(bool value)
         {
             _logging = value;
             return this;
@@ -276,7 +294,7 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetDefaultOperationNamingConvention(OperationNamingConvention value)
+        public IConfiguration SetOperationNamingConvention(OperationNamingConvention value)
         {
             if (value != OperationNamingConvention.Default)
             {
@@ -329,25 +347,43 @@ namespace Nemo.Configuration
             return this;
         }
 
+        public IConfiguration SetDistributedLockRetryCount(int value)
+        {
+            if (value > -1)
+            {
+                _distributedLockRetryCount = value;
+            }
+            return this;
+        }
+
+        public IConfiguration SetDistributedLockWaitTime(double value)
+        {
+            if (value > 0)
+            {
+                _distributedLockWaitTime = value;
+            }
+            return this;
+        }
+
         public IConfiguration SetDefaultSerializationMode(SerializationMode value)
         {
             _defaultSerializationMode = value;
             return this;
         }
 
-        public IConfiguration ToggleGenerateDeleteSql(bool value)
+        public IConfiguration SetGenerateDeleteSql(bool value)
         {
             _generateDeleteSql = value;
             return this;
         }
 
-        public IConfiguration ToggleGenerateInsertSql(bool value)
+        public IConfiguration SetGenerateInsertSql(bool value)
         {
             _generateInsertSql = value;
             return this;
         }
 
-        public IConfiguration ToggleGenerateUpdateSql(bool value)
+        public IConfiguration SetGenerateUpdateSql(bool value)
         {
             _generateUpdateSql = value;
             return this;
@@ -361,7 +397,7 @@ namespace Nemo.Configuration
             }
             return this;
         }
-
+        
         private static ContextLevelCacheType ParseContextLevelCacheConfig()
         {
             var result = ContextLevelCacheType.LazyList;

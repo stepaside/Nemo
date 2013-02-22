@@ -104,7 +104,7 @@ namespace Nemo.Utilities
 
                     var nillable = false;
                     var simpleCollection = false;
-                    var isList = false;
+                    //var isList = false;
                     var propertyType = property.Value.PropertyType;
                     if (property.Value.IsSimpleList)
                     {
@@ -120,7 +120,7 @@ namespace Nemo.Utilities
                     {
                         //propertyType = property.Value.ElementType;
                         innerTypes.Add(propertyType);
-                        isList = true;
+                        //isList = true;
                         nillable = true;
                     }
                     else if (property.Value.IsTypeUnion)

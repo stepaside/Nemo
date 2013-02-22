@@ -743,7 +743,7 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Callvirt, writeLength);
 
                 var orderedPropertiesWithLength = orderedProperties.Select(p => Tuple.Create(p, Encoding.UTF8.GetByteCount(p.Name))).ToList();
-                var overhead = orderedPropertiesWithLength.Select(t => t.Item2 <= byte.MaxValue ? 1 : (t.Item2 <= ushort.MaxValue ? 2 : (t.Item2 <= uint.MaxValue ? 4 : 8))).Sum();
+                var overhead = orderedPropertiesWithLength.Select(t => t.Item2 <= byte.MaxValue ? 1 : (t.Item2 <= ushort.MaxValue ? 2 : ((uint)t.Item2 <= uint.MaxValue ? 4 : 8))).Sum();
 
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldc_I4, orderedPropertiesWithLength.Sum(p => p.Item2) + overhead);
