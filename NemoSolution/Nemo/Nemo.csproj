@@ -119,6 +119,8 @@
     <Compile Include="Attributes\PropertyAttribute.cs" />
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
+    <Compile Include="Caching\CacheContentionMitigationType.cs" />
+    <Compile Include="Caching\CacheExpirationType.cs" />
     <Compile Include="Caching\IDistributedCounter.cs" />
     <Compile Include="Caching\IOptimisticConcurrencyProvider.cs" />
     <Compile Include="Caching\IPersistentCacheProvider.cs" />

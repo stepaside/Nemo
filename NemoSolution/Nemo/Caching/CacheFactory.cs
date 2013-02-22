@@ -6,10 +6,6 @@ using Nemo.Caching.Providers;
 
 namespace Nemo.Caching
 {
-    public enum CacheExpirationType { Never, DateTime, TimeSpan, TimeOfDay };
-
-    public enum CacheContentionMitigationType { None, DistributedLocking, UseStaleCache }
-
     public class CacheFactory
     {
         public static CacheProvider GetProvider(Type cacheType, CacheOptions options = null)
