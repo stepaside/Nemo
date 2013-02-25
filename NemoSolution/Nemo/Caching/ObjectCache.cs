@@ -15,7 +15,7 @@ namespace Nemo.Caching
     public static class ObjectCache
     {
         private static ConcurrentDictionary<string, object> _cacheLocks = new ConcurrentDictionary<string, object>();
-        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => new RedisCacheProvider(), true);
+        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => CacheFactory.GetProvider(ObjectFactory.Configuration.TrackingCacheProvider), true);
 
         #region Helper Methods
 
@@ -457,12 +457,13 @@ namespace Nemo.Caching
         private static void TrackKeys<T>(string queryKey, IEnumerable<string> itemKeys, IList<Param> parameters)
             where T : class, IBusinessObject
         {
-            if (CacheScope.Current != null)
+            var cacheScope = CacheScope.Current;
+            if (cacheScope != null)
             {
-                CacheScope.Current.Track(queryKey);
+                cacheScope.Track(queryKey);
                 foreach (var key in itemKeys)
                 {
-                    CacheScope.Current.Track(key);
+                    cacheScope.Track(key);
                 }
             }
             else
@@ -471,52 +472,55 @@ namespace Nemo.Caching
                 var typeQueryKey = GetTypeKey(typeof(T), true, false);
 
                 var cache = _trackingCache.Value;
-                // Keys associated with the given type
-                var typeKeySet = cache.Retrieve(typeKey) as HashSet<string>;
-                if (typeKeySet == null)
+                if (cache != null)
                 {
-                    typeKeySet = new HashSet<string>(itemKeys);
-                }
-                else
-                {
-                    typeKeySet.UnionWith(itemKeys);
-                }
-                cache.Save(typeKey, typeKeySet);
-
-                // Query keys associated with the given type
-                var typeQueryKeySet = cache.Retrieve(typeQueryKey) as HashSet<string>;
-                if (typeQueryKeySet == null)
-                {
-                    typeQueryKeySet = new HashSet<string>();
-                }
-                typeQueryKeySet.Add(queryKey);
-                cache.Save(typeQueryKey, typeQueryKeySet);
-
-                // Queries associated with the given type and parameters
-                if (parameters != null)
-                {
-                    var parameterSet = parameters.ToDictionary(p => string.Concat(typeKey, "::", p.Name.ToUpper()), p => p, StringComparer.OrdinalIgnoreCase);
-                    var cachedQueriesResult = cache.Retrieve(parameterSet.Keys);
-                    var cachedQueries = cachedQueriesResult != null
-                                        ? cachedQueriesResult.ToDictionary(i => i.Key, i => (Dictionary<string, HashSet<string>>)i.Value, StringComparer.OrdinalIgnoreCase)
-                                        : new Dictionary<string, Dictionary<string, HashSet<string>>>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var parameterKey in parameterSet.Keys)
+                    // Keys associated with the given type
+                    var typeKeySet = cache.Retrieve(typeKey) as HashSet<string>;
+                    if (typeKeySet == null)
                     {
-                        var valueKey = parameterSet[parameterKey].Value.SafeCast<string>() ?? string.Empty;
-                        Dictionary<string, HashSet<string>> valueSet;
-                        if (!cachedQueries.TryGetValue(parameterKey, out valueSet))
-                        {
-                            valueSet = new Dictionary<string, HashSet<string>>();
-                        }
+                        typeKeySet = new HashSet<string>(itemKeys);
+                    }
+                    else
+                    {
+                        typeKeySet.UnionWith(itemKeys);
+                    }
+                    cache.Save(typeKey, typeKeySet);
 
-                        HashSet<string> queries;
-                        if (!valueSet.TryGetValue(valueKey, out queries))
+                    // Query keys associated with the given type
+                    var typeQueryKeySet = cache.Retrieve(typeQueryKey) as HashSet<string>;
+                    if (typeQueryKeySet == null)
+                    {
+                        typeQueryKeySet = new HashSet<string>();
+                    }
+                    typeQueryKeySet.Add(queryKey);
+                    cache.Save(typeQueryKey, typeQueryKeySet);
+
+                    // Queries associated with the given type and parameters
+                    if (parameters != null)
+                    {
+                        var parameterSet = parameters.ToDictionary(p => string.Concat(typeKey, "::", p.Name.ToUpper()), p => p, StringComparer.OrdinalIgnoreCase);
+                        var cachedQueriesResult = cache.Retrieve(parameterSet.Keys);
+                        var cachedQueries = cachedQueriesResult != null
+                                            ? cachedQueriesResult.ToDictionary(i => i.Key, i => (Dictionary<string, HashSet<string>>)i.Value, StringComparer.OrdinalIgnoreCase)
+                                            : new Dictionary<string, Dictionary<string, HashSet<string>>>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var parameterKey in parameterSet.Keys)
                         {
-                            queries = new HashSet<string>();
-                            valueSet.Add(valueKey, queries);
+                            var valueKey = parameterSet[parameterKey].Value.SafeCast<string>() ?? string.Empty;
+                            Dictionary<string, HashSet<string>> valueSet;
+                            if (!cachedQueries.TryGetValue(parameterKey, out valueSet))
+                            {
+                                valueSet = new Dictionary<string, HashSet<string>>();
+                            }
+
+                            HashSet<string> queries;
+                            if (!valueSet.TryGetValue(valueKey, out queries))
+                            {
+                                queries = new HashSet<string>();
+                                valueSet.Add(valueKey, queries);
+                            }
+                            queries.Add(queryKey);
+                            cache.Save(parameterKey, valueSet);
                         }
-                        queries.Add(queryKey);
-                        cache.Save(parameterKey, valueSet);
                     }
                 }
             }

@@ -29,13 +29,13 @@ namespace Nemo.Configuration
         private ChangeTrackingMode _defaultChangeTrackingMode = ParseChangeTrackingModeConfig();
         private HashAlgorithmName _defaultHashAlgorithm = ParseHashAlgorithmNameConfig();
         private CacheContentionMitigationType _cacheContentionMitigation = ParseCacheContentionMitigationTypeConfig();
-        private BinarySerializationMode _defaultBinarySerializationMode = ParseBinarySerializationModeConfig();
+        private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
 
-       
         private bool _generateDeleteSql = false;
         private bool _generateInsertSql = false;
         private bool _generateUpdateSql = false;
         private Type _cacheProvider = typeof(MemoryCacheProvider);
+        private Type _trackingCacheProvider = typeof(RedisCacheProvider);
         
         private DefaultConfiguration() { }
 
@@ -183,11 +183,11 @@ namespace Nemo.Configuration
             }
         }
 
-        public BinarySerializationMode DefaultBinarySerializationMode
+        public SerializationMode DefaultSerializationMode
         {
             get
             {
-                return _defaultBinarySerializationMode;
+                return _defaultSerializationMode;
             }
         }
 
@@ -220,6 +220,14 @@ namespace Nemo.Configuration
             get
             {
                 return _cacheProvider;
+            }
+        }
+
+        public Type TrackingCacheProvider
+        {
+            get
+            {
+                return _trackingCacheProvider;
             }
         }
 
@@ -368,9 +376,9 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetDefaultBinarySerializationMode(BinarySerializationMode value)
+        public IConfiguration SetDefaultSerializationMode(SerializationMode value)
         {
-            _defaultBinarySerializationMode = value;
+            _defaultSerializationMode = value;
             return this;
         }
 
@@ -397,6 +405,15 @@ namespace Nemo.Configuration
             if (value == null || typeof(CacheProvider).IsAssignableFrom(value))
             {
                 _cacheProvider = value;
+            }
+            return this;
+        }
+
+        public IConfiguration SetTrackingCacheProvider(Type value)
+        {
+            if (value == null || typeof(CacheProvider).IsAssignableFrom(value))
+            {
+                _trackingCacheProvider = value;
             }
             return this;
         }
@@ -475,17 +492,6 @@ namespace Nemo.Configuration
             if (value == null || !Enum.TryParse<CacheContentionMitigationType>(value, true, out result))
             {
                 result = CacheContentionMitigationType.None;
-            }
-            return result;
-        }
-
-        private static BinarySerializationMode ParseBinarySerializationModeConfig()
-        {
-            BinarySerializationMode result;
-            var value = Config.AppSettings("DefaultBinarySerializationMode");
-            if (value == null || !Enum.TryParse<BinarySerializationMode>(value, true, out result))
-            {
-                result = BinarySerializationMode.IncludePropertyNames;
             }
             return result;
         }

@@ -25,11 +25,12 @@ namespace Nemo.Configuration
         int DistributedLockTimeout { get; }
         int DistributedLockRetryCount { get; }
         double DistributedLockWaitTime { get; }
-        BinarySerializationMode DefaultBinarySerializationMode { get; }
+        SerializationMode DefaultSerializationMode { get; }
         bool GenerateDeleteSql { get; }
         bool GenerateInsertSql { get; }
         bool GenerateUpdateSql { get; }
         Type DefaultCacheProvider { get; }
+        Type TrackingCacheProvider { get; }
 
         IConfiguration SetDistributedLockVerification(bool value);
         IConfiguration SetDefaultContextLevelCache(ContextLevelCacheType value);
@@ -49,10 +50,11 @@ namespace Nemo.Configuration
         IConfiguration SetDistributedLockTimeout(int value);
         IConfiguration SetDistributedLockRetryCount(int value);
         IConfiguration SetDistributedLockWaitTime(double value);
-        IConfiguration SetDefaultBinarySerializationMode(BinarySerializationMode value);
+        IConfiguration SetDefaultSerializationMode(SerializationMode value);
         IConfiguration SetGenerateDeleteSql(bool value);
         IConfiguration SetGenerateInsertSql(bool value);
         IConfiguration SetGenerateUpdateSql(bool value);
         IConfiguration SetDefaultCacheProvider(Type value);
+        IConfiguration SetTrackingCacheProvider(Type value);
     }
 }

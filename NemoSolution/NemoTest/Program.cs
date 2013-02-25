@@ -1,16 +1,7 @@
-﻿using System;
-using System.Data;
-using System.Data.SqlClient;
-using System.IO;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Runtime.Serialization.Json;
-using System.Text;
-using System.Xml;
-using Dapper;
+﻿using Dapper;
 using Nemo;
 using Nemo.Caching;
+using Nemo.Caching.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Extensions;
@@ -18,8 +9,18 @@ using Nemo.Fn;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Utilities;
+using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization.Json;
+using System.Text;
+using System.Xml;
 
 namespace NemoTest
 {
@@ -34,7 +35,7 @@ namespace NemoTest
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
                 .SetDefaultContextLevelCache(ContextLevelCacheType.LazyList)
                 .SetDefaultHashAlgorithm(HashAlgorithmName.JenkinsHash)
-                .SetDefaultBinarySerializationMode(BinarySerializationMode.Compact)
+                .SetDefaultSerializationMode(SerializationMode.Compact)
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
                 .SetCacheContentionMitigation(CacheContentionMitigationType.None)
@@ -139,6 +140,12 @@ namespace NemoTest
                 //customer.Rollback();
                 customer.Commit();
             }
+
+            //using (new CacheScope(buffered: true))
+            //{
+            //    var c1 = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
+            //    var c2 = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
+            //}
 
             //// UnitOfWork example: manual change tracking
             //using (new ObjectScope(customer, mode: ChangeTrackingMode.Manual))

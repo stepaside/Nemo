@@ -108,5 +108,21 @@ namespace Nemo
                 _callContext.Clear();
             }
         }
+
+        internal static IList<string> AllKeys
+        {
+            get
+            {
+                var principal = Thread.CurrentPrincipal;
+                if (principal is ThreadedPrincipal)
+                {
+                    return ((ThreadedPrincipal)principal).Items.Keys.ToArray();
+                }
+                else
+                {
+                    return _callContext.Keys.ToArray();
+                }
+            }
+        }
     }
 }

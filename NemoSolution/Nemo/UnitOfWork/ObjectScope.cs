@@ -48,7 +48,7 @@ namespace Nemo.UnitOfWork
 
         static byte[] CreateSnapshot(IBusinessObject item)
         {
-            return item.Serialize(BinarySerializationMode.SerializeAll);
+            return item.Serialize(SerializationMode.SerializeAll);
         }
 
         public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default)

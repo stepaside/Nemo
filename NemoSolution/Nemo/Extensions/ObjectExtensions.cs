@@ -670,7 +670,7 @@ namespace Nemo.Extensions
         public static T Clone<T>(this T instance)
             where T : class, IBusinessObject
         {
-            var data = instance.Serialize(BinarySerializationMode.SerializeAll);
+            var data = instance.Serialize(SerializationMode.SerializeAll);
             var value = SerializationExtensions.Deserialize<T>(data);
             return value;
         }
@@ -685,7 +685,7 @@ namespace Nemo.Extensions
         public static IEnumerable<T> Clone<T>(this IEnumerable<T> collection)
             where T : class, IBusinessObject
         {
-            var data = collection.Serialize(BinarySerializationMode.SerializeAll);
+            var data = collection.Serialize(SerializationMode.SerializeAll);
             var value = SerializationExtensions.Deserialize<T>(data);
             return value;
         }

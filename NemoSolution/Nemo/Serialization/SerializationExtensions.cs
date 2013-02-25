@@ -10,10 +10,10 @@ namespace Nemo.Serialization
         public static byte[] Serialize<T>(this T businessObject)
             where T : class, IBusinessObject
         {
-            return Serialize(businessObject, ObjectFactory.Configuration.DefaultBinarySerializationMode);
+            return Serialize(businessObject, ObjectFactory.Configuration.DefaultSerializationMode);
         }
 
-        internal static byte[] Serialize<T>(this T businessObject, BinarySerializationMode mode)
+        internal static byte[] Serialize<T>(this T businessObject, SerializationMode mode)
             where T : class, IBusinessObject
         {
             byte[] buffer = null;
@@ -30,10 +30,10 @@ namespace Nemo.Serialization
         public static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection)
             where T : class, IBusinessObject
         {
-            return Serialize(businessObjectCollection, ObjectFactory.Configuration.DefaultBinarySerializationMode);
+            return Serialize(businessObjectCollection, ObjectFactory.Configuration.DefaultSerializationMode);
         }
 
-        internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection, BinarySerializationMode mode)
+        internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection, SerializationMode mode)
             where T : class, IBusinessObject
         {
             foreach (T businessObject in businessObjectCollection)
