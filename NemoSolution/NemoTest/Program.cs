@@ -476,7 +476,7 @@ namespace NemoTest
         private static void RunDapper(int count, bool buffered)
         {
             var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
-            var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
                 
             connection.Open();
             // Warm-up
@@ -548,6 +548,7 @@ namespace NemoTest
 
         private static void RunEF(int count, bool linq = false)
         {
+            var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
             // Warm-up
             using (var context = new EFContext(ObjectFactory.DefaultConnectionName))
             {
@@ -557,7 +558,8 @@ namespace NemoTest
                 }
                 else
                 {
-                    var customer = context.Customers.SqlQuery(@"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID", new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } }).FirstOrDefault();
+                    var parameters = new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } };
+                    var customer = context.Customers.SqlQuery(sql, parameters).FirstOrDefault();
                 }
             }
 
@@ -582,7 +584,8 @@ namespace NemoTest
                     timer.Start();
                     for (int i = 0; i < count; i++)
                     {
-                        var customer = context.Customers.SqlQuery(@"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID", new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } }).FirstOrDefault();
+                        var parameters = new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } };
+                        var customer = context.Customers.SqlQuery(sql, parameters).FirstOrDefault();
                     }
                     timer.Stop();
                 }
