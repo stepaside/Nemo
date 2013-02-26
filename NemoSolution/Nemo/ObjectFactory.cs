@@ -1325,7 +1325,10 @@ namespace Nemo
                         }
                     }
                     resultIndex++;
-                    isInterface = types[resultIndex].IsInterface;
+                    if (resultIndex < types.Count)
+                    {
+                        isInterface = types[resultIndex].IsInterface;
+                    }
                 } while (reader.NextResult());
             }
             finally

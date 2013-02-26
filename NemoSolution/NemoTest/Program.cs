@@ -546,7 +546,7 @@ namespace NemoTest
             Console.WriteLine("Native+Nemo.Mapper: " + timer.GetElapsedTimeInMicroseconds() / 1000);
         }
 
-        private static void RunEF(int count, bool linq = false)
+        private static void RunEF(int count, bool linq = false, bool noTracking = true)
         {
             var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
             // Warm-up
@@ -554,12 +554,12 @@ namespace NemoTest
             {
                 if (linq)
                 {
-                    var customer = context.Customers.Where(c => c.Id == "ALFKI").FirstOrDefault();
+                    var customer = context.Customers/*.AsNoTracking()*/.Where(c => c.Id == "ALFKI").FirstOrDefault();
                 }
                 else
                 {
                     var parameters = new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } };
-                    var customer = context.Customers.SqlQuery(sql, parameters).FirstOrDefault();
+                    var customer = context.Customers.SqlQuery(sql, parameters)/*.AsNoTracking()*/.FirstOrDefault();
                 }
             }
 
@@ -572,7 +572,7 @@ namespace NemoTest
 
                     for (int i = 0; i < count; i++)
                     {
-                        var customer = context.Customers.Where(c => c.Id == "ALFKI").FirstOrDefault();
+                        var customer = context.Customers/*.AsNoTracking()*/.Where(c => c.Id == "ALFKI").FirstOrDefault();
                     }
                     timer.Stop();
                 }
@@ -585,7 +585,7 @@ namespace NemoTest
                     for (int i = 0; i < count; i++)
                     {
                         var parameters = new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } };
-                        var customer = context.Customers.SqlQuery(sql, parameters).FirstOrDefault();
+                        var customer = context.Customers.SqlQuery(sql, parameters)/*.AsNoTracking()*/.FirstOrDefault();
                     }
                     timer.Stop();
                 }

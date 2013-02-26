@@ -109,7 +109,7 @@ namespace Nemo.Collections.Extensions
                 return this.GetEnumerator();
             }
         }
-
+        
         #endregion
 
         #region Functional Methods
@@ -201,6 +201,18 @@ namespace Nemo.Collections.Extensions
             {
                 array[index] = cur;
                 ++index;
+            }
+        }
+
+        public static List<T> ToLazyList<T>(this IEnumerable<T> source)
+        {
+            if (source is Stream<T>)
+            {
+                return ((Stream<T>)source).ToList();
+            }
+            else
+            {
+                return Enumerable.ToList(source);
             }
         }
 

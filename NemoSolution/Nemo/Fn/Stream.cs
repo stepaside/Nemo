@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 
@@ -14,6 +15,7 @@ namespace Nemo.Fn
         private readonly T _head;
         private Func<Stream<T>> _tail;
         private Stream<T> _realized;
+        private List<T> _list;
 
         public Stream(T head)
         {
@@ -73,6 +75,15 @@ namespace Nemo.Fn
                     yield return x;
             }
 
+        }
+
+        public List<T> ToList()
+        {
+            if (_list == null)
+            {
+                _list = Enumerable.ToList(this);
+            }
+            return _list;
         }
 
         #endregion
