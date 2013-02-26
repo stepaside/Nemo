@@ -193,6 +193,7 @@ namespace NemoTest
                 var customer_from_xml = ObjectXmlSerializer.FromXml<ICustomer>(reader).FirstOrDefault();
             }
 
+            RunEF(500, false);
             RunNative(500);
             RunExecute(500);
             RunDapper(500, false);
@@ -543,6 +544,51 @@ namespace NemoTest
             connection.Close();
 
             Console.WriteLine("Native+Nemo.Mapper: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+        }
+
+        private static void RunEF(int count, bool linq = false)
+        {
+            // Warm-up
+            using (var context = new EFContext(ObjectFactory.DefaultConnectionName))
+            {
+                if (linq)
+                {
+                    var customer = context.Customers.Where(c => c.Id == "ALFKI").FirstOrDefault();
+                }
+                else
+                {
+                    var customer = context.Customers.SqlQuery(@"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID", new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } }).FirstOrDefault();
+                }
+            }
+
+            var timer = new HiPerfTimer(true);
+            if (linq)
+            {
+                using (var context = new EFContext(ObjectFactory.DefaultConnectionName))
+                {
+                    timer.Start();
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        var customer = context.Customers.Where(c => c.Id == "ALFKI").FirstOrDefault();
+                    }
+                    timer.Stop();
+                }
+            }
+            else
+            {
+                using (var context = new EFContext(ObjectFactory.DefaultConnectionName))
+                {
+                    timer.Start();
+                    for (int i = 0; i < count; i++)
+                    {
+                        var customer = context.Customers.SqlQuery(@"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID", new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } }).FirstOrDefault();
+                    }
+                    timer.Stop();
+                }
+            }
+
+            Console.WriteLine("Entity Framework: " + timer.GetElapsedTimeInMicroseconds() / 1000);
         }
         
         public static void RunJsonParser(string json, int count)

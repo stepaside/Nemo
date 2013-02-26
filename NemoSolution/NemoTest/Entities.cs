@@ -8,29 +8,32 @@ using Nemo.Fn;
 using Nemo.Id;
 using Nemo.Validation;
 using ProtoBuf;
+using System.Data.Entity;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NemoTest
 {
-    [Table("Customers")]
+    [Nemo.Attributes.Table("Customers")]
     //[Cache]
     //[CacheDependency(typeof(IOrder), DependentProperty = "CustomerId", ValueProperty = "Id")]
     public interface ICustomer : IBusinessObject
     {
         [PrimaryKey, MapColumn("CustomerID"), Parameter("CustomerID")]
         string Id { get; set; }
-        [StringLength(50), DoNotPersist, XmlAttribute]
+        [Nemo.Validation.StringLength(50), DoNotPersist, XmlAttribute]
         string CompanyName { get; set; }
         //[Distinct]
         IList<IOrder> Orders { get; set; }
-        [DoNotPersist, DoNotSerialize]
-        TypeUnion<int, string, double> TypeUnionTest { get; set; }
-        [DoNotPersist, DoNotSerialize]
-        List<int> ListTest { get; set; }
-        [DoNotPersist, DoNotSerialize]
-        Dictionary<int, string> MapTest { get; set; }
+        //[DoNotPersist, DoNotSerialize]
+        //TypeUnion<int, string, double> TypeUnionTest { get; set; }
+        //[DoNotPersist, DoNotSerialize]
+        //List<int> ListTest { get; set; }
+        //[DoNotPersist, DoNotSerialize]
+        //Dictionary<int, string> MapTest { get; set; }
     }
 
-    [Table("Orders"), ProtoContract, ProtoInclude(50, typeof(OrderLegacy))]
+    [Nemo.Attributes.Table("Orders"), ProtoContract, ProtoInclude(50, typeof(OrderLegacy))]
     public interface IOrder : IBusinessObject
     {
         [MapColumn("OrderID"), Generate.Using(typeof(UniqueNegativeNumberGenerator)), PrimaryKey, ProtoMember(1)]
@@ -145,7 +148,7 @@ namespace NemoTest
         }
     }
 
-    [Table("Employee")]
+    [Nemo.Attributes.Table("Employee")]
     public interface IPerson : IBusinessObject
     {
         [MapProperty("person_id"), MapColumn("EmployeeID")]
@@ -164,7 +167,7 @@ namespace NemoTest
         DateTime DateOfBirth { get; set; }
     }
 
-    [Table("Customers")]
+    [Nemo.Attributes.Table("Customers")]
     // Used for Dapper performance test
     public class Customer : ICustomer
     {
@@ -175,17 +178,18 @@ namespace NemoTest
             CompanyName = companyName;
         }
 
-        [PrimaryKey, MapColumn("CustomerID")]
+        [PrimaryKey, MapColumn("CustomerID"), Key]
         public string Id { get; set; }
         public string CompanyName { get; set; }
         public IList<IOrder> Orders { get; set; }
-        public TypeUnion<int, string, double> TypeUnionTest { get; set; }
-        public List<int> ListTest { get; set; }
-        public Dictionary<int, string> MapTest { get; set; }   
+        //public TypeUnion<int, string, double> TypeUnionTest { get; set; }
+        //public List<int> ListTest { get; set; }
+        //public Dictionary<int, string> MapTest { get; set; }   
     }
     
     public class Order : IOrder
     {
+        [PrimaryKey, Key]
         public int OrderId
         {
             get;
@@ -237,5 +241,18 @@ namespace NemoTest
 
         [ProtoMember(5), DataMember(Order = 5)]
         public List<SimpleObject> Children { get; set; }
+    }
+
+    public class EFContext : DbContext
+    {
+        public EFContext(string connectionName) : base("name=" + connectionName) { }
+        public DbSet<Customer> Customers { get; set; }
+        public DbSet<Order> Orders { get; set; }
+
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Customer>().Property(x => x.Id).HasColumnName("CustomerID");
+            modelBuilder.Entity<Order>().Property(x => x.CustomerId).HasColumnName("CustomerID");
+        }
     }
 }
