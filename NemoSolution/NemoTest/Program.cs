@@ -187,6 +187,11 @@ namespace NemoTest
             var json = customer.ToJson();
             var customer_from_json = ObjectJsonSerializer.FromJson<ICustomer>(json).FirstOrDefault();
 
+            RunJsonParser(json, 500);
+            RunJsonNetParser(json, 500);
+            // ServiceStack does not support DOM parsing
+            // RunServiceStackJsonParser<Customer>(new Customer(customer), 500);
+
             var xml = customer.ToXml();
             using (var reader = XmlReader.Create(new StringReader(xml)))
             {

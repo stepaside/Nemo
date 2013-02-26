@@ -178,6 +178,20 @@ namespace NemoTest
             CompanyName = companyName;
         }
 
+        public Customer(ICustomer customer)
+        {
+            Id = customer.Id;
+            CompanyName = customer.CompanyName;
+            if (customer.Orders != null)
+            {
+                Orders = new List<IOrder>();
+                foreach (var order in customer.Orders)
+                {
+                    Orders.Add(new Order { OrderId = order.OrderId, CustomerId = order.CustomerId, ShipPostalCode = order.ShipPostalCode });
+                }
+            }
+        }
+
         [PrimaryKey, MapColumn("CustomerID"), Key]
         public string Id { get; set; }
         public string CompanyName { get; set; }
