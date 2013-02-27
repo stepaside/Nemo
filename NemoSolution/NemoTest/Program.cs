@@ -16,6 +16,7 @@ using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization.Json;
@@ -187,6 +188,9 @@ namespace NemoTest
             var json = customer.ToJson();
             var customer_from_json = ObjectJsonSerializer.FromJson<ICustomer>(json).FirstOrDefault();
 
+            Console.WriteLine();
+            Console.WriteLine("JSON DOM Parsing");
+            
             RunJsonParser(json, 500);
             RunJsonNetParser(json, 500);
             // ServiceStack does not support DOM parsing
@@ -198,12 +202,16 @@ namespace NemoTest
                 var customer_from_xml = ObjectXmlSerializer.FromXml<ICustomer>(reader).FirstOrDefault();
             }
 
+            Console.WriteLine();
+            Console.WriteLine("Object Fetching and Materialization");
+
             RunEF(500, false);
             RunNative(500);
             RunExecute(500);
             RunDapper(500, false);
             RunRetrieve(500, false);
             RunNativeWithMapper(500);
+            RunSelect(500, false);
 
             return;
 
@@ -475,6 +483,31 @@ namespace NemoTest
                 connection.Close();
 
                 Console.WriteLine("Nemo.Retrieve: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+            }
+        }
+
+        private static void RunSelect(int count, bool buffered = false)
+        {
+            using (new CacheScope(buffered: buffered))
+            {
+                var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+                Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
+
+                connection.Open();
+
+                // Warm-up
+                var result = ObjectFactory.Select<ICustomer>(predicate, connection: connection).FirstOrDefault();
+
+                var timer = new HiPerfTimer(true);
+                timer.Start();
+                for (int i = 0; i < count; i++)
+                {
+                    result = ObjectFactory.Select<ICustomer>(predicate, connection: connection).FirstOrDefault();
+                }
+                timer.Stop();
+                connection.Close();
+
+                Console.WriteLine("Nemo.Select: " + timer.GetElapsedTimeInMicroseconds() / 1000);
             }
         }
 
