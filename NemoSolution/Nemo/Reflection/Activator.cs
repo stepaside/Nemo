@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using Nemo.Collections.Extensions;
 using Nemo.Utilities;
+using Nemo.Security.Cryptography;
 
 namespace Nemo.Reflection
 {
@@ -16,7 +17,12 @@ namespace Nemo.Reflection
 
         public static ObjectActivator CreateDelegate(Type type, params Type[] types)
         {
-            var key = Hash.ForEnumerable.Compute<Type>(type.Prepend(types));
+            var count = 1 + types.Length;
+            var data = new byte[sizeof(int) * count];
+            type.Prepend(types)
+                .Select(t => BitConverter.GetBytes(t.GetHashCode()))
+                .Do((i, b) => Buffer.BlockCopy(b,0, data, i*sizeof(int), b.Length));
+            var key = JenkinsOneAtATimeHash.Compute(data);
             return _activatorCache.GetOrAdd(key, (Func<uint, ObjectActivator>)(k => GenerateDelegate(type, types)));
         }
 

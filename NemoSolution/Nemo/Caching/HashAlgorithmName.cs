@@ -12,10 +12,11 @@ namespace Nemo.Caching
         Native, 
         MD5, 
         SHA1, 
-        SHA2, 
+        SHA256, 
         JenkinsHash, 
         SBox, 
         HMAC_SHA1,
+        HMAC_SHA256,
         SuperFastHash,
         MurmurHash
     }

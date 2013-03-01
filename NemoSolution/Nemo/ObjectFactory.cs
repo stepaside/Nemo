@@ -37,37 +37,6 @@ namespace Nemo
 
         #endregion
 
-        #region Configuration Methods
-
-        private static Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(() => DefaultConfiguration.New(), true);
-
-        internal static IConfiguration Configuration
-        {
-            get
-            {
-                return _configuration.Value;
-            }
-        }
-
-        public static IConfiguration Configure()
-        {
-            if (!_configuration.IsValueCreated)
-            {
-                return _configuration.Value;
-            }
-            return null;
-        }
-
-        public static string DefaultConnectionName
-        {
-            get
-            {
-                return Configuration.DefaultConnectionName;
-            }
-        }
-
-        #endregion
-
         #region Instantiation Methods
 
         private static ConcurrentDictionary<Type, RuntimeMethodHandle?> _createMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle?>();
@@ -124,7 +93,19 @@ namespace Nemo
         }
 
         #endregion
-        
+
+        #region Configuration Methods
+
+        public static string DefaultConnectionName
+        {
+            get
+            {
+                return ConfigurationFactory.Configuration.DefaultConnectionName;
+            }
+        }
+
+        #endregion
+
         #region Map Methods
 
         private static ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?> _mapMethods = new ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?>();
@@ -468,7 +449,7 @@ namespace Nemo
                     // Detect data type collision
                     if (cachedItems != null)
                     {
-                        if (ObjectFactory.Configuration.CacheCollisionDetection && cachedItems.Any(c => !c.IsValidDataObject<TResult>()))
+                        if (ConfigurationFactory.Configuration.CacheCollisionDetection && cachedItems.Any(c => !c.IsValidDataObject<TResult>()))
                         {
                             ObjectCache.Remove<TResult>(queryKey);
                             collision = true;
@@ -505,7 +486,7 @@ namespace Nemo
                         else
                         {
                             keys = tuple.Item3;
-                            allowStale = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache;
+                            allowStale = ConfigurationFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache;
                         }
                         if (keys != null)
                         {
@@ -546,7 +527,7 @@ namespace Nemo
             {
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
-                    if (ObjectFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.List)
+                    if (ConfigurationFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.List)
                     {
                         result = result.ToList();
                     }
@@ -615,8 +596,8 @@ namespace Nemo
 
             var returnType = OperationReturnType.SingleResult;
 
-            if (mode == FetchMode.Default) mode = ObjectFactory.Configuration.DefaultFetchMode;
-            if (materialization == MaterializationMode.Default) materialization = ObjectFactory.Configuration.DefaultMaterializationMode;
+            if (mode == FetchMode.Default) mode = ConfigurationFactory.Configuration.DefaultFetchMode;
+            if (materialization == MaterializationMode.Default) materialization = ConfigurationFactory.Configuration.DefaultMaterializationMode;
 
             Func<object[], TResult> func = null;
             if (map == null && realTypes.Count > 1)
@@ -695,10 +676,10 @@ namespace Nemo
         {
             var returnType = OperationReturnType.SingleResult;
 
-            if (mode == FetchMode.Default) mode = ObjectFactory.Configuration.DefaultFetchMode;
+            if (mode == FetchMode.Default) mode = ConfigurationFactory.Configuration.DefaultFetchMode;
             if (mode == FetchMode.Eager) returnType = OperationReturnType.DataTable;
 
-            if (materialization == MaterializationMode.Default) materialization = ObjectFactory.Configuration.DefaultMaterializationMode;
+            if (materialization == MaterializationMode.Default) materialization = ConfigurationFactory.Configuration.DefaultMaterializationMode;
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
@@ -733,9 +714,9 @@ namespace Nemo
             where T : class, IBusinessObject
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
-            if (ObjectFactory.Configuration.GenerateInsertSql)
+            if (ConfigurationFactory.Configuration.GenerateInsertSql)
             {
-                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -757,7 +738,7 @@ namespace Nemo
             where T : class, IBusinessObject
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
-            if (ObjectFactory.Configuration.GenerateUpdateSql)
+            if (ConfigurationFactory.Configuration.GenerateUpdateSql)
             {
                 var partition = parameters.Partition(p => p.IsPrimaryKey);
                 // if p.IsPrimaryKey is not set then
@@ -768,7 +749,7 @@ namespace Nemo
                     var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).Select(p => p.ParameterName ?? p.PropertyName).ToHashSet();
                     partition = parameters.Partition(p => pimaryKeySet.Contains(p.Name));
                 }
-                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -790,10 +771,10 @@ namespace Nemo
             where T : class, IBusinessObject
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
-            if (ObjectFactory.Configuration.GenerateDeleteSql)
+            if (ConfigurationFactory.Configuration.GenerateDeleteSql)
             {
                 var attr = Reflector.GetAttribute<T, TableAttribute>();
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName), attr != null ? attr.SoftDeleteColumn : null);
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName), attr != null ? attr.SoftDeleteColumn : null);
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -815,9 +796,9 @@ namespace Nemo
             where T : class, IBusinessObject
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
-            if (ObjectFactory.Configuration.GenerateDeleteSql)
+            if (ConfigurationFactory.Configuration.GenerateDeleteSql)
             {
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ObjectFactory.Configuration.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -1431,17 +1412,17 @@ namespace Nemo
         {
             if (operationType == OperationType.StoredProcedure)
             {
-                var namingConvention = ObjectFactory.Configuration.OperationNamingConvention;
+                var namingConvention = ConfigurationFactory.Configuration.OperationNamingConvention;
                 var typeName = objectType.Name;
                 if (objectType.IsInterface && typeName[0] == 'I')
                 {
                     typeName = typeName.Substring(1);
                 }
 
-                var procName = ObjectFactory.Configuration.OperationPrefix + typeName + "_" + operation;
+                var procName = ConfigurationFactory.Configuration.OperationPrefix + typeName + "_" + operation;
                 if (namingConvention == OperationNamingConvention.PrefixTypeNameOperation)
                 {
-                    procName = ObjectFactory.Configuration.OperationPrefix + typeName + operation;
+                    procName = ConfigurationFactory.Configuration.OperationPrefix + typeName + operation;
                 }
                 else if (namingConvention == OperationNamingConvention.TypeName_Operation)
                 {
@@ -1453,11 +1434,11 @@ namespace Nemo
                 }
                 else if (namingConvention == OperationNamingConvention.PrefixOperation_TypeName)
                 {
-                    procName = ObjectFactory.Configuration.OperationPrefix + operation + "_" + typeName;
+                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation + "_" + typeName;
                 }
                 else if (namingConvention == OperationNamingConvention.PrefixOperationTypeName)
                 {
-                    procName = ObjectFactory.Configuration.OperationPrefix + operation + typeName;
+                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation + typeName;
                 }
                 else if (namingConvention == OperationNamingConvention.Operation_TypeName)
                 {
@@ -1469,7 +1450,7 @@ namespace Nemo
                 }
                 else if (namingConvention == OperationNamingConvention.PrefixOperation)
                 {
-                    procName = ObjectFactory.Configuration.OperationPrefix + operation;
+                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation;
                 }
                 else if (namingConvention == OperationNamingConvention.Operation)
                 {

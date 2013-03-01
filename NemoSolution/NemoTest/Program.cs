@@ -4,6 +4,7 @@ using Nemo.Caching;
 using Nemo.Caching.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
+using Nemo.Configuration;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Serialization;
@@ -29,7 +30,7 @@ namespace NemoTest
     {
         static void Main(string[] args)
         {
-            ObjectFactory.Configure()
+            ConfigurationFactory.Configure()
                 .SetDefaultCacheLifeTime(3600)
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
                 .SetDefaultFetchMode(FetchMode.Lazy)

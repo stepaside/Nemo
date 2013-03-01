@@ -1,30 +1,32 @@
-﻿using System;
+﻿using Nemo.Collections.Extensions;
+using Nemo.Configuration;
+using Nemo.Extensions;
+using Nemo.Reflection;
+using Nemo.Security.Cryptography;
+using Nemo.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using Nemo.Collections.Extensions;
-using Nemo.Extensions;
-using Nemo.Reflection;
-using Nemo.Utilities;
 
 namespace Nemo.Caching
 {
     public class CacheKey
     {
-        private HashAlgorithmName _hashAlgorithm = ObjectFactory.Configuration.DefaultHashAlgorithm;
+        private HashAlgorithmName _hashAlgorithm = ConfigurationFactory.Configuration.DefaultHashAlgorithm;
 
         public CacheKey() { }
 
         public CacheKey(HashAlgorithmName hashAlgorithm, string value)
         {
-            _hashAlgorithm = hashAlgorithm == HashAlgorithmName.Default ? ObjectFactory.Configuration.DefaultHashAlgorithm : hashAlgorithm;
+            _hashAlgorithm = hashAlgorithm == HashAlgorithmName.Default ? ConfigurationFactory.Configuration.DefaultHashAlgorithm : hashAlgorithm;
             _value = value;
         }
 
         public CacheKey(HashAlgorithmName hashAlgorithm, byte[] data)
         {
-            _hashAlgorithm = hashAlgorithm == HashAlgorithmName.Default ? ObjectFactory.Configuration.DefaultHashAlgorithm : hashAlgorithm;
+            _hashAlgorithm = hashAlgorithm == HashAlgorithmName.Default ? ConfigurationFactory.Configuration.DefaultHashAlgorithm : hashAlgorithm;
             _data = data;
         }
 
@@ -65,7 +67,7 @@ namespace Nemo.Caching
             var reflectedType = Reflector.GetReflectedType(type);
             var typeName = reflectedType.IsBusinessObject && reflectedType.InterfaceTypeName != null ? reflectedType.InterfaceTypeName : reflectedType.FullTypeName;
             
-            _hashAlgorithm = hashAlgorithm == HashAlgorithmName.Default ? ObjectFactory.Configuration.DefaultHashAlgorithm : hashAlgorithm;
+            _hashAlgorithm = hashAlgorithm == HashAlgorithmName.Default ? ConfigurationFactory.Configuration.DefaultHashAlgorithm : hashAlgorithm;
             if (_hashAlgorithm == HashAlgorithmName.Native || _hashAlgorithm == HashAlgorithmName.None)
             {
                 var keyValue = (sorted ? key.Select(k => string.Format("{0}={1}", k.Key, Uri.EscapeDataString(Convert.ToString(k.Value)))) : key.OrderBy(k => k.Key).Select(k => string.Format("{0}={1}", k.Key, Uri.EscapeDataString(Convert.ToString(k.Value))))).ToDelimitedString("&");
@@ -154,34 +156,37 @@ namespace Nemo.Caching
                     case HashAlgorithmName.SHA1:
                         data = this.ComputeHash(SHA1.Create());
                         break;
-                    case HashAlgorithmName.SHA2:
+                    case HashAlgorithmName.SHA256:
                         data = this.ComputeHash(SHA256.Create());
                         break;
                     case HashAlgorithmName.HMAC_SHA1:
-                        data = this.ComputeHash(new HMACSHA1(ObjectFactory.Configuration.SecretKey.ToByteArray()));
+                        data = this.ComputeHash(new HMACSHA1(ConfigurationFactory.Configuration.SecretKey.ToByteArray()));
+                        break;
+                    case HashAlgorithmName.HMAC_SHA256:
+                        data = this.ComputeHash(new HMACSHA256(ConfigurationFactory.Configuration.SecretKey.ToByteArray()));
                         break;
                     case HashAlgorithmName.Default:
                     case HashAlgorithmName.JenkinsHash:
                         {
-                            var h = Hash.Jenkins.Compute(_data);
+                            var h = Jenkins96Hash.Compute(_data);
                             data = BitConverter.GetBytes(h);
                             break;
                         }
                     case HashAlgorithmName.SBox:
                         {
-                            var h = Hash.SBox.Compute(_data);
+                            var h = SBoxHash.Compute(_data);
                             data = BitConverter.GetBytes(h);
                             break;
                         }
                     case HashAlgorithmName.SuperFastHash:
                         {
-                            var h = Hash.SuperFastHash.Compute(_data);
+                            var h = SuperFastHash.Compute(_data);
                             data = BitConverter.GetBytes(h);
                             break;
                         }
                     case HashAlgorithmName.MurmurHash:
                         {
-                            var h = Hash.MurmurHash2.Compute(_data);
+                            var h = MurmurHash2.Compute(_data);
                             data = BitConverter.GetBytes(h);
                             break;
                         }

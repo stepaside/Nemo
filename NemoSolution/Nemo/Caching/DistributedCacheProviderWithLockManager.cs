@@ -1,23 +1,24 @@
-﻿using System;
+﻿using Nemo.Caching.Providers;
+using Nemo.Configuration;
+using Nemo.Fn;
+using Nemo.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Threading;
-using Nemo.Caching.Providers;
-using Nemo.Utilities;
-using Nemo.Fn;
 
 namespace Nemo.Caching
 {
     public abstract class DistributedCacheProviderWithLockManager<TLockManager> : CacheProvider, IDistributedCacheProvider
         where TLockManager : CacheProvider, IDistributedCacheProvider, IDistributedCounter
     {
-        private readonly int _distributedLockRetryCount = ObjectFactory.Configuration.DistributedLockRetryCount;
-        private readonly double _distributedLockWaitTime = ObjectFactory.Configuration.DistributedLockWaitTime;
+        private readonly int _distributedLockRetryCount = ConfigurationFactory.Configuration.DistributedLockRetryCount;
+        private readonly double _distributedLockWaitTime = ConfigurationFactory.Configuration.DistributedLockWaitTime;
         
         protected DistributedCacheProviderWithLockManager(TLockManager lockManager, CacheOptions options)
             : base(options)
         {
             LockManager = lockManager;
-            LockManager.LifeSpan = TimeSpan.FromMinutes(ObjectFactory.Configuration.DistributedLockTimeout);
+            LockManager.LifeSpan = TimeSpan.FromMinutes(ConfigurationFactory.Configuration.DistributedLockTimeout);
         }
 
         protected TLockManager LockManager
@@ -43,14 +44,14 @@ namespace Nemo.Caching
                 return true;
             }
 
-            var isStaleCacheEnabled = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider;
+            var isStaleCacheEnabled = ConfigurationFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider;
             
             var originalKey = key;
             key = ComputeKey(key);
             key = (isStaleCacheEnabled ? "STALE::" : "LOCK::") + key;
 
             var stored = false;
-            if (ObjectFactory.Configuration.DistributedLockVerification)
+            if (ConfigurationFactory.Configuration.DistributedLockVerification)
             {
                 // Value is a combination of the machine name, thread id and random value
                 var ticket = "TICKET::" + key;
@@ -126,7 +127,7 @@ namespace Nemo.Caching
                 return true;
             }
 
-            var isStaleCacheEnabled = ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider;
+            var isStaleCacheEnabled = ConfigurationFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider;
 
             var originalKey = key;
             key = ComputeKey(key);
@@ -135,7 +136,7 @@ namespace Nemo.Caching
             var removed = LockManager.Clear(key);
             if (removed)
             {
-                if (ObjectFactory.Configuration.DistributedLockVerification)
+                if (ConfigurationFactory.Configuration.DistributedLockVerification)
                 {
                     LockManager.Clear("TICKET::" + key);
                 }
@@ -150,7 +151,7 @@ namespace Nemo.Caching
 
         protected object ComputeValue(object value, DateTimeOffset currentDateTime)
         {
-            if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
+            if (ConfigurationFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
             {
                 switch (ExpirationType)
                 {
@@ -174,9 +175,9 @@ namespace Nemo.Caching
         {
             get
             {
-                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
+                if (ConfigurationFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
                 {
-                    return base.ExpiresAt.AddMinutes(ObjectFactory.Configuration.StaleCacheTimeout);
+                    return base.ExpiresAt.AddMinutes(ConfigurationFactory.Configuration.StaleCacheTimeout);
                 }
                 else
                 {
@@ -193,9 +194,9 @@ namespace Nemo.Caching
         {
             get
             {
-                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
+                if (ConfigurationFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
                 {
-                    return base.ExpiresAtSpecificTime.Do(d => d.AddMinutes(ObjectFactory.Configuration.StaleCacheTimeout));
+                    return base.ExpiresAtSpecificTime.Do(d => d.AddMinutes(ConfigurationFactory.Configuration.StaleCacheTimeout));
                 }
                 else
                 {
@@ -208,9 +209,9 @@ namespace Nemo.Caching
         {
             get
             {
-                if (ObjectFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
+                if (ConfigurationFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache && this is IStaleCacheProvider)
                 {
-                    return base.LifeSpan.Add(TimeSpan.FromMinutes(ObjectFactory.Configuration.StaleCacheTimeout));
+                    return base.LifeSpan.Add(TimeSpan.FromMinutes(ConfigurationFactory.Configuration.StaleCacheTimeout));
                 }
                 else
                 {

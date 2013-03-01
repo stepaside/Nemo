@@ -1,4 +1,10 @@
-﻿using System;
+﻿using Nemo.Attributes;
+using Nemo.Configuration;
+using Nemo.Data;
+using Nemo.Extensions;
+using Nemo.Reflection;
+using Nemo.Serialization;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -7,11 +13,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Transactions;
-using Nemo.Attributes;
-using Nemo.Data;
-using Nemo.Extensions;
-using Nemo.Reflection;
-using Nemo.Serialization;
 
 namespace Nemo.UnitOfWork
 {
@@ -72,7 +73,7 @@ namespace Nemo.UnitOfWork
             this.AutoCommit = autoCommit;
             this.IsNew = item == null;
             ItemType = type;
-            this.ChangeTracking = mode != ChangeTrackingMode.Default ? mode : ObjectFactory.Configuration.DefaultChangeTrackingMode;
+            this.ChangeTracking = mode != ChangeTrackingMode.Default ? mode : ConfigurationFactory.Configuration.DefaultChangeTrackingMode;
             if (!this.IsNew)
             {
                 if (type == null)

@@ -1,9 +1,10 @@
-﻿using System;
+﻿using log4net;
+using log4net.Config;
+using Nemo.Configuration;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Web;
-using log4net;
-using log4net.Config;
 
 namespace Nemo.Utilities
 {
@@ -21,7 +22,7 @@ namespace Nemo.Utilities
         {
             get
             {
-                return ObjectFactory.Configuration.Logging;
+                return ConfigurationFactory.Configuration.Logging;
             }
         }
 

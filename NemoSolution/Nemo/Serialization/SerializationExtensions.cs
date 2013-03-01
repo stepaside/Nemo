@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Nemo.Configuration;
 using Nemo.Reflection;
 
 namespace Nemo.Serialization
@@ -10,7 +11,7 @@ namespace Nemo.Serialization
         public static byte[] Serialize<T>(this T businessObject)
             where T : class, IBusinessObject
         {
-            return Serialize(businessObject, ObjectFactory.Configuration.DefaultSerializationMode);
+            return Serialize(businessObject, ConfigurationFactory.Configuration.DefaultSerializationMode);
         }
 
         internal static byte[] Serialize<T>(this T businessObject, SerializationMode mode)
@@ -30,7 +31,7 @@ namespace Nemo.Serialization
         public static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection)
             where T : class, IBusinessObject
         {
-            return Serialize(businessObjectCollection, ObjectFactory.Configuration.DefaultSerializationMode);
+            return Serialize(businessObjectCollection, ConfigurationFactory.Configuration.DefaultSerializationMode);
         }
 
         internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection, SerializationMode mode)

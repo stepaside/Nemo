@@ -1,19 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using BookSleeve;
+﻿using BookSleeve;
+using Nemo.Configuration;
+using Nemo.Extensions;
 using Nemo.Serialization;
 using Nemo.Utilities;
+using System;
 using System.Collections.Concurrent;
-using Nemo.Extensions;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace Nemo.Caching.Providers
 {
     public class RedisCacheProvider : DistributedCacheProviderWithLockManager<RedisCacheProvider>, IDistributedCounter, IPersistentCacheProvider
     {
-        private readonly int _distributedLockRetryCount = ObjectFactory.Configuration.DistributedLockRetryCount;
-        private readonly double _distributedLockWaitTime = ObjectFactory.Configuration.DistributedLockWaitTime;
+        private readonly int _distributedLockRetryCount = ConfigurationFactory.Configuration.DistributedLockRetryCount;
+        private readonly double _distributedLockWaitTime = ConfigurationFactory.Configuration.DistributedLockWaitTime;
         
         #region Static Declarations
 

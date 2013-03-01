@@ -140,6 +140,7 @@
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Collections\ReadOnlyDictionary.cs" />
     <Compile Include="Collections\SortedList.cs" />
+    <Compile Include="Configuration\ConfigurationFactory.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />
     <Compile Include="Data\SQLiteDialectProvider.cs" />
@@ -163,6 +164,12 @@
     <Compile Include="Reflection\FastMapper.cs" />
     <Compile Include="Reflection\FastImplementor.cs" />
     <Compile Include="Reflection\ReflectedType.cs" />
+    <Compile Include="Security\Cryptography\HashFunction.cs" />
+    <Compile Include="Security\Cryptography\Jenkins96Hash.cs" />
+    <Compile Include="Security\Cryptography\JenkinsOneAtATimeHash.cs" />
+    <Compile Include="Security\Cryptography\MurmurHash2.cs" />
+    <Compile Include="Security\Cryptography\SBoxHash.cs" />
+    <Compile Include="Security\Cryptography\SuperFastHash.cs" />
     <Compile Include="Serialization\SerializationReaderState.cs" />
     <Compile Include="ThreadedPrincipal.cs" />
     <Compile Include="UnitOfWork\ChangeNode.cs" />
@@ -251,7 +258,6 @@
     <Compile Include="Attributes\MapPropertyAttribute.cs" />
     <Compile Include="Attributes\Converters\TypeConverterException.cs" />
     <Compile Include="Utilities\Bytes.cs" />
-    <Compile Include="Utilities\Hash.cs" />
     <Compile Include="Utilities\HiPerfTimer.cs" />
     <Compile Include="Utilities\Config.cs" />
     <Compile Include="Id\IIdGenerator.cs" />

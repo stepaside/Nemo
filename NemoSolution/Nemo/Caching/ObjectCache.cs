@@ -1,6 +1,7 @@
 ﻿using Nemo.Attributes;
 using Nemo.Caching.Providers;
 using Nemo.Collections.Extensions;
+using Nemo.Configuration;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
@@ -15,7 +16,7 @@ namespace Nemo.Caching
     public static class ObjectCache
     {
         private static ConcurrentDictionary<string, object> _cacheLocks = new ConcurrentDictionary<string, object>();
-        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => CacheFactory.GetProvider(ObjectFactory.Configuration.TrackingCacheProvider), true);
+        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => CacheFactory.GetProvider(ConfigurationFactory.Configuration.TrackingCacheProvider), true);
 
         #region Helper Methods
 
@@ -63,7 +64,7 @@ namespace Nemo.Caching
                 var attribute = Reflector.GetAttribute<CacheAttribute>(objectType, false);
                 if (attribute != null)
                 {
-                    return attribute.Type ?? ObjectFactory.Configuration.DefaultCacheProvider;
+                    return attribute.Type ?? ConfigurationFactory.Configuration.DefaultCacheProvider;
                 }
             }
             return null;
@@ -170,7 +171,7 @@ namespace Nemo.Caching
         internal static bool CanBeBuffered<T>()
             where T : class, IBusinessObject
         {
-            if (ObjectFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.None)
+            if (ConfigurationFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.None)
             {
                 return false;
             }
@@ -204,7 +205,7 @@ namespace Nemo.Caching
                     cacheType = attribute.Type;
                 }
 
-                if (ObjectFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.None)
+                if (ConfigurationFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.None)
                 {
                     canBeBuffered = false;
                 }
@@ -540,7 +541,7 @@ namespace Nemo.Caching
                 
                 if (cache.IsDistributed)
                 {
-                    var cacheContentMitigation = ObjectFactory.Configuration.CacheContentionMitigation;
+                    var cacheContentMitigation = ConfigurationFactory.Configuration.CacheContentionMitigation;
                     if (cacheContentMitigation == CacheContentionMitigationType.None || ((IDistributedCacheProvider)cache).TryAcquireLock(queryKey))
                     {
                         try

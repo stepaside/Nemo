@@ -1,13 +1,14 @@
-﻿using System;
+﻿using Nemo.Attributes;
+using Nemo.Configuration;
+using Nemo.Extensions;
+using Nemo.Reflection;
+using Nemo.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
-using Nemo.Attributes;
-using Nemo.Extensions;
-using Nemo.Reflection;
-using Nemo.Utilities;
 
 namespace Nemo.Data
 {
@@ -28,7 +29,7 @@ namespace Nemo.Data
                     return attr.Name;
                 }
             }
-            return ObjectFactory.Configuration.DefaultConnectionName;
+            return ConfigurationFactory.Configuration.DefaultConnectionName;
         }
 
         internal static string GetProviderInvariantName(string connectionName, Type objectType = null)

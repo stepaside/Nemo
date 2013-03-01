@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Nemo.Caching;
+using Nemo.Configuration;
+using Nemo.Fn;
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using Nemo.Caching;
-using Nemo.Fn;
 
 namespace Nemo.Collections
 {
@@ -28,7 +29,7 @@ namespace Nemo.Collections
             _buffered = buffered;
             if (buffered)
             {
-                if (ObjectFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.List)
+                if (ConfigurationFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.List)
                 {
                     _source = source.ToList();
                 }
