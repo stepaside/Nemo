@@ -164,7 +164,7 @@
     <Compile Include="Reflection\FastMapper.cs" />
     <Compile Include="Reflection\FastImplementor.cs" />
     <Compile Include="Reflection\ReflectedType.cs" />
-    <Compile Include="Security\Cryptography\HashFunction.cs" />
+    <Compile Include="Security\Cryptography\Hash.cs" />
     <Compile Include="Security\Cryptography\Jenkins96Hash.cs" />
     <Compile Include="Security\Cryptography\JenkinsOneAtATimeHash.cs" />
     <Compile Include="Security\Cryptography\MurmurHash2.cs" />
