@@ -12,18 +12,21 @@
     <copyright>Copyright © Max Stepanskiy 2012</copyright>
     <tags>ORM micro-ORM sql mapper</tags>
 	<releaseNotes>
-	* Updated object cache to get rid of not needed serialization and object creation
-	* Output generated SQL to the console when calling ObjectScope.Commit() with change tracking mode set to Debug
-	* Added ability to generate INSERT/UPDATE/DELETE statements (with support for "soft" deletes) instead of using naming convention and stored procedures
-	* BREAKING CHANGE - Modified binary serialization format to improve serialization performance
-	* Enabled SQLite provider
-	* Removed unnecessary locking
-	* Added additional ObjectFactory methods:
-	  - ObjectFactory.Count - added support for select count(*) from Customers [where ...]
-	  - ObjectFactory.Select - added support for ObjectFactory.Select&lt;Customer>(c => c.Orders.Count > 0)
-	* Minor validation modifications
-	* Fixed ReflectedProperty bug which broke ObjectFactory.Create
-	* Fixed ObjectScope issues
+	* Modified distributed cache locking mechanism
+	* Modified cache implementation
+		- Added cache dependency classes
+		- Updated cache dependency implementation
+		- Modified distributed cache provider implementation
+	* Performance optimizations for parameter extraction
+	* Got rid of CacheType enumeration; cache provider is now specified as a real type
+	* BREAKING CHANGE: Renamed LocalCacheProvider to MemoryCacheProvider
+	* BREAKING CHANGE: Renamemd MemcachedProvider to MemcachedCacheProvider
+	* Modififed RemoveByNamesapce
+	* Modified cache options parsing
+	* Added ability to specify default configuration through app settings
+	* Refactored configuration implementation
+	* Added ability to specify default configuration through app settings
+	* Fixed stream handling with L1 cache
 	</releaseNotes>
   </metadata>
 </package>
