@@ -1317,15 +1317,13 @@ namespace Nemo.Serialization
                     return new BinaryFormatter().Deserialize(_stream);
                 case ObjectTypeCode.ObjectList:
                     {
-                        var activator = Reflection.Activator.CreateDelegate(objectType);
-                        var objectList = (IList)activator();
+                        var objectList = (IList)Reflection.Activator.New(objectType);
                         ReadList(objectList, objectType.GetGenericArguments()[0]);
                         return objectList;
                     }
                 case ObjectTypeCode.ObjectMap:
                     {
-                        var activator = Reflection.Activator.CreateDelegate(objectType);
-                        var objectMap = (IDictionary)activator();
+                        var objectMap = (IDictionary)Reflection.Activator.New(objectType);
                         var genericArgs = objectType.GetGenericArguments();
                         ReadDictionary(objectMap, genericArgs[0], genericArgs[1]);
                         return objectMap;

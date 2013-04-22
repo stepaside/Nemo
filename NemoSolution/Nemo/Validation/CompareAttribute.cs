@@ -73,8 +73,7 @@ namespace Nemo.Validation
                         IComparer comparer = null;
                         if (ComparerType != null && typeof(IComparer).IsAssignableFrom(ComparerType))
                         {
-                            var createComparer = Reflection.Activator.CreateDelegate(ComparerType, Type.EmptyTypes);
-                            comparer = (IComparer)createComparer();
+                            comparer = (IComparer)Reflection.Activator.New(ComparerType);
                         }
                         else
                         {

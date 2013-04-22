@@ -42,7 +42,7 @@ namespace Nemo.Caching.Providers
                         connection = new RedisConnection(hostName);
                     }
 
-                    if (connection.State == RedisConnectionBase.ConnectionState.Shiny)
+                    if (connection.State == RedisConnectionBase.ConnectionState.New)
                     {
                         var openAsync = connection.Open();
                         connection.Wait(openAsync);
@@ -100,7 +100,7 @@ namespace Nemo.Caching.Providers
 
         public override void RemoveAll()
         {
-            _connection.Server.FlushAll();
+            _connection.Server.FlushDb(_database);
         }
 
         public override object Remove(string key)

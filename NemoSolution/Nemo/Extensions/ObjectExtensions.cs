@@ -590,11 +590,7 @@ namespace Nemo.Extensions
             var generatorKeys = propertyMap.Where(p => p.Value != null && p.Value.Generator != null).Select(p => Tuple.Create(typeof(T), p.Key, p.Value.Generator));
             foreach (var key in generatorKeys)
             {
-                var generator = _idGenerators.GetOrAdd(key, k =>
-                {
-                    var activator = Nemo.Reflection.Activator.CreateDelegate(k.Item3);
-                    return (IIdGenerator)activator();
-                });
+                var generator = _idGenerators.GetOrAdd(key, k => (IIdGenerator)Nemo.Reflection.Activator.New(k.Item3));
 
                 businessObject.Property(key.Item2.Name, generator.Generate());
             }

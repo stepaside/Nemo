@@ -15,13 +15,19 @@ namespace Nemo.Reflection
 
         public delegate object ObjectActivator(params object[] args);
 
-        public static ObjectActivator CreateDelegate(Type type, params Type[] types)
+        public static object New(this Type type, params object[] args)
+        {
+            var activator = CreateDelegate(type, args.Select(t => t.GetType()).ToArray());
+            return activator(args);
+        }
+
+        internal static ObjectActivator CreateDelegate(Type type, params Type[] types)
         {
             var count = 1 + types.Length;
             var data = new byte[sizeof(int) * count];
             type.Prepend(types)
                 .Select(t => BitConverter.GetBytes(t.GetHashCode()))
-                .Do((i, b) => Buffer.BlockCopy(b,0, data, i*sizeof(int), b.Length));
+                .Run((i, b) => Buffer.BlockCopy(b, 0, data, i * sizeof(int), b.Length));
             var key = JenkinsOneAtATimeHash.Compute(data);
             return _activatorCache.GetOrAdd(key, (Func<uint, ObjectActivator>)(k => GenerateDelegate(type, types)));
         }

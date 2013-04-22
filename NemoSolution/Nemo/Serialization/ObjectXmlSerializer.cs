@@ -566,8 +566,7 @@ namespace Nemo.Serialization
                     propertyMap = Reflector.GetPropertyNameMap(elementType);
                     if (!objectType.IsInterface)
                     {
-                        var listPopulator = Nemo.Reflection.Activator.CreateDelegate(objectType);
-                        list = (IList)listPopulator(new object[] { });
+                        list = (IList)Nemo.Reflection.Activator.New(objectType);
                     }
                     else
                     {
@@ -648,8 +647,7 @@ namespace Nemo.Serialization
                         propertyMap = Reflector.GetPropertyNameMap(elementType);
                         if (!property.IsListInterface)
                         {
-                            var listPopulator = Nemo.Reflection.Activator.CreateDelegate(property.PropertyType);
-                            list = (IList)listPopulator(new object[] { });
+                            list = (IList)Nemo.Reflection.Activator.New(property.PropertyType);
                         }
                         else
                         {

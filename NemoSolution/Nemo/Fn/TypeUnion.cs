@@ -494,7 +494,6 @@ namespace Nemo.Fn
             ITypeUnion union = null;
             if (types != null && value != null)
             {
-                var valueType = value.GetType();
                 Type genericType = null;
                 if (types.Count == 1)
                 {
@@ -521,8 +520,7 @@ namespace Nemo.Fn
                 {
                     var key = new TypeArray(types);
                     var type = _types.GetOrAdd(key, t => genericType.MakeGenericType(t.Types is Type[] ? (Type[])t.Types : t.Types.ToArray()));
-                    var activator = Nemo.Reflection.Activator.CreateDelegate(type, valueType);
-                    union = (ITypeUnion)activator(new object[] { value });
+                    union = (ITypeUnion)Nemo.Reflection.Activator.New(type, value);
                 }
             }
             return union;

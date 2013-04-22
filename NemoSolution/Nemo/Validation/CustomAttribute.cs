@@ -55,8 +55,7 @@ namespace Nemo.Validation
                         {
                             if (_validator == null)
                             {
-                                var createCustomValidtor = Nemo.Reflection.Activator.CreateDelegate(this.ValidatorType, typeof(CustomValidatorContext));
-                                _validator = (CustomValidator)createCustomValidtor(context);
+                                _validator = (CustomValidator)Nemo.Reflection.Activator.New(this.ValidatorType, context);
                             }
                             var result = _validator.Validate(propertyValue);
                             return result == null || result.Count == 0;

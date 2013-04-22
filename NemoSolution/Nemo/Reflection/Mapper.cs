@@ -10,12 +10,12 @@ namespace Nemo.Reflection
     public static class Mapper
     {
         public delegate void PropertyMapper(object source, object target);
-        private static ConcurrentDictionary<Tuple<Type, Type, bool>, PropertyMapper> _mappers = new ConcurrentDictionary<Tuple<Type, Type, bool>, PropertyMapper>();
+        private static ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper> _mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper>();
 
-        public static PropertyMapper CreateDelegate(Type sourceType, Type targetType, bool indexer, bool ignoreMappings)
+        internal static PropertyMapper CreateDelegate(Type sourceType, Type targetType, bool indexer, bool ignoreMappings)
         {
-            var key = Tuple.Create(sourceType, targetType, indexer);
-            var mapper = _mappers.GetOrAdd(key, t => indexer ? GenerateIndexerDelegate(t.Item1, t.Item2, ignoreMappings) : GenerateDelegate(t.Item1, t.Item2, ignoreMappings));
+            var key = Tuple.Create(sourceType, targetType, indexer, ignoreMappings);
+            var mapper = _mappers.GetOrAdd(key, t => t.Item3 ? GenerateIndexerDelegate(t.Item1, t.Item2, t.Item4) : GenerateDelegate(t.Item1, t.Item2, t.Item4));
             return mapper;
         }
 

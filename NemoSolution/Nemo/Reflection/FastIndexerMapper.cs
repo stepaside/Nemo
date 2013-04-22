@@ -9,17 +9,29 @@ namespace Nemo.Reflection
     {
         static FastIndexerMapper()
         {
-            Instance = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, false);
+            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, false);
         }
-        internal static Nemo.Reflection.Mapper.PropertyMapper Instance;
+
+        internal static void Map(T1 source, T2 target)
+        {
+            IndexerMapper(source, target);
+        }
+
+        private static Nemo.Reflection.Mapper.PropertyMapper IndexerMapper;
     }
 
     internal class FastExactIndexerMapper<T1, T2>
     {
         static FastExactIndexerMapper()
         {
-            Instance = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, true);
+            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, true);
         }
-        internal static Nemo.Reflection.Mapper.PropertyMapper Instance;
+
+        internal static void Map(T1 source, T2 target)
+        {
+            IndexerMapper(source, target);
+        }
+
+        private static Nemo.Reflection.Mapper.PropertyMapper IndexerMapper;
     }
 }

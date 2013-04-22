@@ -57,8 +57,7 @@ namespace Nemo
             }
             else
             {
-                var activator = FastActivator<T>.Instance;
-                value = (T)activator();
+                value = FastActivator<T>.New();
             }
 
             if (value is IChangeTrackingBusinessObject)
@@ -163,22 +162,22 @@ namespace Nemo
             where TSource : class
         {
             var indexer = source is IDictionary<string, object> || (source is IDataRecord) || source is DataRow;
-            Mapper.PropertyMapper mapper = null;
+
             if (indexer)
             {
                 if (ignoreMappings)
                 {
-                    mapper = FastExactIndexerMapper<TSource, TResult>.Instance;
+                    FastExactIndexerMapper<TSource, TResult>.Map(source, target);
                 }
                 else
                 {
                     if (source is IDataReader)
                     {
-                        mapper = FastIndexerMapper<IDataRecord, TResult>.Instance;
+                       FastIndexerMapper<IDataRecord, TResult>.Map((IDataRecord)source, target);
                     }
                     else
                     {
-                        mapper = FastIndexerMapper<TSource, TResult>.Instance;
+                        FastIndexerMapper<TSource, TResult>.Map(source, target);
                     }
                 }
             }
@@ -186,14 +185,13 @@ namespace Nemo
             {
                 if (ignoreMappings)
                 {
-                    mapper = FastExactMapper<TSource, TResult>.Instance;
+                    FastExactMapper<TSource, TResult>.Map(source, target);
                 }
                 else
                 {
-                    mapper = FastMapper<TSource, TResult>.Instance;
+                    FastMapper<TSource, TResult>.Map(source, target);
                 }
             }
-            mapper(source, target);
             return target;
         }
 
@@ -1166,8 +1164,7 @@ namespace Nemo
                                     IList list;
                                     if (!p.Value.IsListInterface)
                                     {
-                                        var listPopulator = Nemo.Reflection.Activator.CreateDelegate(p.Key.PropertyType);
-                                        list = (IList)listPopulator(new object[] { });
+                                        list = (IList)Nemo.Reflection.Activator.New(p.Key.PropertyType);
                                     }
                                     else
                                     {

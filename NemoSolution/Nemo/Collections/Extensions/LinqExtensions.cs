@@ -223,13 +223,13 @@ namespace Nemo.Collections.Extensions
         public static IEnumerable<T> Prepend<T>(this T head, IEnumerable<T> tail)
         {
             tail.ThrowIfNull("tail");
-            return Enumerable.Concat(head.Return(), tail);
+            return head.Return().Concat(tail);
         }
 
         public static IEnumerable<T> Append<T>(this IEnumerable<T> head, T tail)
         {
             head.ThrowIfNull("head");
-            return Enumerable.Concat(head, tail.Return());
+            return head.Concat(tail.Return());
         }
 
         public static IEnumerable<T> Concat<T>(params IEnumerable<T>[] sources)
