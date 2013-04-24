@@ -84,15 +84,10 @@ namespace Nemo.Utilities
                     var reflectedElementType = Reflector.GetReflectedType(elementType);
                     if (!reflectedElementType.IsSimpleType && !reflectedType.IsSimpleList)
                     {
-                        innerTypes.Add(elementType);
+                        allInnerTypes.Add(elementType);
                     }
                 }
-                schemaXml.Append("</xs:sequence><xs:attribute name=\"__type\" type=\"xs:string\" /></xs:complexType>");
-
-                foreach (var type in innerTypes)
-                {
-                    WriteTypeSchema(type, schemaXml, allInnerTypes);
-                }
+                schemaXml.Append("</xs:sequence><xs:attribute name=\"__index\" type=\"xs:int\" /><xs:attribute name=\"__empty\" type=\"xs:boolean\" /></xs:complexType>");
             }
             else
             {

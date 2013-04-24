@@ -127,7 +127,7 @@ namespace Nemo.UnitOfWork
                 return context.OriginalItem as T;
             }
 
-            var result = SerializationExtensions.Deserialize<T>(context.ItemSnapshot);
+            var result = ObjectSerializer.Deserialize<T>(context.ItemSnapshot);
             context.OriginalItem = result;
             return result;
         }

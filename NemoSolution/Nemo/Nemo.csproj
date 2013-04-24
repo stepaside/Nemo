@@ -189,7 +189,12 @@
     <Compile Include="Security\Cryptography\MurmurHash2.cs" />
     <Compile Include="Security\Cryptography\SBoxHash.cs" />
     <Compile Include="Security\Cryptography\SuperFastHash.cs" />
+    <Compile Include="Serialization\SerializationReader.cs" />
+    <Compile Include="Serialization\JsonSerializationReader.cs" />
+    <Compile Include="Serialization\JsonSerializationWriter.cs" />
     <Compile Include="Serialization\SerializationReaderState.cs" />
+    <Compile Include="Serialization\XmlSerializationReader.cs" />
+    <Compile Include="Serialization\XmlSerializationWriter.cs" />
     <Compile Include="ThreadedPrincipal.cs" />
     <Compile Include="UnitOfWork\ChangeNode.cs" />
     <Compile Include="Data\DbFactory.cs" />
@@ -246,7 +251,7 @@
     <Compile Include="Caching\ObjectCache.cs" />
     <Compile Include="Caching\CacheItem.cs" />
     <Compile Include="Caching\CacheKey.cs" />
-    <Compile Include="Serialization\ObjectSerializer.cs" />
+    <Compile Include="Serialization\SerializationWriter.cs" />
     <Compile Include="Collections\BinaryHeap.cs" />
     <Compile Include="Collections\Comparers\ProjectionComparer.cs" />
     <Compile Include="Collections\Comparers\ElementComparer.cs" />
@@ -256,7 +261,7 @@
     <Compile Include="ExecutionContext.cs" />
     <Compile Include="Extensions\ObjectExtensions.cs" />
     <Compile Include="ObjectFactory.cs" />
-    <Compile Include="Serialization\SerializationExtensions.cs" />
+    <Compile Include="Serialization\ObjectSerializer.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Attributes\Converters\CastFromObjectConverter.cs" />
     <Compile Include="Attributes\Converters\CompositeConverter.cs" />

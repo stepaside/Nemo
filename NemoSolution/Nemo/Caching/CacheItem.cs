@@ -73,7 +73,7 @@ namespace Nemo.Caching
             {
                 if (this.Data != null)
                 {
-                    _dataObject = SerializationExtensions.Deserialize<T>(this.Data);
+                    _dataObject = ObjectSerializer.Deserialize<T>(this.Data);
                 }
             }
 
@@ -106,7 +106,7 @@ namespace Nemo.Caching
             {
                 if (this.Data != null)
                 {
-                    isValid = SerializationExtensions.CheckType<T>(this.Data);
+                    isValid = ObjectSerializer.CheckType<T>(this.Data);
                 }
             }
             return isValid;

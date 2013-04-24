@@ -710,7 +710,7 @@ namespace Nemo.Reflection
             }
             else if (reflectedType.IsTypeUnion)
             {
-                schemaType = "TypeUnionOf_" + reflectedType.GenericArguments.Select(t => t.Name).ToDelimitedString("_");
+                schemaType = "TypeUnionOf_" + reflectedType.GenericArguments.Select(t => XmlConvert.EncodeName(t.Name)).ToDelimitedString("_");
             }
             return schemaType;
         }

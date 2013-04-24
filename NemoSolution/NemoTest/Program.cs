@@ -184,10 +184,10 @@ namespace NemoTest
             var is_read_only = read_only.IsReadOnly();
 
             //// Test serialization of TypeUnion
-            //customer.TypeUnionTest = new TypeUnion<int, string, double>(123);
+            customer.TypeUnionTest = new TypeUnion<int, string, double, List<int>, List<IOrder>>(customer.Orders.ToList());
 
             var json = customer.ToJson();
-            var customer_from_json = ObjectJsonSerializer.FromJson<ICustomer>(json).FirstOrDefault();
+            var customer_from_json = json.FromJson<ICustomer>().FirstOrDefault();
 
             Console.WriteLine();
             Console.WriteLine("JSON DOM Parsing");
@@ -197,10 +197,11 @@ namespace NemoTest
             // ServiceStack does not support DOM parsing
             // RunServiceStackJsonParser<Customer>(new Customer(customer), 500);
 
+            var xsd = Xsd<ICustomer>.Text;
             var xml = customer.ToXml();
             using (var reader = XmlReader.Create(new StringReader(xml)))
             {
-                var customer_from_xml = ObjectXmlSerializer.FromXml<ICustomer>(reader).FirstOrDefault();
+                var customer_from_xml = reader.FromXml<ICustomer>().FirstOrDefault();
             }
 
             Console.WriteLine();
@@ -239,7 +240,7 @@ namespace NemoTest
             },
             s => ProtoBuf.Serializer.Deserialize<SimpleObject>(new MemoryStream(s)), "ProtoBuf", s => s.Length);
 
-            RunSerializationBenchmark(simpleObjectList, s => s.Serialize(), s => SerializationExtensions.Deserialize<SimpleObject>(s), "ObjectSerializer", s => s.Length);
+            RunSerializationBenchmark(simpleObjectList, s => s.Serialize(), s => ObjectSerializer.Deserialize<SimpleObject>(s), "ObjectSerializer", s => s.Length);
             RunSerializationBenchmark(simpleObjectList,
             s =>
             {
@@ -322,7 +323,7 @@ namespace NemoTest
                 }
             }, "ProtoBuf", s => s.Length);
 
-            RunSerializationBenchmark(complexObjectList, s => s.Serialize(), s => SerializationExtensions.Deserialize<ComplexObject>(s), "ObjectSerializer", s => s.Length);
+            RunSerializationBenchmark(complexObjectList, s => s.Serialize(), s => ObjectSerializer.Deserialize<ComplexObject>(s), "ObjectSerializer", s => s.Length);
             RunSerializationBenchmark(complexObjectList,
             s =>
             {

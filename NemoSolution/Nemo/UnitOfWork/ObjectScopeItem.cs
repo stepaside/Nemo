@@ -23,7 +23,7 @@ namespace Nemo.UnitOfWork
         internal static T Deserialize<T>(byte[] data)
             where T : class, IBusinessObject
         {
-            return SerializationExtensions.Deserialize<T>(data);
+            return ObjectSerializer.Deserialize<T>(data);
         }
     }
 }

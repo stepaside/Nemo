@@ -667,7 +667,7 @@ namespace Nemo.Extensions
             where T : class, IBusinessObject
         {
             var data = instance.Serialize(SerializationMode.SerializeAll);
-            var value = SerializationExtensions.Deserialize<T>(data);
+            var value = ObjectSerializer.Deserialize<T>(data);
             return value;
         }
 
@@ -682,7 +682,7 @@ namespace Nemo.Extensions
             where T : class, IBusinessObject
         {
             var data = collection.Serialize(SerializationMode.SerializeAll);
-            var value = SerializationExtensions.Deserialize<T>(data);
+            var value = ObjectSerializer.Deserialize<T>(data);
             return value;
         }
 

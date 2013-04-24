@@ -26,7 +26,7 @@ namespace NemoTest
         //[Distinct]
         IList<IOrder> Orders { get; set; }
         //[DoNotPersist, DoNotSerialize]
-        //TypeUnion<int, string, double> TypeUnionTest { get; set; }
+        TypeUnion<int, string, double, List<int>, List<IOrder>> TypeUnionTest { get; set; }
         //[DoNotPersist, DoNotSerialize]
         //List<int> ListTest { get; set; }
         //[DoNotPersist, DoNotSerialize]
@@ -103,7 +103,7 @@ namespace NemoTest
         [DataMember, ProtoIgnore]
         public List<int> Values { get; set; }
         [ProtoIgnore]
-        public TypeUnion<int, string, double> TypeUnionTest { get; set; }
+        public TypeUnion<int, string, double, List<int>, List<IOrder>> TypeUnionTest { get; set; }
         [ProtoIgnore]
         public List<int> ListTest { get; set; }
         [ProtoIgnore]
@@ -196,7 +196,7 @@ namespace NemoTest
         public string Id { get; set; }
         public string CompanyName { get; set; }
         public IList<IOrder> Orders { get; set; }
-        //public TypeUnion<int, string, double> TypeUnionTest { get; set; }
+        public TypeUnion<int, string, double, List<int>, List<IOrder>> TypeUnionTest { get; set; }
         //public List<int> ListTest { get; set; }
         //public Dictionary<int, string> MapTest { get; set; }   
     }
