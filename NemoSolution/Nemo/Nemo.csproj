@@ -70,9 +70,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BookSleeve, Version=1.3.32.0, Culture=neutral, PublicKeyToken=9056fda458ff61cf, processorArchitecture=MSIL">
+    <Reference Include="BookSleeve, Version=1.3.34.0, Culture=neutral, PublicKeyToken=9056fda458ff61cf, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\BookSleeve.1.3.32\lib\BookSleeve.dll</HintPath>
+      <HintPath>packages\BookSleeve.1.3.34\lib\BookSleeve.dll</HintPath>
     </Reference>
     <Reference Include="Couchbase, Version=1.2.4.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -102,7 +102,7 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\Newtonsoft.Json.5.0.3\lib\net40\Newtonsoft.Json.dll</HintPath>
+      <HintPath>packages\Newtonsoft.Json.5.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="NLog">
       <HintPath>packages\CouchbaseNetClient.1.2.4\lib\net40\NLog.dll</HintPath>
@@ -155,6 +155,7 @@
     <Compile Include="Collections\Extensions\DictionaryExtensions.cs" />
     <Compile Include="Collections\Extensions\SetExtensions.cs" />
     <Compile Include="Collections\HashList.cs" />
+    <Compile Include="Collections\ISharedEnumerable.cs" />
     <Compile Include="Collections\List.cs" />
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Collections\ReadOnlyDictionary.cs" />

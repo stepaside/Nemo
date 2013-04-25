@@ -492,7 +492,144 @@ namespace Nemo.Collections.Extensions
         }
 
         #endregion
-               
+
+        #region Share Methods
+
+        /// <summary>
+        /// Shares an enumerable among multiple consumers guaranteeing that no two consumers can see the same element
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        public static ISharedEnumerable<T> Share<T>(this IEnumerable<T> source)
+        {
+            if (source == null) throw new ArgumentNullException("source");
+            return new SharedEnumerable<T>(source);
+        }
+
+        private sealed class SharedEnumerable<T> : ISharedEnumerable<T>, IDisposable
+        {
+            private int _enumeratorCount;
+            private object _lockObject;
+            private IEnumerator<T> _sharedEnumerator;
+            private IEnumerable<T> _source;
+
+            public SharedEnumerable(IEnumerable<T> source)
+            {
+                this._source = source;
+                this._lockObject = new object();
+            }
+
+            public void Dispose()
+            {
+                lock (this._lockObject)
+                {
+                    if (!this.Disposed)
+                    {
+                        this._sharedEnumerator.Dispose();
+                        this.Disposed = true;
+                    }
+                }
+            }
+
+            internal bool Disposed
+            {
+                get;
+                set;
+            }
+
+            public IEnumerator<T> GetEnumerator()
+            {
+                lock (this._lockObject)
+                {
+                    if (this._sharedEnumerator == null)
+                    {
+                        this._sharedEnumerator = this._source.GetEnumerator();
+                    }
+                    this._enumeratorCount++;
+                    return new SharedEnumerator((SharedEnumerable<T>)this, this._sharedEnumerator, this._lockObject);
+                }
+            }
+
+            public NextResult<T> Next()
+            {
+                var iterator = this.GetEnumerator();
+                return new NextResult<T>(iterator.MoveNext(), iterator.Current);
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return this.GetEnumerator();
+            }
+
+            private class SharedEnumerator : IEnumerator<T>
+            {
+                private T _current;
+                private SharedEnumerable<T> _enumerable;
+                private object _lockObject;
+                private IEnumerator<T> _sharedEnumerator;
+
+                internal SharedEnumerator(SharedEnumerable<T> enumerable, IEnumerator<T> sharedEnumerator, object lockObject)
+                {
+                    this._enumerable = enumerable;
+                    this._sharedEnumerator = sharedEnumerator;
+                    this._lockObject = lockObject;
+                }
+
+                public void Dispose()
+                {
+                    this._enumerable = null;
+                    this._sharedEnumerator = null;
+                    this._lockObject = null;
+                }
+
+                public bool MoveNext()
+                {
+                    lock (this._lockObject)
+                    {
+                        if (this._enumerable.Disposed)
+                        {
+                            return false;
+                        }
+                        bool flag = this._sharedEnumerator.MoveNext();
+                        if (flag)
+                        {
+                            this._current = this._sharedEnumerator.Current;
+                        }
+                        if (!flag)
+                        {
+                            this._sharedEnumerator.Dispose();
+                            this._enumerable.Disposed = true;
+                        }
+                        return flag;
+                    }
+                }
+
+                public void Reset()
+                {
+                    throw new NotSupportedException("SharedEnumerators cannot be Reset.");
+                }
+
+                public T Current
+                {
+                    get
+                    {
+                        return this._current;
+                    }
+                }
+
+                object IEnumerator.Current
+                {
+                    get
+                    {
+                        return this.Current;
+                    }
+                }
+            }
+        }
+
+        #endregion
+
         #region Replicate Methods
 
         public static IEnumerable<IEnumerable<T>> Replicate<T>(this IEnumerable<T> source)
