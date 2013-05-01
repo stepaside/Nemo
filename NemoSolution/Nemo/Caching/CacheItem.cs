@@ -48,7 +48,23 @@ namespace Nemo.Caching
         {
             get
             {
+                if (_data == null && _dataObject != null)
+                {
+                    _data = _dataObject.Serialize();
+                }
                 return _data;
+            }
+        }
+
+        public string Key
+        {
+            get
+            {
+                if (_key == null && _dataObject != null)
+                {
+                    _key = new CacheKey(_dataObject).Value;
+                }
+                return _key;
             }
         }
 
@@ -69,12 +85,9 @@ namespace Nemo.Caching
         public T GetDataObject<T>()
             where T : class, IBusinessObject
         {
-            if (_dataObject == null)
+            if (_dataObject == null && _data != null)
             {
-                if (this.Data != null)
-                {
-                    _dataObject = ObjectSerializer.Deserialize<T>(this.Data);
-                }
+                _dataObject = _data.Deserialize<T>();
             }
 
             if (_dataObject != null)
@@ -92,6 +105,7 @@ namespace Nemo.Caching
                 if (ObjectCache.Modify<T>(dataObject))
                 {
                     _dataObject = dataObject;
+                    _data = null;
                     return true;
                 }
             }
@@ -102,12 +116,9 @@ namespace Nemo.Caching
             where T : class, IBusinessObject
         {
             var isValid = true;
-            if (_dataObject == null)
+            if (_dataObject == null && _data != null)
             {
-                if (this.Data != null)
-                {
-                    isValid = ObjectSerializer.CheckType<T>(this.Data);
-                }
+                isValid = ObjectSerializer.CheckType<T>(_data);
             }
             return isValid;
         }
@@ -125,8 +136,8 @@ namespace Nemo.Caching
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("_data", _data);
-            info.AddValue("_key", _key);
+            info.AddValue("_data", this.Data);
+            info.AddValue("_key", this.Key);
         }
 
         #endregion

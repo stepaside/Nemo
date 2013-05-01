@@ -263,21 +263,34 @@ namespace Nemo.Caching
             where T : class, IBusinessObject
         {
             var cacheType = GetCacheType(typeof(T));
+            object value;
             CacheItem item = null;
             if (cacheType != null)
             {
                 var cache = CacheFactory.GetProvider(cacheType);
-                if (cache is IStaleCacheProvider)
+                if (cache.IsOutOfProcess)
                 {
-                    item = new CacheItem(key, (byte[])((IStaleCacheProvider)cache).RetrieveStale(key));
-                }
-                else if (cache.IsOutOfProcess)
-                {
-                    item = new CacheItem(key, (byte[])cache.Retrieve(key));
+                    if (cache is IStaleCacheProvider)
+                    {
+                        value = ((IStaleCacheProvider)cache).RetrieveStale(key);
+                    }
+                    else
+                    {
+                        value = cache.Retrieve(key);
+                    }
+
+                    if (value != null)
+                    {
+                        item = value is CacheItem ? (CacheItem)value : new CacheItem(key, (byte[])value);
+                    }
                 }
                 else
                 {
-                    item = new CacheItem(key, (T)cache.Retrieve(key));
+                    value = cache.Retrieve(key);
+                    if (value != null)
+                    {
+                        item = new CacheItem(key, (T)value);
+                    }
                 }
             }
 
@@ -307,18 +320,19 @@ namespace Nemo.Caching
                     if (keyCount == 1)
                     {
                         var key = keys.First();
-                        CacheItem item;
+                        object value;
                         if (cache is IStaleCacheProvider)
                         {
-                            item = new CacheItem(key, (byte[])((IStaleCacheProvider)cache).RetrieveStale(key));
+                             value = ((IStaleCacheProvider)cache).RetrieveStale(key);
                         }
                         else
                         {
-                            item = new CacheItem(key, (byte[])cache.Retrieve(key));
+                            value = cache.Retrieve(key);
                         }
 
-                        if (item != null)
+                        if (value != null)
                         {
+                            var item = value is CacheItem ? (CacheItem)value : new CacheItem(key, (byte[])value);
                             return new[] { item };
                         }
                     }
@@ -327,11 +341,11 @@ namespace Nemo.Caching
                         IDictionary<string, CacheItem> map;
                         if (cache is IStaleCacheProvider)
                         {
-                            map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
+                            map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => p.Value is CacheItem ? (CacheItem)p.Value : new CacheItem(p.Key, (byte[])p.Value));
                         }
                         else
                         {
-                            map = cache.Retrieve(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
+                            map = cache.Retrieve(keys).ToDictionary(p => p.Key, p => p.Value is CacheItem ? (CacheItem)p.Value : new CacheItem(p.Key, (byte[])p.Value));
                         }
                     
                         if (map != null && map.Count == keyCount)
@@ -346,7 +360,7 @@ namespace Nemo.Caching
                     IDictionary<string, CacheItem> map;
                     if (cache is IStaleCacheProvider)
                     {
-                        map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (byte[])p.Value));
+                        map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (T)p.Value));
                     }
                     else
                     {
@@ -486,7 +500,7 @@ namespace Nemo.Caching
             var typeQueryKey = GetTypeKey(typeof(T), true, false);
 
             var cache = _trackingCache.Value;
-            if (cache != null)
+            if (cache != null && cache.IsDistributed && cache is IPersistentCacheProvider)
             {
                 // Keys associated with the given type
                 var typeKeySet = cache.Retrieve(typeKey) as string[];
@@ -646,7 +660,14 @@ namespace Nemo.Caching
 
                     if (cache.IsOutOfProcess)
                     {
-                        return cache.AddNew(key, item.Serialize());
+                        if (cache.IsDistributed)
+                        {
+                            cache.AddNew(key, new CacheItem(key, item));
+                        }
+                        else
+                        {
+                            return cache.AddNew(key, item.Serialize());
+                        }
                     }
                     else
                     {
@@ -692,8 +713,16 @@ namespace Nemo.Caching
                     result = true;
                     if (cache.IsOutOfProcess)
                     {
-                        var keyMapSerialized = keyMap.AsParallel().ToDictionary(kvp => kvp.Key, kvp => (object)((T)kvp.Value).Serialize());
-                        result = cache.Save(keyMapSerialized);
+                        if (cache.IsDistributed)
+                        {
+                            var keyMapSerialized = keyMap.AsParallel().ToDictionary(kvp => kvp.Key, kvp => (object)new CacheItem(kvp.Key, (T)kvp.Value));
+                            result = cache.Save(keyMapSerialized);
+                        }
+                        else
+                        {
+                            var keyMapSerialized = keyMap.AsParallel().ToDictionary(kvp => kvp.Key, kvp => (object)((T)kvp.Value).Serialize());
+                            result = cache.Save(keyMapSerialized);
+                        }
                     }
                     else
                     {
@@ -887,9 +916,16 @@ namespace Nemo.Caching
 
                     if (cache.IsOutOfProcess)
                     {
-                        return cache.Save(key, item.Serialize());
+                        if (cache.IsDistributed)
+                        {
+                            return cache.Save(key, new CacheItem(key, item));
+                        }
+                        else
+                        {
+                            return cache.Save(key, item.Serialize());
+                        }
                     }
-                    else 
+                    else
                     {
                         return cache.Save(key, item);
                     }

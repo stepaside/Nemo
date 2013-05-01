@@ -143,6 +143,7 @@
     <Compile Include="Caching\IPersistentCacheProvider.cs" />
     <Compile Include="Caching\IStaleCacheProvider.cs" />
     <Compile Include="Caching\NemoTranscoder.cs" />
+    <Compile Include="Caching\Providers\Generic\MemcachedCacheProvider.cs" />
     <Compile Include="Caching\TemporalValue.cs" />
     <Compile Include="Caching\Providers\CouchbaseCacheProvider.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
@@ -232,7 +233,6 @@
     <Compile Include="Caching\CacheFactory.cs" />
     <Compile Include="Caching\DistributedCacheProvider.cs" />
     <Compile Include="Caching\Providers\MemoryCacheProvider.cs" />
-    <Compile Include="Caching\Providers\DistributedMemoryCacheProvider.cs" />
     <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Extensions\CastExtensions.cs" />
     <Compile Include="OperationType.cs" />

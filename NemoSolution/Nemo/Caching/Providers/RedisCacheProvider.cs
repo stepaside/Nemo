@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Nemo.Caching.Providers
 {
-    public class RedisCacheProvider : DistributedCacheProvider, IPersistentCacheProvider
+    public class RedisCacheProvider : DistributedCacheProvider, IDistributedCounter, IPersistentCacheProvider
     {
         #region Static Declarations
 
