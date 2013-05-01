@@ -8,19 +8,19 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Nemo.Caching.Providers
 {
-    public class RedisCacheProvider : DistributedCacheProviderWithLockManager<RedisCacheProvider>, IDistributedCounter, IPersistentCacheProvider
+    public class RedisCacheProvider : DistributedCacheProvider, IPersistentCacheProvider
     {
-        private readonly int _distributedLockRetryCount = ConfigurationFactory.Configuration.DistributedLockRetryCount;
-        private readonly double _distributedLockWaitTime = ConfigurationFactory.Configuration.DistributedLockWaitTime;
-        
         #region Static Declarations
 
-        private static Dictionary<string, RedisConnection> _redisConnectionList = new Dictionary<string, RedisConnection>();
+        private static readonly Dictionary<string, RedisConnection> _redisConnectionList = new Dictionary<string, RedisConnection>();
 
-        private static object _connectionLock = new object();
+        private static readonly object _connectionLock = new object();
+
+        private static readonly int _waitTimeOut = 5000;
 
         public static RedisConnection GetRedisConnection(string hostName)
         {
@@ -44,8 +44,7 @@ namespace Nemo.Caching.Providers
 
                     if (connection.State == RedisConnectionBase.ConnectionState.New)
                     {
-                        var openAsync = connection.Open();
-                        connection.Wait(openAsync);
+                        connection.Open().RunSynchronously();
                     }
                 }
             }
@@ -75,7 +74,7 @@ namespace Nemo.Caching.Providers
         private RedisConnection _connection;
 
         internal RedisCacheProvider(int database, string hostName)
-            : base(null, null)
+            : base(null)
         {
             _database = database;
             _hostName = hostName;
@@ -83,7 +82,7 @@ namespace Nemo.Caching.Providers
         }
 
         public RedisCacheProvider(CacheOptions options = null)
-            : base(new RedisCacheProvider(options != null ? options.Database : DefaultDatabase, options != null ? options.HostName : DefaultHostName), options)
+            : base(options)
         {
             _database = options != null ? options.Database : DefaultDatabase;
             _hostName = options != null ? options.HostName : DefaultHostName;
@@ -108,7 +107,6 @@ namespace Nemo.Caching.Providers
             key = ComputeKey(key);
             var taskGet = _connection.Strings.Get(_database, key);
             var taskRemove = _connection.Keys.Remove(_database, key);
-            taskGet.Wait();
             return taskGet.Result;
         }
 
@@ -116,7 +114,6 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             var taskRemove = _connection.Keys.Remove(_database, key);
-            taskRemove.Wait();
             return taskRemove.Result;
         }
 
@@ -124,44 +121,71 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             var data = SerializationWriter.WriteObjectWithType(val);
-            var taskAdd = _connection.Strings.SetIfNotExists(_database, key, data);
-            taskAdd.Wait();
+            var now = DateTimeOffset.Now;
+            var taskAdd = _connection.Strings.SetIfNotExists(_database, key, data).ContinueWith(res =>
+            {
+                if (res.Result)
+                {
+                    SetExpiration(_connection, key, now);
+                }
+                return res.Result;
+            });
             return taskAdd.Result;
         }
 
         public override bool Save(string key, object val)
         {
-            key = ComputeKey(key);
-            var data = SerializationWriter.WriteObjectWithType(val);
-            var taskAdd = _connection.Strings.Set(_database, key, data);
-            taskAdd.Wait();
-            return true;
+            using (var tran = _connection.CreateTransaction())
+            {
+                var now = DateTimeOffset.Now;
+                SaveImplementation(tran, key, val, now);
+                return tran.Execute().Wait(_waitTimeOut);
+            }
         }
 
         public override bool Save(IDictionary<string, object> items)
         {
-            var values = new Dictionary<string, byte[]>();
-            foreach (var item in items)
+            using (var tran = _connection.CreateTransaction())
             {
-                var data = SerializationWriter.WriteObjectWithType(item.Value);
-                values.Add(ComputeKey(item.Key), data);
+                var now = DateTimeOffset.Now;
+                foreach (var item in items)
+                {
+                    SaveImplementation(tran, item.Key, item.Value, now);
+                }
+                return tran.Execute().Wait(_waitTimeOut);
             }
+        }
 
-            var taskAdd = _connection.Strings.Set(_database, values);
-            taskAdd.Wait();
+        private bool SaveImplementation(RedisTransaction tran, string key, object val, DateTimeOffset currentDateTime)
+        {
+            key = ComputeKey(key);
+            var data = SerializationWriter.WriteObjectWithType(ComputeValue(val, currentDateTime));
+            tran.Strings.Set(_database, key, data);
+            SetExpiration(tran, key, currentDateTime);
             return true;
+        }
+
+        private void SetExpiration<T>(T conn, string key, DateTimeOffset currentDateTime)
+            where T : RedisConnection
+        {
+            switch (ExpirationType)
+            {
+                case CacheExpirationType.TimeOfDay:
+                    conn.Keys.Expire(_database, key, (int)ExpiresAtSpecificTime.Value.Subtract(currentDateTime).TotalSeconds);
+                    break;
+                case CacheExpirationType.DateTime:
+                    conn.Keys.Expire(_database, key, (int)ExpiresAt.Subtract(currentDateTime).TotalSeconds);
+                    break;
+                case CacheExpirationType.TimeSpan:
+                    conn.Keys.Expire(_database, key, (int)LifeSpan.TotalSeconds);
+                    break;
+            }
         }
 
         public override object Retrieve(string key)
         {
             key = ComputeKey(key);
-            return RetrieveUsingRawKey(key);
-        }
-
-        public override object RetrieveUsingRawKey(string key)
-        {
             var taskGet = _connection.Strings.Get(_database, key);
-            taskGet.Wait();
             var buffer = taskGet.Result;
             if (buffer != null)
             {
@@ -177,12 +201,12 @@ namespace Nemo.Caching.Providers
             var keysArray = keyMap.Keys.ToArray();
             var realKeysArray = keyMap.Values.ToArray();
             var taskGet = _connection.Strings.Get(_database, keysArray);
-            taskGet.Wait();
+            var data = taskGet.Result;
                 
             var result = new Dictionary<string, object>();
             for (int i = 0; i < realKeysArray.Length; i++)
             {
-                var buffer = taskGet.Result[i];
+                var buffer = data[i];
                 if (buffer != null)
                 {
                     var item = SerializationReader.ReadObjectWithType(buffer);
@@ -194,7 +218,8 @@ namespace Nemo.Caching.Providers
 
         public override bool Touch(string key, TimeSpan lifeSpan)
         {
-            return false;
+            key = ComputeKey(key);
+            return _connection.Keys.Expire(_database, key, (int)lifeSpan.TotalSeconds).Wait(_waitTimeOut);
         }
 
         #region IDistributedCounter Members
@@ -203,7 +228,6 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             var task = _connection.Strings.Increment(_database, key, (long)delta);
-            task.Wait();
             return (ulong)task.Result;
         }
 
@@ -211,10 +235,50 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             var task = _connection.Strings.Decrement(_database, key, (long)delta);
-            task.Wait();
             return (ulong)task.Result;
         }
 
         #endregion
+
+        public override bool TryAcquireLock(string key)
+        {
+            var originalKey = key;
+            key = "STALE::" + ComputeKey(key);
+
+            var value = Guid.NewGuid().ToString();
+            var stored = _connection.Strings.TakeLock(_database, key, value, ConfigurationFactory.Configuration.DistributedLockTimeout).Result;
+            
+            if (stored)
+            {
+                Log.Capture(() => string.Format("Acquired lock for {0}", originalKey));
+            }
+            else
+            {
+                Log.Capture(() => string.Format("Failed to acquire lock for {0}", originalKey));
+            }
+            return stored;
+        }
+
+        public override object WaitForItems(string key, int count = -1)
+        {
+            return null;
+        }
+
+        public override bool ReleaseLock(string key)
+        {
+            var originalKey = key;
+            key = "STALE::" + ComputeKey(key);
+
+            var removed = _connection.Strings.ReleaseLock(_database, key).Wait(_waitTimeOut);
+            if (removed)
+            {
+                Log.Capture(() => string.Format("Removed lock for {0}", originalKey));
+            }
+            else
+            {
+                Log.Capture(() => string.Format("Failed to remove lock for {0}", originalKey));
+            }
+            return removed;
+        }
     }
 }

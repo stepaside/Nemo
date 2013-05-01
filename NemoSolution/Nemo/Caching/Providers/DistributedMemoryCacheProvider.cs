@@ -6,10 +6,11 @@ using Nemo.Extensions;
 using Enyim.Caching;
 using Enyim.Caching.Memcached;
 using System.Runtime.Caching;
+using Nemo.Utilities;
 
 namespace Nemo.Caching.Providers
 {
-    public class DistributedMemoryCacheProvider : DistributedCacheProviderWithLockManager<MemcachedCacheProvider>, IStaleCacheProvider
+    public class DistributedMemoryCacheProvider : DistributedCacheProvider, IStaleCacheProvider
     {
         private MemoryCache MemoryCache = MemoryCache.Default;
         private MemcachedClient _memcachedClient;
@@ -18,7 +19,7 @@ namespace Nemo.Caching.Providers
         private const string TIMESTAMP_LOCAL = "TIMESTAMP_LOCAL::";
 
         public DistributedMemoryCacheProvider(CacheOptions options = null)
-            : base(new MemcachedCacheProvider(options != null ? options.ClusterName : MemcachedCacheProvider.DefaultClusterName), options)
+            : base(options)
         {
             _memcachedClient = MemcachedCacheProvider.GetMemcachedClient(options != null ? options.ClusterName : MemcachedCacheProvider.DefaultClusterName);
         }
@@ -162,7 +163,39 @@ namespace Nemo.Caching.Providers
         private object Retrieve(string key, bool allowStale)
         {
             key = ComputeKey(key);
-            return RetrieveUsingRawKey(key, allowStale);   
+            object result = null;
+            var globalTimestamp = _memcachedClient.Get(TIMESTAMP_GLOBAL + key);
+            var localTimestamp = MemoryCache.Get(TIMESTAMP_LOCAL + key);
+            if (localTimestamp != null && globalTimestamp != null && (DateTimeOffset)localTimestamp == (DateTimeOffset)globalTimestamp)
+            {
+                result = MemoryCache.Get(key);
+                // if local cache expires we need to remove the global timestamp
+                // thus expiring all local caches
+                if (result == null)
+                {
+                    _memcachedClient.Remove(TIMESTAMP_GLOBAL + key);
+                }
+                else
+                {
+                    if (!allowStale && result is TemporalValue)
+                    {
+                        var staleValue = (TemporalValue)result;
+                        if (staleValue.IsValid())
+                        {
+                            result = staleValue.Value;
+                        }
+                        else
+                        {
+                            result = null;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                MemoryCache.Remove(key);
+            }
+            return result;
         }
 
         private IDictionary<string, object> Retrieve(IEnumerable<string> keys, bool allowStale)
@@ -229,47 +262,49 @@ namespace Nemo.Caching.Providers
             return items;
         }
 
-        public override object RetrieveUsingRawKey(string key)
+        public override bool TryAcquireLock(string key)
         {
-            return RetrieveUsingRawKey(key, false);
-        }
+            var originalKey = key;
+            key = "STALE::" + ComputeKey(key);
 
-        private object RetrieveUsingRawKey(string key, bool allowStale)
-        {
-            object result = null;
-            var globalTimestamp = _memcachedClient.Get(TIMESTAMP_GLOBAL + key);
-            var localTimestamp = MemoryCache.Get(TIMESTAMP_LOCAL + key);
-            if (localTimestamp != null && globalTimestamp != null && (DateTimeOffset)localTimestamp == (DateTimeOffset)globalTimestamp)
+            var value = Guid.NewGuid().ToString();
+            var stored = _memcachedClient.Store(StoreMode.Add, key, value);
+            if (stored)
             {
-                result = MemoryCache.Get(key);
-                // if local cache expires we need to remove the global timestamp
-                // thus expiring all local caches
-                if (result == null)
-                {
-                    _memcachedClient.Remove(TIMESTAMP_GLOBAL + key);
-                }
-                else
-                {
-                    if (!allowStale && result is TemporalValue)
-                    {
-                        var staleValue = (TemporalValue)result;
-                        if (staleValue.IsValid())
-                        {
-                            result = staleValue.Value;
-                        }
-                        else
-                        {
-                            result = null;
-                        }
-                    }
-                }
+                stored = string.CompareOrdinal(value, _memcachedClient.Get<string>(key)) == 0;
+            }
+
+            if (stored)
+            {
+                Log.Capture(() => string.Format("Acquired lock for {0}", originalKey));
             }
             else
             {
-                MemoryCache.Remove(key);
+                Log.Capture(() => string.Format("Failed to acquire lock for {0}", originalKey));
             }
+            return stored;
+        }
 
-            return result;
+        public override object WaitForItems(string key, int count = -1)
+        {
+            return null;
+        }
+
+        public override bool ReleaseLock(string key)
+        {
+            var originalKey = key;
+            key = "STALE::" + ComputeKey(key);
+
+            var removed = _memcachedClient.Remove(key);
+            if (removed)
+            {
+                Log.Capture(() => string.Format("Removed lock for {0}", originalKey));
+            }
+            else
+            {
+                Log.Capture(() => string.Format("Failed to remove lock for {0}", originalKey));
+            }
+            return removed;
         }
     }
 }

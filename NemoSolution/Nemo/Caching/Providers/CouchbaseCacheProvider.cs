@@ -9,11 +9,7 @@ using Enyim.Caching.Memcached;
 
 namespace Nemo.Caching.Providers
 {
-    public class CouchbaseCacheProvider : DistributedCacheProviderWithLockManager<CouchbaseCacheProvider>
-                                        , IDistributedCounter
-                                        , IOptimisticConcurrencyProvider
-                                        , IStaleCacheProvider
-                                        , IPersistentCacheProvider
+    public class CouchbaseCacheProvider : DistributedCacheProvider, IDistributedCounter, IStaleCacheProvider, IPersistentCacheProvider
     {
         #region Static Declarations
 
@@ -44,15 +40,8 @@ namespace Nemo.Caching.Providers
 
         #region Constructors
 
-        // This one is used to provide lock management
-        internal CouchbaseCacheProvider(string bucketName, string bucketPassword)
-            : base(null, null) 
-        {
-            _couchbaseClient = GetCouchbaseClient(bucketName, bucketPassword);
-        }
-
         public CouchbaseCacheProvider(CacheOptions options = null)
-            : base(new CouchbaseCacheProvider(options != null ? options.ClusterName : DefaultBucketName, options != null ? options.ClusterPassword : null), options)
+            : base(options)
         {
             _couchbaseClient = GetCouchbaseClient(options != null ? options.ClusterName : DefaultBucketName, options != null ? options.ClusterPassword : null);
         }
@@ -65,65 +54,6 @@ namespace Nemo.Caching.Providers
             {
                 return true;
             }
-        }
-
-        public bool CheckAndSave(string key, object val, ulong cas)
-        {
-            key = ComputeKey(key);
-            val = ComputeValue(val, DateTimeOffset.Now);
-            CasResult<bool> result;
-            switch (ExpirationType)
-            {
-                case CacheExpirationType.TimeOfDay:
-                    result = _couchbaseClient.Cas(StoreMode.Set, key, val, ExpiresAtSpecificTime.Value.DateTime, cas);
-                    break;
-                case CacheExpirationType.DateTime:
-                    result = _couchbaseClient.Cas(StoreMode.Set, key, val, ExpiresAt.DateTime, cas);
-                    break;
-                case CacheExpirationType.TimeSpan:
-                    result = _couchbaseClient.Cas(StoreMode.Set, key, val, LifeSpan, cas);
-                    break;
-                default:
-                    result = _couchbaseClient.Cas(StoreMode.Set, key, val, cas);
-                    break;
-            }
-            return result.Result;
-        }
-
-        public Tuple<object, ulong> RetrieveWithCas(string key)
-        {
-            key = ComputeKey(key);
-            var casResult = _couchbaseClient.GetWithCas(key);
-            var result = casResult.Result;
-            if (result != null && result is TemporalValue)
-            {
-                var staleValue = (TemporalValue)result;
-                if (staleValue.IsValid())
-                {
-                    result = staleValue.Value;
-                }
-                else
-                {
-                    result = null;
-                }
-            }
-            return Tuple.Create(result, casResult.Cas);
-        }
-
-        public IDictionary<string, Tuple<object, ulong>> RetrieveWithCas(IEnumerable<string> keys)
-        {
-            var computedKeys = ComputeKey(keys);
-            var items = _couchbaseClient.GetWithCas(computedKeys.Keys);
-            var result = items
-                            .Where(i => !(i.Value.Result is TemporalValue) || ((TemporalValue)i.Value.Result).IsValid())
-                            .ToDictionary
-                            (
-                                i => computedKeys[i.Key],
-                                i => Tuple.Create(i.Value.Result is TemporalValue
-                                                    ? ((TemporalValue)i.Value.Result).Value
-                                                    : i.Value.Result, i.Value.Cas)
-                            );
-            return result;
         }
 
         public override void RemoveAll()
@@ -174,7 +104,24 @@ namespace Nemo.Caching.Providers
         public override object Retrieve(string key)
         {
             key = ComputeKey(key);
-            return RetrieveUsingRawKey(key);
+            var result = _couchbaseClient.Get(key);
+            if (result != null && result is TemporalValue)
+            {
+                var staleValue = (TemporalValue)result;
+                if (staleValue.IsValid())
+                {
+                    return staleValue.Value;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else if (SlidingExpiration && result != null)
+            {
+                Store(StoreMode.Replace, key, result, DateTimeOffset.Now);
+            }
+            return result;
         }
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
@@ -237,26 +184,49 @@ namespace Nemo.Caching.Providers
             return success;
         }
 
-        public override object RetrieveUsingRawKey(string key)
+        public override bool TryAcquireLock(string key)
         {
-            var result = _couchbaseClient.Get(key);
-            if (result != null && result is TemporalValue)
+            var originalKey = key;
+            key = "STALE::" + ComputeKey(key);
+
+            var value = Guid.NewGuid().ToString();
+            var stored = _couchbaseClient.Store(StoreMode.Add, key, value);
+            if (stored)
             {
-                var staleValue = (TemporalValue)result;
-                if (staleValue.IsValid())
-                {
-                    return staleValue.Value;
-                }
-                else
-                {
-                    return null;
-                }
+                stored = string.CompareOrdinal(value, _couchbaseClient.Get<string>(key)) == 0;
             }
-            else if (SlidingExpiration && result != null)
+
+            if (stored)
             {
-                Store(StoreMode.Replace, key, result, DateTimeOffset.Now);
+                Log.Capture(() => string.Format("Acquired lock for {0}", originalKey));
             }
-            return result;
+            else
+            {
+                Log.Capture(() => string.Format("Failed to acquire lock for {0}", originalKey));
+            }
+            return stored;
+        }
+
+        public override object WaitForItems(string key, int count = -1)
+        {
+            return null;
+        }
+
+        public override bool ReleaseLock(string key)
+        {
+            var originalKey = key;
+            key = "STALE::" + ComputeKey(key);
+
+            var removed = _couchbaseClient.Remove(key);
+            if (removed)
+            {
+                Log.Capture(() => string.Format("Removed lock for {0}", originalKey));
+            }
+            else
+            {
+                Log.Capture(() => string.Format("Failed to remove lock for {0}", originalKey));
+            }
+            return removed;
         }
     }
 }

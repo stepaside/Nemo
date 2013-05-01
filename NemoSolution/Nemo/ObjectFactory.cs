@@ -475,7 +475,6 @@ namespace Nemo
                     var tuple = ObjectCache.Add<TResult>(queryKey, parameters, () => RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode), forceRetrieve);
                     if (!tuple.Item1)
                     {
-                        var allowStale = false;
                         if (forceRetrieve)
                         {
                             // if retrieve was forced during cache.add method, then lookup keys again
@@ -484,11 +483,10 @@ namespace Nemo
                         else
                         {
                             keys = tuple.Item3;
-                            allowStale = ConfigurationFactory.Configuration.CacheContentionMitigation == CacheContentionMitigationType.UseStaleCache;
                         }
                         if (keys != null)
                         {
-                            cachedItems = ObjectCache.Lookup<TResult>(keys, allowStale);
+                            cachedItems = ObjectCache.Lookup<TResult>(keys);
                             if (cachedItems != null)
                             {
                                 result = cachedItems.Deserialize<TResult>();

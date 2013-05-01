@@ -87,7 +87,7 @@ namespace Nemo.Caching
         {
             get
             {
-                return this is IDistributedCacheProvider;
+                return this is DistributedCacheProvider;
             }
         }
 

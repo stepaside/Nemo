@@ -202,7 +202,7 @@ namespace Nemo.Serialization
                             else if (value is ITypeUnion)
                             {
                                 var typeUnion = (ITypeUnion)value;
-                                WriteStartElement(name, output, false, new Dictionary<string, string> { { "__index", typeUnion.AllTypes.FindIndex(t => t == typeUnion.UnionType).ToString() }, { "__empty", (typeUnion.GetObject() == null).ToString().ToLower() } });
+                                WriteStartElement(name, output, false, new Dictionary<string, string> { { "__index", (typeUnion.AllTypes.FindIndex(t => t == typeUnion.UnionType) + 1).ToString() }, { "__empty", (typeUnion.GetObject() == null).ToString().ToLower() } });
                                 var reflectedUnionType = Reflector.GetReflectedType(typeUnion.UnionType);
                                 for (int i = 0; i < typeUnion.AllTypes.Length; i++)
                                 {

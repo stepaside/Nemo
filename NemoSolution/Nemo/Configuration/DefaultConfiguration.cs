@@ -12,23 +12,19 @@ namespace Nemo.Configuration
     {
         private string _defaultConnectionName = Config.AppSettings("DefaultConnectionName", "DbConnection");
         private string _operationPrefix = Config.AppSettings("OperationPrefix", string.Empty);
-        private bool _distributedLockVerification = Config.AppSettings("EnableDistributedLockVerification", false);
         private int _defaultCacheLifeTime = Config.AppSettings("DefaultCacheLifeTime", 900);
         private bool _cacheCollisionDetection = Config.AppSettings("EnableCacheCollisionDetection", false);
         private bool _logging = Config.AppSettings("EnableLogging", false);
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
         private int _staleCacheTimeout = Config.AppSettings("StaleCacheTimeout", 2);
-        private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 2);
-        private int _distributedLockRetryCount = Config.AppSettings("DistributedLockRetryCount", 4);
-        private double _distributedLockWaitTime = Config.AppSettings("DistributedLockWaitTime", 0.7);
-        
+        private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 60);
+
         private ContextLevelCacheType _defaultContextLevelCache = ParseContextLevelCacheConfig();
         private OperationNamingConvention _operationNamingConvention = ParseOperationNamingConventionConfig();
         private FetchMode _defaultFetchMode = ParseFetchModeConfig();
         private MaterializationMode _defaultMaterializationMode = ParseMaterializationModeConfig();
         private ChangeTrackingMode _defaultChangeTrackingMode = ParseChangeTrackingModeConfig();
         private HashAlgorithmName _defaultHashAlgorithm = ParseHashAlgorithmNameConfig();
-        private CacheContentionMitigationType _cacheContentionMitigation = ParseCacheContentionMitigationTypeConfig();
         private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
 
         private bool _generateDeleteSql = false;
@@ -36,14 +32,14 @@ namespace Nemo.Configuration
         private bool _generateUpdateSql = false;
         private Type _cacheProvider = typeof(MemoryCacheProvider);
         private Type _trackingCacheProvider = typeof(RedisCacheProvider);
-        
+
         private DefaultConfiguration() { }
 
-        public bool DistributedLockVerification
+        public int DistributedLockTimeout
         {
             get
             {
-                return _distributedLockVerification;
+                return _distributedLockTimeout;
             }
         }
 
@@ -143,43 +139,11 @@ namespace Nemo.Configuration
             }
         }
 
-        public CacheContentionMitigationType CacheContentionMitigation
-        {
-            get
-            {
-                return _cacheContentionMitigation;
-            }
-        }
-
         public int StaleCacheTimeout
         {
             get
             {
                 return _staleCacheTimeout;
-            }
-        }
-
-        public int DistributedLockTimeout
-        {
-            get
-            {
-                return _distributedLockTimeout;
-            }
-        }
-
-        public int DistributedLockRetryCount
-        {
-            get
-            {
-                return _distributedLockRetryCount;
-            }
-        }
-
-        public double DistributedLockWaitTime
-        {
-            get
-            {
-                return _distributedLockWaitTime;
             }
         }
 
@@ -236,9 +200,9 @@ namespace Nemo.Configuration
             return new DefaultConfiguration();
         }
 
-        public IConfiguration SetDistributedLockVerification(bool value)
+        public IConfiguration SetDistributedLockTimeout(int value)
         {
-            _distributedLockVerification = value;
+            _distributedLockTimeout = value;
             return this;
         }
 
@@ -332,12 +296,6 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetCacheContentionMitigation(CacheContentionMitigationType value)
-        {
-            _cacheContentionMitigation = value;
-            return this;
-        }
-
         public IConfiguration SetStaleCacheTimeout(int value)
         {
             if (value < 1)
@@ -345,34 +303,6 @@ namespace Nemo.Configuration
                 value = 1;
             }
             _staleCacheTimeout = value;
-            return this;
-        }
-
-        public IConfiguration SetDistributedLockTimeout(int value)
-        {
-            if (value < 1)
-            {
-                value = 1;
-            }
-            _distributedLockTimeout = value;
-            return this;
-        }
-
-        public IConfiguration SetDistributedLockRetryCount(int value)
-        {
-            if (value > -1)
-            {
-                _distributedLockRetryCount = value;
-            }
-            return this;
-        }
-
-        public IConfiguration SetDistributedLockWaitTime(double value)
-        {
-            if (value > 0)
-            {
-                _distributedLockWaitTime = value;
-            }
             return this;
         }
 
@@ -417,7 +347,7 @@ namespace Nemo.Configuration
             }
             return this;
         }
-        
+
         private static ContextLevelCacheType ParseContextLevelCacheConfig()
         {
             ContextLevelCacheType result;
@@ -480,18 +410,6 @@ namespace Nemo.Configuration
             if (value == null || !Enum.TryParse<HashAlgorithmName>(value, true, out result))
             {
                 result = HashAlgorithmName.JenkinsHash;
-            }
-            return result;
-        }
-
-
-        private static CacheContentionMitigationType ParseCacheContentionMitigationTypeConfig()
-        {
-            CacheContentionMitigationType result;
-            var value = Config.AppSettings("CacheContentionMitigationType");
-            if (value == null || !Enum.TryParse<CacheContentionMitigationType>(value, true, out result))
-            {
-                result = CacheContentionMitigationType.None;
             }
             return result;
         }

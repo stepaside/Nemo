@@ -40,10 +40,8 @@ namespace NemoTest
                 .SetDefaultSerializationMode(SerializationMode.Compact)
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
-                .SetCacheContentionMitigation(CacheContentionMitigationType.None)
                 .SetLogging(false)
-                .SetCacheCollisionDetection(false)
-                .SetDistributedLockVerification(false);
+                .SetCacheCollisionDetection(false);
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };

@@ -7,7 +7,7 @@ namespace Nemo.Configuration
 {
     public interface IConfiguration
     {
-        bool DistributedLockVerification { get; }
+        int DistributedLockTimeout { get; }
         ContextLevelCacheType DefaultContextLevelCache { get; }
         int DefaultCacheLifeTime { get; }
         bool CacheCollisionDetection { get; }
@@ -20,11 +20,7 @@ namespace Nemo.Configuration
         OperationNamingConvention OperationNamingConvention { get; }
         HashAlgorithmName DefaultHashAlgorithm { get; }
         string SecretKey { get; }
-        CacheContentionMitigationType CacheContentionMitigation { get; }
         int StaleCacheTimeout { get; }
-        int DistributedLockTimeout { get; }
-        int DistributedLockRetryCount { get; }
-        double DistributedLockWaitTime { get; }
         SerializationMode DefaultSerializationMode { get; }
         bool GenerateDeleteSql { get; }
         bool GenerateInsertSql { get; }
@@ -32,7 +28,7 @@ namespace Nemo.Configuration
         Type DefaultCacheProvider { get; }
         Type TrackingCacheProvider { get; }
 
-        IConfiguration SetDistributedLockVerification(bool value);
+        IConfiguration SetDistributedLockTimeout(int value);
         IConfiguration SetDefaultContextLevelCache(ContextLevelCacheType value);
         IConfiguration SetDefaultCacheLifeTime(int value);
         IConfiguration SetCacheCollisionDetection(bool value);
@@ -45,11 +41,7 @@ namespace Nemo.Configuration
         IConfiguration SetOperationNamingConvention(OperationNamingConvention value);
         IConfiguration SetDefaultHashAlgorithm(HashAlgorithmName value);
         IConfiguration SetSecretKey(string value);
-        IConfiguration SetCacheContentionMitigation(CacheContentionMitigationType value);
         IConfiguration SetStaleCacheTimeout(int value);
-        IConfiguration SetDistributedLockTimeout(int value);
-        IConfiguration SetDistributedLockRetryCount(int value);
-        IConfiguration SetDistributedLockWaitTime(double value);
         IConfiguration SetDefaultSerializationMode(SerializationMode value);
         IConfiguration SetGenerateDeleteSql(bool value);
         IConfiguration SetGenerateInsertSql(bool value);

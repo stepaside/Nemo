@@ -138,10 +138,8 @@
     <Compile Include="Attributes\PropertyAttribute.cs" />
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
-    <Compile Include="Caching\CacheContentionMitigationType.cs" />
     <Compile Include="Caching\CacheExpirationType.cs" />
     <Compile Include="Caching\IDistributedCounter.cs" />
-    <Compile Include="Caching\IOptimisticConcurrencyProvider.cs" />
     <Compile Include="Caching\IPersistentCacheProvider.cs" />
     <Compile Include="Caching\IStaleCacheProvider.cs" />
     <Compile Include="Caching\NemoTranscoder.cs" />
@@ -210,7 +208,6 @@
     <Compile Include="Caching\CacheDependency.cs" />
     <Compile Include="Caching\ContextLevelCacheType.cs" />
     <Compile Include="Caching\HashAlgorithmName.cs" />
-    <Compile Include="Caching\IDistributedCacheProvider.cs" />
     <Compile Include="Caching\CacheScope.cs" />
     <Compile Include="Caching\Providers\FileCacheProvider.cs" />
     <Compile Include="Caching\Providers\ExecutionContextCacheProvider.cs" />
@@ -233,7 +230,7 @@
     <Compile Include="OperationReturnType.cs" />
     <Compile Include="OperationResponse.cs" />
     <Compile Include="Caching\CacheFactory.cs" />
-    <Compile Include="Caching\DistributedCacheProviderWithLockManager.cs" />
+    <Compile Include="Caching\DistributedCacheProvider.cs" />
     <Compile Include="Caching\Providers\MemoryCacheProvider.cs" />
     <Compile Include="Caching\Providers\DistributedMemoryCacheProvider.cs" />
     <Compile Include="Caching\CacheProvider.cs" />

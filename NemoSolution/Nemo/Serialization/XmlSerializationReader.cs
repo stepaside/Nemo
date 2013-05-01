@@ -158,7 +158,7 @@ namespace Nemo.Serialization
                         if (unionTypeEmpty) continue;
                         
                         var allTypes = property.PropertyType.GetGenericArguments();
-                        var unionTypeIndex = int.Parse(reader.GetAttribute("__index"));
+                        var unionTypeIndex = int.Parse(reader.GetAttribute("__index")) - 1;
                         var unionType = allTypes.ElementAtOrDefault(unionTypeIndex);
                         if (unionType != null)
                         {
