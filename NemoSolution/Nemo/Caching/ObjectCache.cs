@@ -229,14 +229,7 @@ namespace Nemo.Caching
                 if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType);
-                    if (cache is IStaleCacheProvider)
-                    {
-                        return ((IStaleCacheProvider)cache).RetrieveStale(queryKey) as string[];
-                    }
-                    else
-                    {
-                        return cache.Retrieve(queryKey) as string[];
-                    }
+                    return cache.Retrieve(queryKey) as string[];
                 }
             }
             return null;
@@ -253,13 +246,13 @@ namespace Nemo.Caching
 
         #region Item Lookup Methods
 
-        internal static T Lookup<T>(CacheKey key)
+        internal static T Lookup<T>(CacheKey key, bool stale = false)
             where T : class, IBusinessObject
         {
-            return Lookup<T>(key.Value);
+            return Lookup<T>(key.Value, stale);
         }
 
-        public static T Lookup<T>(string key)
+        public static T Lookup<T>(string key, bool stale = false)
             where T : class, IBusinessObject
         {
             var cacheType = GetCacheType(typeof(T));
@@ -270,7 +263,7 @@ namespace Nemo.Caching
                 var cache = CacheFactory.GetProvider(cacheType);
                 if (cache.IsOutOfProcess)
                 {
-                    if (cache is IStaleCacheProvider)
+                    if (stale && cache is IStaleCacheProvider)
                     {
                         value = ((IStaleCacheProvider)cache).RetrieveStale(key);
                     }
@@ -301,13 +294,13 @@ namespace Nemo.Caching
             return default(T);
         }
 
-        internal static CacheItem[] Lookup<T>(IEnumerable<CacheKey> keys)
+        internal static CacheItem[] Lookup<T>(IEnumerable<CacheKey> keys, bool stale = false)
             where T : class, IBusinessObject
         {
-            return Lookup<T>(keys.Select(k => k.Value));
+            return Lookup<T>(keys.Select(k => k.Value), stale);
         }
 
-        public static CacheItem[] Lookup<T>(IEnumerable<string> keys)
+        public static CacheItem[] Lookup<T>(IEnumerable<string> keys, bool stale = false)
             where T : class, IBusinessObject
         {
             var cacheType = GetCacheType(typeof(T));
@@ -321,7 +314,7 @@ namespace Nemo.Caching
                     {
                         var key = keys.First();
                         object value;
-                        if (cache is IStaleCacheProvider)
+                        if (stale && cache is IStaleCacheProvider)
                         {
                              value = ((IStaleCacheProvider)cache).RetrieveStale(key);
                         }
@@ -339,7 +332,7 @@ namespace Nemo.Caching
                     else
                     {
                         IDictionary<string, CacheItem> map;
-                        if (cache is IStaleCacheProvider)
+                        if (stale && cache is IStaleCacheProvider)
                         {
                             map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => p.Value is CacheItem ? (CacheItem)p.Value : new CacheItem(p.Key, (byte[])p.Value));
                         }
@@ -581,13 +574,14 @@ namespace Nemo.Caching
 
         #region Add Methods
 
-        internal static Tuple<bool, IEnumerable<T>, string[]> Add<T>(string queryKey, IList<Param> parameters, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
+        internal static Tuple<bool, IEnumerable<T>, string[], bool> Add<T>(string queryKey, IList<Param> parameters, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
             where T : class, IBusinessObject
         {
             var result = false;
             var values = Enumerable.Empty<T>();
             string[] keys = null;
             var cacheType = GetCacheType(typeof(T));
+            var stale = false;
 
             if (cacheType != null)
             {
@@ -611,6 +605,7 @@ namespace Nemo.Caching
                         else
                         {
                             keys = ((IStaleCacheProvider)cache).RetrieveStale(queryKey) as string[];
+                            stale = true;
                         }
                     }
                     else
@@ -629,17 +624,17 @@ namespace Nemo.Caching
                     }
                 }
             }
-            return Tuple.Create(result, values, keys);
+            return Tuple.Create(result, values, keys, stale);
         }
 
-        internal static Tuple<bool, IEnumerable<T>, string[]> Add<T>(string operation, IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
+        internal static Tuple<bool, IEnumerable<T>, string[], bool> Add<T>(string operation, IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
             where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(operation, parameters, returnType);
             return Add<T>(queryKey, parameters, retrieveItems, forceRetrieve);
         }
 
-        internal static Tuple<bool, IEnumerable<T>, string[]> Add<T>(IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
+        internal static Tuple<bool, IEnumerable<T>, string[], bool> Add<T>(IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
            where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(parameters, returnType);
@@ -735,7 +730,7 @@ namespace Nemo.Caching
                     // Store a query and corresponding keys
                     result = result && cache.Save(queryKey, keyMap.Keys.ToArray());
 
-                    TrackKeys<T>(queryKey, keyMap.Keys, parameters);
+                    Task.Run(() => TrackKeys<T>(queryKey, keyMap.Keys, parameters));
                 }
                 else
                 {

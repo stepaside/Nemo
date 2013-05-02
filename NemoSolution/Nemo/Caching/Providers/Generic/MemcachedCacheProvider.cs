@@ -117,9 +117,16 @@ namespace Nemo.Caching.Providers.Generic
                 }
             }
 
-            if (result != null && result is byte[])
+            if (result != null)
             {
-                LocalCache[key] = new CacheItem(originalKey, (byte[])result);
+                if (result is byte[])
+                {
+                    LocalCache[key] = new CacheItem(originalKey, (byte[])result);
+                }
+                else
+                {
+                    LocalCache[key] = result;
+                }
             }
 
             if (result != null && SlidingExpiration)
@@ -190,9 +197,16 @@ namespace Nemo.Caching.Providers.Generic
             {
                 var item = _client.Get(key);
                 result = ((TemporalValue)item).Value;
-                if (result != null && result is byte[])
+                if (result != null)
                 {
-                    LocalCache[key] = new CacheItem(originalKey, (byte[])result);
+                    if (result is byte[])
+                    {
+                        LocalCache[key] = new CacheItem(originalKey, (byte[])result);
+                    }
+                    else
+                    {
+                        LocalCache[key] = result;
+                    }
                 }
             }
             return result;
@@ -227,6 +241,10 @@ namespace Nemo.Caching.Providers.Generic
                             if (item is byte[])
                             {
                                 LocalCache[k] = new CacheItem(originalKey, (byte[])item);
+                            }
+                            else
+                            {
+                                LocalCache[k] = item;
                             }
                         }
                     });

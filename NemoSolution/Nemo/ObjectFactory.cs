@@ -486,7 +486,7 @@ namespace Nemo
                         }
                         if (keys != null)
                         {
-                            cachedItems = ObjectCache.Lookup<TResult>(keys);
+                            cachedItems = ObjectCache.Lookup<TResult>(keys, tuple.Item4);
                             if (cachedItems != null)
                             {
                                 result = cachedItems.Deserialize<TResult>();
