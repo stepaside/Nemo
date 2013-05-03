@@ -15,7 +15,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace NemoTest
 {
     [Nemo.Attributes.Table("Customers")]
-    //[Cache]
+    //[Cache(Type=typeof(Nemo.Caching.Providers.MemcachedCacheProvider))]
     //[CacheDependency(typeof(IOrder), DependentProperty = "CustomerId", ValueProperty = "Id")]
     public interface ICustomer : IBusinessObject
     {
