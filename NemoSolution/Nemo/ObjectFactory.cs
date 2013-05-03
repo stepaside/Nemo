@@ -402,6 +402,11 @@ namespace Nemo
             Type cacheType;
             ObjectCache.GetCacheInfo<TResult>(out canBeBuffered, out cacheType);
             var enableCache = cacheType != null;
+            // Cancel caching for multi-result queries; need to think of way to cache IMultiResult
+            if (enableCache && types != null && types.Count > 1 && returnType == OperationReturnType.MultiResult)
+            {
+                enableCache = false;
+            }
 
             CacheProvider bufferCache = null;
             if (canBeBuffered)

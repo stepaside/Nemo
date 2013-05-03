@@ -1,5 +1,6 @@
 ﻿using Nemo.Attributes;
 using Nemo.Caching.Providers;
+using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
 using Nemo.Extensions;
@@ -482,17 +483,20 @@ namespace Nemo.Caching
             }
             else
             {
-                Task.Run(() => TrackCacheProviderKeys<T>(queryKey, itemKeys, parameters));
+                var cache = _trackingCache.Value;
+                if (cache != null)
+                {
+                    Task.Run(() => TrackCacheProviderKeys<T>(queryKey, itemKeys, parameters, cache));
+                }
             }
         }
 
-        private static void TrackCacheProviderKeys<T>(string queryKey, IEnumerable<string> itemKeys, IList<Param> parameters)
+        private static void TrackCacheProviderKeys<T>(string queryKey, IEnumerable<string> itemKeys, IList<Param> parameters, CacheProvider cache)
             where T : class, IBusinessObject
         {
             var typeKey = GetTypeKey(typeof(T), false, false);
             var typeQueryKey = GetTypeKey(typeof(T), true, false);
 
-            var cache = _trackingCache.Value;
             if (cache != null && cache.IsDistributed && cache is IPersistentCacheProvider)
             {
                 // Keys associated with the given type
@@ -730,7 +734,7 @@ namespace Nemo.Caching
                     // Store a query and corresponding keys
                     result = result && cache.Save(queryKey, keyMap.Keys.ToArray());
 
-                    Task.Run(() => TrackKeys<T>(queryKey, keyMap.Keys, parameters));
+                    TrackKeys<T>(queryKey, keyMap.Keys, parameters);
                 }
                 else
                 {

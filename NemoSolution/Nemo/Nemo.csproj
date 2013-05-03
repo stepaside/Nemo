@@ -70,9 +70,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BookSleeve, Version=1.3.34.0, Culture=neutral, PublicKeyToken=9056fda458ff61cf, processorArchitecture=MSIL">
+    <Reference Include="BookSleeve, Version=1.3.35.0, Culture=neutral, PublicKeyToken=9056fda458ff61cf, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\BookSleeve.1.3.34\lib\BookSleeve.dll</HintPath>
+      <HintPath>packages\BookSleeve.1.3.35\lib\BookSleeve.dll</HintPath>
     </Reference>
     <Reference Include="Couchbase, Version=1.2.4.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>

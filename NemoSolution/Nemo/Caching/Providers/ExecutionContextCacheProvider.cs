@@ -46,7 +46,6 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             ExecutionContext.Set(key, val);
-            //TrackKeys(new[] { key });
             return true;
         }
 
@@ -57,7 +56,6 @@ namespace Nemo.Caching.Providers
             {
                 ExecutionContext.Set(k.Key, items[k.Value]);
             }
-            //TrackKeys(items.Keys);
             return true;
         }
 
@@ -85,17 +83,5 @@ namespace Nemo.Caching.Providers
                 return ExecutionContext.AllKeys;
             }
         }
-
-        //private void TrackKeys(IEnumerable<string> keys)
-        //{
-        //    var cacheScope = CacheScope.Current;
-        //    if (cacheScope != null)
-        //    {
-        //        foreach (var key in keys)
-        //        {
-        //            cacheScope.Track(key);
-        //        }
-        //    }
-        //}
     }
 }

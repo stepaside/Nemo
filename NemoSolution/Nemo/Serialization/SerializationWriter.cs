@@ -194,7 +194,7 @@ namespace Nemo.Serialization
                 if (length > 0)
                 {
                     var buffer = new byte[length];
-                    _encoding.GetBytes(chars, 0, length, buffer, 0);
+                    _encoding.GetBytes(chars, 0, chars.Length, buffer, 0);
                     _stream.Write(buffer, 0, length);
                 }
             }

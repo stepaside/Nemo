@@ -44,7 +44,7 @@ namespace Nemo.Caching.Providers
 
                     if (connection.State == RedisConnectionBase.ConnectionState.New)
                     {
-                        connection.Open().RunSynchronously();
+                        connection.Open();
                     }
                 }
             }
@@ -72,14 +72,6 @@ namespace Nemo.Caching.Providers
         private int _database;
         private string _hostName;
         private RedisConnection _connection;
-
-        internal RedisCacheProvider(int database, string hostName)
-            : base(null)
-        {
-            _database = database;
-            _hostName = hostName;
-            _connection = GetRedisConnection(_hostName);
-        }
 
         public RedisCacheProvider(CacheOptions options = null)
             : base(options)

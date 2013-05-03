@@ -103,7 +103,7 @@ namespace Nemo.Caching.Providers.Generic
             return true;
         }
 
-        private object ProcessRetrieve(object result, string key, string originalKey)
+        private object ProcessRetrieve(object result, string key, string originalKey, IDictionary<string, object> localCache)
         {
             if (result is TemporalValue)
             {
@@ -121,11 +121,11 @@ namespace Nemo.Caching.Providers.Generic
             {
                 if (result is byte[])
                 {
-                    LocalCache[key] = new CacheItem(originalKey, (byte[])result);
+                    localCache[key] = new CacheItem(originalKey, (byte[])result);
                 }
                 else
                 {
-                    LocalCache[key] = result;
+                    localCache[key] = result;
                 }
             }
 
@@ -148,7 +148,7 @@ namespace Nemo.Caching.Providers.Generic
                 result = _client.Get(key);
                 if (result != null)
                 {
-                    result = ProcessRetrieve(result, key, originalKey);
+                    result = ProcessRetrieve(result, key, originalKey, LocalCache);
                 }
             }
             return result;
@@ -156,15 +156,16 @@ namespace Nemo.Caching.Providers.Generic
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
         {
-            IDictionary<string, object> items = new Dictionary<string, object>();
+            IDictionary<string, object> items = new ConcurrentDictionary<string, object>();
             if (keys.Any())
             {
                 var computedKeys = ComputeKey(keys);
-
+                var localCache = LocalCache;
+                
                 Parallel.ForEach(computedKeys.Keys, k =>
                 {
                     object value;
-                    if (LocalCache.TryGetValue(k, out value))
+                    if (localCache.TryGetValue(k, out value))
                     {
                         items[k] = value;
                     }
@@ -173,14 +174,18 @@ namespace Nemo.Caching.Providers.Generic
                 if (items.Count < computedKeys.Count)
                 {
                     var missingItems = _client.Get(items.Count == 0 ? computedKeys.Keys : computedKeys.Keys.Except(items.Keys));
+                    
                     Parallel.ForEach(computedKeys.Keys, k =>
                     {
-                        var item = missingItems[k];
-                        var originalKey = computedKeys[k];
-                        item = ProcessRetrieve(item, k, originalKey);
-                        if (item != null)
+                        object item;
+                        if (missingItems.TryGetValue(k, out item))
                         {
-                            items[originalKey] = item;
+                            var originalKey = computedKeys[k];
+                            item = ProcessRetrieve(item, k, originalKey, localCache);
+                            if (item != null)
+                            {
+                                items[originalKey] = item;
+                            }
                         }
                     });
                 }
@@ -196,7 +201,11 @@ namespace Nemo.Caching.Providers.Generic
             if (!LocalCache.TryGetValue(key, out result))
             {
                 var item = _client.Get(key);
-                result = ((TemporalValue)item).Value;
+                if (item != null && item is TemporalValue)
+                {
+                    result = ((TemporalValue)item).Value;
+                }
+
                 if (result != null)
                 {
                     if (result is byte[])
@@ -214,15 +223,16 @@ namespace Nemo.Caching.Providers.Generic
 
         public IDictionary<string, object> RetrieveStale(IEnumerable<string> keys)
         {
-            IDictionary<string, object> items = new Dictionary<string, object>();
+            IDictionary<string, object> items = new ConcurrentDictionary<string, object>();
             if (keys.Any())
             {
                 var computedKeys = ComputeKey(keys);
-
+                var localCache = LocalCache;
+                
                 Parallel.ForEach(computedKeys.Keys, k =>
                 {
                     object value;
-                    if (LocalCache.TryGetValue(k, out value))
+                    if (localCache.TryGetValue(k, out value))
                     {
                         items[k] = value;
                     }
@@ -231,20 +241,28 @@ namespace Nemo.Caching.Providers.Generic
                 if (items.Count < computedKeys.Count)
                 {
                     var missingItems = _client.Get(items.Count == 0 ? computedKeys.Keys : computedKeys.Keys.Except(items.Keys));
+                    
                     Parallel.ForEach(computedKeys.Keys, k =>
                     {
-                        var item = ((TemporalValue)missingItems[k]).Value;
                         var originalKey = computedKeys[k];
+                        object item;
+                        missingItems.TryGetValue(k, out item);
+
+                        if (item != null && item is TemporalValue)
+                        {
+                            item = ((TemporalValue)item).Value;
+                        }
+
                         if (item != null)
                         {
                             items[originalKey] = item;
                             if (item is byte[])
                             {
-                                LocalCache[k] = new CacheItem(originalKey, (byte[])item);
+                                localCache[k] = new CacheItem(originalKey, (byte[])item);
                             }
                             else
                             {
-                                LocalCache[k] = item;
+                                localCache[k] = item;
                             }
                         }
                     });

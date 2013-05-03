@@ -12,7 +12,7 @@ namespace Nemo.Caching
         {
             if (cacheType != null && typeof(CacheProvider).IsAssignableFrom(cacheType))
             {
-                return (CacheProvider)Nemo.Reflection.Activator.New(cacheType, typeof(CacheOptions));
+                return (CacheProvider)Nemo.Reflection.Activator.CreateDelegate(cacheType, typeof(CacheOptions))(options);
             }
             return null;
         }

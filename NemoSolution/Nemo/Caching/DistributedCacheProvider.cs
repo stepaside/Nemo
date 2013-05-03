@@ -3,6 +3,7 @@ using Nemo.Configuration;
 using Nemo.Fn;
 using Nemo.Utilities;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -13,7 +14,7 @@ namespace Nemo.Caching
         protected DistributedCacheProvider(CacheOptions options)
             : base(options)
         {
-            LocalCache = new Dictionary<string, object>();
+            LocalCache = new ConcurrentDictionary<string, object>();
         }
 
         protected IDictionary<string, object> LocalCache

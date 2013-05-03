@@ -35,13 +35,14 @@ namespace NemoTest
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
                 .SetDefaultFetchMode(FetchMode.Lazy)
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
-                .SetDefaultContextLevelCache(ContextLevelCacheType.LazyList)
+                .SetDefaultContextLevelCache(ContextLevelCacheType.None)
                 .SetDefaultHashAlgorithm(HashAlgorithmName.JenkinsHash)
                 .SetDefaultSerializationMode(SerializationMode.Compact)
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
                 .SetLogging(false)
-                .SetCacheCollisionDetection(false);
+                .SetCacheCollisionDetection(false)
+                .SetTrackingCacheProvider(null);
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
