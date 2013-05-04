@@ -341,7 +341,7 @@ namespace Nemo.Configuration
 
         public IConfiguration SetTrackingCacheProvider(Type value)
         {
-            if (value == null || typeof(CacheProvider).IsAssignableFrom(value))
+            if (value == null || typeof(CacheProvider).IsAssignableFrom(value) && typeof(IPersistentCacheProvider).IsAssignableFrom(value))
             {
                 _trackingCacheProvider = value;
             }
