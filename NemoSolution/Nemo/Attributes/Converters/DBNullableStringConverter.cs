@@ -2,14 +2,10 @@
 
 namespace Nemo.Attributes.Converters
 {
-    /// <summary>
-    /// Represents a type converter converting strings to nullable strings.  If the object is
-    /// <see cref="DBNull"/>, the nullable type will be <c>null</c> string.
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
     public class DBNullableStringConverter : ITypeConverter<object, string>
     {
         #region ITypeConverter<object,string> Members
+        
         string ITypeConverter<object, string>.ConvertForward(object from)
         {
             if (from == null || from is DBNull)
@@ -33,6 +29,7 @@ namespace Nemo.Attributes.Converters
                 return DBNull.Value;
             }
         }
+        
         #endregion
     }
 }

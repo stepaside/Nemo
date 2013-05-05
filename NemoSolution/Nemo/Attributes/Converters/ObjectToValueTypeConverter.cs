@@ -2,19 +2,18 @@ using System;
 
 namespace Nemo.Attributes.Converters
 {
-	/// <summary>Represents a type converter casting objects to other types.</summary>
-	/// <typeparam name="T"></typeparam>
 	public class ObjectToValueTypeConverter<T> : ITypeConverter<object, T>
-	{
+    {
 		#region ITypeConverter<F,T> Members
-		T ITypeConverter<object, T>.ConvertForward(object from)
+	
+        T ITypeConverter<object, T>.ConvertForward(object from)
 		{
 			if (from == null || from == DBNull.Value)
 			{
 				return default(T);
 			}
 
-			Type targetType = typeof(T);
+			var targetType = typeof(T);
 			if (targetType == typeof(bool))
 			{
 				if (from is string)
@@ -109,6 +108,7 @@ namespace Nemo.Attributes.Converters
 		{
 			return to;
 		}
+
 		#endregion
 	}
 }

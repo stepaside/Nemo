@@ -170,6 +170,7 @@
     <Compile Include="Fn\StreamExtensions.cs" />
     <Compile Include="Fn\Tuple.cs" />
     <Compile Include="Fn\TypeUnion.cs" />
+    <Compile Include="ParamList.cs" />
     <Compile Include="Reflection\ReflectedProperty.cs" />
     <Compile Include="Attributes\DoNotSelectAttribute.cs" />
     <Compile Include="Attributes\TableAttribute.cs" />
@@ -226,7 +227,7 @@
     <Compile Include="Attributes\PrimaryKeyAttribute.cs" />
     <Compile Include="UnitOfWork\ObjectScope.cs" />
     <Compile Include="UnitOfWork\ObjectScopeItem.cs" />
-    <Compile Include="OperationParameter.cs" />
+    <Compile Include="Param.cs" />
     <Compile Include="OperationRequest.cs" />
     <Compile Include="OperationReturnType.cs" />
     <Compile Include="OperationResponse.cs" />
@@ -266,7 +267,6 @@
     <Compile Include="Attributes\Converters\DBNullableStringConverter.cs" />
     <Compile Include="Attributes\Converters\DBNullableTypeConverter.cs" />
     <Compile Include="Attributes\Converters\EnumConverter.cs" />
-    <Compile Include="Attributes\Converters\EnumFieldLabelAttribute.cs" />
     <Compile Include="Attributes\Converters\ITypeConverter.cs" />
     <Compile Include="Attributes\Converters\ListConverter.cs" />
     <Compile Include="Attributes\Converters\NullableEnumConverter.cs" />

@@ -2,10 +2,6 @@ using System;
 
 namespace Nemo.Attributes.Converters
 {
-	/// <summary>Represents a type converter converting strings to enums.</summary>
-	/// <remarks>Returns an empty string if the enum is <c>null</c>.</remarks>
-	/// <exception cref="ArgumentException">If the string doesn't correspond to an enum of that type.</exception>
-	/// <typeparam name="T"></typeparam>
 	public class NullableEnumConverter<T> : ITypeConverter<string, T?>
 		where T : struct //	Should actually be an enum
 	{
