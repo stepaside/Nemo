@@ -14,7 +14,7 @@ namespace Nemo.Caching
         public CacheOptions(string configKey)
         {
             var configValue = Config.AppSettings(configKey);
-            if (configValue.NullIfEmpty() != null)
+            if (!string.IsNullOrEmpty(configValue))
             {
                 var nvp = Http.ParseQueryString(configValue);
                 Namespace = nvp["namespace"];

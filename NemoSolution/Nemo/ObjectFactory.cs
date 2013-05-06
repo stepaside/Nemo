@@ -452,7 +452,7 @@ namespace Nemo
                     // Detect data type collision
                     if (cachedItems != null)
                     {
-                        if (ConfigurationFactory.Configuration.CacheCollisionDetection && cachedItems.Any(c => !c.IsValidDataObject<TResult>()))
+                        if (ConfigurationFactory.Configuration.CacheCollisionDetection && cachedItems.Any(c => !c.IsValid<TResult>()))
                         {
                             ObjectCache.Remove<TResult>(queryKey);
                             collision = true;

@@ -230,7 +230,20 @@ namespace Nemo.Caching
                 if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType);
-                    return cache.Retrieve(queryKey) as string[];
+                    var value = cache.Retrieve(queryKey);
+                    
+                    if (value is CacheItem)
+                    {
+                        return ((CacheItem)value).ToIndex();
+                    }
+                    else if (value is byte[])
+                    {
+                        return new CacheItem((byte[])value).ToIndex();
+                    }
+                    else
+                    {
+                        return value as string[];
+                    }
                 }
             }
             return null;
@@ -290,7 +303,7 @@ namespace Nemo.Caching
 
             if (item != null)
             {
-                return item.GetDataObject<T>();
+                return item.ToObject<T>();
             }
             return default(T);
         }
@@ -345,7 +358,7 @@ namespace Nemo.Caching
                         if (map != null && map.Count == keyCount)
                         {
                             // Enforce original order on multiple items returned from memcached using multi-get
-                            return map.Values.Arrange(keys, i => i.GetKey<T>()).ToArray();
+                            return map.Values.Arrange(keys, i => i.Key).ToArray();
                         }
                     }
                 }
@@ -373,7 +386,7 @@ namespace Nemo.Caching
         public static IEnumerable<T> Deserialize<T>(this IList<CacheItem> items)
             where T : class, IBusinessObject
         {
-            return items.Select(i => i.GetDataObject<T>());
+            return items.Select(i => i.ToObject<T>());
         }
 
         #endregion
@@ -712,16 +725,8 @@ namespace Nemo.Caching
                     result = true;
                     if (cache.IsOutOfProcess)
                     {
-                        if (cache.IsDistributed)
-                        {
-                            var keyMapSerialized = keyMap.AsParallel().ToDictionary(kvp => kvp.Key, kvp => (object)new CacheItem(kvp.Key, (T)kvp.Value));
-                            result = cache.Save(keyMapSerialized);
-                        }
-                        else
-                        {
-                            var keyMapSerialized = keyMap.AsParallel().ToDictionary(kvp => kvp.Key, kvp => (object)((T)kvp.Value).Serialize());
-                            result = cache.Save(keyMapSerialized);
-                        }
+                        var keyMapSerialized = keyMap.AsParallel().ToDictionary(kvp => kvp.Key, kvp => (object)new CacheItem(kvp.Key, (T)kvp.Value));
+                        result = cache.Save(keyMapSerialized);
                     }
                     else
                     {
@@ -732,7 +737,7 @@ namespace Nemo.Caching
                 if (result)
                 {
                     // Store a query and corresponding keys
-                    result = result && cache.Save(queryKey, keyMap.Keys.ToArray());
+                    result = result && cache.Save(queryKey, new CacheItem(queryKey, keyMap.Keys.ToArray()));
 
                     TrackKeys<T>(queryKey, keyMap.Keys, parameters);
                 }

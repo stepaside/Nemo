@@ -204,17 +204,21 @@ namespace Nemo.Caching.Providers
             return false;
         }
 
+        protected byte[] ExtractValue(object value)
+        {
+            return value is CacheItem ? ((CacheItem)value).Data : value as byte[];
+        }
+
         private void Write(string file, object value)
         {
-            var buffer = SerializationWriter.WriteObjectWithType(value);
+            var buffer = ExtractValue(value);
             File.WriteAllBytes(file, buffer);
         }
 
         private object Read(string file)
         {
             var buffer = File.ReadAllBytes(file);
-            var result = SerializationReader.ReadObjectWithType(buffer);
-            return result;
+            return buffer;
         }
     }
 }

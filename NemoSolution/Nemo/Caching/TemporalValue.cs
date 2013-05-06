@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Nemo.Serialization;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 
 namespace Nemo.Caching
@@ -9,11 +11,32 @@ namespace Nemo.Caching
     public class TemporalValue
     {
         public DateTime ExpiresAt { get; set; }
-        public object Value { get; set; }
+        public byte[] Value { get; set; }
 
         public bool IsValid()
         {
             return this.ExpiresAt >= DateTimeOffset.Now.DateTime;
+        }
+
+        public byte[] ToBytes()
+        {
+            using (var writer = SerializationWriter.CreateWriter(SerializationMode.CompactManual))
+            {
+                writer.Write(ExpiresAt);
+                writer.Write(Value);
+                return writer.GetBytes();
+            }
+        }
+
+        public static TemporalValue FromBytes(byte[] buffer)
+        {
+            var result = new TemporalValue();
+            using (var reader = SerializationReader.CreateReader(buffer))
+            {
+                result.ExpiresAt = reader.ReadDateTime();
+                result.Value = reader.ReadBytes();
+            }
+            return result;
         }
     }
 }

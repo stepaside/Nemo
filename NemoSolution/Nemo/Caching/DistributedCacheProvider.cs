@@ -13,14 +13,16 @@ namespace Nemo.Caching
     {
         protected DistributedCacheProvider(CacheOptions options)
             : base(options)
-        {
-            LocalCache = new ConcurrentDictionary<string, object>();
-        }
+        { }
 
         protected IDictionary<string, object> LocalCache
         {
             get
             {
+                if (!ExecutionContext.Exists("__LocalCache"))
+                {
+                    ExecutionContext.Set("__LocalCache", new ConcurrentDictionary<string, object>());
+                }
                 return (IDictionary<string, object>)ExecutionContext.Get("__LocalCache");
             }
             set
@@ -29,20 +31,37 @@ namespace Nemo.Caching
             }
         }
 
-        protected object ComputeValue(object value, DateTimeOffset currentDateTime)
+        protected byte[] ExtractValue(object value)
+        {
+            return value is CacheItem ? ((CacheItem)value).Data : value as byte[];
+        }
+
+        protected byte[] ComputeValue(byte[] value, DateTimeOffset currentDateTime)
         {
             if (this is IStaleCacheProvider)
             {
                 switch (ExpirationType)
                 {
                     case CacheExpirationType.TimeOfDay:
-                        return new TemporalValue { Value = value, ExpiresAt = base.ExpiresAtSpecificTime.Value.DateTime };
+                        {
+                            var t = new TemporalValue { Value = value, ExpiresAt = base.ExpiresAtSpecificTime.Value.DateTime };
+                            return t.ToBytes();
+                        }
                     case CacheExpirationType.DateTime:
-                        return new TemporalValue { Value = value, ExpiresAt = base.ExpiresAt.DateTime };
+                        {
+                            var t = new TemporalValue { Value = value, ExpiresAt = base.ExpiresAt.DateTime };
+                            return t.ToBytes();
+                        }
                     case CacheExpirationType.TimeSpan:
-                        return new TemporalValue { Value = value, ExpiresAt = currentDateTime.Add(LifeSpan).DateTime };
+                        {
+                            var t = new TemporalValue { Value = value, ExpiresAt = currentDateTime.Add(LifeSpan).DateTime };
+                            return t.ToBytes();
+                        }
                     default:
-                        return value;
+                        {
+                            var t = new TemporalValue { Value = value, ExpiresAt = DateTime.MaxValue };
+                            return t.ToBytes();
+                        }
                 }
             }
             else

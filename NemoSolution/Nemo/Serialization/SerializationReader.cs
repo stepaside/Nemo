@@ -47,10 +47,13 @@ namespace Nemo.Serialization
             _mode = (SerializationMode)ReadByte();
             _serializeAll = (_mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (_mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
-            _objectByte = ReadByte();
-            if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObject || _objectByte.Value == (byte)ObjectTypeCode.BusinessObjectList)
+            if (_mode != SerializationMode.CompactManual)
             {
-                _objectTypeHash = ReadInt32();
+                _objectByte = ReadByte();
+                if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObject || _objectByte.Value == (byte)ObjectTypeCode.BusinessObjectList)
+                {
+                    _objectTypeHash = ReadInt32();
+                }
             }
         }
 

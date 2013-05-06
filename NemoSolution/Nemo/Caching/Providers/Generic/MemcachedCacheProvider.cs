@@ -10,6 +10,7 @@ using Nemo.Configuration;
 using Nemo.Extensions;
 using Nemo.Utilities;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace Nemo.Caching.Providers.Generic
 {
@@ -29,12 +30,7 @@ namespace Nemo.Caching.Providers.Generic
         #endregion
 
         protected abstract T CreateClient(CacheOptions options);
-
-        protected object ExtractValue(object value)
-        {
-            return value is CacheItem ? (object)((CacheItem)value).Data : value;
-        }
-
+        
         public override bool IsOutOfProcess
         {
             get
@@ -85,7 +81,11 @@ namespace Nemo.Caching.Providers.Generic
             key = ComputeKey(key);
             LocalCache[key] = val;
             var now = DateTimeOffset.Now;
+#if DEBUG
+            Store(StoreMode.Set, key, val, now);
+#else
             Task.Run(() => Store(StoreMode.Set, key, val, now));
+#endif
             return true;
         }
 
@@ -97,19 +97,24 @@ namespace Nemo.Caching.Providers.Generic
             foreach (var k in keys)
             {
                 LocalCache[k.Key] = items[k.Value];
+#if DEBUG
+                Store(StoreMode.Set, k.Key, items[k.Value], now);
+#else
                 Task.Run(() => Store(StoreMode.Set, k.Key, items[k.Value], now));
+#endif
             }
 
             return true;
         }
 
-        private object ProcessRetrieve(object result, string key, string originalKey, IDictionary<string, object> localCache)
+        private byte[] ProcessRetrieve(byte[] result, string key, string originalKey, IDictionary<string, object> localCache)
         {
-            if (result is TemporalValue)
+            if (this is IStaleCacheProvider)
             {
-                if (((TemporalValue)result).IsValid())
+                var t = TemporalValue.FromBytes(result);
+                if (t.IsValid())
                 {
-                    result = ((TemporalValue)result).Value;
+                    result = t.Value;
                 }
                 else
                 {
@@ -119,20 +124,17 @@ namespace Nemo.Caching.Providers.Generic
 
             if (result != null)
             {
-                if (result is byte[])
-                {
-                    localCache[key] = new CacheItem(originalKey, (byte[])result);
-                }
-                else
-                {
-                    localCache[key] = result;
-                }
+                localCache[key] = new CacheItem(originalKey, result);
             }
 
             if (result != null && SlidingExpiration)
             {
                 var now = DateTimeOffset.Now;
+#if DEBUG
+                Store(StoreMode.Replace, key, result, now);
+#else
                 Task.Run(() => Store(StoreMode.Replace, key, result, now));
+#endif
             }
 
             return result;
@@ -145,10 +147,10 @@ namespace Nemo.Caching.Providers.Generic
             object result;
             if (!LocalCache.TryGetValue(key, out result))
             {
-                result = _client.Get(key);
-                if (result != null)
+                var value = _client.Get<byte[]>(key);
+                if (value != null)
                 {
-                    result = ProcessRetrieve(result, key, originalKey, LocalCache);
+                    result = ProcessRetrieve(value, key, originalKey, LocalCache);
                 }
             }
             return result;
@@ -181,7 +183,7 @@ namespace Nemo.Caching.Providers.Generic
                         if (missingItems.TryGetValue(k, out item))
                         {
                             var originalKey = computedKeys[k];
-                            item = ProcessRetrieve(item, k, originalKey, localCache);
+                            item = ProcessRetrieve((byte[])item, k, originalKey, localCache);
                             if (item != null)
                             {
                                 items[originalKey] = item;
@@ -200,22 +202,15 @@ namespace Nemo.Caching.Providers.Generic
             object result;
             if (!LocalCache.TryGetValue(key, out result))
             {
-                var item = _client.Get(key);
-                if (item != null && item is TemporalValue)
+                var item = _client.Get<byte[]>(key);
+                if (item != null && this is IStaleCacheProvider)
                 {
-                    result = ((TemporalValue)item).Value;
+                    result = TemporalValue.FromBytes(item).Value;
                 }
 
                 if (result != null)
                 {
-                    if (result is byte[])
-                    {
-                        LocalCache[key] = new CacheItem(originalKey, (byte[])result);
-                    }
-                    else
-                    {
-                        LocalCache[key] = result;
-                    }
+                    LocalCache[key] = new CacheItem(originalKey, (byte[])result);
                 }
             }
             return result;
@@ -248,22 +243,15 @@ namespace Nemo.Caching.Providers.Generic
                         object item;
                         missingItems.TryGetValue(k, out item);
 
-                        if (item != null && item is TemporalValue)
+                        if (item != null && this is IStaleCacheProvider)
                         {
-                            item = ((TemporalValue)item).Value;
+                            item = TemporalValue.FromBytes((byte[])item).Value;
                         }
 
                         if (item != null)
                         {
                             items[originalKey] = item;
-                            if (item is byte[])
-                            {
-                                localCache[k] = new CacheItem(originalKey, (byte[])item);
-                            }
-                            else
-                            {
-                                localCache[k] = item;
-                            }
+                            localCache[k] = new CacheItem(originalKey, (byte[])item);
                         }
                     });
                 }
@@ -284,7 +272,7 @@ namespace Nemo.Caching.Providers.Generic
         private bool Store(StoreMode mode, string key, object val, DateTimeOffset currentDateTime)
         {
             var success = false;
-            val = ComputeValue(ExtractValue(val), currentDateTime);
+            val = ComputeValue((byte[])ExtractValue(val), currentDateTime);
             switch (ExpirationType)
             {
                 case CacheExpirationType.TimeOfDay:

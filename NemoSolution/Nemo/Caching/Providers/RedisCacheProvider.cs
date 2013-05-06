@@ -1,13 +1,11 @@
 ﻿using BookSleeve;
 using Nemo.Configuration;
 using Nemo.Extensions;
-using Nemo.Serialization;
 using Nemo.Utilities;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nemo.Caching.Providers
@@ -112,8 +110,8 @@ namespace Nemo.Caching.Providers
         public override bool AddNew(string key, object val)
         {
             key = ComputeKey(key);
-            var data = SerializationWriter.WriteObjectWithType(val);
             var now = DateTimeOffset.Now;
+            var data = ComputeValue(ExtractValue(val), now);
             var taskAdd = _connection.Strings.SetIfNotExists(_database, key, data).ContinueWith(res =>
             {
                 if (res.Result)
@@ -151,7 +149,7 @@ namespace Nemo.Caching.Providers
         private bool SaveImplementation(RedisTransaction tran, string key, object val, DateTimeOffset currentDateTime)
         {
             key = ComputeKey(key);
-            var data = SerializationWriter.WriteObjectWithType(ComputeValue(val, currentDateTime));
+            var data = ComputeValue(ExtractValue(val), currentDateTime);
             tran.Strings.Set(_database, key, data);
             SetExpiration(tran, key, currentDateTime);
             return true;
@@ -179,12 +177,7 @@ namespace Nemo.Caching.Providers
             key = ComputeKey(key);
             var taskGet = _connection.Strings.Get(_database, key);
             var buffer = taskGet.Result;
-            if (buffer != null)
-            {
-                var result = SerializationReader.ReadObjectWithType(buffer);
-                return result;
-            }
-            return null;
+            return buffer;
         }
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
@@ -195,16 +188,15 @@ namespace Nemo.Caching.Providers
             var taskGet = _connection.Strings.Get(_database, keysArray);
             var data = taskGet.Result;
                 
-            var result = new Dictionary<string, object>();
-            for (int i = 0; i < realKeysArray.Length; i++)
+            var result = new ConcurrentDictionary<string, object>();
+            Parallel.For(0, realKeysArray.Length, i =>
             {
                 var buffer = data[i];
                 if (buffer != null)
                 {
-                    var item = SerializationReader.ReadObjectWithType(buffer);
-                    result[realKeysArray[i]] = item;
+                    result[realKeysArray[i]] = buffer;
                 }
-            }
+            });
             return result;
         }
 

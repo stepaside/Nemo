@@ -8,19 +8,12 @@ using System.Runtime.Serialization;
 
 namespace Nemo.Caching
 {
-    [Serializable]
-    public class CacheItem : IEquatable<CacheItem>, ISerializable
+    public class CacheItem : IEquatable<CacheItem>
     {
         private byte[] _data;
         private string _key;
-        [NonSerialized]
         private IBusinessObject _dataObject;
-
-        protected CacheItem(SerializationInfo info, StreamingContext context)
-        {
-            _data = (byte[])info.GetValue("_data", typeof(byte[]));
-            _key = info.GetString("_key");
-        }
+        private string[] _index;
 
         internal CacheItem(IBusinessObject dataObject)
         {
@@ -28,8 +21,14 @@ namespace Nemo.Caching
         }
 
         internal CacheItem(string key, IBusinessObject dataObject)
+            : this(dataObject)
         {
-            _dataObject = dataObject;
+            _key = key;
+        }
+
+        internal CacheItem(string key, string[] index)
+        {
+            _index = index;
             _key = key;
         }
 
@@ -39,8 +38,8 @@ namespace Nemo.Caching
         }
 
         internal CacheItem(string key, byte[] data)
+            : this(data)
         {
-            _data = data;
             _key = key;
         }
 
@@ -48,9 +47,29 @@ namespace Nemo.Caching
         {
             get
             {
-                if (_data == null && _dataObject != null)
+                if (_data == null)
                 {
-                    _data = _dataObject.Serialize();
+                    byte[] data = null;
+               
+                    if (_dataObject != null)
+                    {
+                        data = _dataObject.Serialize();
+                    }
+                    else if (_index != null)
+                    {
+                        using (var writer = SerializationWriter.CreateWriter(SerializationMode.CompactManual))
+                        {
+                            writer.WriteList<string>(_index);
+                            data = writer.GetBytes();
+                        }
+                    }
+
+                    if (data != null)
+                    {
+                        _data = new byte[1 + data.Length];
+                        _data[0] = (byte)(_dataObject != null ? 1 : 0);
+                        Buffer.BlockCopy(data, 0, _data, 1, data.Length);
+                    }
                 }
                 return _data;
             }
@@ -68,12 +87,31 @@ namespace Nemo.Caching
             }
         }
 
-        public string GetKey<T>()
+        public string[] ToIndex()
+        {
+            if (_index == null && _data != null && _data[0] == 0)
+            {
+                var data = new byte[_data.Length - 1];
+                Buffer.BlockCopy(_data, 1, data, 0, data.Length);
+                using (var reader = SerializationReader.CreateReader(data))
+                {
+                    _index = reader.ReadList<string>().ToArray();
+                }
+            }
+
+            if (_index != null)
+            {
+                return _index;
+            }
+            return null;
+        }
+
+        public string ComputeKey<T>()
             where T : class, IBusinessObject
         {
             if (string.IsNullOrEmpty(_key))
             {
-                var dataObject = this.GetDataObject<T>();
+                var dataObject = this.ToObject<T>();
                 if (dataObject != null)
                 {
                     _key = new CacheKey(dataObject).Value;
@@ -82,12 +120,14 @@ namespace Nemo.Caching
             return _key;
         }
 
-        public T GetDataObject<T>()
+        public T ToObject<T>()
             where T : class, IBusinessObject
         {
-            if (_dataObject == null && _data != null)
+            if (_dataObject == null && _data != null && _data[0] == 1)
             {
-                _dataObject = _data.Deserialize<T>();
+                var data = new byte[_data.Length - 1];
+                Buffer.BlockCopy(_data, 1, data, 0, data.Length);
+                _dataObject = data.Deserialize<T>();
             }
 
             if (_dataObject != null)
@@ -96,29 +136,18 @@ namespace Nemo.Caching
             }
             return default(T);
         }
-
-        public bool SetDataObject<T>(T dataObject)
-            where T : class, IBusinessObject
-        {
-            if (_dataObject != null && dataObject != null && Reflector.ExtractInterface(_dataObject.GetType()) == typeof(T))
-            {
-                if (ObjectCache.Modify<T>(dataObject))
-                {
-                    _dataObject = dataObject;
-                    _data = null;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public bool IsValidDataObject<T>()
+                
+        public bool IsValid<T>()
             where T : class, IBusinessObject
         {
             var isValid = true;
             if (_dataObject == null && _data != null)
             {
                 isValid = ObjectSerializer.CheckType<T>(_data);
+            }
+            else if (_dataObject != null)
+            {
+                isValid = _dataObject is T;
             }
             return isValid;
         }
@@ -128,16 +157,6 @@ namespace Nemo.Caching
         public bool Equals(CacheItem other)
         {
             return object.Equals(this, other);
-        }
-
-        #endregion
-
-        #region ISerializable Members
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("_data", this.Data);
-            info.AddValue("_key", this.Key);
         }
 
         #endregion
