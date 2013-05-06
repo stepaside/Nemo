@@ -2,9 +2,9 @@ using System;
 
 namespace Nemo.Attributes.Converters
 {
-	public class StringToValueTypeConverter<T> : ITypeConverter<string, T>
+	public class StringConverter<T> : ITypeConverter<string, T>
 	{
-        private ITypeConverter<object, T> decoratedConverter = new ObjectToValueTypeConverter<T>();
+        private ITypeConverter<object, T> decoratedConverter = new SimpleTypeConverter<T>();
 
 		#region ITypeConverter<F,T> Members
 		

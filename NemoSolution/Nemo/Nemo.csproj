@@ -270,8 +270,8 @@
     <Compile Include="Attributes\Converters\ITypeConverter.cs" />
     <Compile Include="Attributes\Converters\ListConverter.cs" />
     <Compile Include="Attributes\Converters\NullableEnumConverter.cs" />
-    <Compile Include="Attributes\Converters\ObjectToValueTypeConverter.cs" />
-    <Compile Include="Attributes\Converters\StringToValueTypeConverter.cs" />
+    <Compile Include="Attributes\Converters\SimpleTypeConverter.cs" />
+    <Compile Include="Attributes\Converters\StringConverter.cs" />
     <Compile Include="Attributes\Converters\TypeConverterAttribute.cs" />
     <Compile Include="Attributes\Converters\XmlReaderTypeConverter.cs" />
     <Compile Include="Attributes\Converters\XmlTypeConverter.cs" />
