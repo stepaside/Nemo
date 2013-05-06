@@ -187,16 +187,16 @@ namespace Nemo.Caching.Providers
             var realKeysArray = keyMap.Values.ToArray();
             var taskGet = _connection.Strings.Get(_database, keysArray);
             var data = taskGet.Result;
-                
-            var result = new ConcurrentDictionary<string, object>();
-            Parallel.For(0, realKeysArray.Length, i =>
+
+            var result = new Dictionary<string, object>();
+            for(int i = 0; i < realKeysArray.Length; i++)
             {
                 var buffer = data[i];
                 if (buffer != null)
                 {
                     result[realKeysArray[i]] = buffer;
                 }
-            });
+            }
             return result;
         }
 
