@@ -32,6 +32,18 @@ namespace Nemo.Attributes.Converters
                             return (T)(object)true;
                         }
                     }
+                    else if (from is char)
+                    {
+                        var fromValue = Char.ToUpper((char)from);
+                        if (fromValue == 'N' || fromValue == 'F' || fromValue == '0')
+                        {
+                            return (T)(object)false;
+                        }
+                        else if (fromValue == 'Y' || fromValue == 'T' || fromValue == '1')
+                        {
+                            return (T)(object)true;
+                        }
+                    }
                     return (T)(object)Convert.ToBoolean(from);
                 }
                 else if (targetType == typeof(sbyte))
