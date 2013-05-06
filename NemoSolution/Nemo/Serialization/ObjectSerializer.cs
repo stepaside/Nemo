@@ -52,7 +52,7 @@ namespace Nemo.Serialization
         Compact = 1,
         SerializeAll = 2,
         IncludePropertyNames = 4,
-        CompactManual = 8
+        Manual = 8
     }
 
     public enum TemporalScale : byte

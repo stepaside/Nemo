@@ -20,7 +20,7 @@ namespace Nemo.Caching
 
         public byte[] ToBytes()
         {
-            using (var writer = SerializationWriter.CreateWriter(SerializationMode.CompactManual))
+            using (var writer = SerializationWriter.CreateWriter(SerializationMode.Manual))
             {
                 writer.Write(ExpiresAt);
                 writer.Write(Value);

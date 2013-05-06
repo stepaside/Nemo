@@ -57,7 +57,7 @@ namespace Nemo.Caching
                     }
                     else if (_index != null)
                     {
-                        using (var writer = SerializationWriter.CreateWriter(SerializationMode.CompactManual))
+                        using (var writer = SerializationWriter.CreateWriter(SerializationMode.Manual))
                         {
                             writer.WriteList<string>(_index);
                             data = writer.GetBytes();
