@@ -389,7 +389,8 @@ namespace Nemo.Caching
 
                     if (items != null && items.Any())
                     {
-                        // Don't care if the counts are the same for the stale data
+                        // Don't care if the counts are the same for the stale data; 
+                        // however if none of the stale items are available we have to consider it as a cache miss
                         if (stale && cache is IStaleCacheProvider)
                         {
                             return items;
@@ -397,6 +398,10 @@ namespace Nemo.Caching
                         else if (items.Length == keyCount)
                         {
                             return items;
+                        }
+                        else
+                        {
+                            items = null;
                         }
                     }
                 }
