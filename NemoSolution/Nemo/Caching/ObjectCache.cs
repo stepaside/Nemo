@@ -317,70 +317,91 @@ namespace Nemo.Caching
         public static CacheItem[] Lookup<T>(IEnumerable<string> keys, bool stale = false)
             where T : class, IBusinessObject
         {
+            CacheItem[] items = null;
             var cacheType = GetCacheType(typeof(T));
             var keyCount = keys.Count();
             if (cacheType != null)
             {
-                var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
-                if (cache.IsOutOfProcess)
+                if (keyCount == 0)
                 {
-                    if (keyCount == 1)
-                    {
-                        var key = keys.First();
-                        object value;
-                        if (stale && cache is IStaleCacheProvider)
-                        {
-                             value = ((IStaleCacheProvider)cache).RetrieveStale(key);
-                        }
-                        else
-                        {
-                            value = cache.Retrieve(key);
-                        }
-
-                        if (value != null)
-                        {
-                            var item = value is CacheItem ? (CacheItem)value : new CacheItem(key, (byte[])value);
-                            return new[] { item };
-                        }
-                    }
-                    else
-                    {
-                        IDictionary<string, CacheItem> map;
-                        if (stale && cache is IStaleCacheProvider)
-                        {
-                            map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => p.Value is CacheItem ? (CacheItem)p.Value : new CacheItem(p.Key, (byte[])p.Value));
-                        }
-                        else
-                        {
-                            map = cache.Retrieve(keys).ToDictionary(p => p.Key, p => p.Value is CacheItem ? (CacheItem)p.Value : new CacheItem(p.Key, (byte[])p.Value));
-                        }
-                    
-                        if (map != null && map.Count == keyCount)
-                        {
-                            // Enforce original order on multiple items returned from memcached using multi-get
-                            return map.Values.Arrange(keys, i => i.Key).ToArray();
-                        }
-                    }
+                    items = new CacheItem[] { };
                 }
                 else
                 {
-                    IDictionary<string, CacheItem> map;
-                    if (cache is IStaleCacheProvider)
+                    var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
+                    if (cache.IsOutOfProcess)
                     {
-                        map = ((IStaleCacheProvider)cache).RetrieveStale(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (T)p.Value));
+                        if (keyCount == 1)
+                        {
+                            var key = keys.First();
+                            object value;
+                            if (stale && cache is IStaleCacheProvider)
+                            {
+                                value = ((IStaleCacheProvider)cache).RetrieveStale(key);
+                            }
+                            else
+                            {
+                                value = cache.Retrieve(key);
+                            }
+
+                            if (value != null)
+                            {
+                                var item = value is CacheItem ? (CacheItem)value : new CacheItem(key, (byte[])value);
+                                return new[] { item };
+                            }
+                        }
+                        else
+                        {
+                            IDictionary<string, object> map;
+                            if (stale && cache is IStaleCacheProvider)
+                            {
+                                map = ((IStaleCacheProvider)cache).RetrieveStale(keys);
+                            }
+                            else
+                            {
+                                map = cache.Retrieve(keys);
+                            }
+
+                            if (map != null)
+                            {
+                                // Need to enforce original order on multiple items returned from memcached using multi-get                            
+                                items = map.Where(p => p.Value != null).Select(p => p.Value is CacheItem ? (CacheItem)p.Value : new CacheItem(p.Key, (byte[])p.Value)).Arrange(keys, i => i.Key).ToArray();
+                            }
+                        }
                     }
                     else
                     {
-                        map = cache.Retrieve(keys).ToDictionary(p => p.Key, p => new CacheItem(p.Key, (T)p.Value));
+                        IDictionary<string, object> map;
+                        if (stale && cache is IStaleCacheProvider)
+                        {
+                            map = ((IStaleCacheProvider)cache).RetrieveStale(keys);
+                        }
+                        else
+                        {
+                            map = cache.Retrieve(keys);
+                        }
+
+                        if (map != null)
+                        {
+                            items = map.Where(p => p.Value != null).Select(p => new CacheItem(p.Key, (T)p.Value)).ToArray();
+                        }
                     }
 
-                    if (map != null && map.Count == keyCount)
+                    if (items != null && items.Any())
                     {
-                        return map.Values.ToArray();
+                        // Don't care if the counts are the same for the stale data
+                        if (stale && cache is IStaleCacheProvider)
+                        {
+                            return items;
+                        }
+                        else if (items.Length == keyCount)
+                        {
+                            return items;
+                        }
                     }
                 }
             }
-            return null;
+            return items;
         }
 
         public static IEnumerable<T> Deserialize<T>(this IList<CacheItem> items)
