@@ -387,22 +387,22 @@ namespace Nemo.Caching
                         }
                     }
 
-                    if (items != null && items.Any())
+                    if (items != null)
                     {
-                        // Don't care if the counts are the same for the stale data; 
-                        // however if none of the stale items are available we have to consider it as a cache miss
-                        if (stale && cache is IStaleCacheProvider)
+                        if (items.Any())
                         {
-                            return items;
+                            // Don't care if the counts are the same for the stale data; 
+                            // however if none of the stale items are available we have to consider it as a cache miss
+                            if (stale && cache is IStaleCacheProvider)
+                            {
+                                return items;
+                            }
+                            else if (items.Length == keyCount)
+                            {
+                                return items;
+                            }
                         }
-                        else if (items.Length == keyCount)
-                        {
-                            return items;
-                        }
-                        else
-                        {
-                            items = null;
-                        }
+                        items = null;
                     }
                 }
             }
