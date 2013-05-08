@@ -230,30 +230,47 @@ namespace Nemo.Caching
                 if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType);
-                    var value = cache.Retrieve(queryKey);
-                    
-                    if (value is CacheItem)
-                    {
-                        return ((CacheItem)value).ToIndex();
-                    }
-                    else if (value is byte[])
-                    {
-                        return new CacheItem((byte[])value).ToIndex();
-                    }
-                    else
-                    {
-                        return value as string[];
-                    }
+                    return LookupKeys(cache, queryKey, false);
                 }
             }
             return null;
         }
 
-        internal static string[] LookupKeys<T>(string operation, IList<Param> parameters, OperationReturnType returnType)
+        internal static string[] LookupKeys<T>(string operation, IList<Param> parameters, OperationReturnType returnType, bool stale)
             where T : class, IBusinessObject
         {
             var queryKey = ObjectCache.GetCacheKey<T>(operation, parameters, returnType);
             return ObjectCache.LookupKeys(typeof(T), queryKey);
+        }
+
+        private static string[] LookupKeys(CacheProvider cache, string queryKey, bool stale)
+        {
+            object value;
+            if (stale && cache is IStaleCacheProvider)
+            {
+                value = ((IStaleCacheProvider)cache).RetrieveStale(queryKey);
+            }
+            else
+            {
+                value = cache.Retrieve(queryKey);
+            }
+
+            if (value != null)
+            {
+                if (value is CacheItem)
+                {
+                    return ((CacheItem)value).ToIndex();
+                }
+                else if (value is byte[])
+                {
+                    return new CacheItem((byte[])value).ToIndex();
+                }
+                else
+                {
+                    return value as string[];
+                }
+            }
+            return null;
         }
         
         #endregion
@@ -647,7 +664,7 @@ namespace Nemo.Caching
                         }
                         else
                         {
-                            keys = ((IStaleCacheProvider)cache).RetrieveStale(queryKey) as string[];
+                            keys = LookupKeys(cache, queryKey, true);
                             stale = true;
                         }
                     }
