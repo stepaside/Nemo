@@ -16,6 +16,8 @@ using Nemo.Data;
 using System.Data.Common;
 using System.Text;
 using Nemo.Id;
+using Nemo.Audit;
+using Nemo.UnitOfWork;
 
 namespace Nemo.Extensions
 {
@@ -244,6 +246,15 @@ namespace Nemo.Extensions
                 {
                     ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Clean;
                 }
+
+                if (businessObject is IAuditable)
+                {
+                    var logProvider = AuditLogProvider.Current;
+                    if (logProvider != null)
+                    {
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_INSERT, default(T), businessObject));
+                    }
+                }
             }
 
             return success;
@@ -304,6 +315,15 @@ namespace Nemo.Extensions
                 {
                     ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Clean;
                 }
+
+                if (businessObject is IAuditable)
+                {
+                    var logProvider = AuditLogProvider.Current;
+                    if (logProvider != null)
+                    {
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_UPDATE, (businessObject.Old() ?? businessObject), businessObject));
+                    }
+                }
             }
 
             return success;
@@ -336,6 +356,15 @@ namespace Nemo.Extensions
                 if (businessObject is IChangeTrackingBusinessObject)
                 {
                     ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Deleted;
+                }
+
+                if (businessObject is IAuditable)
+                {
+                    var logProvider = AuditLogProvider.Current;
+                    if (logProvider != null)
+                    {
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DELETE, businessObject, default(T)));
+                    }
                 }
             }
 
@@ -370,6 +399,15 @@ namespace Nemo.Extensions
                 {
                     ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Deleted;
                 }
+
+                if (businessObject is IAuditable)
+                {
+                    var logProvider = AuditLogProvider.Current;
+                    if (logProvider != null)
+                    {
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DESTROY, businessObject, default(T)));
+                    }
+                }
             }
 
             return success;
@@ -381,23 +419,14 @@ namespace Nemo.Extensions
             where T : class, IBusinessObject
         {
             var result = false;
-            var setClean = false;
-            var isTracked = businessObject is IChangeTrackingBusinessObject;
-
+            
             if (businessObject.IsNew())
             {
                 result = businessObject.Insert();
-                setClean = isTracked;
             }
-            else if (!isTracked || ((IChangeTrackingBusinessObject)businessObject).IsDirty())
+            else if (!(businessObject is IChangeTrackingBusinessObject) || ((IChangeTrackingBusinessObject)businessObject).IsDirty())
             {
                 result = businessObject.Update();
-                setClean = isTracked;
-            }
-
-            if (result && setClean)
-            {
-                ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Clean;
             }
 
             return result;

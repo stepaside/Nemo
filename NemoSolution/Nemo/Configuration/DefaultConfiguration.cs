@@ -1,4 +1,5 @@
-﻿using Nemo.Caching;
+﻿using Nemo.Audit;
+using Nemo.Caching;
 using Nemo.Caching.Providers;
 using Nemo.Extensions;
 using Nemo.Serialization;
@@ -32,6 +33,7 @@ namespace Nemo.Configuration
         private bool _generateUpdateSql = false;
         private Type _cacheProvider = typeof(MemoryCacheProvider);
         private Type _trackingCacheProvider = typeof(RedisCacheProvider);
+        private Type _auditLogProvider = null;
 
         private DefaultConfiguration() { }
 
@@ -195,6 +197,14 @@ namespace Nemo.Configuration
             }
         }
 
+        public Type AuditLogProvider
+        {
+            get
+            {
+                return _auditLogProvider;
+            }
+        }
+
         public static IConfiguration New()
         {
             return new DefaultConfiguration();
@@ -341,9 +351,18 @@ namespace Nemo.Configuration
 
         public IConfiguration SetTrackingCacheProvider(Type value)
         {
-            if (value == null || typeof(CacheProvider).IsAssignableFrom(value) && typeof(IPersistentCacheProvider).IsAssignableFrom(value))
+            if (value == null || (typeof(CacheProvider).IsAssignableFrom(value) && typeof(IPersistentCacheProvider).IsAssignableFrom(value)))
             {
                 _trackingCacheProvider = value;
+            }
+            return this;
+        }
+
+        public IConfiguration SetAuditLogProvider(Type value)
+        {
+            if (value == null || typeof(AuditLogProvider).IsAssignableFrom(value))
+            {
+                _auditLogProvider = value;
             }
             return this;
         }

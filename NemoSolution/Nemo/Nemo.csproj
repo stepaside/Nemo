@@ -102,6 +102,8 @@
     <Compile Include="Attributes\PropertyAttribute.cs" />
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
+    <Compile Include="Audit\AuditLog.cs" />
+    <Compile Include="Audit\AuditLogProvider.cs" />
     <Compile Include="Caching\CacheExpirationType.cs" />
     <Compile Include="Caching\IDistributedCounter.cs" />
     <Compile Include="Caching\IPersistentCacheProvider.cs" />
@@ -134,6 +136,7 @@
     <Compile Include="Fn\StreamExtensions.cs" />
     <Compile Include="Fn\Tuple.cs" />
     <Compile Include="Fn\TypeUnion.cs" />
+    <Compile Include="Audit\IAuditable.cs" />
     <Compile Include="ParamList.cs" />
     <Compile Include="Reflection\ReflectedProperty.cs" />
     <Compile Include="Attributes\DoNotSelectAttribute.cs" />
