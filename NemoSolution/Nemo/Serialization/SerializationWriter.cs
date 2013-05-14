@@ -622,7 +622,7 @@ namespace Nemo.Serialization
                 isEmitted = Reflector.IsEmitted(objectType);
             }
 
-            if (isEmitted && !interfaceType.IsInterface)
+            if (isEmitted)
             {
                 if (elementType != null)
                 {

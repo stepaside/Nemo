@@ -58,7 +58,7 @@ namespace Nemo.Caching
 
             if (objectType != null)
             {
-                if (!Reflector.IsInterface(objectType))
+                if (Reflector.IsEmitted(objectType))
                 {
                     objectType = Reflector.ExtractInterface(objectType);
                 }
@@ -99,7 +99,7 @@ namespace Nemo.Caching
 
             if (objectType != null)
             {
-                if (!Reflector.IsInterface(objectType))
+                if (Reflector.IsEmitted(objectType))
                 {
                     objectType = Reflector.ExtractInterface(objectType);
                 }
@@ -117,7 +117,7 @@ namespace Nemo.Caching
         {
              if (objectType != null)
             {
-                if (!Reflector.IsInterface(objectType))
+                if (Reflector.IsEmitted(objectType))
                 {
                     objectType = Reflector.ExtractInterface(objectType);
                 }

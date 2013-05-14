@@ -273,7 +273,7 @@ namespace Nemo.Serialization
             var write = typeof(JsonSerializationWriter).GetMethod("Write");
 
             var interfaceType = objectType;
-            if (!interfaceType.IsInterface)
+            if (Reflector.IsEmitted(objectType))
             {
                 interfaceType = Reflector.ExtractInterface(objectType);
                 if (interfaceType == null)

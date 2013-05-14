@@ -43,7 +43,7 @@ namespace Nemo.Caching
         { }
 
         public CacheKey(IDictionary<string, object> key, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
-            : this(key, typeof(IBusinessObject), null, OperationReturnType.Guess,  hashAlgorithm)
+            : this(key, typeof(IBusinessObject), null, OperationReturnType.Guess, hashAlgorithm)
         { }
 
         public CacheKey(IDictionary<string, object> key, Type type, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
@@ -66,7 +66,7 @@ namespace Nemo.Caching
         {
             var reflectedType = Reflector.GetReflectedType(type);
             var typeName = reflectedType.IsBusinessObject && reflectedType.InterfaceTypeName != null ? reflectedType.InterfaceTypeName : reflectedType.FullTypeName;
-            
+
             _hashAlgorithm = hashAlgorithm == HashAlgorithmName.Default ? ConfigurationFactory.Configuration.DefaultHashAlgorithm : hashAlgorithm;
             if (_hashAlgorithm == HashAlgorithmName.Native || _hashAlgorithm == HashAlgorithmName.None)
             {
@@ -96,8 +96,8 @@ namespace Nemo.Caching
                 else
                 {
                     _data = new byte[4 + keyValue.Length];
-                    Buffer.BlockCopy(BitConverter.GetBytes(typeName.GetHashCode()), 0, _data, 0 , 4);
-                    Buffer.BlockCopy(keyValue, 0, _data, 4 , keyValue.Length);
+                    Buffer.BlockCopy(BitConverter.GetBytes(typeName.GetHashCode()), 0, _data, 0, 4);
+                    Buffer.BlockCopy(keyValue, 0, _data, 4, keyValue.Length);
                 }
             }
         }
@@ -141,7 +141,7 @@ namespace Nemo.Caching
         {
             return algorithm.ComputeHash(_data);
         }
-        
+
         public Tuple<string, byte[]> Compute(int maxSize = 250)
         {
             if (_hash == null)
@@ -204,18 +204,6 @@ namespace Nemo.Caching
                 _hash = Tuple.Create(value ?? Bytes.ToHex(data), data);
             }
             return _hash;
-        }
-
-        private static string GetTypeName(Type type)
-        {
-            if (!type.IsInterface)
-            {
-                return Reflector.ExtractInterface(type).FullName;
-            }
-            else
-            {
-                return type.FullName;
-            }
         }
     }
 }

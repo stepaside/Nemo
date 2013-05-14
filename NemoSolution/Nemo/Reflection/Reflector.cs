@@ -119,7 +119,7 @@ namespace Nemo.Reflection
         {
             return Reflector.IsBusinessObject(objectType) && ObjectCache.IsCacheable(objectType);
         }
-        
+
         public static bool IsInterface(Type objectType)
         {
             return objectType != null && objectType.IsInterface;
@@ -690,19 +690,16 @@ namespace Nemo.Reflection
             }
             else if (reflectedType.IsBusinessObject)
             {
-                if (clrType.IsInterface)
+                schemaType = clrType.Name;
+                if (Reflector.IsEmitted(clrType))
                 {
-                    schemaType = clrType.Name;
-                }
-                else
-                {
-                    schemaType = Reflector.ExtractInterface(clrType).Name;
+                    schemaType = Reflector.ExtractInterface(clrType).Name; 
                 }
             }
             else if (reflectedType.IsList)
             {
                 var elementType = reflectedType.ElementType;
-                if (!elementType.IsInterface)
+                if (Reflector.IsEmitted(elementType))
                 {
                     elementType = Reflector.ExtractInterface(elementType);
                 }

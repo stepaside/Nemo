@@ -735,7 +735,7 @@ namespace Nemo.Serialization
             var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
 
             var interfaceType = objectType;
-            if (Reflector.IsEmitted(objectType) && !interfaceType.IsInterface)
+            if (Reflector.IsEmitted(objectType))
             {
                 interfaceType = Reflector.ExtractInterface(objectType);
                 if (interfaceType == null)

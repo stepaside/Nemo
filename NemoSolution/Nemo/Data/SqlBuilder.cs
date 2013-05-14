@@ -33,7 +33,12 @@ namespace Nemo.Data
         internal static string GetTableNameForSql(Type objectType, DialectProvider dialect)
         {
             string tableName = null;
-            var attr = objectType.GetCustomAttributes(typeof(TableAttribute), false).Cast<TableAttribute>().FirstOrDefault();
+            if (Reflector.IsEmitted(objectType))
+            {
+                objectType = Reflector.ExtractInterface(objectType);
+            }
+
+            var attr = Reflector.GetAttribute<TableAttribute>(objectType);
             if (attr != null)
             {
                 tableName = dialect.IdentifierEscapeStartCharacter + attr.Name + dialect.IdentifierEscapeEndCharacter;

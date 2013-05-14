@@ -65,7 +65,7 @@ namespace Nemo.Utilities
             if (reflectedType.IsList && !reflectedType.IsSimpleList)
             {
                 var elementType = reflectedType.ElementType;
-                if (!elementType.IsInterface)
+                if (Reflector.IsEmitted(elementType))
                 {
                     elementType = Reflector.ExtractInterface(elementType);
                 }
