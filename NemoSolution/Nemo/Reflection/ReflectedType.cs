@@ -17,6 +17,7 @@ namespace Nemo.Reflection
             {
                 InterfaceTypeName = interfaceType.FullName;
             }
+            IsArray = type.IsArray;
             IsSimpleList = Reflector.IsSimpleList(type);
             IsBusinessObject = Reflector.IsBusinessObject(type);
             Type elementType;
@@ -34,6 +35,7 @@ namespace Nemo.Reflection
             }
             IsTuple = Reflector.IsTuple(type);
             IsList = Reflector.IsList(type);
+            IsDictionary = Reflector.IsDictionary(type);
             IsNullableType = Reflector.IsNullableType(type);
             IsMarkerInterface = Reflector.IsMarkerInterface(type);
             HashCode = type.GetHashCode();
@@ -124,6 +126,12 @@ namespace Nemo.Reflection
             private set;
         }
 
+        public bool IsDictionary
+        {
+            get;
+            private set;
+        }
+
         public string XmlElementName
         {
             get;
@@ -167,6 +175,12 @@ namespace Nemo.Reflection
         }
 
         public bool IsAnonymous
+        {
+            get;
+            private set;
+        }
+
+        public bool IsArray
         {
             get;
             private set;

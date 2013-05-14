@@ -24,12 +24,23 @@ namespace Nemo.Serialization
             Type elementType = null;
             var reflectedType = Reflector.GetReflectedType(objectType);
             var simpleElement = false;
+            var dictionary = false;
             JsonValue listRoot = null;
 
             if (root.Type == JsonType.Object)
             {
-                result = ObjectFactory.Create(objectType);
-                elementType = objectType;
+                if (reflectedType.IsBusinessObject)
+                {
+                    result = ObjectFactory.Create(objectType);
+                    elementType = objectType;
+                }
+                else if (reflectedType.IsDictionary)
+                {
+                    var types = objectType.GetGenericArguments();
+                    result = Dictionary.Create(types[0], types[1]);
+                    elementType = types[1];
+                    dictionary = true;
+                }
             }
             else if (root.Type == JsonType.Array)
             {
@@ -41,7 +52,7 @@ namespace Nemo.Serialization
                 else if (reflectedType.IsBusinessObjectList)
                 {
                     elementType = reflectedType.ElementType;
-                    if (!objectType.IsInterface)
+                    if (!reflectedType.IsInterface)
                     {
                         listResult = (IList)Nemo.Reflection.Activator.New(objectType);
                     }
@@ -66,7 +77,7 @@ namespace Nemo.Serialization
             }
 
             IDictionary<string, ReflectedProperty> propertyMap = null;
-            if (elementType != null && !simpleElement)
+            if (elementType != null && !simpleElement && !dictionary)
             {
                 propertyMap = Reflector.GetPropertyNameMap(elementType);
             }
@@ -102,6 +113,10 @@ namespace Nemo.Serialization
                             if (result is IList)
                             {
                                 ((IList)result).Add(current.Value.As<bool>());
+                            }
+                            else if (result is IDictionary)
+                            {
+                                ((IDictionary)result).Add(current.Name, current.Value.As<bool>());
                             }
                             else
                             {
@@ -157,6 +172,10 @@ namespace Nemo.Serialization
                                             {
                                                 ((IList)result).Add((double)value);
                                             }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (double)value);
+                                            }
                                             else
                                             {
                                                 result = (double)value;
@@ -167,6 +186,10 @@ namespace Nemo.Serialization
                                             {
                                                 ((IList)result).Add((float)value);
                                             }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (float)value);
+                                            }
                                             else
                                             {
                                                 result = (float)value;
@@ -176,6 +199,10 @@ namespace Nemo.Serialization
                                             if (result is IList)
                                             {
                                                 ((IList)result).Add(value);
+                                            }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, value);
                                             }
                                             else
                                             {
@@ -255,6 +282,10 @@ namespace Nemo.Serialization
                                             {
                                                 ((IList)result).Add((byte)value);
                                             }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (byte)value);
+                                            }
                                             else
                                             {
                                                 result = (byte)value;
@@ -264,6 +295,10 @@ namespace Nemo.Serialization
                                             if (result is IList)
                                             {
                                                 ((IList)result).Add((sbyte)value);
+                                            }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (sbyte)value);
                                             }
                                             else
                                             {
@@ -275,6 +310,10 @@ namespace Nemo.Serialization
                                             {
                                                 ((IList)result).Add((short)value);
                                             }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (short)value);
+                                            }
                                             else
                                             {
                                                 result = (short)value;
@@ -285,14 +324,23 @@ namespace Nemo.Serialization
                                             {
                                                 ((IList)result).Add((int)value);
                                             }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (int)value);
+                                            }
                                             else
                                             {
                                                 result = (int)value;
-                                            } break;
+                                            } 
+                                            break;
                                         case TypeCode.Int64:
                                             if (result is IList)
                                             {
                                                 ((IList)result).Add(value);
+                                            }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, value);
                                             }
                                             else
                                             {
@@ -304,6 +352,10 @@ namespace Nemo.Serialization
                                             {
                                                 ((IList)result).Add((ushort)value);
                                             }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (ushort)value);
+                                            }
                                             else
                                             {
                                                 result = (ushort)value;
@@ -314,6 +366,10 @@ namespace Nemo.Serialization
                                             {
                                                 ((IList)result).Add((uint)value);
                                             }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (uint)value);
+                                            }
                                             else
                                             {
                                                 result = (uint)value;
@@ -323,6 +379,10 @@ namespace Nemo.Serialization
                                             if (result is IList)
                                             {
                                                 ((IList)result).Add((ulong)value);
+                                            }
+                                            else if (result is IDictionary)
+                                            {
+                                                ((IDictionary)result).Add(current.Name, (ulong)value);
                                             }
                                             else
                                             {
@@ -430,6 +490,10 @@ namespace Nemo.Serialization
                                     {
                                         ((IList)result).Add(value);
                                     }
+                                    else if (result is IDictionary)
+                                    {
+                                        ((IDictionary)result).Add(current.Name, value);
+                                    }
                                     else
                                     {
                                         result = value;
@@ -443,6 +507,10 @@ namespace Nemo.Serialization
                                         if (result is IList)
                                         {
                                             ((IList)result).Add(date);
+                                        }
+                                        else if (result is IDictionary)
+                                        {
+                                            ((IDictionary)result).Add(current.Name, date);
                                         }
                                         else
                                         {
@@ -459,6 +527,10 @@ namespace Nemo.Serialization
                                         {
                                             ((IList)result).Add(time);
                                         }
+                                        else if (result is IDictionary)
+                                        {
+                                            ((IDictionary)result).Add(current.Name, time);
+                                        }
                                         else
                                         {
                                             result = time;
@@ -473,6 +545,10 @@ namespace Nemo.Serialization
                                         if (result is IList)
                                         {
                                             ((IList)result).Add(date);
+                                        }
+                                        else if (result is IDictionary)
+                                        {
+                                            ((IDictionary)result).Add(current.Name, date);
                                         }
                                         else
                                         {
@@ -489,6 +565,10 @@ namespace Nemo.Serialization
                                         {
                                             ((IList)result).Add(guid);
                                         }
+                                        else if (result is IDictionary)
+                                        {
+                                            ((IDictionary)result).Add(current.Name, guid);
+                                        }
                                         else
                                         {
                                             result = guid;
@@ -500,6 +580,10 @@ namespace Nemo.Serialization
                                     if (result is IList)
                                     {
                                         ((IList)result).Add(value[0]);
+                                    }
+                                    else if (result is IDictionary)
+                                    {
+                                        ((IDictionary)result).Add(current.Name, value[0]);
                                     }
                                     else
                                     {
@@ -544,56 +628,73 @@ namespace Nemo.Serialization
                             {
                                 if (root.Type == JsonType.Object)
                                 {
-                                    if (property.IsTypeUnion)
+                                    if (property != null)
                                     {
-                                        var allTypes = property.PropertyType.GetGenericArguments();
-                                        var child = current.FirstChild;
-                                        var unionType = allTypes.FirstOrDefault(t => 
-                                                            (child.Type == JsonType.Boolean && typeof(IList<bool>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Decimal && typeof(IList<decimal>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Decimal && typeof(IList<double>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Decimal && typeof(IList<float>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Integer && typeof(IList<ulong>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Integer && typeof(IList<long>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Integer && typeof(IList<uint>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Integer && typeof(IList<int>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Integer && typeof(IList<ushort>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Integer && typeof(IList<short>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Integer && typeof(IList<byte>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Integer && typeof(IList<sbyte>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.String && typeof(IList<string>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.String && typeof(IList<char>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.String && typeof(IList<DateTime>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.String && typeof(IList<DateTimeOffset>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.String && typeof(IList<TimeSpan>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.String && typeof(IList<Guid>).IsAssignableFrom(t))
-                                                            || (child.Type == JsonType.Object && typeof(IList).IsAssignableFrom(t) && typeof(IEnumerable<IBusinessObject>).IsAssignableFrom(t)));
-                                        if (unionType != null)
+                                        if (property.IsTypeUnion)
                                         {
-                                            var item = ReadObject(current, unionType);
-                                            var typeUnion = TypeUnion.Create(allTypes, item);
-                                            ((IBusinessObject)result).Property(property.PropertyName, typeUnion);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        IList list;
-                                        if (!property.IsListInterface)
-                                        {
-                                            list = (IList)Nemo.Reflection.Activator.New(property.PropertyType);
+                                            var allTypes = property.PropertyType.GetGenericArguments();
+                                            var child = current.FirstChild;
+                                            var unionType = allTypes.FirstOrDefault(t =>
+                                                                (child.Type == JsonType.Boolean && typeof(IList<bool>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Decimal && typeof(IList<decimal>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Decimal && typeof(IList<double>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Decimal && typeof(IList<float>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Integer && typeof(IList<ulong>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Integer && typeof(IList<long>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Integer && typeof(IList<uint>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Integer && typeof(IList<int>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Integer && typeof(IList<ushort>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Integer && typeof(IList<short>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Integer && typeof(IList<byte>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Integer && typeof(IList<sbyte>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.String && typeof(IList<string>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.String && typeof(IList<char>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.String && typeof(IList<DateTime>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.String && typeof(IList<DateTimeOffset>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.String && typeof(IList<TimeSpan>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.String && typeof(IList<Guid>).IsAssignableFrom(t))
+                                                                || (child.Type == JsonType.Object && typeof(IList).IsAssignableFrom(t) && typeof(IEnumerable<IBusinessObject>).IsAssignableFrom(t)));
+                                            if (unionType != null)
+                                            {
+                                                var item = ReadObject(current, unionType);
+                                                var typeUnion = TypeUnion.Create(allTypes, item);
+                                                ((IBusinessObject)result).Property(property.PropertyName, typeUnion);
+                                            }
                                         }
                                         else
                                         {
-                                            list = List.Create(property.ElementType, property.Distinct, property.Sorted);
+                                            IList list;
+                                            if (!property.IsListInterface)
+                                            {
+                                                list = (IList)Nemo.Reflection.Activator.New(property.PropertyType);
+                                            }
+                                            else
+                                            {
+                                                list = List.Create(property.ElementType, property.Distinct, property.Sorted);
+                                            }
+                                            var child = current.FirstChild;
+                                            while (child != null)
+                                            {
+                                                var item = (IBusinessObject)ReadObject(child, property.ElementType);
+                                                list.Add(item);
+                                                child = child.NexSibling;
+                                            }
+                                            ((IBusinessObject)result).Property(property.PropertyName, list);
                                         }
-                                        var child = current.FirstChild;
-                                        while (child != null)
+                                    }
+                                    else if (result is IDictionary)
+                                    {
+                                        var listType = Reflector.GetReflectedType(elementType);
+                                        if (elementType.IsArray)
                                         {
-                                            var item = (IBusinessObject)ReadObject(child, property.ElementType);
-                                            list.Add(item);
-                                            child = child.NexSibling;
+                                            var list = (IList)ReadObject(current, typeof(List<>).MakeGenericType(listType.ElementType));
+                                            ((IDictionary)result).Add(current.Name, List.CreateArray(listType.ElementType, list));
                                         }
-                                        ((IBusinessObject)result).Property(property.PropertyName, list);
+                                        else
+                                        {
+                                            var list = (IList)ReadObject(current, elementType);
+                                            ((IDictionary)result).Add(current.Name, list);
+                                        }
                                     }
                                 }
                                 break;

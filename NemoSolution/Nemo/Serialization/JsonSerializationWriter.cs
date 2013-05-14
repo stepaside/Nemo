@@ -79,12 +79,12 @@ namespace Nemo.Serialization
             }
         }
 
-        /// <summary> Writes a generic ICollection (such as an IList<T>) to the buffer. </summary>
         internal static void WriteList(IList items, TextWriter output)
         {
+            var lastIndex = items.Count - 1;
             for (int i = 0; i < items.Count; i++)
             {
-                WriteObject(items[i], null, output, i != items.Count - 1);
+                WriteObject(items[i], null, output, i != lastIndex);
             }
         }
 
@@ -93,13 +93,20 @@ namespace Nemo.Serialization
             WriteList((IList)items, output);
         }
 
-        internal static void WriteDictionary<T, U>(IDictionary<T, U> map, string name, TextWriter output)
+        internal static void WriteDictionary(IDictionary map, TextWriter output)
         {
-            foreach (var pair in map)
+            var lastIndex = map.Count - 1;
+            var index = 0;
+            foreach (DictionaryEntry pair in map)
             {
-                WriteObject(pair.Key, "Key", output);
-                WriteObject(pair.Value, "Value", output);
+                WriteObject(pair.Value, (string)pair.Key, output, index != lastIndex);
+                index++;
             }
+        }
+
+        internal static void WriteDictionary<T>(IDictionary<string, T> map, TextWriter output)
+        {
+            WriteDictionary((IDictionary)map, output);
         }
 
         public static void WriteObject(object value, string name, TextWriter output, bool hasMore = false, bool compact = true)
@@ -164,9 +171,33 @@ namespace Nemo.Serialization
                                     Write(",", output);
                                 }
                             }
+                            else if (value is IDictionary)
+                            {
+                                if (name != null)
+                                {
+                                    Write(string.Format("\"{0}\":{", name), output);
+                                }
+                                else
+                                {
+                                    Write("{", output);
+                                }
+                                WriteDictionary((IDictionary)value, output);
+                                Write("}", output);
+                                if (hasMore)
+                                {
+                                    Write(",", output);
+                                }
+                            }
                             else if (value is IList)
                             {
-                                Write(string.Format("\"{0}\":[", name), output);
+                                if (name != null)
+                                {
+                                    Write(string.Format("\"{0}\":[", name), output);
+                                }
+                                else
+                                {
+                                    Write("[", output);
+                                }
                                 var items = ((IList)value).Cast<object>().ToArray();
                                 if (items.Length > 0 && items[0] is IBusinessObject)
                                 {

@@ -116,6 +116,7 @@
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
     <Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" />
     <Compile Include="Collections\Comparers\ReverseComparer.cs" />
+    <Compile Include="Collections\Dictionary.cs" />
     <Compile Include="Collections\Extensions\ArrayExtensions.cs" />
     <Compile Include="Collections\Extensions\DictionaryExtensions.cs" />
     <Compile Include="Collections\Extensions\SetExtensions.cs" />

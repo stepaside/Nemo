@@ -7,10 +7,13 @@ using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
 using Nemo.Serialization;
+using Nemo.Utilities;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Nemo.Caching
@@ -288,7 +291,53 @@ namespace Nemo.Caching
             }
             return null;
         }
-        
+
+        public static IEnumerable<string> LookupKeysByParameterValues(Type objectType, IList<Param> parameters)
+        {
+            var cacheType = GetCacheType(objectType);
+            if (cacheType != null && parameters != null && parameters.Count > 0)
+            {
+                var typeKey = objectType.FullName;
+                var parameterSet = parameters.GroupBy(p => p.Name).ToDictionary(g => string.Concat(typeKey, "::", g.Key.ToUpper()), g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                var cachedQueriesResult = _trackingCache.Value.Retrieve(parameterSet.Keys).Cast<KeyValuePair<string, object>>();
+                if (cachedQueriesResult != null)
+                {
+                    var cachedQueries = cachedQueriesResult.ToDictionary(i => i.Key, i => (string)i.Value, StringComparer.OrdinalIgnoreCase);
+                    HashSet<string> allQueries = null;
+                    foreach (var parameterKey in parameterSet.Keys)
+                    {
+                        string valueSetJson;
+                        if (cachedQueries.TryGetValue(parameterKey, out valueSetJson))
+                        {
+                            var json = Json.Parse(valueSetJson);
+                            var valueSet = (Dictionary<string, string[]>)JsonSerializationReader.ReadObject(json, typeof(Dictionary<string, string[]>));
+                            //var valueSet = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string[]>>(valueSetJson);
+                            var valueKey = FixEmptyValueKey(parameterSet[parameterKey].Value.SafeCast<string>());
+                            string[] queries;
+                            if (valueSet.TryGetValue(valueKey, out queries))
+                            {
+                                if (allQueries == null)
+                                {
+                                    allQueries = new HashSet<string>(queries);
+                                }
+                                else
+                                {
+                                    allQueries.IntersectWith(queries);
+                                }
+                            }
+                        }
+                    }
+
+                    if (allQueries != null)
+                    {
+                        return allQueries;
+                    }
+                }
+            }
+            return Enumerable.Empty<string>();
+        }
+
         #endregion
 
         #region Item Lookup Methods
@@ -450,54 +499,6 @@ namespace Nemo.Caching
 
         #endregion
 
-        #region Key Lookup Methods
-
-        public static IEnumerable<string> LookupQueriesByParameter(Type type, IList<Param> parameters)
-        {
-            var cacheType = GetCacheType(type);
-            if (cacheType != null && parameters != null && parameters.Count > 0)
-            {
-                var typeKey = type.FullName;
-                var parameterSet = parameters.GroupBy(p => p.Name).ToDictionary(g => string.Concat(typeKey, "::", g.Key.ToUpper()), g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-                var cachedQueriesResult = _trackingCache.Value.Retrieve(parameterSet.Keys).Cast<KeyValuePair<string, object>>();
-                if (cachedQueriesResult != null)
-                {
-                    var cachedQueries = cachedQueriesResult.ToDictionary(i => i.Key, i => (string)i.Value, StringComparer.OrdinalIgnoreCase);
-                    HashSet<string> allQueries = null;
-                    foreach (var parameterKey in parameterSet.Keys)
-                    {
-                        string valueSetJson;
-                        if (cachedQueries.TryGetValue(parameterKey, out valueSetJson))
-                        {
-                            var valueSet = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string[]>>(valueSetJson);
-                            var valueKey = FixEmptyValueKey(parameterSet[parameterKey].Value.SafeCast<string>());
-                            string[] queries;
-                            if (valueSet.TryGetValue(valueKey, out queries))
-                            {
-                                if (allQueries == null)
-                                {
-                                    allQueries = new HashSet<string>(queries);
-                                }
-                                else
-                                {
-                                    allQueries.IntersectWith(queries);
-                                }
-                            }
-                        }
-                    }
-
-                    if (allQueries != null)
-                    {
-                        return allQueries;
-                    }
-                }
-            }
-            return Enumerable.Empty<string>();
-        }
-
-        #endregion
-
         #region Key Tracking Methods
 
         private static void TrackKeys<T>(string queryKey, IEnumerable<string> itemKeys, IList<Param> parameters)
@@ -544,7 +545,9 @@ namespace Nemo.Caching
                     }
                     else
                     {
-                        valueSet = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string[]>>(valueSetJson);
+                        var json = Json.Parse(valueSetJson);
+                        valueSet = (Dictionary<string, string[]>)JsonSerializationReader.ReadObject(json, typeof(Dictionary<string, string[]>));
+                        //valueSet = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string[]>>(valueSetJson);
                     }
 
                     HashSet<string> querySet;
@@ -561,8 +564,15 @@ namespace Nemo.Caching
                     querySet.Add(queryKey);
                     valueSet[valueKey] = querySet.ToArray();
 
-                    valueSetJson = Newtonsoft.Json.JsonConvert.SerializeObject(valueSet);
-                    cache.Save(parameterKey, valueSetJson);
+                    var jsonBuffer = new StringBuilder();
+                    using (var writer = new StringWriter(jsonBuffer))
+                    {
+                        JsonSerializationWriter.WriteObject(valueSet, null, writer);
+                    }
+                    cache.Save(parameterKey, jsonBuffer.ToString());
+
+                    //valueSetJson = Newtonsoft.Json.JsonConvert.SerializeObject(valueSet);
+                    //cache.Save(parameterKey, valueSetJson);
                 }
             }
         }
@@ -799,7 +809,7 @@ namespace Nemo.Caching
                     var targetCacheType = GetCacheType(p.Key);
                     if (targetCacheType != null)
                     {
-                        var keys = LookupQueriesByParameter(p.Key, p.Value);
+                        var keys = LookupKeysByParameterValues(p.Key, p.Value);
                         var targetCache = CacheFactory.GetProvider(targetCacheType);
                         foreach (var targetKey in keys)
                         {

@@ -41,6 +41,13 @@ namespace Nemo.Collections
             return (IList)Nemo.Reflection.Activator.New(listType);
         }
 
+        public static Array CreateArray(Type elementType, IList list)
+        {
+            var array = Array.CreateInstance(elementType, list.Count);
+            list.CopyTo(array, 0);
+            return array;
+        }
+
         public static IList CreateDistinct(Type elementType, Type comparerType)
         {
             var listType = _distinctListTypes.GetOrAdd(elementType, t => typeof(HashList<>).MakeGenericType(t));
