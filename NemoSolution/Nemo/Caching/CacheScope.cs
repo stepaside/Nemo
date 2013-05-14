@@ -10,7 +10,6 @@ namespace Nemo.Caching
     public class CacheScope : IDisposable
     {
         private const string SCOPE_NAME = "__CacheScope";
-        private const string SCOPE_NAMESPACE = "CacheScope";
         
         private HashSet<string> _itemKeys = new HashSet<string>();
 
@@ -41,12 +40,24 @@ namespace Nemo.Caching
             }
         }
 
+        public string Id
+        {
+            get;
+            private set;
+        }
+
         public CacheScope(bool buffered = true, Type cacheType = null, CacheOptions options = null, CacheDependency[] dependencies = null) 
         {
+            Id = Guid.NewGuid().ToString();
+
             options = options ?? new CacheOptions();
-            if (string.IsNullOrEmpty(options.Namespace))
+            if (!string.IsNullOrEmpty(options.Namespace))
             {
-                options.Namespace = SCOPE_NAMESPACE + "::" + options.Namespace;
+                options.Namespace = Id + "::" + options.Namespace;
+            }
+            else
+            {
+                options.Namespace = Id;
             }
 
             Provider = CacheFactory.GetProvider(cacheType, options);

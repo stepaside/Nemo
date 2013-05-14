@@ -12,11 +12,19 @@ namespace Nemo.Attributes
     {
         private CacheOptions _options;
 
+        public CacheAttribute()
+        {
+            TrackKeys = true;
+        }
+
         public Type Type { get; set; }
 
         public string ConfigurationKey { get; set; }
 
-        public CacheOptions Options {
+        public bool TrackKeys { get; set; }
+
+        public CacheOptions Options
+        {
             get
             {
                 if (_options == null && ConfigurationKey.NullIfEmpty() != null)

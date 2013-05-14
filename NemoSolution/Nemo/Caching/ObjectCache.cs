@@ -23,7 +23,7 @@ namespace Nemo.Caching
         #region Helper Methods
 
         internal static bool IsCacheable<T>()
-            where T : class,IBusinessObject
+            where T : class, IBusinessObject
         {
             return GetCacheType<T>() != null;
         }
@@ -31,6 +31,27 @@ namespace Nemo.Caching
         internal static bool IsCacheable(Type objectType)
         {
             return GetCacheType(objectType) != null;
+        }
+
+        private static bool IsTrackable<T>()
+            where T : class, IBusinessObject
+        {
+             var attribute = Reflector.GetAttribute<T, CacheAttribute>();
+             if (attribute != null)
+             {
+                 return attribute.TrackKeys;
+             }
+             return false;
+        }
+
+        private static bool IsTrackable(Type objectType)
+        {
+            var attribute = Reflector.GetAttribute<CacheAttribute>(objectType);
+            if (attribute != null)
+            {
+                return attribute.TrackKeys;
+            }
+            return false;
         }
 
         internal static Type GetCacheType<T>()
@@ -44,7 +65,7 @@ namespace Nemo.Caching
             var attribute = Reflector.GetAttribute<T, CacheAttribute>();
             if (attribute != null)
             {
-                return attribute.Type;
+                return attribute.Type ?? ConfigurationFactory.Configuration.DefaultCacheProvider;
             }
             return null;
         }
@@ -72,7 +93,7 @@ namespace Nemo.Caching
             return null;
         }
 
-        internal static IList<CacheDependency> GetCacheDependencies<T>()
+        private static IList<CacheDependency> GetCacheDependencies<T>()
            where T : class, IBusinessObject
         {
             if (CacheScope.Current != null)
@@ -85,30 +106,25 @@ namespace Nemo.Caching
             for (int i = 0; i < attrList.Count; i++ )
             {
                 var attr = attrList[i];
-                dependencies.Add(new CacheDependency { DependentType = attr.DependentType, DependentProperty = attr.DependentProperty, ValueProperty = attr.ValueProperty });
+                if (IsTrackable(attr.DependentType))
+                {
+                    dependencies.Add(new CacheDependency { DependentType = attr.DependentType, DependentProperty = attr.DependentProperty, ValueProperty = attr.ValueProperty });
+                }
             }
             return dependencies;
         }
 
-        internal static HashAlgorithmName GetHashAlgorithm(Type objectType)
+        private static HashAlgorithmName GetHashAlgorithm(Type objectType)
         {
             if (CacheScope.Current != null)
             {
                 return CacheScope.Current.HashAlgorithm;
             }
 
-            if (objectType != null)
+            var options = GetCacheOptions(objectType);
+            if (options != null && options.HashAlgorithm.HasValue)
             {
-                if (Reflector.IsEmitted(objectType))
-                {
-                    objectType = Reflector.ExtractInterface(objectType);
-                }
-
-                var attribute = Reflector.GetAttribute<CacheAttribute>(objectType, false);
-                if (attribute != null && attribute.Options != null && attribute.Options.HashAlgorithm.HasValue)
-                {
-                    return attribute.Options.HashAlgorithm.Value;
-                }
+                return options.HashAlgorithm.Value;
             }
             return HashAlgorithmName.Default;
         }
@@ -436,31 +452,12 @@ namespace Nemo.Caching
 
         #region Key Lookup Methods
 
-        public static IEnumerable<string> LookupQueriesByParameterName(Type type, IEnumerable<string> parameters)
-        {
-            var cacheType = GetCacheType(type);
-            if (cacheType != null)
-            {
-                var typeKey = GetTypeKey(type, false, false);
-                var keys = parameters.Select(p => string.Concat(typeKey, "::", p.ToUpper()));
-
-                var cachedQueries = _trackingCache.Value.Retrieve(keys);
-                var result = cachedQueries
-                    .Select(q => q.Value as Dictionary<string, string[]>)
-                    .WhereNotNull()
-                    .SelectMany(q => q.Values)
-                    .SelectMany(v => v);
-                return result;
-            }
-            return Enumerable.Empty<string>();
-        }
-
         public static IEnumerable<string> LookupQueriesByParameter(Type type, IList<Param> parameters)
         {
             var cacheType = GetCacheType(type);
-            if (cacheType != null)
+            if (cacheType != null && parameters != null && parameters.Count > 0)
             {
-                var typeKey = GetTypeKey(type, false, false);
+                var typeKey = type.FullName;
                 var parameterSet = parameters.GroupBy(p => p.Name).ToDictionary(g => string.Concat(typeKey, "::", g.Key.ToUpper()), g => g.First(), StringComparer.OrdinalIgnoreCase);
 
                 var cachedQueriesResult = _trackingCache.Value.Retrieve(parameterSet.Keys).Cast<KeyValuePair<string, object>>();
@@ -499,28 +496,6 @@ namespace Nemo.Caching
             return Enumerable.Empty<string>();
         }
 
-        public static IEnumerable<string> LookupQueries(Type type)
-        {
-            return LookupByType(type, true);
-        }
-
-        public static IEnumerable<string> LookupItemsByType(Type type)
-        {
-            return LookupByType(type, false);
-        }
-
-        private static IEnumerable<string> LookupByType(Type type, bool queriesOnly)
-        {
-            var cacheType = GetCacheType(type);
-            var typeKey = GetTypeKey(type, queriesOnly, false);
-            if (cacheType != null)
-            {
-                var typeKeySet = _trackingCache.Value.Retrieve(typeKey) as HashSet<string>;
-                return typeKeySet;
-            }
-            return Enumerable.Empty<string>();
-        }
-
         #endregion
 
         #region Key Tracking Methods
@@ -537,7 +512,7 @@ namespace Nemo.Caching
                     cacheScope.Track(key);
                 }
             }
-            else
+            else if (IsTrackable<T>())
             {
                 var cache = _trackingCache.Value;
                 if (cache != null)
@@ -550,73 +525,44 @@ namespace Nemo.Caching
         private static void TrackCacheProviderKeys<T>(string queryKey, IEnumerable<string> itemKeys, IList<Param> parameters, CacheProvider cache)
             where T : class, IBusinessObject
         {
-            var typeKey = GetTypeKey(typeof(T), false, false);
-            var typeQueryKey = GetTypeKey(typeof(T), true, false);
-
-            if (cache != null && cache.IsDistributed && cache is IPersistentCacheProvider)
+            if (parameters != null && parameters.Count > 0 && cache.IsDistributed && cache != null && cache is IPersistentCacheProvider)
             {
-                // Keys associated with the given type
-                var typeKeySet = cache.Retrieve(typeKey) as string[];
-                if (typeKeySet == null)
+                var typeKey = typeof(T).FullName;
+                var parameterSet = parameters.ToDictionary(p => string.Concat(typeKey, "::", p.Name.ToUpper()), p => p, StringComparer.OrdinalIgnoreCase);
+                var cachedQueriesResult = cache.Retrieve(parameterSet.Keys);
+                var cachedQueries = cachedQueriesResult != null
+                                    ? cachedQueriesResult.ToDictionary(i => i.Key, i => (string)i.Value, StringComparer.OrdinalIgnoreCase)
+                                    : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var parameterKey in parameterSet.Keys)
                 {
-                    typeKeySet = itemKeys.Distinct().ToArray();
-                }
-                else
-                {
-                    typeKeySet = typeKeySet.Union(itemKeys).ToArray();
-                }
-                cache.Save(typeKey, typeKeySet);
-
-                // Query keys associated with the given type
-                var typeQueryKeySet = cache.Retrieve(typeQueryKey) as string[];
-                if (typeQueryKeySet == null)
-                {
-                    typeQueryKeySet = new string[] { queryKey };
-                }
-                else
-                {
-                    typeQueryKeySet = typeQueryKeySet.Union(queryKey).ToArray();
-                }
-                cache.Save(typeQueryKey, typeQueryKeySet);
-
-                if (parameters != null && parameters.Count > 0)
-                {
-                    var parameterSet = parameters.ToDictionary(p => string.Concat(typeKey, "::", p.Name.ToUpper()), p => p, StringComparer.OrdinalIgnoreCase);
-                    var cachedQueriesResult = cache.Retrieve(parameterSet.Keys);
-                    var cachedQueries = cachedQueriesResult != null
-                                        ? cachedQueriesResult.ToDictionary(i => i.Key, i => (string)i.Value, StringComparer.OrdinalIgnoreCase)
-                                        : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var parameterKey in parameterSet.Keys)
+                    var valueKey = FixEmptyValueKey(parameterSet[parameterKey].Value.SafeCast<string>());
+                    string valueSetJson;
+                    Dictionary<string, string[]> valueSet;
+                    if (!cachedQueries.TryGetValue(parameterKey, out valueSetJson))
                     {
-                        var valueKey = FixEmptyValueKey(parameterSet[parameterKey].Value.SafeCast<string>());
-                        string valueSetJson;
-                        Dictionary<string, string[]> valueSet;
-                        if (!cachedQueries.TryGetValue(parameterKey, out valueSetJson))
-                        {
-                            valueSet = new Dictionary<string, string[]>();
-                        }
-                        else
-                        {
-                            valueSet = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string[]>>(valueSetJson);
-                        }
-
-                        HashSet<string> querySet;
-                        string[] queries;
-                        if (valueSet.TryGetValue(valueKey, out queries))
-                        {
-                            querySet = new HashSet<string>(queries);
-                        }
-                        else
-                        {
-                            querySet = new HashSet<string>();
-                        }
-
-                        querySet.Add(queryKey);
-                        valueSet[valueKey] = querySet.ToArray();
-
-                        valueSetJson = Newtonsoft.Json.JsonConvert.SerializeObject(valueSet);
-                        cache.Save(parameterKey, valueSetJson);
+                        valueSet = new Dictionary<string, string[]>();
                     }
+                    else
+                    {
+                        valueSet = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string[]>>(valueSetJson);
+                    }
+
+                    HashSet<string> querySet;
+                    string[] queries;
+                    if (valueSet.TryGetValue(valueKey, out queries))
+                    {
+                        querySet = new HashSet<string>(queries);
+                    }
+                    else
+                    {
+                        querySet = new HashSet<string>();
+                    }
+
+                    querySet.Add(queryKey);
+                    valueSet[valueKey] = querySet.ToArray();
+
+                    valueSetJson = Newtonsoft.Json.JsonConvert.SerializeObject(valueSet);
+                    cache.Save(parameterKey, valueSetJson);
                 }
             }
         }
@@ -845,7 +791,7 @@ namespace Nemo.Caching
             var dependencies = GetCacheDependencies<T>();
             if (dependencies != null && dependencies.Count > 0)
             {
-                var validDependecies = dependencies.Where(d => d.DependentType != null && d.DependentProperty.NullIfEmpty() != null && d.ValueProperty.NullIfEmpty() != null);
+                var validDependecies = dependencies.Where(d => d.DependentType != null && !string.IsNullOrEmpty(d.DependentProperty) && !string.IsNullOrEmpty(d.ValueProperty));
                 var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param { Name = d.DependentProperty, Value = item.Property(d.ValueProperty) }).ToList());
 
                 parameterValuesByType.AsParallel().ForAll(p => 
@@ -862,88 +808,6 @@ namespace Nemo.Caching
                     }
                 });
             }
-        }
-
-        internal static bool Clear(Type type)
-        {
-            return ClearByType(type, false);
-        }
-
-        internal static bool ClearQueries(Type type)
-        {
-            return ClearByType(type, true);
-        }
-
-        internal static bool ClearQueries(Type type, IList<Param> parameters)
-        {
-            var cacheType = GetCacheType(type);
-            if (cacheType != null)
-            {
-                var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(type));
-                var queries = LookupQueriesByParameter(type, parameters);
-
-                queries.Run(queryKey =>
-                {
-                    cache.Clear(queryKey);
-                    ExecutionContext.Pop(queryKey);
-                });
-
-                return true;
-            }
-            return false;
-        }
-
-        internal static bool ClearQueries(Type type, IEnumerable<string> parameters)
-        {
-            var cacheType = GetCacheType(type);
-            if (cacheType != null)
-            {
-                var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(type));
-                var queries = LookupQueriesByParameterName(type, parameters);
-                queries.Run(k =>
-                {
-                    cache.Clear(k);
-                    ExecutionContext.Pop(k);
-                });
-                return true;
-            }
-            return false;
-        }
-
-        internal static bool ClearByType(Type type, bool queriesOnly)
-        {
-            var cacheType = GetCacheType(type);
-            if (cacheType != null)
-            {
-                var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(type));
-                var result = true;
-                
-                var keys = LookupByType(type, queriesOnly);
-                if (keys.Any())
-                {
-                    foreach (var key in keys)
-                    {
-                        result = cache.Clear(key) && result;
-                        ExecutionContext.Pop(key);
-                    }
-                }
-                return result;
-            }
-            return false;
-        }
-
-        private static string GetTypeKey(Type type, bool queries, bool parameters)
-        {
-            var typeKey = type.FullName;
-            if (queries)
-            {
-                typeKey += "::Queries";
-                if (parameters)
-                {
-                    typeKey += "::Parameters";
-                }
-            }
-            return typeKey;
         }
 
         #endregion
