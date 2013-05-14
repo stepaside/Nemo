@@ -5,6 +5,7 @@ using System.Web;
 using Nemo.Extensions;
 using Nemo.Fn;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace Nemo.Caching
 {
@@ -12,7 +13,7 @@ namespace Nemo.Caching
     {
         private readonly bool _userContext;
         protected readonly string _cacheNamespace;
-        private ulong? _namespaceVersion = null;
+        private ulong? _namespaceVersion;
 
         private bool _slidingExpiration;
         private CacheExpirationType _expirationType = CacheExpirationType.Never;
@@ -25,8 +26,10 @@ namespace Nemo.Caching
             if (options != null)
             {
                 _cacheNamespace = options.Namespace;
+                
                 _userContext = options.UserContext;
                 _slidingExpiration = options.SlidingExpiration;
+                
                 if (options.LifeSpan.HasValue)
                 {
                     LifeSpan = options.LifeSpan;
@@ -52,12 +55,9 @@ namespace Nemo.Caching
 
         public virtual void RemoveByNamespace()
         {
-            if (this is IDistributedCounter)
+            if (!string.IsNullOrEmpty(_cacheNamespace) && this is IDistributedCounter)
             {
-                if (!string.IsNullOrEmpty(_cacheNamespace))
-                {
-                    _namespaceVersion = ((IDistributedCounter)this).Increment(_cacheNamespace);
-                }
+                _namespaceVersion = ((IDistributedCounter)this).Increment(_cacheNamespace);
             }
         }
 
@@ -106,13 +106,26 @@ namespace Nemo.Caching
                 if (!string.IsNullOrEmpty(_cacheNamespace))
                 {
                     var ns = _cacheNamespace + "::";
-                    if (_namespaceVersion.HasValue)
+                    if (_namespaceVersion != null)
                     {
-                        ns += _namespaceVersion.Value + "::";
+                        ns += NamespaceVersion + "::";
                     }
                     return ns;
                 }
                 return string.Empty;
+            }
+        }
+
+        public ulong NamespaceVersion
+        {
+            get
+            {
+                if (!_namespaceVersion.HasValue && !string.IsNullOrEmpty(_cacheNamespace) && this is IDistributedCounter)
+                {
+                    _namespaceVersion = ((IDistributedCounter)this).Initialize(_cacheNamespace);
+                }
+
+                return _namespaceVersion.HasValue ? _namespaceVersion.Value : 0;
             }
         }
 

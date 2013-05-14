@@ -18,7 +18,7 @@ namespace Nemo.UnitOfWork
 {
     public class ObjectScope : IDisposable
     {
-        private const string SCOPE_NAME = "OBJECT_SCOPE";
+        private const string SCOPE_NAME = "__ObjectScope";
         internal IBusinessObject Item = null;
         internal byte[] ItemSnapshot = null;
         internal IBusinessObject OriginalItem = null;

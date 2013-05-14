@@ -9,7 +9,9 @@ namespace Nemo.Caching
 {
     public class CacheScope : IDisposable
     {
-        private const string SCOPE_NAME = "CACHE_SCOPE";
+        private const string SCOPE_NAME = "__CacheScope";
+        private const string SCOPE_NAMESPACE = "CacheScope";
+        
         private HashSet<string> _itemKeys = new HashSet<string>();
 
         internal static Stack<CacheScope> Scopes
@@ -41,6 +43,12 @@ namespace Nemo.Caching
 
         public CacheScope(bool buffered = true, Type cacheType = null, CacheOptions options = null, CacheDependency[] dependencies = null) 
         {
+            options = options ?? new CacheOptions();
+            if (string.IsNullOrEmpty(options.Namespace))
+            {
+                options.Namespace = SCOPE_NAMESPACE + "::" + options.Namespace;
+            }
+
             Provider = CacheFactory.GetProvider(cacheType, options);
             Buffered = buffered;
             if (Buffered)

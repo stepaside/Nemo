@@ -269,6 +269,11 @@ namespace Nemo.Caching.Providers.Generic
             return _client.Decrement(key, 1, delta == 0 ? 1 : delta);
         }
 
+        public ulong Initialize(string key)
+        {
+            return _client.Get<ulong>(key);
+        }
+
         private bool Store(StoreMode mode, string key, object val, DateTimeOffset currentDateTime)
         {
             var success = false;

@@ -210,16 +210,21 @@ namespace Nemo.Caching.Providers
 
         public ulong Increment(string key, ulong delta = 1)
         {
-            key = ComputeKey(key);
             var task = _connection.Strings.Increment(_database, key, (long)delta);
             return (ulong)task.Result;
         }
 
         public ulong Decrement(string key, ulong delta = 1)
         {
-            key = ComputeKey(key);
             var task = _connection.Strings.Decrement(_database, key, (long)delta);
             return (ulong)task.Result;
+        }
+
+        public ulong Initialize(string key)
+        {
+            var task = _connection.Strings.GetInt64(_database, key);
+            var result = task.Result;
+            return result.HasValue ? (ulong)result.Value : default(ulong);
         }
 
         #endregion
