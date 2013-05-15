@@ -105,7 +105,7 @@
     <Compile Include="Audit\AuditLog.cs" />
     <Compile Include="Audit\AuditLogProvider.cs" />
     <Compile Include="Caching\CacheExpirationType.cs" />
-    <Compile Include="Caching\IDistributedCounter.cs" />
+    <Compile Include="Caching\IRevisionProvider.cs" />
     <Compile Include="Caching\IPersistentCacheProvider.cs" />
     <Compile Include="Caching\IStaleCacheProvider.cs" />
     <Compile Include="Caching\NemoTranscoder.cs" />

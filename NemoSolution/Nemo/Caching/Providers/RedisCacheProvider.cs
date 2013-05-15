@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Nemo.Caching.Providers
 {
-    public class RedisCacheProvider : DistributedCacheProvider, IDistributedCounter, IPersistentCacheProvider
+    public class RedisCacheProvider : DistributedCacheProvider, IRevisionProvider, IPersistentCacheProvider
     {
         #region Static Declarations
 
@@ -206,27 +206,29 @@ namespace Nemo.Caching.Providers
             return _connection.Keys.Expire(_database, key, (int)lifeSpan.TotalSeconds).Wait(_waitTimeOut);
         }
 
-        #region IDistributedCounter Members
+        #region IRevisionProvider Members
 
-        public ulong Increment(string key, ulong delta = 1)
+        public ulong GetRevision(string key)
+        {
+            var task = _connection.Strings.GetInt64(_database, key);
+            var result = task.Result;
+            if (!result.HasValue)
+            {
+                var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(1L));
+                return isSet.Result ? 1ul : GetRevision(key);
+            }
+            else
+            {
+                return (ulong)result.Value;
+            }
+        }
+
+        public ulong IncrementRevision(string key, ulong delta = 1)
         {
             var task = _connection.Strings.Increment(_database, key, (long)delta);
             return (ulong)task.Result;
         }
-
-        public ulong Decrement(string key, ulong delta = 1)
-        {
-            var task = _connection.Strings.Decrement(_database, key, (long)delta);
-            return (ulong)task.Result;
-        }
-
-        public ulong Initialize(string key)
-        {
-            var task = _connection.Strings.GetInt64(_database, key);
-            var result = task.Result;
-            return result.HasValue ? (ulong)result.Value : default(ulong);
-        }
-
+        
         #endregion
 
         public override bool TryAcquireLock(string key)

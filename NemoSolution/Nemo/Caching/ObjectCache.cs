@@ -150,23 +150,6 @@ namespace Nemo.Caching
             return null;
         }
 
-        internal static List<CacheKey> ComputeKeys<T>(this IEnumerable<T> items)
-           where T : class, IBusinessObject
-        {
-            return items.Select(i => new CacheKey(i)).ToList();
-        }
-
-        public static string GetCacheKey<T>(IList<Param> parameters)
-            where T : class, IBusinessObject
-        {
-            return GetCacheKey<T>(null, parameters, OperationReturnType.Guess);
-        }
-
-        public static string GetCacheKey<T>(IList<Param> parameters, OperationReturnType returnType)
-            where T : class, IBusinessObject
-        {
-            return GetCacheKey<T>(ObjectFactory.OPERATION_RETRIEVE, parameters, returnType);
-        }
 
         public static string GetCacheKey<T>(string operation, IList<Param> parameters, OperationReturnType returnType)
             where T : class, IBusinessObject
@@ -253,13 +236,6 @@ namespace Nemo.Caching
                 }
             }
             return null;
-        }
-
-        internal static string[] LookupKeys<T>(string operation, IList<Param> parameters, OperationReturnType returnType, bool stale)
-            where T : class, IBusinessObject
-        {
-            var queryKey = ObjectCache.GetCacheKey<T>(operation, parameters, returnType);
-            return ObjectCache.LookupKeys(typeof(T), queryKey);
         }
 
         private static string[] LookupKeys(CacheProvider cache, string queryKey, bool stale)
@@ -642,21 +618,7 @@ namespace Nemo.Caching
             }
             return Tuple.Create(result, values, keys, stale);
         }
-
-        internal static Tuple<bool, IEnumerable<T>, string[], bool> Add<T>(string operation, IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
-            where T : class, IBusinessObject
-        {
-            var queryKey = ObjectCache.GetCacheKey<T>(operation, parameters, returnType);
-            return Add<T>(queryKey, parameters, retrieveItems, forceRetrieve);
-        }
-
-        internal static Tuple<bool, IEnumerable<T>, string[], bool> Add<T>(IList<Param> parameters, OperationReturnType returnType, Func<IEnumerable<T>> retrieveItems, bool forceRetrieve)
-           where T : class, IBusinessObject
-        {
-            var queryKey = ObjectCache.GetCacheKey<T>(parameters, returnType);
-            return Add<T>(queryKey, parameters, retrieveItems, forceRetrieve);
-        }
-
+        
         internal static bool Add<T>(T item)
             where T : class, IBusinessObject
         {
@@ -664,10 +626,10 @@ namespace Nemo.Caching
             {
                 DateTime expiresAt = DateTime.MinValue;
                 var cacheType = GetCacheType(typeof(T));
-                var key = new CacheKey(item).Value;
                 if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
+                    var key = new CacheKey(item).Value;
 
                     if (cache.IsOutOfProcess)
                     {
@@ -780,10 +742,10 @@ namespace Nemo.Caching
             if (item != null)
             {
                 var cacheType = GetCacheType<T>();
-                var key = new CacheKey(item).Value;
                 if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
+                    var key = new CacheKey(item).Value;
                     success = cache.Clear(key);
                     if (success)
                     {
@@ -830,10 +792,10 @@ namespace Nemo.Caching
             if (item != null)
             {
                 var cacheType = GetCacheType(typeof(T));
-                var key = new CacheKey(item).Value;
                 if (cacheType != null)
                 {
                     var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
+                    var key = new CacheKey(item).Value;
 
                     if (cache.IsOutOfProcess)
                     {
@@ -856,5 +818,25 @@ namespace Nemo.Caching
         }
 
         #endregion
+
+        //public ulong GetRevision<T>(T businesObject)
+        //    where T : class, IBusinessObject
+        //{
+        //    var cacheType = GetCacheType<T>();
+        //    if (cacheType != null)
+        //    {
+        //        var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
+        //        if (cache is IRevisionProvider)
+        //        {
+        //            ((IRevisionProvider)cache).Initialize(
+        //        }
+
+        //    if (!_revision.HasValue && !string.IsNullOrEmpty(_cacheNamespace) && this is IRevisionProvider)
+        //    {
+        //        _revision = ((IRevisionProvider)this).Initialize(_cacheNamespace);
+        //    }
+
+        //    return _revision.HasValue ? _revision.Value : 0ul;
+        //}
     }
 }

@@ -13,7 +13,7 @@ namespace Nemo.Caching
     {
         private readonly bool _userContext;
         protected readonly string _cacheNamespace;
-        private ulong? _namespaceVersion;
+        private ulong? _revision;
 
         private bool _slidingExpiration;
         private CacheExpirationType _expirationType = CacheExpirationType.Never;
@@ -55,9 +55,9 @@ namespace Nemo.Caching
 
         public virtual void RemoveByNamespace()
         {
-            if (!string.IsNullOrEmpty(_cacheNamespace) && this is IDistributedCounter)
+            if (!string.IsNullOrEmpty(_cacheNamespace) && this is IRevisionProvider)
             {
-                _namespaceVersion = ((IDistributedCounter)this).Increment(_cacheNamespace);
+                _revision = ((IRevisionProvider)this).IncrementRevision(_cacheNamespace);
             }
         }
 
@@ -70,7 +70,7 @@ namespace Nemo.Caching
         public abstract object Retrieve(string key);
         public abstract IDictionary<string, object> Retrieve(IEnumerable<string> keys);
         public abstract bool Touch(string key, TimeSpan lifeSpan);
-
+        
         public Tuple<object, bool> RetrieveAndTouch(string key, TimeSpan lifeSpan)
         {
             var result = Retrieve(key);
@@ -106,9 +106,9 @@ namespace Nemo.Caching
                 if (!string.IsNullOrEmpty(_cacheNamespace))
                 {
                     var ns = _cacheNamespace + "::";
-                    if (_namespaceVersion != null)
+                    if (_revision != null)
                     {
-                        ns += NamespaceVersion + "::";
+                        ns += NamespaceRevision + "::";
                     }
                     return ns;
                 }
@@ -116,16 +116,16 @@ namespace Nemo.Caching
             }
         }
 
-        public ulong NamespaceVersion
+        public ulong NamespaceRevision
         {
             get
             {
-                if (!_namespaceVersion.HasValue && !string.IsNullOrEmpty(_cacheNamespace) && this is IDistributedCounter)
+                if (!_revision.HasValue && !string.IsNullOrEmpty(_cacheNamespace) && this is IRevisionProvider)
                 {
-                    _namespaceVersion = ((IDistributedCounter)this).Initialize(_cacheNamespace);
+                    _revision = ((IRevisionProvider)this).GetRevision(_cacheNamespace);
                 }
 
-                return _namespaceVersion.HasValue ? _namespaceVersion.Value : 0;
+                return _revision.HasValue ? _revision.Value : 0ul;
             }
         }
 

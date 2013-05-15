@@ -28,8 +28,8 @@ namespace Nemo.Caching
 
         internal CacheItem(string key, string[] index)
         {
-            _index = index;
             _key = key;
+            _index = index;
         }
 
         internal CacheItem(byte[] data)

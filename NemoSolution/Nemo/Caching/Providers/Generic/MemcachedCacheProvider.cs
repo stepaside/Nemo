@@ -14,7 +14,7 @@ using System.Diagnostics;
 
 namespace Nemo.Caching.Providers.Generic
 {
-    public abstract class MemcachedCacheProvider<T> : DistributedCacheProvider, IDistributedCounter, IStaleCacheProvider
+    public abstract class MemcachedCacheProvider<T> : DistributedCacheProvider, IRevisionProvider, IStaleCacheProvider
         where T : MemcachedClient
     {
         protected T _client;
@@ -111,10 +111,10 @@ namespace Nemo.Caching.Providers.Generic
         {
             if (this is IStaleCacheProvider)
             {
-                var t = TemporalValue.FromBytes(result);
-                if (t.IsValid())
+                var temporal = TemporalValue.FromBytes(result);
+                if (temporal.IsValid())
                 {
-                    result = t.Value;
+                    result = temporal.Value;
                 }
                 else
                 {
@@ -205,7 +205,8 @@ namespace Nemo.Caching.Providers.Generic
                 var item = _client.Get<byte[]>(key);
                 if (item != null && this is IStaleCacheProvider)
                 {
-                    result = TemporalValue.FromBytes(item).Value;
+                    var temporal = TemporalValue.FromBytes(item);
+                    result = temporal.Value;
                 }
 
                 if (result != null)
@@ -242,10 +243,11 @@ namespace Nemo.Caching.Providers.Generic
                         var originalKey = computedKeys[k];
                         object item;
                         missingItems.TryGetValue(k, out item);
-
+                        
                         if (item != null && this is IStaleCacheProvider)
                         {
-                            item = TemporalValue.FromBytes((byte[])item).Value;
+                            var temporal = TemporalValue.FromBytes((byte[])item);
+                            item = temporal.Value;
                         }
 
                         if (item != null)
@@ -259,20 +261,27 @@ namespace Nemo.Caching.Providers.Generic
             return items;
         }
 
-        public ulong Increment(string key, ulong delta = 1)
+        #region IRevisionProvider Members
+
+        public ulong GetRevision(string key)
+        {
+            var value = _client.Get(key);
+            if (value == null)
+            {
+                return _client.Store(StoreMode.Add, key, 1) ? 1 : GetRevision(key);
+            }
+            else
+            {
+                return (ulong)value;
+            }
+        }
+
+        public ulong IncrementRevision(string key, ulong delta = 1)
         {
             return _client.Increment(key, 1, delta == 0 ? 1 : delta);
         }
 
-        public ulong Decrement(string key, ulong delta = 1)
-        {
-            return _client.Decrement(key, 1, delta == 0 ? 1 : delta);
-        }
-
-        public ulong Initialize(string key)
-        {
-            return _client.Get<ulong>(key);
-        }
+        #endregion
 
         private bool Store(StoreMode mode, string key, object val, DateTimeOffset currentDateTime)
         {
