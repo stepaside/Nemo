@@ -26,18 +26,7 @@ namespace Nemo.Caching
                 ClusterName = nvp["clustername"];
                 ClusterPassword = nvp["clusterpwd"];
                 FilePath = nvp["filepath"];
-                HashAlgorithm = nvp["hashalgorithm"].ToMaybe()
-                                .Select(s =>
-                                            {
-                                                HashAlgorithmName value;
-                                                if (Enum.TryParse<HashAlgorithmName>(s, true, out value))
-                                                {
-                                                    return value.ToMaybe();
-                                                }
-                                                return Maybe<HashAlgorithmName>.Empty;
-                                            });
                 HostName = nvp["hostname"];
-
                 Database = nvp["database"].ToMaybe().Select(s => s.SafeCast<int>()).Let(m => m.HasValue ? m.Value : default(int)); ;
             }
         }
@@ -51,7 +40,6 @@ namespace Nemo.Caching
         public string ClusterName { get; set; }
         public string ClusterPassword { get; set; }
         public string FilePath { get; set; }
-        public Maybe<HashAlgorithmName> HashAlgorithm { get; set; }
         public string HostName { get; set; }
         public int Database { get; set; }
     }

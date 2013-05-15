@@ -70,7 +70,6 @@ namespace Nemo.Caching
                     Buffered = false;
                 }
             }
-            HashAlgorithm = options != null && options.HashAlgorithm.HasValue ? options.HashAlgorithm.Value : HashAlgorithmName.Default;
             Dependencies = dependencies;
             CacheScope.Scopes.Push(this);
         }

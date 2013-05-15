@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Nemo.Extensions;
 using Nemo.Reflection;
 using Nemo.Serialization;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace Nemo.Caching
 {
@@ -81,7 +82,7 @@ namespace Nemo.Caching
             {
                 if (_key == null && _dataObject != null)
                 {
-                    _key = new CacheKey(_dataObject).Value;
+                    _key = _dataObject.ComputeHash();
                 }
                 return _key;
             }
@@ -114,7 +115,7 @@ namespace Nemo.Caching
                 var dataObject = this.ToObject<T>();
                 if (dataObject != null)
                 {
-                    _key = new CacheKey(dataObject).Value;
+                    _key = dataObject.ComputeHash();
                 }
             }
             return _key;
