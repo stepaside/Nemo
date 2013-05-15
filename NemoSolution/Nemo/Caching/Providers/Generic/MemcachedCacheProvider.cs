@@ -111,7 +111,7 @@ namespace Nemo.Caching.Providers.Generic
         {
             if (this is IStaleCacheProvider)
             {
-                var temporal = TemporalValue.FromBytes(result);
+                var temporal = CacheValue.FromBytes(result);
                 if (temporal.IsValid())
                 {
                     result = temporal.Value;
@@ -205,7 +205,7 @@ namespace Nemo.Caching.Providers.Generic
                 var item = _client.Get<byte[]>(key);
                 if (item != null && this is IStaleCacheProvider)
                 {
-                    var temporal = TemporalValue.FromBytes(item);
+                    var temporal = CacheValue.FromBytes(item);
                     result = temporal.Value;
                 }
 
@@ -246,7 +246,7 @@ namespace Nemo.Caching.Providers.Generic
                         
                         if (item != null && this is IStaleCacheProvider)
                         {
-                            var temporal = TemporalValue.FromBytes((byte[])item);
+                            var temporal = CacheValue.FromBytes((byte[])item);
                             item = temporal.Value;
                         }
 
@@ -286,7 +286,8 @@ namespace Nemo.Caching.Providers.Generic
         private bool Store(StoreMode mode, string key, object val, DateTimeOffset currentDateTime)
         {
             var success = false;
-            val = ComputeValue((byte[])ExtractValue(val), currentDateTime);
+            var revision = this.GetRevision(key);
+            val = ComputeValue((byte[])ExtractValue(val), currentDateTime, revision);
             switch (ExpirationType)
             {
                 case CacheExpirationType.TimeOfDay:

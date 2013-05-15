@@ -111,7 +111,8 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             var now = DateTimeOffset.Now;
-            var data = ComputeValue(ExtractValue(val), now);
+            var revision = this.GetRevision(key);
+            var data = ComputeValue(ExtractValue(val), now, revision);
             var taskAdd = _connection.Strings.SetIfNotExists(_database, key, data).ContinueWith(res =>
             {
                 if (res.Result)
@@ -149,7 +150,8 @@ namespace Nemo.Caching.Providers
         private bool SaveImplementation(RedisTransaction tran, string key, object val, DateTimeOffset currentDateTime)
         {
             key = ComputeKey(key);
-            var data = ComputeValue(ExtractValue(val), currentDateTime);
+            var revision = this.GetRevision(key);
+            var data = ComputeValue(ExtractValue(val), currentDateTime, revision);
             tran.Strings.Set(_database, key, data);
             SetExpiration(tran, key, currentDateTime);
             return true;

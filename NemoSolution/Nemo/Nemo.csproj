@@ -110,7 +110,7 @@
     <Compile Include="Caching\IStaleCacheProvider.cs" />
     <Compile Include="Caching\NemoTranscoder.cs" />
     <Compile Include="Caching\Providers\Generic\MemcachedCacheProvider.cs" />
-    <Compile Include="Caching\TemporalValue.cs" />
+    <Compile Include="Caching\CacheValue.cs" />
     <Compile Include="Caching\Providers\CouchbaseCacheProvider.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />

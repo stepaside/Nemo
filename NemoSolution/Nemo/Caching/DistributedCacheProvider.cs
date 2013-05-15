@@ -36,7 +36,7 @@ namespace Nemo.Caching
             return value is CacheItem ? ((CacheItem)value).Data : value as byte[];
         }
 
-        protected byte[] ComputeValue(byte[] value, DateTimeOffset currentDateTime)
+        protected byte[] ComputeValue(byte[] value, DateTimeOffset currentDateTime, ulong revision)
         {
             if (this is IStaleCacheProvider)
             {
@@ -44,22 +44,22 @@ namespace Nemo.Caching
                 {
                     case CacheExpirationType.TimeOfDay:
                         {
-                            var t = new TemporalValue { Value = value, ExpiresAt = base.ExpiresAtSpecificTime.Value.DateTime };
+                            var t = new CacheValue { Value = value, ExpiresAt = base.ExpiresAtSpecificTime.Value.DateTime, Revision = revision };
                             return t.ToBytes();
                         }
                     case CacheExpirationType.DateTime:
                         {
-                            var t = new TemporalValue { Value = value, ExpiresAt = base.ExpiresAt.DateTime };
+                            var t = new CacheValue { Value = value, ExpiresAt = base.ExpiresAt.DateTime, Revision = revision };
                             return t.ToBytes();
                         }
                     case CacheExpirationType.TimeSpan:
                         {
-                            var t = new TemporalValue { Value = value, ExpiresAt = currentDateTime.Add(LifeSpan).DateTime };
+                            var t = new CacheValue { Value = value, ExpiresAt = currentDateTime.Add(LifeSpan).DateTime, Revision = revision };
                             return t.ToBytes();
                         }
                     default:
                         {
-                            var t = new TemporalValue { Value = value, ExpiresAt = DateTime.MaxValue };
+                            var t = new CacheValue { Value = value, ExpiresAt = DateTime.MaxValue, Revision = revision };
                             return t.ToBytes();
                         }
                 }
