@@ -625,12 +625,6 @@ namespace Nemo.Extensions
             }
         }
 
-        /// <summary>
-        /// GetCacheKey method implements cache key generation for a business object
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
-        /// <returns></returns>
         public static string ComputeHash<T>(this T businessObject)
             where T : class, IBusinessObject
         {

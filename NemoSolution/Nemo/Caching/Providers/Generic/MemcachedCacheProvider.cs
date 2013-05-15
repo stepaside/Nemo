@@ -265,6 +265,7 @@ namespace Nemo.Caching.Providers.Generic
 
         public ulong GetRevision(string key)
         {
+            key = "REVISION::" + key;
             var value = _client.Get(key);
             if (value == null)
             {
@@ -278,6 +279,7 @@ namespace Nemo.Caching.Providers.Generic
 
         public ulong IncrementRevision(string key, ulong delta = 1)
         {
+            key = "REVISION::" + key;
             return _client.Increment(key, 1, delta == 0 ? 1 : delta);
         }
 

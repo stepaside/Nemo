@@ -117,21 +117,6 @@ namespace Nemo.Caching
             return dependencies;
         }
 
-        private static HashAlgorithmName GetHashAlgorithm(Type objectType)
-        {
-            if (CacheScope.Current != null)
-            {
-                return CacheScope.Current.HashAlgorithm;
-            }
-
-            var options = GetCacheOptions(objectType);
-            if (options != null && options.HashAlgorithm.HasValue)
-            {
-                return options.HashAlgorithm.Value;
-            }
-            return HashAlgorithmName.Default;
-        }
-
         private static CacheOptions GetCacheOptions(Type objectType)
         {
              if (objectType != null)
@@ -150,7 +135,6 @@ namespace Nemo.Caching
             return null;
         }
 
-
         public static string GetCacheKey<T>(string operation, IList<Param> parameters, OperationReturnType returnType)
             where T : class, IBusinessObject
         {
@@ -168,8 +152,9 @@ namespace Nemo.Caching
                     parametersForCaching.Add(parameter.Name, parameter.Value);
                 }
             }
-            var cacheKey = new CacheKey(parametersForCaching, objectType, operation, returnType, GetHashAlgorithm(objectType));
-            return cacheKey.Value;
+            var cacheKey = new CacheKey(parametersForCaching, objectType, operation, returnType);
+            var revision = GetRevision(cacheKey.Value, objectType);
+            return revision > 0 ? cacheKey.Value + "." + revision : cacheKey.Value;
         }
 
         internal static bool CanBeBuffered<T>()
@@ -819,24 +804,28 @@ namespace Nemo.Caching
 
         #endregion
 
-        //public ulong GetRevision<T>(T businesObject)
-        //    where T : class, IBusinessObject
-        //{
-        //    var cacheType = GetCacheType<T>();
-        //    if (cacheType != null)
-        //    {
-        //        var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
-        //        if (cache is IRevisionProvider)
-        //        {
-        //            ((IRevisionProvider)cache).Initialize(
-        //        }
+        #region Revision Methods
 
-        //    if (!_revision.HasValue && !string.IsNullOrEmpty(_cacheNamespace) && this is IRevisionProvider)
-        //    {
-        //        _revision = ((IRevisionProvider)this).Initialize(_cacheNamespace);
-        //    }
+        public static ulong GetRevision(string key, Type objectType)
+        {
+            var cacheType = GetCacheType(objectType);
+            if (cacheType != null)
+            {
+                var cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(objectType));
+                return GetRevision(key, cache);
+            }
+            return 0ul;
+        }
 
-        //    return _revision.HasValue ? _revision.Value : 0ul;
-        //}
+        internal static ulong GetRevision(string key, CacheProvider cache)
+        {
+            if (cache != null && cache is IRevisionProvider)
+            {
+                return ((IRevisionProvider)cache).GetRevision(key);
+            }
+            return 0ul;
+        }
+
+        #endregion
     }
 }

@@ -20,34 +20,17 @@ namespace Nemo.Caching
         private byte[] _data;
         private Tuple<string, byte[]> _hash;
 
-        public CacheKey(IBusinessObject businessObject, string operation, OperationReturnType returnType, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
-            : this(businessObject.GetPrimaryKey(true), businessObject.GetType(), operation, returnType, true, hashAlgorithm)
+        public CacheKey(IBusinessObject businessObject)
+            : this(businessObject.GetPrimaryKey(true), businessObject.GetType())
         { }
 
-        public CacheKey(IBusinessObject businessObject, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
-            : this(businessObject.GetPrimaryKey(true), businessObject.GetType(), hashAlgorithm)
-        { }
-        
-        internal CacheKey(IEnumerable<Param> parameters, Type type, string operation, OperationReturnType returnType, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
-            : this(new SortedDictionary<string, object>(parameters.ToDictionary(p => p.Name, p => p.Value)), type, operation, returnType, hashAlgorithm)
-        { }
-
-        public CacheKey(IDictionary<string, object> key, Type type, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
-            : this(key, type, null, OperationReturnType.Guess, hashAlgorithm)
-        { }
-
-        internal CacheKey(IDictionary<string, object> key, Type type, string operation, OperationReturnType returnType, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
-            : this(key, type, operation, returnType, key is SortedDictionary<string, object>, hashAlgorithm)
-        { }
-
-        protected CacheKey(IDictionary<string, object> key, Type type, string operation, OperationReturnType returnType, bool sorted, HashAlgorithmName hashAlgorithm = HashAlgorithmName.Default)
+        public CacheKey(IDictionary<string, object> key, Type type, string operation = null, OperationReturnType returnType = OperationReturnType.Guess)
         {
-            ulong revision = 0ul;
-
             var reflectedType = Reflector.GetReflectedType(type);
             var typeName = reflectedType.IsBusinessObject && reflectedType.InterfaceTypeName != null ? reflectedType.InterfaceTypeName : reflectedType.FullTypeName;
+            var sorted = key is SortedDictionary<string, object>;
 
-            _hashAlgorithm = hashAlgorithm == HashAlgorithmName.Default ? ConfigurationFactory.Configuration.DefaultHashAlgorithm : hashAlgorithm;
+            _hashAlgorithm = ConfigurationFactory.Configuration.DefaultHashAlgorithm;
             if (_hashAlgorithm == HashAlgorithmName.Native || _hashAlgorithm == HashAlgorithmName.None)
             {
                 IEnumerable<KeyValuePair<string, object>> values;
@@ -63,11 +46,11 @@ namespace Nemo.Caching
                 var keyValue = values.Select(k => Convert.ToString(k.Value)).ToDelimitedString(",");
                 if (!string.IsNullOrEmpty(operation))
                 {
-                    _value = string.Format("{0}->{1}.{2}:{3} {4}", typeName, operation, revision, returnType, keyValue);
+                    _value = string.Format("{0}->{1}:{2}::{3}", typeName, operation, returnType, keyValue);
                 }
                 else
                 {
-                    _value = string.Format("{0}.{1} {2}", typeName, revision, keyValue);
+                    _value = string.Format("{0}::{2}", typeName, keyValue);
                 }
                 _data = _value.ToByteArray();
             }
@@ -77,19 +60,17 @@ namespace Nemo.Caching
                 var keyValue = (sorted ? key.Select(func) : key.OrderBy(k => k.Key).Select(func)).Flatten().ToArray();
                 if (!string.IsNullOrEmpty(operation))
                 {
-                    _data = new byte[4 + 4 + 1 + keyValue.Length + 8];
+                    _data = new byte[4 + 4 + 1 + keyValue.Length];
                     Buffer.BlockCopy(BitConverter.GetBytes(typeName.GetHashCode()), 0, _data, 0, 4);
                     Buffer.BlockCopy(BitConverter.GetBytes(operation.GetHashCode()), 0, _data, 4, 4);
                     Buffer.BlockCopy(new[] { (byte)returnType }, 0, _data, 8, 1);
                     Buffer.BlockCopy(keyValue, 0, _data, 9, keyValue.Length);
-                    Buffer.BlockCopy(BitConverter.GetBytes(revision), 0, _data, 9 + keyValue.Length, 8);
                 }
                 else
                 {
-                    _data = new byte[4 + keyValue.Length + 8];
+                    _data = new byte[4 + keyValue.Length];
                     Buffer.BlockCopy(BitConverter.GetBytes(typeName.GetHashCode()), 0, _data, 0, 4);
                     Buffer.BlockCopy(keyValue, 0, _data, 4, keyValue.Length);
-                    Buffer.BlockCopy(BitConverter.GetBytes(revision), 0, _data, 4 + keyValue.Length, 8);
                 }
             }
         }

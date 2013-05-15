@@ -212,6 +212,7 @@ namespace Nemo.Caching.Providers
 
         public ulong GetRevision(string key)
         {
+            key = "REVISION::" + key;
             var task = _connection.Strings.GetInt64(_database, key);
             var result = task.Result;
             if (!result.HasValue)
@@ -227,6 +228,7 @@ namespace Nemo.Caching.Providers
 
         public ulong IncrementRevision(string key, ulong delta = 1)
         {
+            key = "REVISION::" + key;
             var task = _connection.Strings.Increment(_database, key, (long)delta);
             return (ulong)task.Result;
         }
