@@ -25,15 +25,7 @@ namespace Nemo.Collections
 
         public bool Equals(IList<Type> x, IList<Type> y)
         {
-            if (x.Count == y.Count)
-            {
-                for (int i = 0; i < x.Count; i++)
-                {
-                    if (x[i] != y[i]) return false;
-                }
-                return true;
-            }
-            return false;
+            return x.SequenceEqual(y, EqualityComparer<Type>.Default);
         }
 
         public int GetHashCode(IList<Type> obj)

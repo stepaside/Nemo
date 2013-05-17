@@ -176,7 +176,7 @@ namespace Nemo.Caching.Providers
         private object RetrieveImplementation(string fileName)
         {
             var file = Path.Combine(FilePath, fileName);
-            object result = null;
+            CacheValue result = null;
             if (File.Exists(file))
             {
                 var fileInfo = new FileInfo(file);
@@ -204,21 +204,21 @@ namespace Nemo.Caching.Providers
             return false;
         }
 
-        protected byte[] ExtractValue(object value)
+        protected CacheValue ExtractValue(object value)
         {
-            return value is CacheItem ? ((CacheItem)value).Data : value as byte[];
+            return value is CacheItem ? ((CacheItem)value).Value : value as CacheValue;
         }
 
         private void Write(string file, object value)
         {
-            var buffer = ExtractValue(value);
-            File.WriteAllBytes(file, buffer);
+            var cacheValue = ExtractValue(value);
+            File.WriteAllBytes(file, cacheValue.ToBytes());
         }
 
-        private object Read(string file)
+        private CacheValue Read(string file)
         {
             var buffer = File.ReadAllBytes(file);
-            return buffer;
+            return CacheValue.FromBytes(buffer);
         }
     }
 }

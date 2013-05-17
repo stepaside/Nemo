@@ -97,7 +97,7 @@ namespace Nemo.Caching.Providers
             key = ComputeKey(key);
             var taskGet = _connection.Strings.Get(_database, key);
             var taskRemove = _connection.Keys.Remove(_database, key);
-            return taskGet.Result;
+            return CacheValue.FromBytes(taskGet.Result);
         }
 
         public override bool Clear(string key)
@@ -111,8 +111,7 @@ namespace Nemo.Caching.Providers
         {
             key = ComputeKey(key);
             var now = DateTimeOffset.Now;
-            var revision = this.GetRevision(key);
-            var data = ComputeValue(ExtractValue(val), now, revision);
+            var data = ComputeValue((CacheValue)val, now);
             var taskAdd = _connection.Strings.SetIfNotExists(_database, key, data).ContinueWith(res =>
             {
                 if (res.Result)
@@ -129,7 +128,7 @@ namespace Nemo.Caching.Providers
             using (var tran = _connection.CreateTransaction())
             {
                 var now = DateTimeOffset.Now;
-                SaveImplementation(tran, key, val, now);
+                SaveImplementation(tran, key, (CacheValue)val, now);
                 return tran.Execute().Wait(_waitTimeOut);
             }
         }
@@ -141,17 +140,16 @@ namespace Nemo.Caching.Providers
                 var now = DateTimeOffset.Now;
                 foreach (var item in items)
                 {
-                    SaveImplementation(tran, item.Key, item.Value, now);
+                    SaveImplementation(tran, item.Key, (CacheValue)item.Value, now);
                 }
                 return tran.Execute().Wait(_waitTimeOut);
             }
         }
 
-        private bool SaveImplementation(RedisTransaction tran, string key, object val, DateTimeOffset currentDateTime)
+        private bool SaveImplementation(RedisTransaction tran, string key, CacheValue val, DateTimeOffset currentDateTime)
         {
             key = ComputeKey(key);
-            var revision = this.GetRevision(key);
-            var data = ComputeValue(ExtractValue(val), currentDateTime, revision);
+            var data = ComputeValue(val, currentDateTime);
             tran.Strings.Set(_database, key, data);
             SetExpiration(tran, key, currentDateTime);
             return true;
@@ -179,7 +177,7 @@ namespace Nemo.Caching.Providers
             key = ComputeKey(key);
             var taskGet = _connection.Strings.Get(_database, key);
             var buffer = taskGet.Result;
-            return buffer;
+            return ProcessRetrieve(buffer, key, this.ExpectedVersion);
         }
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
@@ -196,10 +194,29 @@ namespace Nemo.Caching.Providers
                 var buffer = data[i];
                 if (buffer != null)
                 {
-                    result[realKeysArray[i]] = buffer;
+                    var key = keysArray[i];
+                    var originalKey = realKeysArray[i];
+
+                    var item = ProcessRetrieve(buffer, key, this.ExpectedVersion);
+                    if (item != null)
+                    {
+                        result.Add(originalKey, item);
+                    }
                 }
             }
             return result;
+        }
+
+        private CacheValue ProcessRetrieve(byte[] result, string key, string expectedRevision)
+        {
+            var cacheValue = CacheValue.FromBytes(result);
+            // If there is a revision mismatch simulate a miss
+            if (cacheValue != null && !cacheValue.IsValidVersion(expectedRevision))
+            {
+                cacheValue = null;
+            }
+            
+            return cacheValue;
         }
 
         public override bool Touch(string key, TimeSpan lifeSpan)
@@ -226,12 +243,49 @@ namespace Nemo.Caching.Providers
             }
         }
 
+        public IDictionary<string, ulong> GetRevisions(IEnumerable<string> keys)
+        {
+            var keyArray = keys.Select(k => "REVISION::" + k).ToArray();
+            var task = _connection.Strings.Get(_database, keyArray);
+            var values = task.Result;
+            if (values != null)
+            {
+                var missingKeys = new List<string>();
+                var items = new Dictionary<string, ulong>();
+
+                var result = new Dictionary<string, object>();
+                for (int i = 0; i < keyArray.Length; i++)
+                {
+                    var buffer = values[i];
+                    if (buffer != null)
+                    {
+                        items.Add(keyArray[i], (ulong)BitConverter.ToInt64(buffer, 0));
+                    }
+                    else
+                    {
+                        missingKeys.Add(keyArray[i]);
+                    }
+                }
+                
+                foreach (var key in missingKeys)
+                {
+                    var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(1L));
+                    items.Add(key, isSet.Result ? 1ul : GetRevision(key));
+                }
+
+                return items;
+            }
+            return null;
+        }
+
         public ulong IncrementRevision(string key, ulong delta = 1)
         {
             key = "REVISION::" + key;
             var task = _connection.Strings.Increment(_database, key, (long)delta);
             return (ulong)task.Result;
         }
+
+        public string ExpectedVersion { get; set; }
         
         #endregion
 

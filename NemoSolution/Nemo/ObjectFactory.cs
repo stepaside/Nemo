@@ -414,14 +414,29 @@ namespace Nemo
                 bufferCache = new ExecutionContextCacheProvider();
             }
 
+            CacheProvider cache = null;
             CacheItem[] cachedItems = null;
             string queryKey = null;
+            string queryKeyExpectedVerison = null;
             string[] keys = null;
             bool collision = false;
-
+            
             if (enableCache || canBeBuffered)
             {
-                queryKey = ObjectCache.GetCacheKey<TResult>(operation, parameters, returnType);
+                if (enableCache)
+                {
+                    cache = CacheFactory.GetProvider(cacheType, ObjectCache.GetCacheOptions(typeof(TResult)));
+                }
+
+                var queryKeyResult = ObjectCache.GetQueryKey<TResult>(operation, parameters, returnType, cache);
+                queryKey = queryKeyResult.Item1;
+                queryKeyExpectedVerison = queryKeyResult.Item2;
+
+                if (cache is IRevisionProvider && queryKeyExpectedVerison != null)
+                {
+                    ((IRevisionProvider)cache).ExpectedVersion = queryKeyExpectedVerison;
+                }
+
                 if (queryKey != null)
                 {
                     // Try to retrieve from the local context
@@ -442,19 +457,19 @@ namespace Nemo
 
                     if (enableCache)
                     {
-                        keys = ObjectCache.LookupKeys(typeof(TResult), queryKey);
+                        keys = ObjectCache.LookupKeys(queryKey, cache);
                     }
                 }
 
                 if (keys != null)
                 {
-                    cachedItems = ObjectCache.Lookup<TResult>(keys);
+                    cachedItems = ObjectCache.Lookup<TResult>(keys, cache);
                     // Detect data type collision
                     if (cachedItems != null)
                     {
                         if (ConfigurationFactory.Configuration.CacheCollisionDetection && cachedItems.Any(c => !c.IsValid<TResult>()))
                         {
-                            ObjectCache.Remove<TResult>(queryKey);
+                            ObjectCache.Remove(queryKey, cache);
                             collision = true;
                         }
                         else
@@ -477,13 +492,13 @@ namespace Nemo
                     // and we need to force the add
                     var forceRetrieve = keys != null;
                     Log.Capture(() => "Add to cache: " + queryKey);
-                    var tuple = ObjectCache.Add<TResult>(queryKey, parameters, () => RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode), forceRetrieve);
+                    var tuple = ObjectCache.Add<TResult>(queryKey, parameters, () => RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode), forceRetrieve, cache);
                     if (!tuple.Item1)
                     {
                         if (forceRetrieve)
                         {
                             // if retrieve was forced during cache.add method, then lookup keys again
-                            keys = ObjectCache.LookupKeys(typeof(TResult), queryKey);
+                            keys = ObjectCache.LookupKeys(queryKey, cache);
                         }
                         else
                         {
@@ -491,7 +506,7 @@ namespace Nemo
                         }
                         if (keys != null)
                         {
-                            cachedItems = ObjectCache.Lookup<TResult>(keys, tuple.Item4);
+                            cachedItems = ObjectCache.Lookup<TResult>(keys, cache, tuple.Item4);
                             if (cachedItems != null)
                             {
                                 result = cachedItems.Deserialize<TResult>();

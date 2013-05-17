@@ -30,44 +30,37 @@ namespace Nemo.Caching
                 ExecutionContext.Set("__LocalCache", value);
             }
         }
-
-        protected byte[] ExtractValue(object value)
-        {
-            return value is CacheItem ? ((CacheItem)value).Data : value as byte[];
-        }
-
-        protected byte[] ComputeValue(byte[] value, DateTimeOffset currentDateTime, ulong revision)
+        
+        protected byte[] ComputeValue(CacheValue value, DateTimeOffset currentDateTime)
         {
             if (this is IStaleCacheProvider)
             {
                 switch (ExpirationType)
                 {
                     case CacheExpirationType.TimeOfDay:
-                        {
-                            var t = new CacheValue { Value = value, ExpiresAt = base.ExpiresAtSpecificTime.Value.DateTime, Revision = revision };
-                            return t.ToBytes();
-                        }
+                        value.ExpiresAt = base.ExpiresAtSpecificTime.Value.DateTime;
+                        break;
+
                     case CacheExpirationType.DateTime:
-                        {
-                            var t = new CacheValue { Value = value, ExpiresAt = base.ExpiresAt.DateTime, Revision = revision };
-                            return t.ToBytes();
-                        }
+                        value.ExpiresAt = base.ExpiresAt.DateTime;
+                        break;
+
                     case CacheExpirationType.TimeSpan:
-                        {
-                            var t = new CacheValue { Value = value, ExpiresAt = currentDateTime.Add(LifeSpan).DateTime, Revision = revision };
-                            return t.ToBytes();
-                        }
+                        value.ExpiresAt = currentDateTime.Add(LifeSpan).DateTime;
+                        break;
+
                     default:
-                        {
-                            var t = new CacheValue { Value = value, ExpiresAt = DateTime.MaxValue, Revision = revision };
-                            return t.ToBytes();
-                        }
+                        value.ExpiresAt = DateTime.MaxValue;
+                        break;
                 }
             }
-            else
+
+            if (value.QueryKey && ConfigurationFactory.Configuration.QueryInvalidationByVersion && this is IRevisionProvider)
             {
-                return value;
+                value.Version = ((IRevisionProvider)this).ExpectedVersion;
             }
+
+            return value.ToBytes();
         }
 
         public override DateTimeOffset ExpiresAt

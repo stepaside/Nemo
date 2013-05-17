@@ -11,12 +11,22 @@ namespace Nemo.Caching
     public class CacheValue
     {
         public DateTime ExpiresAt { get; set; }
-        public byte[] Value { get; set; }
-        public ulong Revision { get; set; }
+        public bool QueryKey { get; set; }
+        public byte[] Buffer { get; set; }
+        public string Version { get; set; }
 
         public bool IsValid()
         {
             return this.ExpiresAt >= DateTimeOffset.Now.DateTime;
+        }
+
+        public bool IsValidVersion(string expectedVersion)
+        {
+            if (Version != null && expectedVersion != null)
+            {
+                return Version.Split('.').Zip(expectedVersion.Split('.'), (v, ev) => ulong.Parse(v) >= ulong.Parse(ev)).All(r => r);
+            }
+            return true;
         }
 
         public byte[] ToBytes()
@@ -24,8 +34,9 @@ namespace Nemo.Caching
             using (var writer = SerializationWriter.CreateWriter(SerializationMode.Manual))
             {
                 writer.Write(ExpiresAt);
-                writer.Write(Revision);
-                writer.Write(Value);
+                writer.Write(QueryKey);
+                writer.Write(Version);
+                writer.Write(Buffer);
                 return writer.GetBytes();
             }
         }
@@ -36,8 +47,9 @@ namespace Nemo.Caching
             using (var reader = SerializationReader.CreateReader(buffer))
             {
                 result.ExpiresAt = reader.ReadDateTime();
-                result.Revision = reader.ReadUInt64();
-                result.Value = reader.ReadBytes();
+                result.QueryKey = reader.ReadBoolean();
+                result.Version = reader.ReadString();
+                result.Buffer = reader.ReadBytes();
             }
             return result;
         }

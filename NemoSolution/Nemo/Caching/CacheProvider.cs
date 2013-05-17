@@ -70,7 +70,7 @@ namespace Nemo.Caching
         public abstract object Retrieve(string key);
         public abstract IDictionary<string, object> Retrieve(IEnumerable<string> keys);
         public abstract bool Touch(string key, TimeSpan lifeSpan);
-        
+
         public Tuple<object, bool> RetrieveAndTouch(string key, TimeSpan lifeSpan)
         {
             var result = Retrieve(key);

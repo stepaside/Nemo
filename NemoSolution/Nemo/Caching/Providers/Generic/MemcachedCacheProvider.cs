@@ -72,7 +72,7 @@ namespace Nemo.Caching.Providers.Generic
             {
                 LocalCache.Add(key, val);
             }
-            var success = Store(StoreMode.Add, key, val, now);
+            var success = Store(StoreMode.Add, key, (CacheValue)val, now);
             return success;
         }
 
@@ -82,9 +82,9 @@ namespace Nemo.Caching.Providers.Generic
             LocalCache[key] = val;
             var now = DateTimeOffset.Now;
 #if DEBUG
-            Store(StoreMode.Set, key, val, now);
+            Store(StoreMode.Set, key, (CacheValue)val, now);
 #else
-            Task.Run(() => Store(StoreMode.Set, key, val, now));
+            Task.Run(() => Store(StoreMode.Set, key, (CacheValue)val, now));
 #endif
             return true;
         }
@@ -98,48 +98,15 @@ namespace Nemo.Caching.Providers.Generic
             {
                 LocalCache[k.Key] = items[k.Value];
 #if DEBUG
-                Store(StoreMode.Set, k.Key, items[k.Value], now);
+                Store(StoreMode.Set, k.Key, (CacheValue)items[k.Value], now);
 #else
-                Task.Run(() => Store(StoreMode.Set, k.Key, items[k.Value], now));
+                Task.Run(() => Store(StoreMode.Set, k.Key, (CacheValue)items[k.Value], now));
 #endif
             }
 
             return true;
         }
-
-        private byte[] ProcessRetrieve(byte[] result, string key, string originalKey, IDictionary<string, object> localCache)
-        {
-            if (this is IStaleCacheProvider)
-            {
-                var temporal = CacheValue.FromBytes(result);
-                if (temporal.IsValid())
-                {
-                    result = temporal.Value;
-                }
-                else
-                {
-                    result = null;
-                }
-            }
-
-            if (result != null)
-            {
-                localCache[key] = new CacheItem(originalKey, result);
-            }
-
-            if (result != null && SlidingExpiration)
-            {
-                var now = DateTimeOffset.Now;
-#if DEBUG
-                Store(StoreMode.Replace, key, result, now);
-#else
-                Task.Run(() => Store(StoreMode.Replace, key, result, now));
-#endif
-            }
-
-            return result;
-        }
-
+        
         public override object Retrieve(string key)
         {
             var originalKey = key;
@@ -150,7 +117,7 @@ namespace Nemo.Caching.Providers.Generic
                 var value = _client.Get<byte[]>(key);
                 if (value != null)
                 {
-                    result = ProcessRetrieve(value, key, originalKey, LocalCache);
+                    result = ProcessRetrieve(value, key, originalKey, LocalCache, this.ExpectedVersion);
                 }
             }
             return result;
@@ -163,6 +130,7 @@ namespace Nemo.Caching.Providers.Generic
             {
                 var computedKeys = ComputeKey(keys);
                 var localCache = LocalCache;
+                var expectedVersion = this.ExpectedVersion;
                 
                 Parallel.ForEach(computedKeys.Keys, k =>
                 {
@@ -176,14 +144,15 @@ namespace Nemo.Caching.Providers.Generic
                 if (items.Count < computedKeys.Count)
                 {
                     var missingItems = _client.Get(items.Count == 0 ? computedKeys.Keys : computedKeys.Keys.Except(items.Keys));
-                    
+                    var revisions = GetRevisions(missingItems.Keys);
+
                     Parallel.ForEach(computedKeys.Keys, k =>
                     {
                         object item;
                         if (missingItems.TryGetValue(k, out item))
                         {
                             var originalKey = computedKeys[k];
-                            item = ProcessRetrieve((byte[])item, k, originalKey, localCache);
+                            item = ProcessRetrieve((byte[])item, k, originalKey, localCache, expectedVersion);
                             if (item != null)
                             {
                                 items[originalKey] = item;
@@ -206,7 +175,7 @@ namespace Nemo.Caching.Providers.Generic
                 if (item != null && this is IStaleCacheProvider)
                 {
                     var temporal = CacheValue.FromBytes(item);
-                    result = temporal.Value;
+                    result = temporal.Buffer;
                 }
 
                 if (result != null)
@@ -247,7 +216,7 @@ namespace Nemo.Caching.Providers.Generic
                         if (item != null && this is IStaleCacheProvider)
                         {
                             var temporal = CacheValue.FromBytes((byte[])item);
-                            item = temporal.Value;
+                            item = temporal.Buffer;
                         }
 
                         if (item != null)
@@ -277,32 +246,97 @@ namespace Nemo.Caching.Providers.Generic
             }
         }
 
+        public IDictionary<string, ulong> GetRevisions(IEnumerable<string> keys)
+        {
+            var keyArray = keys.Select(k => "REVISION::" + k).ToArray();
+            var values = _client.Get(keyArray);
+            if (values != null)
+            {
+                var missingKeys = new List<string>();
+                var items = new Dictionary<string, ulong>();
+                for (int i = 0; i < keyArray.Length; i++ )
+                {
+                    var key = keyArray[i];
+                    object value;
+                    if (values.TryGetValue(key, out value) && value != null)
+                    {
+                        items.Add(key, Convert.ToUInt64(value));
+                    }
+                    else
+                    {
+                        missingKeys.Add(key);
+                    }
+                }
+
+                foreach (var key in missingKeys)
+                {
+                    var ticks = (ulong)DateTime.UtcNow.Ticks;
+                    items.Add(key, _client.Store(StoreMode.Add, key, ticks) ? ticks : GetRevision(key));
+                }
+
+                return items;
+            }
+            return null;
+        }
+
         public ulong IncrementRevision(string key, ulong delta = 1)
         {
             key = "REVISION::" + key;
             return _client.Increment(key, 1, delta == 0 ? 1 : delta);
         }
 
+        public string ExpectedVersion { get; set; }
+
         #endregion
 
-        private bool Store(StoreMode mode, string key, object val, DateTimeOffset currentDateTime)
+        private CacheValue ProcessRetrieve(byte[] result, string key, string originalKey, IDictionary<string, object> localCache, string expectedRevision)
+        {
+            var cacheValue = CacheValue.FromBytes(result);
+            if (this is IStaleCacheProvider && !cacheValue.IsValid())
+            {
+                cacheValue = null;
+            }
+
+            if (cacheValue != null && !cacheValue.IsValidVersion(expectedRevision))
+            {
+                cacheValue = null;
+            }
+
+            if (cacheValue != null)
+            {
+                localCache[key] = new CacheItem(originalKey, cacheValue);
+            }
+
+            if (cacheValue != null && SlidingExpiration)
+            {
+                var now = DateTimeOffset.Now;
+#if DEBUG
+                Store(StoreMode.Replace, key, cacheValue, now);
+#else
+                Task.Run(() => Store(StoreMode.Replace, key, cacheValue, now));
+#endif
+            }
+
+            return cacheValue;
+        }
+
+        private bool Store(StoreMode mode, string key, CacheValue val, DateTimeOffset currentDateTime)
         {
             var success = false;
-            var revision = this.GetRevision(key);
-            val = ComputeValue((byte[])ExtractValue(val), currentDateTime, revision);
+            var value = ComputeValue(val, currentDateTime);
             switch (ExpirationType)
             {
                 case CacheExpirationType.TimeOfDay:
-                    success = _client.Store(mode, key, val, ExpiresAtSpecificTime.Value.DateTime);
+                    success = _client.Store(mode, key, value, ExpiresAtSpecificTime.Value.DateTime);
                     break;
                 case CacheExpirationType.DateTime:
-                    success = _client.Store(mode, key, val, ExpiresAt.DateTime);
+                    success = _client.Store(mode, key, value, ExpiresAt.DateTime);
                     break;
                 case CacheExpirationType.TimeSpan:
-                    success = _client.Store(mode, key, val, LifeSpan);
+                    success = _client.Store(mode, key, value, LifeSpan);
                     break;
                 default:
-                    success = _client.Store(mode, key, val);
+                    success = _client.Store(mode, key, value);
                     break;
             }
             return success;
@@ -314,7 +348,7 @@ namespace Nemo.Caching.Providers.Generic
             key = "STALE::" + ComputeKey(key);
             
             var value = Guid.NewGuid().ToString();
-            var stored = _client.Store(StoreMode.Add, key, value);
+            var stored = _client.Store(StoreMode.Add, key, value, TimeSpan.FromSeconds(ConfigurationFactory.Configuration.DistributedLockTimeout));
             if (stored)
             {
                 stored = string.CompareOrdinal(value, _client.Get<string>(key)) == 0;

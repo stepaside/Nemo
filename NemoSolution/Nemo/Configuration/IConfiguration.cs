@@ -28,6 +28,7 @@ namespace Nemo.Configuration
         Type DefaultCacheProvider { get; }
         Type TrackingCacheProvider { get; }
         Type AuditLogProvider { get; }
+        bool QueryInvalidationByVersion { get; }
 
         IConfiguration SetDistributedLockTimeout(int value);
         IConfiguration SetDefaultContextLevelCache(ContextLevelCacheType value);
@@ -50,5 +51,6 @@ namespace Nemo.Configuration
         IConfiguration SetDefaultCacheProvider(Type value);
         IConfiguration SetTrackingCacheProvider(Type value);
         IConfiguration SetAuditLogProvider(Type value);
+        IConfiguration SetQueryInvalidationByVersion(bool value);
     }
 }

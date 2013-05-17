@@ -19,6 +19,7 @@ namespace Nemo.Configuration
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
         private int _staleCacheTimeout = Config.AppSettings("StaleCacheTimeout", 2);
         private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 60);
+        private bool _queryInvalidationByVersion = Config.AppSettings("QueryInvalidationByVersion", false);
 
         private ContextLevelCacheType _defaultContextLevelCache = ParseContextLevelCacheConfig();
         private OperationNamingConvention _operationNamingConvention = ParseOperationNamingConventionConfig();
@@ -205,6 +206,14 @@ namespace Nemo.Configuration
             }
         }
 
+        public bool QueryInvalidationByVersion
+        {
+            get
+            {
+                return _queryInvalidationByVersion;
+            }
+        }
+
         public static IConfiguration New()
         {
             return new DefaultConfiguration();
@@ -364,6 +373,12 @@ namespace Nemo.Configuration
             {
                 _auditLogProvider = value;
             }
+            return this;
+        }
+
+        public IConfiguration SetQueryInvalidationByVersion(bool value)
+        {
+            _queryInvalidationByVersion = value;
             return this;
         }
 

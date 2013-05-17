@@ -16,6 +16,7 @@ using Nemo.Fn;
 using Nemo.Serialization;
 using Nemo.Utilities;
 using Nemo.Collections;
+using System.Collections.ObjectModel;
 
 namespace Nemo.Reflection
 {
@@ -506,10 +507,19 @@ namespace Nemo.Reflection
                 var assemblies = appDomain.GetAssemblies();
                 foreach (var asm in assemblies)
                 {
-                    var types = asm.GetTypes();
-                    foreach (var type in types)
+                    Type[] types = null;
+                    try
                     {
-                        yield return type;
+                        types = asm.GetTypes();
+                    }
+                    catch { }
+
+                    if (types != null)
+                    {
+                        foreach (var type in types)
+                        {
+                            yield return type;
+                        }
                     }
                 }
             }
@@ -518,11 +528,6 @@ namespace Nemo.Reflection
         public static IEnumerable<Type> AllBusinessObjectTypes()
         {
             return Reflector.AllTypes().Where(t => Reflector.IsBusinessObject(t));
-        }
-
-        public static IEnumerable<Type> AllCacheableBusinessObjectTypes()
-        {
-            return Reflector.AllBusinessObjectTypes().Where(t => t.GetCustomAttributes(typeof(CacheAttribute), true).Length > 0);
         }
 
         public static IEnumerable<MethodInfo> GetExtensionMethods(this Type extendedType)

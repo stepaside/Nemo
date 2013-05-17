@@ -8,6 +8,8 @@ namespace Nemo.Caching
     public interface IRevisionProvider
     {
         ulong GetRevision(string key);
+        IDictionary<string, ulong> GetRevisions(IEnumerable<string> keys);
         ulong IncrementRevision(string key, ulong delta = 1);
+        string ExpectedVersion { get; set; }
     }
 }

@@ -12,6 +12,8 @@
     <AssemblyName>Nemo</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">.\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -88,6 +90,7 @@
     <Compile Include="Caching\IRevisionProvider.cs" />
     <Compile Include="Caching\IPersistentCacheProvider.cs" />
     <Compile Include="Caching\IStaleCacheProvider.cs" />
+    <Compile Include="Caching\NemoTranscoder.cs" />
     <Compile Include="Caching\Providers\Generic\MemcachedCacheProvider.cs" />
     <Compile Include="Caching\CacheValue.cs" />
     <Compile Include="Caching\Providers\CouchbaseCacheProvider.cs" />
@@ -103,6 +106,7 @@
     <Compile Include="Collections\ISharedEnumerable.cs" />
     <Compile Include="Collections\List.cs" />
     <Compile Include="Collections\MapList.cs" />
+    <Compile Include="Collections\ReadOnlyDictionary.cs" />
     <Compile Include="Collections\SortedList.cs" />
     <Compile Include="Configuration\ConfigurationFactory.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
@@ -194,7 +198,7 @@
     <Compile Include="Serialization\ObjectJsonSerializer.cs" />
     <Compile Include="Serialization\ObjectXmlSerializer.cs" />
     <Compile Include="Caching\ObjectCache.cs" />
-    <Compile Include="Caching\CacheItem.cs" />
+    <Compile Include="Caching\ObjectCacheItem.cs" />
     <Compile Include="Caching\CacheKey.cs" />
     <Compile Include="Serialization\SerializationWriter.cs" />
     <Compile Include="Collections\BinaryHeap.cs" />
