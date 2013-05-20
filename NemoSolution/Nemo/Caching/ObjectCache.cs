@@ -255,32 +255,33 @@ namespace Nemo.Caching
             if (cacheType != null && parameters != null && parameters.Count > 0)
             {
                 var typeKey = objectType.FullName;
-                var parameterSet = parameters.GroupBy(p => p.Name).ToDictionary(g => string.Concat(typeKey, "::", g.Key.ToUpper()), g => g.First(), StringComparer.OrdinalIgnoreCase);
+                var parameterKeys = parameters.Select(p => typeKey + "::" + p.Name.ToUpper() + "::" + (p.Value.SafeCast<string>() ?? string.Empty).ToUpper()).ToList();
 
-                var cachedQueries = _trackingCache.Value.Retrieve(parameterSet.Keys);
+                var cache = (IPersistentCacheProvider)_trackingCache.Value;
+                IDictionary<string, object> versions;
+                var cachedQueries = cache.Retrieve(parameterKeys, out versions);
                 if (cachedQueries != null)
                 {
                     HashSet<string> allQueries = null;
-                    foreach (var parameterKey in parameterSet.Keys)
+                    foreach (var parameterKey in parameterKeys)
                     {
-                        object valueSetJson;
-                        if (cachedQueries.TryGetValue(parameterKey, out valueSetJson))
+                        object value;
+                        if (cachedQueries.TryGetValue(parameterKey, out value) && value != null)
                         {
-                            var json = Json.Parse((string)valueSetJson);
-                            var valueSet = (Dictionary<string, string[]>)JsonSerializationReader.ReadObject(json, typeof(Dictionary<string, string[]>));
-                            //var valueSet = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string[]>>(valueSetJson);
-                            var valueKey = FixEmptyValueKey(parameterSet[parameterKey].Value.SafeCast<string>());
-                            string[] queries;
-                            if (valueSet.TryGetValue(valueKey, out queries))
+                            var queries = ((string)value).Split(',');
+                            if (Encoding.UTF8.GetByteCount(((string)value)) >= .75 * 1024 * 1024)
                             {
-                                if (allQueries == null)
-                                {
-                                    allQueries = new HashSet<string>(queries);
-                                }
-                                else
-                                {
-                                    allQueries.IntersectWith(queries);
-                                }
+                                queries = new HashSet<string>(queries.Where(q => !string.IsNullOrWhiteSpace(q))).ToArray();
+                                cache.Save(parameterKey, queries, versions[parameterKey]);
+                            }
+
+                            if (allQueries == null)
+                            {
+                                allQueries = new HashSet<string>(queries);
+                            }
+                            else
+                            {
+                                allQueries.IntersectWith(queries);
                             }
                         }
                     }
@@ -466,58 +467,13 @@ namespace Nemo.Caching
                 && (!ConfigurationFactory.Configuration.QueryInvalidationByVersion || !(cache is IRevisionProvider)))
             {
                 var typeKey = typeof(T).FullName;
-                var parameterSet = parameters.ToDictionary(p => string.Concat(typeKey, "::", p.Name.ToUpper()), p => p, StringComparer.OrdinalIgnoreCase);
-                var cachedQueries = cache.Retrieve(parameterSet.Keys) ?? new Dictionary<string, object>();
-                foreach (var parameterKey in parameterSet.Keys)
+                var parameterKeys = parameters.Select(p => string.Concat(typeKey, "::", p.Name.ToUpper() + "::" + (p.Value.SafeCast<string>() ?? string.Empty).ToUpper()));
+                var persistentCache = (IPersistentCacheProvider)cache;
+                foreach (var parameterKey in parameterKeys)
                 {
-                    var valueKey = FixEmptyValueKey(parameterSet[parameterKey].Value.SafeCast<string>());
-                    object valueSetJson;
-                    Dictionary<string, string[]> valueSet;
-                    if (!cachedQueries.TryGetValue(parameterKey, out valueSetJson))
-                    {
-                        valueSet = new Dictionary<string, string[]>();
-                    }
-                    else
-                    {
-                        var json = Json.Parse((string)valueSetJson);
-                        valueSet = (Dictionary<string, string[]>)JsonSerializationReader.ReadObject(json, typeof(Dictionary<string, string[]>));
-                        //valueSet = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string[]>>(valueSetJson);
-                    }
-
-                    HashSet<string> querySet;
-                    string[] queries;
-                    if (valueSet.TryGetValue(valueKey, out queries))
-                    {
-                        querySet = new HashSet<string>(queries);
-                    }
-                    else
-                    {
-                        querySet = new HashSet<string>();
-                    }
-
-                    querySet.Add(queryKey);
-                    valueSet[valueKey] = querySet.ToArray();
-
-                    var jsonBuffer = new StringBuilder();
-                    using (var writer = new StringWriter(jsonBuffer))
-                    {
-                        JsonSerializationWriter.WriteObject(valueSet, null, writer);
-                    }
-                    cache.Save(parameterKey, jsonBuffer.ToString());
-
-                    //valueSetJson = Newtonsoft.Json.JsonConvert.SerializeObject(valueSet);
-                    //cache.Save(parameterKey, valueSetJson);
+                    persistentCache.Append(parameterKey, "," + queryKey);
                 }
             }
-        }
-
-        private static string FixEmptyValueKey(string valueKey)
-        {
-            if (valueKey == null || valueKey.Trim().Length == 0)
-            {
-                valueKey = "_EMPTY";
-            }
-            return valueKey;
         }
 
         #region Query Subspace Methods

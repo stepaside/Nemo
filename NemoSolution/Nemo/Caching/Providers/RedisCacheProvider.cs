@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Nemo.Caching.Providers
@@ -328,6 +329,64 @@ namespace Nemo.Caching.Providers
                 Log.Capture(() => string.Format("Failed to remove lock for {0}", originalKey));
             }
             return removed;
+        }
+
+        public bool Append(string key, string value)
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                using (var tran = _connection.CreateTransaction())
+                {
+                    key = ComputeKey(key);
+                    tran.Strings.Append(_database, key, value);
+                    return tran.Execute().Wait(_waitTimeOut);
+                }
+            }
+            return false;
+        }
+
+        public bool Save(string key, object value, object version)
+        {
+            using (var tran = _connection.CreateTransaction())
+            {
+                tran.AddCondition(Condition.KeyEquals(_database, "VERSION::" + key, (long?)version));
+                SaveImplementation(tran, key, (CacheValue)value, DateTimeOffset.Now);
+                return tran.Execute().Wait(_waitTimeOut);
+            }
+        }
+
+        public object Retrieve(string key, out object version)
+        {
+            key = ComputeKey(key);
+                
+            using (var tran = _connection.CreateTransaction())
+            {
+                var versionKey = "VERSION::" + key;
+                var ticks = DateTimeOffset.Now.Ticks;
+                version = tran.Strings
+                                    .SetIfNotExists(_database, versionKey, BitConverter.GetBytes(ticks))
+                                    .ContinueWith(t => 
+                                    {
+                                        if (!t.Result)
+                                        {
+                                            return BitConverter.ToInt64(tran.Strings.Get(_database, versionKey).Result, 0);
+                                        }
+                                        else
+                                        {
+                                            return ticks;
+                                        }
+                                    }).Result;
+                tran.Execute().Wait(_waitTimeOut);
+            }
+
+            var taskGet = _connection.Strings.Get(_database, key);
+            var buffer = taskGet.Result;
+            return CacheValue.FromBytes(buffer);
+        }
+
+        public IDictionary<string, object> Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
+        {
+            throw new NotImplementedException();
         }
     }
 }

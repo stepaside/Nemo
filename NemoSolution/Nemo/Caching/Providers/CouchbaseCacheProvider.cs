@@ -1,9 +1,13 @@
 ﻿using Couchbase;
+using Enyim.Caching.Memcached;
 using Nemo.Caching.Providers.Generic;
 using Nemo.Extensions;
 using Nemo.Utilities;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace Nemo.Caching.Providers
 {
@@ -49,8 +53,65 @@ namespace Nemo.Caching.Providers
 
         public override bool Touch(string key, TimeSpan lifeSpan)
         {
+            key = ComputeKey(key);
             _client.Touch(key, lifeSpan);
             return true;
+        }
+
+        public bool Append(string key, string value)
+        {
+            key = ComputeKey(key);
+            return _client.Append(key, new ArraySegment<byte>(Encoding.UTF8.GetBytes(value))); 
+        }
+
+        public bool Save(string key, object value, object version)
+        {
+            key = ComputeKey(key);
+            var buffer = ((CacheValue)value).ToBytes();
+            CasResult<bool> result;
+            switch (ExpirationType)
+            {
+                case CacheExpirationType.TimeOfDay:
+                    result = _client.Cas(StoreMode.Set, key, buffer, ExpiresAtSpecificTime.Value.DateTime, (ulong)version);
+                    break;
+                case CacheExpirationType.DateTime:
+                    result = _client.Cas(StoreMode.Set, key, buffer, ExpiresAt.DateTime, (ulong)version);
+                    break;
+                case CacheExpirationType.TimeSpan:
+                    result = _client.Cas(StoreMode.Set, key, buffer, LifeSpan, (ulong)version);
+                    break;
+                default:
+                    result = _client.Cas(StoreMode.Set, key, buffer, (ulong)version);
+                    break;
+            }
+            return result.Result;
+        }
+
+        public object Retrieve(string key, out object version)
+        {
+            key = ComputeKey(key);
+            var result = _client.GetWithCas<byte[]>(key);
+            version = result.Cas;
+            return CacheValue.FromBytes(result.Result);
+        }
+
+        public IDictionary<string, object> Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
+        {
+            var items = new Dictionary<string, object>();
+            versions = null;
+            if (keys.Any())
+            {
+                var computedKeys = ComputeKey(keys);
+                var result = _client.GetWithCas(computedKeys.Keys);
+                versions = new Dictionary<string, object>();
+                foreach (var item in result)
+                {
+                    var itemKey = computedKeys[item.Key];
+                    items.Add(itemKey, CacheValue.FromBytes((byte[])item.Value.Result));
+                    versions.Add(itemKey, item.Value.Cas);
+                }
+            }
+            return items;
         }
     }
 }

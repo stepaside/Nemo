@@ -150,12 +150,24 @@ namespace Nemo.Caching.Providers
             return success;
         }
 
-        private bool SaveImplementation(string fileName, object val)
+        private bool SaveImplementation(string fileName, object val, bool append = false, DateTime? lastWriteTime = null)
         {
             var file = Path.Combine(FilePath, fileName);
             if (val != null)
             {
-                Write(file, val);
+                if (lastWriteTime != null && File.GetLastWriteTime(file) >= lastWriteTime.Value)
+                {
+                    return false;
+                }
+
+                if (append)
+                {
+                    Append(file, val);
+                }
+                else
+                {
+                    Write(file, val);
+                }
                 return true;
             }
             return false;
@@ -215,10 +227,57 @@ namespace Nemo.Caching.Providers
             File.WriteAllBytes(file, cacheValue.ToBytes());
         }
 
+        private void Append(string file, object value)
+        {
+            File.AppendAllText(file, (string)value);
+        }
+
         private CacheValue Read(string file)
         {
             var buffer = File.ReadAllBytes(file);
             return CacheValue.FromBytes(buffer);
+        }
+
+        public bool Append(string key, string value)
+        {
+            var success = true;
+            lock (_diskCacheLock)
+            {
+                if (!Directory.Exists(FilePath))
+                {
+                    Directory.CreateDirectory(FilePath);
+                }
+
+                key = ComputeKey(key) + CACHE_FILE_EXTENSION;
+                success = SaveImplementation(key, value, true);
+            }
+            return success;
+        }
+
+        public bool Save(string key, object value, object version)
+        {
+            var success = true;
+            lock (_diskCacheLock)
+            {
+                if (!Directory.Exists(FilePath))
+                {
+                    Directory.CreateDirectory(FilePath);
+                }
+
+                key = ComputeKey(key) + CACHE_FILE_EXTENSION;
+                success = SaveImplementation(key, value, false, (DateTime)version);
+            }
+            return success;
+        }
+
+        public object Retrieve(string key, out object version)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IDictionary<string, object> Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
+        {
+            throw new NotImplementedException();
         }
     }
 }
