@@ -13,7 +13,7 @@ namespace Nemo.Id
 
         public UniqueNegativeNumberGenerator() 
         { 
-            _seed = (int)DateTime.Now.Ticks * 100;
+            _seed = (int)DateTime.UtcNow.Ticks * 100;
             _origSeed = _seed;
         }
         public UniqueNegativeNumberGenerator(bool throwWhenOutOfNumbers)

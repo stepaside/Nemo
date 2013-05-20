@@ -492,20 +492,20 @@ namespace Nemo.Caching
 
         private static IEnumerable<string> GetQuerySubscpacesImplementation<T>(IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
         {
-            var names = Reflector.PropertyCache<T>.NameMap.Values.Where(p => p.IsSelectable && p.IsPersistent && (p.IsSimpleType || p.IsSimpleList)).Select(p => p.ParameterName).OrderBy(_ => _).ToList();
-            return GetQuerySubscpacesImplementation(names, parameters, rules);
+            var names = Reflector.PropertyCache<T>.NameMap.Values.Where(p => p.IsSelectable && p.IsPersistent && (p.IsSimpleType || p.IsSimpleList)).Select(p => p.ParameterName ?? p.PropertyName).OrderBy(_ => _).ToList();
+            return GetQuerySubscpacesImplementation(typeof(T).FullName, names, parameters, rules);
         }
 
         private static IEnumerable<string> GetQuerySubscpacesImplementation(Type objectType, IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
         {
-            var names = Reflector.GetPropertyMap(objectType).Values.Where(p => p.IsSelectable && p.IsPersistent && (p.IsSimpleType || p.IsSimpleList)).Select(p => p.ParameterName).OrderBy(_ => _).ToList();
-            return GetQuerySubscpacesImplementation(names, parameters, rules);
+            var names = Reflector.GetPropertyMap(objectType).Values.Where(p => p.IsSelectable && p.IsPersistent && (p.IsSimpleType || p.IsSimpleList)).Select(p => p.ParameterName ?? p.PropertyName).OrderBy(_ => _).ToList();
+            return GetQuerySubscpacesImplementation(objectType.FullName, names, parameters, rules);
         }
 
-        private static IEnumerable<string> GetQuerySubscpacesImplementation(List<string> names, IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
+        private static IEnumerable<string> GetQuerySubscpacesImplementation(string typeName, List<string> names, IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
         {
             var query = names.GroupJoin(parameters, n => n, p => p.Name, (name, args) => args.FirstOrDefault().ToMaybe().Select(p => p.Value == null ? string.Empty : p.Value.ToString()).Value ?? "*").ToList();
-            return AllVariantsOf(query, query.Count, rules).Select(s => string.Join("::", s));
+            return AllVariantsOf(query, query.Count, rules).Select(s => typeName + "::" + string.Join("::", s));
         }
 
         private static List<List<T>> AllVariantsOf<T>(List<T> source, int length, params Func<T, Tuple<T, bool>>[] rules)

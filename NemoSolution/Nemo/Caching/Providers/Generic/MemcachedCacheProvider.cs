@@ -11,6 +11,7 @@ using Nemo.Extensions;
 using Nemo.Utilities;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using Nemo.Serialization;
 
 namespace Nemo.Caching.Providers.Generic
 {
@@ -270,7 +271,7 @@ namespace Nemo.Caching.Providers.Generic
 
                 foreach (var key in missingKeys)
                 {
-                    var ticks = (ulong)DateTime.UtcNow.Ticks;
+                    var ticks = (ulong)(DateTime.UtcNow - UnixDateTime.Epoch).Ticks;
                     items.Add(key, _client.Store(StoreMode.Add, key, ticks) ? ticks : GetRevision(key));
                 }
 

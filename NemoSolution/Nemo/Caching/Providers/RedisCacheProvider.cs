@@ -1,6 +1,7 @@
 ﻿using BookSleeve;
 using Nemo.Configuration;
 using Nemo.Extensions;
+using Nemo.Serialization;
 using Nemo.Utilities;
 using System;
 using System.Collections.Concurrent;
@@ -414,7 +415,7 @@ namespace Nemo.Caching.Providers
 
         private async Task<long> GenerateVersion(string prefixedKey)
         {
-            var ticks =  DateTimeOffset.Now.Ticks;
+            var ticks = (DateTime.UtcNow - UnixDateTime.Epoch).Ticks;
             var version = ticks;
             using (var tran = _connection.CreateTransaction())
             {
