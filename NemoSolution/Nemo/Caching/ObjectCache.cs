@@ -96,28 +96,7 @@ namespace Nemo.Caching
             }
             return null;
         }
-
-        private static IList<CacheDependency> GetCacheDependencies<T>()
-           where T : class, IBusinessObject
-        {
-            if (CacheScope.Current != null)
-            {
-                return CacheScope.Current.Dependencies;
-            }
-
-            var dependencies = new List<CacheDependency>();
-            var attrList = Reflector.GetAttributeList<T, CacheDependencyAttribute>();
-            for (int i = 0; i < attrList.Count; i++ )
-            {
-                var attr = attrList[i];
-                if (IsTrackable(attr.DependentType))
-                {
-                    dependencies.Add(new CacheDependency { DependentType = attr.DependentType, DependentProperty = attr.DependentProperty, ValueProperty = attr.ValueProperty });
-                }
-            }
-            return dependencies;
-        }
-
+        
         internal static CacheOptions GetCacheOptions(Type objectType)
         {
              if (objectType != null)
@@ -269,10 +248,20 @@ namespace Nemo.Caching
                         if (cachedQueries.TryGetValue(parameterKey, out value) && value != null)
                         {
                             var queries = ((string)value).Split(',');
+
+                            // Before the string grows too much try to compact it
                             if (Encoding.UTF8.GetByteCount(((string)value)) >= .75 * 1024 * 1024)
                             {
                                 queries = new HashSet<string>(queries.Where(q => !string.IsNullOrWhiteSpace(q))).ToArray();
-                                cache.Save(parameterKey, queries, versions[parameterKey]);
+                                var queryValue = string.Join(",", queries);
+                                if (!cache.Save(parameterKey, queryValue, versions[parameterKey]))
+                                {
+                                    object v;
+                                    value = cache.Retrieve(parameterKey, out v);
+                                    queries = new HashSet<string>(((string)value).Split(',').Where(q => !string.IsNullOrWhiteSpace(q))).ToArray();
+                                    queryValue = string.Join(",", queries);
+                                    cache.Save(parameterKey, queryValue, v);
+                                }
                             }
 
                             if (allQueries == null)
@@ -471,7 +460,15 @@ namespace Nemo.Caching
                 var persistentCache = (IPersistentCacheProvider)cache;
                 foreach (var parameterKey in parameterKeys)
                 {
-                    persistentCache.Append(parameterKey, "," + queryKey);
+                    // In case append fails try to compact the value
+                    if (!persistentCache.Append(parameterKey, "," + queryKey))
+                    {
+                        object v;
+                        var value = persistentCache.Retrieve(parameterKey, out v);
+                        var queries = new HashSet<string>(((string)value).Split(',').Where(q => !string.IsNullOrWhiteSpace(q)));
+                        queries.Add(queryKey);
+                        persistentCache.Save(parameterKey, string.Join(",", queries), v);
+                    }
                 }
             }
         }
@@ -488,9 +485,25 @@ namespace Nemo.Caching
             return GetQuerySubscpacesImplementation<T>(parameters, value => Tuple.Create("?", value == "*"), value => Tuple.Create("*", value != "*"));
         }
 
+        private static IEnumerable<string> GetQuerySubscpacesForInvalidation(Type objectType, IList<Param> parameters)
+        {
+            return GetQuerySubscpacesImplementation(objectType, parameters, value => Tuple.Create("?", value == "*"), value => Tuple.Create("*", value != "*"));
+        }
+
         private static IEnumerable<string> GetQuerySubscpacesImplementation<T>(IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
         {
             var names = Reflector.PropertyCache<T>.NameMap.Values.Where(p => p.IsSelectable && p.IsPersistent && (p.IsSimpleType || p.IsSimpleList)).Select(p => p.ParameterName).OrderBy(_ => _).ToList();
+            return GetQuerySubscpacesImplementation(names, parameters, rules);
+        }
+
+        private static IEnumerable<string> GetQuerySubscpacesImplementation(Type objectType, IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
+        {
+            var names = Reflector.GetPropertyMap(objectType).Values.Where(p => p.IsSelectable && p.IsPersistent && (p.IsSimpleType || p.IsSimpleList)).Select(p => p.ParameterName).OrderBy(_ => _).ToList();
+            return GetQuerySubscpacesImplementation(names, parameters, rules);
+        }
+
+        private static IEnumerable<string> GetQuerySubscpacesImplementation(List<string> names, IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
+        {
             var query = names.GroupJoin(parameters, n => n, p => p.Name, (name, args) => args.FirstOrDefault().ToMaybe().Select(p => p.Value == null ? string.Empty : p.Value.ToString()).Value ?? "*").ToList();
             return AllVariantsOf(query, query.Count, rules).Select(s => string.Join("::", s));
         }
@@ -742,33 +755,7 @@ namespace Nemo.Caching
             }
             return success;
         }
-
-        internal static void RemoveDependencies<T>(T item)
-            where T : class, IBusinessObject
-        {
-            // Clear cache dependencies if there are any
-            var dependencies = GetCacheDependencies<T>();
-            if (dependencies != null && dependencies.Count > 0)
-            {
-                var validDependecies = dependencies.Where(d => d.DependentType != null && !string.IsNullOrEmpty(d.DependentProperty) && !string.IsNullOrEmpty(d.ValueProperty));
-                var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param { Name = d.DependentProperty, Value = item.Property(d.ValueProperty) }).ToList());
-
-                parameterValuesByType.AsParallel().ForAll(p => 
-                {
-                    var targetCacheType = GetCacheType(p.Key);
-                    if (targetCacheType != null)
-                    {
-                        var keys = LookupQueries(p.Key, p.Value);
-                        var targetCache = CacheFactory.GetProvider(targetCacheType);
-                        foreach (var targetKey in keys)
-                        {
-                            targetCache.Remove(targetKey);
-                        }
-                    }
-                });
-            }
-        }
-
+        
         #endregion
 
         #region Modify Methods
@@ -798,6 +785,16 @@ namespace Nemo.Caching
 
         #region Invalidate Methods
 
+        internal static bool Invalidate(Type objectType, IList<Param> parameters, CacheProvider cache)
+        {
+            if (ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache != null && cache is IRevisionProvider)
+            {
+                InvalidateImplementation(objectType, parameters, cache);
+                return true;
+            }
+            return false;
+        }
+
         internal static bool Invalidate<T>(IList<Param> parameters, CacheProvider cache)
             where T : class, IBusinessObject
         {
@@ -822,6 +819,15 @@ namespace Nemo.Caching
             return false;
         }
 
+        private static void InvalidateImplementation(Type objectType, IList<Param> parameters, CacheProvider cache)
+        {
+            var variants = GetQuerySubscpacesForInvalidation(objectType, parameters);
+            foreach (var variant in variants)
+            {
+                ((IRevisionProvider)cache).IncrementRevision(variant);
+            }
+        }
+
         private static void InvalidateImplementation<T>(IList<Param> parameters, CacheProvider cache)
             where T : class, IBusinessObject
         {
@@ -829,6 +835,64 @@ namespace Nemo.Caching
             foreach (var variant in variants)
             {
                 ((IRevisionProvider)cache).IncrementRevision(variant);
+            }
+        }
+
+        #endregion
+
+        #region Dependency Invalidation Methods
+
+        private static IList<CacheDependency> GetCacheDependencies<T>()
+           where T : class, IBusinessObject
+        {
+            if (CacheScope.Current != null)
+            {
+                return CacheScope.Current.Dependencies;
+            }
+
+            var dependencies = new List<CacheDependency>();
+            var attrList = Reflector.GetAttributeList<T, CacheDependencyAttribute>();
+            for (int i = 0; i < attrList.Count; i++)
+            {
+                var attr = attrList[i];
+                if (IsTrackable(attr.DependentType))
+                {
+                    dependencies.Add(new CacheDependency { DependentType = attr.DependentType, DependentProperty = attr.DependentProperty, ValueProperty = attr.ValueProperty });
+                }
+            }
+            return dependencies;
+        }
+
+        internal static void RemoveDependencies<T>(T item)
+            where T : class, IBusinessObject
+        {
+            // Clear cache dependencies if there are any
+            var dependencies = GetCacheDependencies<T>();
+            if (dependencies != null && dependencies.Count > 0)
+            {
+                var validDependecies = dependencies.Where(d => d.DependentType != null && !string.IsNullOrEmpty(d.DependentProperty));
+                var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param { Name = d.DependentProperty, Value = item.Property(d.ValueProperty ?? Xml.GetElementNameFromType<T>() + d.DependentProperty) }).ToList());
+
+                parameterValuesByType.AsParallel().ForAll(p =>
+                {
+                    var targetCacheType = GetCacheType(p.Key);
+                    if (targetCacheType != null)
+                    {
+                        var targetCache = CacheFactory.GetProvider(targetCacheType);
+                        if (ConfigurationFactory.Configuration.QueryInvalidationByVersion && targetCache is IRevisionProvider)
+                        {
+                            Invalidate(p.Key, p.Value, targetCache);
+                        }
+                        else
+                        {
+                            var keys = LookupQueries(p.Key, p.Value);
+                            foreach (var targetKey in keys)
+                            {
+                                targetCache.Remove(targetKey);
+                            }
+                        }
+                    }
+                });
             }
         }
 

@@ -147,9 +147,15 @@ namespace Nemo.Caching.Providers
             }
         }
 
-        private bool SaveImplementation(RedisTransaction tran, string key, CacheValue val, DateTimeOffset currentDateTime)
+        private bool SaveImplementation(RedisTransaction tran, string key, CacheValue val, DateTimeOffset currentDateTime, long? version = null)
         {
             key = ComputeKey(key);
+
+            if (version != null)
+            {
+                tran.AddCondition(Condition.KeyEquals(_database, "VERSION::" + key, version.Value));
+            }
+
             var data = ComputeValue(val, currentDateTime);
             tran.Strings.Set(_database, key, data);
             SetExpiration(tran, key, currentDateTime);
@@ -331,7 +337,9 @@ namespace Nemo.Caching.Providers
             return removed;
         }
 
-        public bool Append(string key, string value)
+        #region IPersistentCacheProvider Methods
+
+        bool IPersistentCacheProvider.Append(string key, string value)
         {
             if (!string.IsNullOrEmpty(value))
             {
@@ -345,48 +353,91 @@ namespace Nemo.Caching.Providers
             return false;
         }
 
-        public bool Save(string key, object value, object version)
+        bool IPersistentCacheProvider.Save(string key, object value, object version)
         {
             using (var tran = _connection.CreateTransaction())
             {
-                tran.AddCondition(Condition.KeyEquals(_database, "VERSION::" + key, (long?)version));
-                SaveImplementation(tran, key, (CacheValue)value, DateTimeOffset.Now);
+                SaveImplementation(tran, key, (CacheValue)value, DateTimeOffset.Now, (long)version);
                 return tran.Execute().Wait(_waitTimeOut);
             }
         }
 
-        public object Retrieve(string key, out object version)
+        object IPersistentCacheProvider.Retrieve(string key, out object version)
         {
             key = ComputeKey(key);
-                
-            using (var tran = _connection.CreateTransaction())
-            {
-                var versionKey = "VERSION::" + key;
-                var ticks = DateTimeOffset.Now.Ticks;
-                version = tran.Strings
-                                    .SetIfNotExists(_database, versionKey, BitConverter.GetBytes(ticks))
-                                    .ContinueWith(t => 
-                                    {
-                                        if (!t.Result)
-                                        {
-                                            return BitConverter.ToInt64(tran.Strings.Get(_database, versionKey).Result, 0);
-                                        }
-                                        else
-                                        {
-                                            return ticks;
-                                        }
-                                    }).Result;
-                tran.Execute().Wait(_waitTimeOut);
-            }
-
+            version = GenerateVersion(key).Result;
             var taskGet = _connection.Strings.Get(_database, key);
             var buffer = taskGet.Result;
             return CacheValue.FromBytes(buffer);
         }
 
-        public IDictionary<string, object> Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
+        IDictionary<string, object> IPersistentCacheProvider.Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
         {
-            throw new NotImplementedException();
+            var keyMap = ComputeKey(keys);
+            var keysArray = keyMap.Keys.ToArray();
+            var realKeysArray = keyMap.Values.ToArray();
+            var taskGet = _connection.Strings.Get(_database, keysArray);
+            var data = taskGet.Result;
+
+           var result = new Dictionary<string, object>();
+            for (int i = 0; i < realKeysArray.Length; i++)
+            {
+                var buffer = data[i];
+                if (buffer != null)
+                {
+                    var key = keysArray[i];
+                    var originalKey = realKeysArray[i];
+
+                    var item = ProcessRetrieve(buffer, key, this.ExpectedVersion);
+                    if (item != null)
+                    {
+                        result.Add(originalKey, item);
+                    }
+                }
+            }
+
+            versions = GenerateVersion(keyMap).Result;
+
+            return result;
         }
+
+        private async Task<IDictionary<string, object>> GenerateVersion(IDictionary<string, string> keys)
+        {
+            var items = new Dictionary<string, object>();
+
+            var values = keys.Select(k => k.Value);
+
+            var versionTasks = keys.Select(k => GenerateVersion(k.Key));
+
+            return values.Zip(await Task.WhenAll(versionTasks), (k, v) => new KeyValuePair<string, object>(k, v)).ToDictionary(k => k.Key, k => k.Value);
+        }
+
+        private async Task<long> GenerateVersion(string prefixedKey)
+        {
+            var ticks =  DateTimeOffset.Now.Ticks;
+            var version = ticks;
+            using (var tran = _connection.CreateTransaction())
+            {
+                var versionKey = "VERSION::" + prefixedKey;
+                var setnx = await tran.Strings.SetIfNotExists(_database, versionKey, BitConverter.GetBytes(version));
+                
+                if (!setnx)
+                {
+                    var result = await tran.Strings.GetInt64(_database, versionKey);
+                    if (result.HasValue)
+                    {
+                        version = result.Value;
+                    }
+                }
+
+                if (!await tran.Execute())
+                {
+                    version = ticks;
+                }
+            }
+            return ticks;
+        }
+
+        #endregion
     }
 }

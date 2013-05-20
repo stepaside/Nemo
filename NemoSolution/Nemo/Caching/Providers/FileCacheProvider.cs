@@ -176,17 +176,23 @@ namespace Nemo.Caching.Providers
         public override object Retrieve(string key)
         {
             key = ComputeKey(key) + CACHE_FILE_EXTENSION;
-            return RetrieveImplementation(key);
+            DateTime? lastWriteTime;
+            return RetrieveImplementation(key, out lastWriteTime);
         }
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
         {
             var computedKeys = ComputeKey(keys);
-            return computedKeys.ToDictionary(key => key.Value, key => RetrieveImplementation(key.Key + CACHE_FILE_EXTENSION));
+            return computedKeys.ToDictionary(key => key.Value, key =>
+            {
+                DateTime? lastWriteTime;
+                return RetrieveImplementation(key.Key + CACHE_FILE_EXTENSION, out lastWriteTime);
+            });
         }
 
-        private object RetrieveImplementation(string fileName)
+        private object RetrieveImplementation(string fileName, out DateTime? lastWriteTime)
         {
+            lastWriteTime = null;
             var file = Path.Combine(FilePath, fileName);
             CacheValue result = null;
             if (File.Exists(file))
@@ -207,6 +213,8 @@ namespace Nemo.Caching.Providers
                     }
                     result = Read(file);
                 }
+
+                lastWriteTime = fileInfo.LastWriteTime;
             }
             return result;
         }
@@ -238,7 +246,9 @@ namespace Nemo.Caching.Providers
             return CacheValue.FromBytes(buffer);
         }
 
-        public bool Append(string key, string value)
+        #region IPersistentCacheProvider Methods
+
+        bool IPersistentCacheProvider.Append(string key, string value)
         {
             var success = true;
             lock (_diskCacheLock)
@@ -254,7 +264,7 @@ namespace Nemo.Caching.Providers
             return success;
         }
 
-        public bool Save(string key, object value, object version)
+        bool IPersistentCacheProvider.Save(string key, object value, object version)
         {
             var success = true;
             lock (_diskCacheLock)
@@ -270,14 +280,30 @@ namespace Nemo.Caching.Providers
             return success;
         }
 
-        public object Retrieve(string key, out object version)
+        object IPersistentCacheProvider.Retrieve(string key, out object version)
         {
-            throw new NotImplementedException();
+            key = ComputeKey(key) + CACHE_FILE_EXTENSION;
+            DateTime? lastWriteTime;
+            var result = RetrieveImplementation(key, out lastWriteTime);
+            version = lastWriteTime.Value; 
+            return result;
         }
 
-        public IDictionary<string, object> Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
+        IDictionary<string, object> IPersistentCacheProvider.Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
         {
-            throw new NotImplementedException();
+            var lastWriteTimeItems = new Dictionary<string, object>();
+            var computedKeys = ComputeKey(keys);
+            var result = computedKeys.ToDictionary(key => key.Value, key =>
+            {
+                DateTime? lastWriteTime;
+                var item =  RetrieveImplementation(key.Key + CACHE_FILE_EXTENSION, out lastWriteTime);
+                lastWriteTimeItems[key.Value] = lastWriteTime.Value;
+                return item;
+            });
+            versions = lastWriteTimeItems;
+            return result;
         }
+
+        #endregion
     }
 }

@@ -58,13 +58,15 @@ namespace Nemo.Caching.Providers
             return true;
         }
 
-        public bool Append(string key, string value)
+        #region IPersistentCacheProvider Methods
+
+        bool IPersistentCacheProvider.Append(string key, string value)
         {
             key = ComputeKey(key);
             return _client.Append(key, new ArraySegment<byte>(Encoding.UTF8.GetBytes(value))); 
         }
 
-        public bool Save(string key, object value, object version)
+        bool IPersistentCacheProvider.Save(string key, object value, object version)
         {
             key = ComputeKey(key);
             var buffer = ((CacheValue)value).ToBytes();
@@ -87,7 +89,7 @@ namespace Nemo.Caching.Providers
             return result.Result;
         }
 
-        public object Retrieve(string key, out object version)
+        object IPersistentCacheProvider.Retrieve(string key, out object version)
         {
             key = ComputeKey(key);
             var result = _client.GetWithCas<byte[]>(key);
@@ -95,7 +97,7 @@ namespace Nemo.Caching.Providers
             return CacheValue.FromBytes(result.Result);
         }
 
-        public IDictionary<string, object> Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
+        IDictionary<string, object> IPersistentCacheProvider.Retrieve(IEnumerable<string> keys, out IDictionary<string, object> versions)
         {
             var items = new Dictionary<string, object>();
             versions = null;
@@ -113,5 +115,7 @@ namespace Nemo.Caching.Providers
             }
             return items;
         }
+
+        #endregion
     }
 }
