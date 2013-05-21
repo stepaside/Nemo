@@ -871,7 +871,7 @@ namespace Nemo.Caching
 
         #region Dependency Invalidation Methods
 
-        private static IList<CacheDependency> GetCacheDependencies<T>()
+        private static IList<QueryDependency> GetQueryDependencies<T>()
            where T : class, IBusinessObject
         {
             if (CacheScope.Current != null)
@@ -879,15 +879,12 @@ namespace Nemo.Caching
                 return CacheScope.Current.Dependencies;
             }
 
-            var dependencies = new List<CacheDependency>();
-            var attrList = Reflector.GetAttributeList<T, CacheDependencyAttribute>();
+            var dependencies = new List<QueryDependency>();
+            var attrList = Reflector.GetAttributeList<T, QueryDependencyAttribute>();
             for (int i = 0; i < attrList.Count; i++)
             {
                 var attr = attrList[i];
-                if (IsTrackable(attr.DependentType))
-                {
-                    dependencies.Add(new CacheDependency { DependentType = attr.DependentType, DependentProperty = attr.DependentProperty, ValueProperty = attr.ValueProperty });
-                }
+                dependencies.Add(new QueryDependency(attr.Properties));
             }
             return dependencies;
         }
@@ -896,42 +893,41 @@ namespace Nemo.Caching
             where T : class, IBusinessObject
         {
             // Clear cache dependencies if there are any
-            var dependencies = GetCacheDependencies<T>();
+            var dependencies = GetQueryDependencies<T>();
             if (dependencies != null && dependencies.Count > 0)
             {
-                var validDependecies = dependencies.Where(d => d.DependentType != null && !string.IsNullOrEmpty(d.DependentProperty));
-                var typePrefix = typeof(T).Name;
-                if (typePrefix[0] == 'I' && typeof(T).IsInterface)
-                {
-                    typePrefix = typePrefix.Substring(1);
-                }
+                var cache = CacheFactory.GetProvider(GetCacheType<T>());
 
-                var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param 
-                { 
-                    Name = d.DependentProperty,
-                    Value = item.Property(d.ValueProperty ?? (!d.DependentProperty.StartsWith(typePrefix) ? typePrefix + d.DependentProperty : d.DependentProperty)) 
-                }).ToList());
-
-                parameterValuesByType.AsParallel().ForAll(p =>
+                if (cache != null)
                 {
-                    var targetCacheType = GetCacheType(p.Key);
-                    if (targetCacheType != null)
+                    var properties = Reflector.PropertyCache<T>.NameMap;
+                    foreach (var dependency in dependencies)
                     {
-                        var targetCache = CacheFactory.GetProvider(targetCacheType);
-                        if (ConfigurationFactory.Configuration.QueryInvalidationByVersion && targetCache is IRevisionProvider)
+                        var parameters = new List<Param>();
+                        var names = dependency.Properties.Where(p => !string.IsNullOrEmpty(p)).Select(p => p).Distinct();
+                        foreach (var name in names)
                         {
-                            Invalidate(p.Key, p.Value, targetCache);
+                            ReflectedProperty property;
+                            if (properties.TryGetValue(name, out property))
+                            {
+                                parameters.Add(new Param { Name = property.ParameterName ?? name, Value = item.Property(name) });
+                            }
+                        }
+
+                        if (ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache is IRevisionProvider)
+                        {
+                            Invalidate(typeof(T), parameters, cache);
                         }
                         else
                         {
-                            var keys = LookupQueries(p.Key, p.Value);
-                            foreach (var targetKey in keys)
+                            var keys = LookupQueries(typeof(T), parameters);
+                            foreach (var queryKey in keys)
                             {
-                                targetCache.Remove(targetKey);
+                                cache.Remove(queryKey);
                             }
                         }
                     }
-                });
+                }
             }
         }
 

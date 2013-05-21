@@ -46,7 +46,7 @@ namespace Nemo.Caching
             private set;
         }
 
-        public CacheScope(bool buffered = true, Type cacheType = null, CacheOptions options = null, CacheDependency[] dependencies = null) 
+        public CacheScope(bool buffered = true, Type cacheType = null, CacheOptions options = null, QueryDependency[] dependencies = null) 
         {
             Id = Guid.NewGuid().ToString();
 
@@ -143,7 +143,7 @@ namespace Nemo.Caching
             private set;
         }
 
-        public CacheDependency[] Dependencies
+        public QueryDependency[] Dependencies
         {
             get;
             private set;

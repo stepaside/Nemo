@@ -74,7 +74,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Attributes\CacheDependencyAttribute.cs" />
+    <Compile Include="Attributes\QueryDependencyAttribute.cs" />
     <Compile Include="Attributes\ConnectionAttribute.cs" />
     <Compile Include="Attributes\DoNotSerializeAttribute.cs" />
     <Compile Include="Attributes\DoNotPersistAttribute.cs" />
@@ -153,7 +153,7 @@
     <Compile Include="UnitOfWork\ChangeTrackingMode.cs" />
     <Compile Include="UnitOfWork\ObjectScopeExtensions.cs" />
     <Compile Include="Caching\CacheOptions.cs" />
-    <Compile Include="Caching\CacheDependency.cs" />
+    <Compile Include="Caching\QueryDependency.cs" />
     <Compile Include="Caching\ContextLevelCacheType.cs" />
     <Compile Include="Caching\HashAlgorithmName.cs" />
     <Compile Include="Caching\CacheScope.cs" />
