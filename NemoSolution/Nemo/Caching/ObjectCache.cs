@@ -908,8 +908,8 @@ namespace Nemo.Caching
 
                 var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param 
                 { 
-                    Name = d.DependentProperty, 
-                    Value = item.Property(d.ValueProperty ?? (d.DependentProperty.StartsWith(typePrefix) ? d.DependentProperty.Substring(typePrefix.Length) : d.DependentProperty)) 
+                    Name = d.DependentProperty,
+                    Value = item.Property(d.ValueProperty ?? (!d.DependentProperty.StartsWith(typePrefix) ? typePrefix + d.DependentProperty : d.DependentProperty)) 
                 }).ToList());
 
                 parameterValuesByType.AsParallel().ForAll(p =>
