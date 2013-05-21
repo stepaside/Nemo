@@ -247,26 +247,21 @@ namespace Nemo.Caching
                         object value;
                         if (cachedQueries.TryGetValue(parameterKey, out value) && value != null)
                         {
-                            var queries = ((string)value).Split(',');
+                            IEnumerable<string> queries = ((string)value).Split(',');
 
                             // Before the string grows too much try to compact it
                             if (Encoding.UTF8.GetByteCount(((string)value)) >= .75 * 1024 * 1024)
                             {
-                                queries = new HashSet<string>(queries.Where(q => !string.IsNullOrWhiteSpace(q))).ToArray();
-                                var queryValue = string.Join(",", queries);
-                                if (!cache.Save(parameterKey, queryValue, versions[parameterKey]))
-                                {
-                                    object v;
-                                    value = cache.Retrieve(parameterKey, out v);
-                                    queries = new HashSet<string>(((string)value).Split(',').Where(q => !string.IsNullOrWhiteSpace(q))).ToArray();
-                                    queryValue = string.Join(",", queries);
-                                    cache.Save(parameterKey, queryValue, v);
-                                }
+                                queries = CompactQueryKeys(cache, parameterKey, values: queries, version: versions[parameterKey]);
                             }
 
                             if (allQueries == null)
                             {
-                                allQueries = new HashSet<string>(queries);
+                                allQueries = queries as HashSet<string>;
+                                if (allQueries == null)
+                                {
+                                    allQueries = new HashSet<string>(queries);
+                                }
                             }
                             else
                             {
@@ -463,14 +458,48 @@ namespace Nemo.Caching
                     // In case append fails try to compact the value
                     if (!persistentCache.Append(parameterKey, "," + queryKey))
                     {
-                        object v;
-                        var value = persistentCache.Retrieve(parameterKey, out v);
-                        var queries = new HashSet<string>(((string)value).Split(',').Where(q => !string.IsNullOrWhiteSpace(q)));
-                        queries.Add(queryKey);
-                        persistentCache.Save(parameterKey, string.Join(",", queries), v);
+                        CompactQueryKeys(persistentCache, parameterKey, queryKey: queryKey);
                     }
                 }
             }
+        }
+
+        private static HashSet<string> CompactQueryKeys(IPersistentCacheProvider cache, string parameterKey, ushort retries = 1, string queryKey = null, IEnumerable<string> values = null, object version = null)
+        {
+            // If values and version were provided try to compact right away
+            // unless version is no longer valid
+            HashSet<string> queries = null;
+            if (values != null && version != null)
+            {
+                 queries = new HashSet<string>(values.Where(v => !string.IsNullOrWhiteSpace(v)));
+                 if (cache.Save(parameterKey, string.Join(",", queries), version))
+                 {
+                     return queries;
+                 }
+            }
+
+            int index = 0;
+            while (index <= retries)
+            {
+                // Retrieve comma-delimited list of query keys with the version number;
+                object v;
+                var value = cache.Retrieve(parameterKey, out v);
+                // Compact the list
+                queries = new HashSet<string>(((string)value).Split(',').Where(q => !string.IsNullOrWhiteSpace(q)));
+                // Add current query key if available
+                if (queryKey != null)
+                {
+                    queries.Add(queryKey);
+                }
+                // Try to save compacted value using optimistic concurrency control
+                if (cache.Save(parameterKey, string.Join(",", queries), v))
+                {
+                    break;
+                }
+
+                index++;
+            }
+            return queries;
         }
 
         #region Query Subspace Methods
