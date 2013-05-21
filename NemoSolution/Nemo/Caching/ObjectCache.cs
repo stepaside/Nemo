@@ -900,7 +900,17 @@ namespace Nemo.Caching
             if (dependencies != null && dependencies.Count > 0)
             {
                 var validDependecies = dependencies.Where(d => d.DependentType != null && !string.IsNullOrEmpty(d.DependentProperty));
-                var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param { Name = d.DependentProperty, Value = item.Property(d.ValueProperty ?? Xml.GetElementNameFromType<T>() + d.DependentProperty) }).ToList());
+                var typePrefix = typeof(T).Name;
+                if (typePrefix[0] == 'I' && typeof(T).IsInterface)
+                {
+                    typePrefix = typePrefix.Substring(1);
+                }
+
+                var parameterValuesByType = validDependecies.GroupBy(d => d.DependentType).ToDictionary(g => g.Key, g => g.Select(d => new Param 
+                { 
+                    Name = d.DependentProperty, 
+                    Value = item.Property(d.ValueProperty ?? (d.DependentProperty.StartsWith(typePrefix) ? d.DependentProperty.Substring(typePrefix.Length) : d.DependentProperty)) 
+                }).ToList());
 
                 parameterValuesByType.AsParallel().ForAll(p =>
                 {
