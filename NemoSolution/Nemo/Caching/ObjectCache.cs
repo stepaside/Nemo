@@ -22,7 +22,14 @@ namespace Nemo.Caching
     public static class ObjectCache
     {
         private static ConcurrentDictionary<string, object> _cacheLocks = new ConcurrentDictionary<string, object>();
-        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => CacheFactory.GetProvider(ConfigurationFactory.Configuration.TrackingCacheProvider), true);
+        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => 
+        {
+            if (!ConfigurationFactory.Configuration.QueryInvalidationByVersion)
+            {
+                return CacheFactory.GetProvider(ConfigurationFactory.Configuration.TrackingCacheProvider);
+            }
+            return null;
+        }, true);
 
         #region Helper Methods
 
