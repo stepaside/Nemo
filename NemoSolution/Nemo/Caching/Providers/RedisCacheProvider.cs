@@ -215,7 +215,7 @@ namespace Nemo.Caching.Providers
             return result;
         }
 
-        private CacheValue ProcessRetrieve(byte[] result, string key, string expectedRevision)
+        private CacheValue ProcessRetrieve(byte[] result, string key, ulong[] expectedRevision)
         {
             var cacheValue = CacheValue.FromBytes(result);
             // If there is a revision mismatch simulate a miss
@@ -242,8 +242,9 @@ namespace Nemo.Caching.Providers
             var result = task.Result;
             if (!result.HasValue)
             {
-                var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(1L));
-                return isSet.Result ? 1ul : GetRevision(key);
+                var ticks = (ulong)GetTicks();
+                var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(ticks));
+                return isSet.Result ? ticks : GetRevision(key);
             }
             else
             {
@@ -277,8 +278,9 @@ namespace Nemo.Caching.Providers
                 
                 foreach (var key in missingKeys)
                 {
-                    var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(1L));
-                    items.Add(key, isSet.Result ? 1ul : GetRevision(key));
+                    var ticks = (ulong)GetTicks();
+                    var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(ticks));
+                    items.Add(key, isSet.Result ? ticks : GetRevision(key));
                 }
 
                 return items;
@@ -293,7 +295,7 @@ namespace Nemo.Caching.Providers
             return (ulong)task.Result;
         }
 
-        public string ExpectedVersion { get; set; }
+        public ulong[] ExpectedVersion { get; set; }
         
         #endregion
 
@@ -415,7 +417,7 @@ namespace Nemo.Caching.Providers
 
         private async Task<long> GenerateVersion(string prefixedKey)
         {
-            var ticks = (DateTime.UtcNow - UnixDateTime.Epoch).Ticks;
+            var ticks = GetTicks();
             var version = ticks;
             using (var tran = _connection.CreateTransaction())
             {

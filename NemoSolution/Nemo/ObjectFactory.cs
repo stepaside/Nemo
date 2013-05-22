@@ -417,7 +417,7 @@ namespace Nemo
             CacheProvider cache = null;
             CacheItem[] cachedItems = null;
             string queryKey = null;
-            string queryKeyExpectedVerison = null;
+            ulong[] queryKeyExpectedVerison = null;
             string[] keys = null;
             bool collision = false;
             

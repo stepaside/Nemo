@@ -1,6 +1,7 @@
 ﻿using Nemo.Caching.Providers;
 using Nemo.Configuration;
 using Nemo.Fn;
+using Nemo.Serialization;
 using Nemo.Utilities;
 using System;
 using System.Collections.Concurrent;
@@ -29,6 +30,11 @@ namespace Nemo.Caching
             {
                 ExecutionContext.Set("__LocalCache", value);
             }
+        }
+
+        protected long GetTicks()
+        {
+            return (DateTime.UtcNow - UnixDateTime.Epoch).Ticks;
         }
         
         protected byte[] ComputeValue(CacheValue value, DateTimeOffset currentDateTime)

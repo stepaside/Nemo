@@ -239,7 +239,8 @@ namespace Nemo.Caching.Providers.Generic
             var value = _client.Get(key);
             if (value == null)
             {
-                return _client.Store(StoreMode.Add, key, 1) ? 1 : GetRevision(key);
+                var ticks = (ulong)GetTicks();
+                return _client.Store(StoreMode.Add, key, ticks) ? ticks : GetRevision(key);
             }
             else
             {
@@ -271,7 +272,7 @@ namespace Nemo.Caching.Providers.Generic
 
                 foreach (var key in missingKeys)
                 {
-                    var ticks = (ulong)(DateTime.UtcNow - UnixDateTime.Epoch).Ticks;
+                    var ticks = (ulong)GetTicks();
                     items.Add(key, _client.Store(StoreMode.Add, key, ticks) ? ticks : GetRevision(key));
                 }
 
@@ -286,11 +287,11 @@ namespace Nemo.Caching.Providers.Generic
             return _client.Increment(key, 1, delta == 0 ? 1 : delta);
         }
 
-        public string ExpectedVersion { get; set; }
+        public ulong[] ExpectedVersion { get; set; }
 
         #endregion
 
-        private CacheValue ProcessRetrieve(byte[] result, string key, string originalKey, IDictionary<string, object> localCache, string expectedRevision)
+        private CacheValue ProcessRetrieve(byte[] result, string key, string originalKey, IDictionary<string, object> localCache, ulong[] expectedRevision)
         {
             var cacheValue = CacheValue.FromBytes(result);
             if (this is IStaleCacheProvider && !cacheValue.IsValid())

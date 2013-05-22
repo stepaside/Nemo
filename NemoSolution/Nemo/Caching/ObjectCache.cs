@@ -115,7 +115,7 @@ namespace Nemo.Caching
             return null;
         }
 
-        public static Tuple<string, string> GetQueryKey<T>(string operation, IList<Param> parameters, OperationReturnType returnType, CacheProvider cache)
+        public static Tuple<string, ulong[]> GetQueryKey<T>(string operation, IList<Param> parameters, OperationReturnType returnType, CacheProvider cache)
             where T : class, IBusinessObject
         {
             var objectType = typeof(T);
@@ -131,13 +131,13 @@ namespace Nemo.Caching
             }
 
             var cacheKey = new CacheKey(parametersForCaching, objectType, operation, returnType);
-            string version = null;
+            ulong[] version = null;
 
             if (parameters != null && ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache != null && cache is IRevisionProvider)
             {
                 var subspaces = GetQuerySubscpaces<T>(parameters);
                 var revisions = ((IRevisionProvider)cache).GetRevisions(subspaces);
-                version = string.Join(".", revisions.Values);
+                version = revisions.Values.ToArray();
             }
 
             return Tuple.Create(cacheKey.Value, version);
@@ -249,8 +249,11 @@ namespace Nemo.Caching
                         {
                             IEnumerable<string> queries = ((string)value).Split(',');
 
+                            var count = ((string[])queries).Length ;
+                            var uniqueCount = queries.Distinct().Count();
+
                             // Before the string grows too much try to compact it
-                            if (Encoding.UTF8.GetByteCount(((string)value)) >= .75 * 1024 * 1024)
+                            if ((count - uniqueCount) / (double)count > .3)
                             {
                                 queries = CompactQueryKeys(cache, parameterKey, values: queries, version: versions[parameterKey]);
                             }
@@ -778,7 +781,7 @@ namespace Nemo.Caching
                     if (success)
                     {
                         ExecutionContext.Pop(key);
-                        RemoveDependencies<T>(item);
+                        RemoveDependencies<T>(item, true);
                     }
                 }
             }
@@ -889,42 +892,55 @@ namespace Nemo.Caching
             return dependencies;
         }
 
-        internal static void RemoveDependencies<T>(T item)
+        internal static void RemoveDependencies<T>(T item, bool insert)
             where T : class, IBusinessObject
         {
-            // Clear cache dependencies if there are any
+            var properties = Reflector.PropertyCache<T>.NameMap;
+            var cache = CacheFactory.GetProvider(GetCacheType<T>());
+
+            var queryInvalidationByVersion = ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache is IRevisionProvider;
+
             var dependencies = GetQueryDependencies<T>();
-            if (dependencies != null && dependencies.Count > 0)
+            if (dependencies == null || dependencies.Count == 0)
             {
-                var cache = CacheFactory.GetProvider(GetCacheType<T>());
-
-                if (cache != null)
+                var validProperties = properties.Values.Where(p => p.IsPersistent && p.IsSelectable
+                                                    && (p.IsSimpleType || p.IsSimpleList) 
+                                                    && ((insert && !p.IsPrimaryKey) || !insert));
+                if (queryInvalidationByVersion)
                 {
-                    var properties = Reflector.PropertyCache<T>.NameMap;
-                    foreach (var dependency in dependencies)
+                    dependencies = new List<QueryDependency> { new QueryDependency(validProperties.Select(p => p.PropertyName).ToArray()) };
+                }
+                else
+                {
+                    dependencies = validProperties.Select(p => new QueryDependency(p.PropertyName)).ToList();
+                }
+            }
+            
+            if (cache != null)
+            {
+                foreach (var dependency in dependencies)
+                {
+                    var parameters = new List<Param>();
+                    var names = dependency.Properties.Where(p => !string.IsNullOrEmpty(p)).Select(p => p).Distinct();
+                    foreach (var name in names)
                     {
-                        var parameters = new List<Param>();
-                        var names = dependency.Properties.Where(p => !string.IsNullOrEmpty(p)).Select(p => p).Distinct();
-                        foreach (var name in names)
+                        ReflectedProperty property;
+                        if (properties.TryGetValue(name, out property))
                         {
-                            ReflectedProperty property;
-                            if (properties.TryGetValue(name, out property))
-                            {
-                                parameters.Add(new Param { Name = property.ParameterName ?? name, Value = item.Property(name) });
-                            }
+                            parameters.Add(new Param { Name = property.ParameterName ?? name, Value = item.Property(name) });
                         }
+                    }
 
-                        if (ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache is IRevisionProvider)
+                    if (queryInvalidationByVersion)
+                    {
+                        Invalidate(typeof(T), parameters, cache);
+                    }
+                    else
+                    {
+                        var keys = LookupQueries(typeof(T), parameters);
+                        foreach (var queryKey in keys)
                         {
-                            Invalidate(typeof(T), parameters, cache);
-                        }
-                        else
-                        {
-                            var keys = LookupQueries(typeof(T), parameters);
-                            foreach (var queryKey in keys)
-                            {
-                                cache.Remove(queryKey);
-                            }
+                            cache.Remove(queryKey);
                         }
                     }
                 }

@@ -88,14 +88,13 @@ namespace Nemo.Utilities
         public static string ToHex(byte[] bytes)
         {
             char[] c = new char[bytes.Length * 2];
-            byte b;
-            for (int bx = 0, cx = 0; bx < bytes.Length; ++bx, ++cx)
+            int b;
+            for (int i = 0; i < bytes.Length; i++)
             {
-                b = ((byte)(bytes[bx] >> 4));
-                c[cx] = (char)(b > 9 ? b + 0x37 + 0x20 : b + 0x30);
-
-                b = ((byte)(bytes[bx] & 0x0F));
-                c[++cx] = (char)(b > 9 ? b + 0x37 + 0x20 : b + 0x30);
+                b = bytes[i] >> 4;
+                c[i * 2] = (char)(55 + b + (((b - 10) >> 31) & -7));
+                b = bytes[i] & 0xF;
+                c[i * 2 + 1] = (char)(55 + b + (((b - 10) >> 31) & -7));
             }
             return new string(c);
         }

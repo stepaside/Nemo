@@ -13,18 +13,18 @@ namespace Nemo.Caching
         public DateTime ExpiresAt { get; set; }
         public bool QueryKey { get; set; }
         public byte[] Buffer { get; set; }
-        public string Version { get; set; }
+        public ulong[] Version { get; set; }
 
         public bool IsValid()
         {
             return this.ExpiresAt >= DateTimeOffset.Now.DateTime;
         }
 
-        public bool IsValidVersion(string expectedVersion)
+        public bool IsValidVersion(ulong[] expectedVersion)
         {
             if (Version != null && expectedVersion != null)
             {
-                return Version.Split('.').Zip(expectedVersion.Split('.'), (v, ev) => ulong.Parse(v) >= ulong.Parse(ev)).All(r => r);
+                return Version.Zip(expectedVersion, (v, ev) => v >= ev).All(r => r);
             }
             return true;
         }
@@ -35,7 +35,7 @@ namespace Nemo.Caching
             {
                 writer.Write(ExpiresAt);
                 writer.Write(QueryKey);
-                writer.Write(Version);
+                writer.WriteList<ulong>(Version);
                 writer.Write(Buffer);
                 return writer.GetBytes();
             }
@@ -48,7 +48,7 @@ namespace Nemo.Caching
             {
                 result.ExpiresAt = reader.ReadDateTime();
                 result.QueryKey = reader.ReadBoolean();
-                result.Version = reader.ReadString();
+                result.Version = reader.ReadList<ulong>().ToArray();
                 result.Buffer = reader.ReadBytes();
             }
             return result;
