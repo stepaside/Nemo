@@ -322,10 +322,15 @@ namespace Nemo.Caching.Providers.Generic
             return cacheValue;
         }
 
-        private bool Store(StoreMode mode, string key, CacheValue val, DateTimeOffset currentDateTime)
+        protected bool Store(StoreMode mode, string key, CacheValue cacheValue, DateTimeOffset currentDateTime)
+        {
+            var value = ComputeValue(cacheValue, currentDateTime);
+            return Store(mode, key, value);
+        }
+
+        protected bool Store(StoreMode mode, string key, object value)
         {
             var success = false;
-            var value = ComputeValue(val, currentDateTime);
             switch (ExpirationType)
             {
                 case CacheExpirationType.TimeOfDay:

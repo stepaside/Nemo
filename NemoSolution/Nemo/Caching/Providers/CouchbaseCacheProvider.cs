@@ -63,7 +63,17 @@ namespace Nemo.Caching.Providers
         bool IPersistentCacheProvider.Append(string key, string value)
         {
             key = ComputeKey(key);
-            return _client.Append(key, new ArraySegment<byte>(Encoding.UTF8.GetBytes(value))); 
+            var data = new ArraySegment<byte>(Encoding.UTF8.GetBytes(value));
+            var result = _client.Append(key, data);
+            if (!result)
+            {
+                result = Store(StoreMode.Add, key, value);
+            }
+            if (!result)
+            {
+                result = _client.Append(key, data);
+            }
+            return result;
         }
 
         bool IPersistentCacheProvider.Save(string key, object value, object version)
