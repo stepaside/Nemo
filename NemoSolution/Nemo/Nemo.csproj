@@ -105,6 +105,7 @@
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Collections\SortedList.cs" />
     <Compile Include="Configuration\ConfigurationFactory.cs" />
+    <Compile Include="Data\OracleDialectProvider.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />
     <Compile Include="Data\SQLiteDialectProvider.cs" />

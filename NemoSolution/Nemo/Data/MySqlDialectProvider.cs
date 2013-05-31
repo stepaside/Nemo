@@ -41,7 +41,7 @@ namespace Nemo.Data
             this.SupportsTemporaryTables = true;
         }
 
-        public override string ComputeAutoIncrement(string variableName)
+        public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)
         {
             return string.Format("SET {0}{1} = {2};", VariablePrefix, variableName, AutoIncrementComputation);
         }

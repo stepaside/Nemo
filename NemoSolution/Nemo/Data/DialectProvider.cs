@@ -9,10 +9,18 @@ namespace Nemo.Data
 {
     public abstract class DialectProvider
     {
-        protected DialectProvider() { }
+        protected DialectProvider() 
+        {
+            this.BooleanDefinition = "BIT";
+            this.IntDefinition = "INTEGER";
+            this.SmallIntDefinition = "SMALLINT";
+        }
 
         public string BigIntDefinition { get; protected set; }
         public string ByteDefinition { get; protected set; }
+        public string BooleanDefinition { get; protected set; }
+        public string IntDefinition { get; protected set; }
+        public string SmallIntDefinition { get; protected set; }
         public string BlobDefition { get; protected set; }
         public string ClobDefition { get; protected set; }
         public string SingleDefinition { get; protected set; }
@@ -36,7 +44,7 @@ namespace Nemo.Data
         public string StringConcatenationOperator { get; protected set; }
         public string StringConcatenationFunction { get; protected set; }
         public string SubstringFunction { get; protected set; }
-        public string AutoIncrementSequenceName { get; protected set; }
+        public string AutoIncrementSequenceNameSuffix { get; protected set; }
 
         public bool SupportsTemporaryTables { get; protected set; } 
         public string IdentifierEscapeStartCharacter { get; protected set; }
@@ -47,9 +55,14 @@ namespace Nemo.Data
             throw new NotImplementedException();
         }
 
-        public virtual string ComputeAutoIncrement(string variableName)
+        public virtual string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)
         {
             throw new NotImplementedException();
+        }
+
+        public virtual string ComputeAutoIncrementSequenceName(string tableName)
+        {
+            return tableName + "_" + (AutoIncrementSequenceNameSuffix ?? "id_sequence");
         }
 
         public virtual string CreateTemporaryTable(string tableName, Dictionary<string, DbType> coulmns)
@@ -83,7 +96,7 @@ namespace Nemo.Data
                 case DbType.Binary:
                     return this.BlobDefition;
                 case DbType.Boolean:
-                    return "BIT";
+                    return this.BooleanDefinition;
                 case DbType.Byte:
                     return this.ByteDefinition;
                 case DbType.Double:
@@ -91,9 +104,9 @@ namespace Nemo.Data
                 case DbType.Guid:
                     return this.GuidDefinition;
                 case DbType.Int16:
-                    return "SMALLINT";
+                    return this.SmallIntDefinition;
                 case DbType.Int32:
-                    return "INTEGER";
+                    return this.IntDefinition;
                 case DbType.Int64:
                     return this.BigIntDefinition;
                 case DbType.Single:
