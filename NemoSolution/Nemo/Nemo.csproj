@@ -105,6 +105,13 @@
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Collections\SortedList.cs" />
     <Compile Include="Configuration\ConfigurationFactory.cs" />
+    <Compile Include="Configuration\Mapping\CacheMap.cs" />
+    <Compile Include="Configuration\Mapping\EntityMap.cs" />
+    <Compile Include="Configuration\Mapping\ICacheMap.cs" />
+    <Compile Include="Configuration\Mapping\IEntityMap.cs" />
+    <Compile Include="Configuration\Mapping\IPropertyMap.cs" />
+    <Compile Include="Configuration\Mapping\MappingCache.cs" />
+    <Compile Include="Configuration\Mapping\PropertyMap.cs" />
     <Compile Include="Data\OracleDialectProvider.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />

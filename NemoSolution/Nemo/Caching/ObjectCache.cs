@@ -495,7 +495,14 @@ namespace Nemo.Caching
                 object v;
                 var value = cache.Retrieve(parameterKey, out v);
                 // Compact the list
-                queries = new HashSet<string>(((string)value).Split(',').Where(q => !string.IsNullOrWhiteSpace(q)));
+                if (value == null)
+                {
+                    queries = new HashSet<string>();
+                }
+                else
+                {
+                    queries = new HashSet<string>(((string)value).Split(',').Where(q => !string.IsNullOrWhiteSpace(q)));
+                }
                 // Add current query key if available
                 if (queryKey != null)
                 {

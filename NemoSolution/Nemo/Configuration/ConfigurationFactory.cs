@@ -16,7 +16,7 @@ namespace Nemo.Configuration
                 return _configuration.Value;
             }
         }
-
+        
         public static IConfiguration Configure(Func<IConfiguration> config = null)
         {
             if (!_configuration.IsValueCreated)
