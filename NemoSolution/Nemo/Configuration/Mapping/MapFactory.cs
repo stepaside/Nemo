@@ -7,11 +7,11 @@ using Nemo.Reflection;
 
 namespace Nemo.Configuration.Mapping
 {
-    internal static class MappingCache
+    public static class MapFactory
     {
-        private static Lazy<Dictionary<Type, IEntityMap>> _types = new Lazy<Dictionary<Type, IEntityMap>>(Initialize, true);
+        private static Lazy<Dictionary<Type, IEntityMap>> _types = new Lazy<Dictionary<Type, IEntityMap>>(MapFactory.Scan, true);
 
-        private static Dictionary<Type, IEntityMap> Initialize()
+        private static Dictionary<Type, IEntityMap> Scan()
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var types = assemblies
@@ -24,6 +24,14 @@ namespace Nemo.Configuration.Mapping
                             && t.BaseType.GetGenericTypeDefinition() == typeof(EntityMap<>));
             var maps = types.GroupBy(t => t.BaseType.GetGenericArguments()[0]).ToDictionary(g => g.Key, g => (IEntityMap)g.First().New());
             return maps;
+        }
+
+        public static void Initialize()
+        {
+            if (!_types.IsValueCreated)
+            {
+                var maps = _types.Value;
+            }
         }
 
         internal static IEntityMap GetEntityMap<T>()

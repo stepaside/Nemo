@@ -110,7 +110,7 @@
     <Compile Include="Configuration\Mapping\ICacheMap.cs" />
     <Compile Include="Configuration\Mapping\IEntityMap.cs" />
     <Compile Include="Configuration\Mapping\IPropertyMap.cs" />
-    <Compile Include="Configuration\Mapping\MappingCache.cs" />
+    <Compile Include="Configuration\Mapping\MapFactory.cs" />
     <Compile Include="Configuration\Mapping\PropertyMap.cs" />
     <Compile Include="Data\OracleDialectProvider.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
