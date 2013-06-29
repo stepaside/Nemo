@@ -3,6 +3,7 @@ using Nemo.Caching.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
+using Nemo.Configuration.Mapping;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
@@ -896,13 +897,25 @@ namespace Nemo.Caching
                 return CacheScope.Current.Dependencies;
             }
 
-            var dependencies = new List<QueryDependency>();
-            var attrList = Reflector.GetAttributeList<T, QueryDependencyAttribute>();
-            for (int i = 0; i < attrList.Count; i++)
+            IList<QueryDependency> dependencies = new List<QueryDependency>();
+
+            var map = MapFactory.GetEntityMap<T>();
+
+            if (map != null)
             {
-                var attr = attrList[i];
-                dependencies.Add(new QueryDependency(attr.Properties));
+                dependencies = map.Cache.QueryDependencies;
             }
+
+            if (dependencies.Count == 0)
+            {
+                var attrList = Reflector.GetAttributeList<T, QueryDependencyAttribute>();
+                for (int i = 0; i < attrList.Count; i++)
+                {
+                    var attr = attrList[i];
+                    dependencies.Add(new QueryDependency(attr.Properties));
+                }
+            }
+
             return dependencies;
         }
 

@@ -13,5 +13,6 @@ namespace Nemo.Configuration.Mapping
         string ConfigurationKey { get; }
         bool TrackKeys { get; }
         CacheOptions CacheOptions { get; }
+        IList<QueryDependency> QueryDependencies { get; } 
     }
 }

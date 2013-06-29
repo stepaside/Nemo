@@ -9,6 +9,11 @@ namespace Nemo.Configuration.Mapping
 {
     public class CacheMap : ICacheMap
     {
+        public CacheMap()
+        {
+            QueryDependencies = new List<QueryDependency>();
+        }
+
         public Type CacheProvider
         {
             get;
@@ -28,6 +33,12 @@ namespace Nemo.Configuration.Mapping
         }
 
         public CacheOptions CacheOptions
+        {
+            get;
+            private set;
+        }
+
+        public IList<QueryDependency> QueryDependencies
         {
             get;
             private set;
@@ -61,6 +72,12 @@ namespace Nemo.Configuration.Mapping
         public CacheMap Options(CacheOptions options)
         {
             CacheOptions = options;
+            return this;
+        }
+
+        public CacheMap QueryDependency(QueryDependency dependency)
+        {
+            QueryDependencies.Add(dependency);
             return this;
         }
     }
