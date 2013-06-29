@@ -7,7 +7,7 @@ using Nemo.Reflection;
 
 namespace Nemo.Configuration.Mapping
 {
-    public static class MapFactory
+    internal static class MapFactory
     {
         private static Lazy<Dictionary<Type, IEntityMap>> _types = new Lazy<Dictionary<Type, IEntityMap>>(MapFactory.Scan, true);
 
@@ -15,6 +15,7 @@ namespace Nemo.Configuration.Mapping
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var types = assemblies
+                .Where(a => !a.IsDynamic && !a.ReflectionOnly)
                 .Select(a => a.DefinedTypes)
                 .SelectMany(_ => _)
                 .Where(t => t.BaseType != null
@@ -26,7 +27,7 @@ namespace Nemo.Configuration.Mapping
             return maps;
         }
 
-        public static void Initialize()
+        internal static void Initialize()
         {
             if (!_types.IsValueCreated)
             {

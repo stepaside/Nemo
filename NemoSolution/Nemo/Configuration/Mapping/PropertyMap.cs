@@ -2,6 +2,7 @@
 using Nemo.Id;
 using Nemo.Reflection;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -12,13 +13,14 @@ using System.Threading.Tasks;
 
 namespace Nemo.Configuration.Mapping
 {
-    public class PropertyMap<T> : IPropertyMap
+    public class PropertyMap<T, U> : IPropertyMap
+                   where T : class, IBusinessObject
     {
         private readonly ReflectedProperty _property;
-        private readonly Expression<Func<T>> _selector;
+        private readonly Expression<Func<T, U>> _selector;
         private bool _not;
 
-        internal PropertyMap(Expression<Func<T>> selector, bool not = false)
+        internal PropertyMap(Expression<Func<T, U>> selector, bool not = false)
         {
             _selector = selector;
             _not = not;
@@ -27,12 +29,15 @@ namespace Nemo.Configuration.Mapping
             _property = new ReflectedProperty(property, readAttributes: false);
         }
 
-        public PropertyMap<T> Not()
+        public PropertyMap<T, U> Not
         {
-            return new PropertyMap<T>(_selector, true);
+            get
+            {
+                return new PropertyMap<T, U>(_selector, true);
+            }
         }
 
-        public PropertyMap<T> PrimaryKey(int position = 0)
+        public PropertyMap<T, U> PrimaryKey(int position = 0)
         {
             _property.IsPrimaryKey = _not ? false : true;
             _property.KeyPosition = position;
@@ -40,14 +45,14 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T> CacheKey()
+        public PropertyMap<T, U> CacheKey()
         {
             _property.IsCacheKey = _not ? false : true;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T> Generated(Type generator = null)
+        public PropertyMap<T, U> Generated(Type generator = null)
         {
             if (generator != null && typeof(IIdGenerator).IsAssignableFrom(generator))
             {
@@ -63,16 +68,16 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T> References<U>(int position = 0)
-            where U : class, IBusinessObject
+        public PropertyMap<T, U> References<V>(int position = 0)
+            where V : class, IBusinessObject
         {
-            _property.Parent = typeof(U);
+            _property.Parent = typeof(V);
             _property.RefPosition = position;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T> Parameter(string name, ParameterDirection direction = ParameterDirection.Input)
+        public PropertyMap<T, U> Parameter(string name, ParameterDirection direction = ParameterDirection.Input)
         {
             _property.ParameterName = name;
             _property.Direction = direction;
@@ -80,39 +85,39 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T> Persistent()
+        public PropertyMap<T, U> Persistent()
         {
             _property.IsPersistent = _not ? false : true;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T> Selectable()
+        public PropertyMap<T, U> Selectable()
         {
             _property.IsSelectable = _not ? false : true;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T> Serializable()
+        public PropertyMap<T, U> Serializable()
         {
             _property.IsSerializable = _not ? false : true;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T> Sorted<U>()
-            where U : class, IComparer<T>
+        public PropertyMap<T, U> Sorted<V>()
+            where V : class, IComparer
         {
             if (_property.IsListInterface)
             {
-                _property.Sorted = new SortedAttribute { ComparerType = typeof(U) };
+                _property.Sorted = new SortedAttribute { ComparerType = typeof(V) };
             }
             _not = false;
             return this;
         }
 
-        public PropertyMap<T> Sorted()
+        public PropertyMap<T, U> Sorted()
         {
             if (_property.IsListInterface)
             {
@@ -122,18 +127,17 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T> Distinct<U>()
-            where U : class, IEqualityComparer<T>
+        public PropertyMap<T, U> Distinct<V>()
         {
-            if (_property.IsListInterface)
+            if (_property.IsListInterface && typeof(IEqualityComparer<>).MakeGenericType(_property.ElementType).IsAssignableFrom(typeof(V)))
             {
-                _property.Distinct = new DistinctAttribute { EqualityComparerType = typeof(U) };
+                _property.Distinct = new DistinctAttribute { EqualityComparerType = typeof(V) };
             }
             _not = false;
             return this;
         }
 
-        public PropertyMap<T> Distinct()
+        public PropertyMap<T, U> Distinct()
         {
             if (_property.IsListInterface)
             {
@@ -143,14 +147,14 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T> Column(string name)
+        public PropertyMap<T, U> Column(string name)
         {
             _property.MappedColumnName = name;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T> SourceProperty(string name)
+        public PropertyMap<T, U> SourceProperty(string name)
         {
             _property.MappedPropertyName = name;
             _not = false;

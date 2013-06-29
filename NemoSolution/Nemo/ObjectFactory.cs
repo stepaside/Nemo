@@ -4,6 +4,7 @@ using Nemo.Caching.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
+using Nemo.Configuration.Mapping;
 using Nemo.Data;
 using Nemo.Extensions;
 using Nemo.Fn;
@@ -789,8 +790,23 @@ namespace Nemo
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
             if (ConfigurationFactory.Configuration.GenerateDeleteSql)
             {
-                var attr = Reflector.GetAttribute<T, TableAttribute>();
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName), attr != null ? attr.SoftDeleteColumn : null);
+                string softDeleteColumn = null; 
+                var map = MapFactory.GetEntityMap<T>();
+                if (map != null)
+                {
+                    softDeleteColumn = map.SoftDeleteColumnName;
+                }
+
+                if (softDeleteColumn == null)
+                {
+                    var attr = Reflector.GetAttribute<T, TableAttribute>();
+                    if (attr != null)
+                    {
+                        softDeleteColumn = attr.SoftDeleteColumn;
+                    }
+                }
+                
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName), softDeleteColumn);
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -1479,13 +1495,24 @@ namespace Nemo
         internal static string GetTableName<T>()
             where T : class, IBusinessObject
         {
-            string tableName;
-            var attr = Reflector.GetAttribute<T, TableAttribute>();
-            if (attr != null)
+            string tableName = null;
+            
+            var map = MapFactory.GetEntityMap<T>();
+            if (map != null)
             {
-                tableName = attr.Name;
+                tableName = map.TableName;
             }
-            else
+
+            if (tableName == null)
+            {
+                var attr = Reflector.GetAttribute<T, TableAttribute>();
+                if (attr != null)
+                {
+                    tableName = attr.Name;
+                }
+            }
+            
+            if (tableName == null)
             {
                 var objectType = typeof(T);
                 tableName = objectType.Name;
@@ -1499,13 +1526,28 @@ namespace Nemo
 
         internal static string GetTableName(Type objectType)
         {
-            string tableName;
-            var attr = objectType.GetCustomAttributes(typeof(TableAttribute), false).Cast<TableAttribute>().FirstOrDefault();
-            if (attr != null)
+            string tableName = null;
+            if (Reflector.IsEmitted(objectType))
             {
-                tableName = attr.Name;
+                objectType = Reflector.ExtractInterface(objectType);
             }
-            else
+
+            var map = MapFactory.GetEntityMap(objectType);
+            if (map != null)
+            {
+                tableName = map.TableName;
+            }
+
+            if (tableName == null)
+            {
+                var attr = Reflector.GetAttribute<TableAttribute>(objectType);
+                if (attr != null)
+                {
+                    tableName = attr.Name;
+                }
+            }
+
+            if (tableName == null)
             {
                 tableName = objectType.Name;
                 if (objectType.IsInterface && tableName[0] == 'I')

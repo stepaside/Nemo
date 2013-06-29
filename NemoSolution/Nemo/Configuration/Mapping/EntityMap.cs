@@ -14,17 +14,20 @@ namespace Nemo.Configuration.Mapping
            
         public EntityMap()
         {
+            _properties = new Dictionary<string, IPropertyMap>();
             Cache = new CacheMap();
         }
 
-        public PropertyMap<U> Property<U>(Expression<Func<U>> selector)
+        public PropertyMap<T, U> Property<U>(Expression<Func<T, U>> selector)
         {
             IPropertyMap map;
-            if (!_properties.TryGetValue(selector.ToString(), out map))
+            var key = selector.ToString();
+            if (!_properties.TryGetValue(key, out map))
             {
-                map = new PropertyMap<U>(selector);
+                map = new PropertyMap<T, U>(selector);
+                _properties[key] = map;
             }
-            return (PropertyMap<U>)map;
+            return (PropertyMap<T, U>)map;
         }
 
         public ICollection<IPropertyMap> Properties
@@ -35,29 +38,13 @@ namespace Nemo.Configuration.Mapping
             }
         }
 
-        public string TableName
-        {
-            get;
-            private set;
-        }
+        public string TableName { get; protected set; }
 
-        public string SchemaName
-        {
-            get;
-            private set;
-        }
+        public string SchemaName { get; protected set; }
 
-        public string DatabaseName
-        {
-            get;
-            private set;
-        }
+        public string DatabaseName { get; protected set; }
 
-        public string ConnectionStringName
-        {
-            get;
-            private set;
-        }
+        public string ConnectionStringName { get; protected set; }
 
         ICacheMap IEntityMap.Cache
         {
@@ -71,24 +58,6 @@ namespace Nemo.Configuration.Mapping
 
         public bool ReadOnly { get; protected set; }
 
-        public void Table(string value)
-        {
-            TableName = value;
-        }
-
-        public void Schema(string value)
-        {
-            SchemaName = value;
-        }
-
-        public void Database(string value)
-        {
-            DatabaseName = value;
-        }
-
-        public void Connection(string value)
-        {
-            ConnectionStringName = value;
-        }
+        public string SoftDeleteColumnName { get; protected set; }
     }
 }

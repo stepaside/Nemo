@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Nemo.Configuration.Mapping;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,6 +22,7 @@ namespace Nemo.Configuration
         {
             if (!_configuration.IsValueCreated)
             {
+                MapFactory.Initialize();
                 if (config != null)
                 {
                     _configuration = new Lazy<IConfiguration>(config, true);

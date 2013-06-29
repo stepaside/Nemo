@@ -1,5 +1,6 @@
 ﻿using Nemo.Attributes;
 using Nemo.Configuration;
+using Nemo.Configuration.Mapping;
 using Nemo.Extensions;
 using Nemo.Reflection;
 using Nemo.Utilities;
@@ -16,20 +17,37 @@ namespace Nemo.Data
     {
         private static string GetDefaultConnectionName(Type objectType)
         {
-            var attr = Reflector.GetAttribute<ConnectionAttribute>(objectType, false, true);
-            if (attr != null)
+            string connectionName = null;
+            if (Reflector.IsEmitted(objectType))
             {
-                return attr.Name;
+                objectType = Reflector.ExtractInterface(objectType);
             }
-            else
+
+            var map = MapFactory.GetEntityMap(objectType);
+            if (map != null)
             {
-                attr = Reflector.GetAttribute<ConnectionAttribute>(objectType, true, false);
+                connectionName = map.ConnectionStringName;
+            }
+
+            if (connectionName == null)
+            {
+                var attr = Reflector.GetAttribute<ConnectionAttribute>(objectType, false, true);
                 if (attr != null)
                 {
-                    return attr.Name;
+                    connectionName = attr.Name;
                 }
             }
-            return ConfigurationFactory.Configuration.DefaultConnectionName;
+
+            if (connectionName == null)
+            {
+                var attr = Reflector.GetAttribute<ConnectionAttribute>(objectType, true, false);
+                if (attr != null)
+                {
+                    connectionName = attr.Name;
+                }
+            }
+
+            return connectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName;
         }
 
         internal static string GetProviderInvariantName(string connectionName, Type objectType = null)

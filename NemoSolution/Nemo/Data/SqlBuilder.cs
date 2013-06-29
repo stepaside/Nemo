@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using Nemo.Attributes;
 using Nemo.Extensions;
 using Nemo.Reflection;
+using Nemo.Configuration.Mapping;
 
 namespace Nemo.Data
 {
@@ -38,15 +39,38 @@ namespace Nemo.Data
                 objectType = Reflector.ExtractInterface(objectType);
             }
 
-            var attr = Reflector.GetAttribute<TableAttribute>(objectType);
-            if (attr != null)
+            var map = MapFactory.GetEntityMap(objectType);
+            if (map != null)
             {
-                tableName = dialect.IdentifierEscapeStartCharacter + attr.Name + dialect.IdentifierEscapeEndCharacter;
-                if (attr.SchemaName.NullIfEmpty() != null)
+                tableName = dialect.IdentifierEscapeStartCharacter + map.TableName + dialect.IdentifierEscapeEndCharacter;
+                if (!string.IsNullOrEmpty(map.SchemaName))
                 {
-                    tableName = dialect.IdentifierEscapeStartCharacter + attr.SchemaName + dialect.IdentifierEscapeEndCharacter + "." + tableName;
+                    tableName = dialect.IdentifierEscapeStartCharacter + map.SchemaName + dialect.IdentifierEscapeEndCharacter + "." + tableName;
                 }
             }
+
+            if (tableName == null)
+            {
+                var attr = Reflector.GetAttribute<TableAttribute>(objectType);
+                if (attr != null)
+                {
+                    tableName = dialect.IdentifierEscapeStartCharacter + attr.Name + dialect.IdentifierEscapeEndCharacter;
+                    if (!string.IsNullOrEmpty(attr.SchemaName))
+                    {
+                        tableName = dialect.IdentifierEscapeStartCharacter + attr.SchemaName + dialect.IdentifierEscapeEndCharacter + "." + tableName;
+                    }
+                }
+            }
+
+            if (tableName == null)
+            {
+                tableName = objectType.Name;
+                if (objectType.IsInterface && tableName[0] == 'I')
+                {
+                    tableName = tableName.Substring(1);
+                }
+            }
+
             return tableName;
         }
         

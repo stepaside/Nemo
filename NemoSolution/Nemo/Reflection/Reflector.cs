@@ -17,6 +17,7 @@ using Nemo.Serialization;
 using Nemo.Utilities;
 using Nemo.Collections;
 using System.Collections.ObjectModel;
+using Nemo.Configuration.Mapping;
 
 namespace Nemo.Reflection
 {
@@ -918,9 +919,28 @@ namespace Nemo.Reflection
             static PropertyCache()
             {
                 var cachedProperties = Reflector.CacheProperties<T>();
-                Properties = new ReadOnlyDictionary<string,PropertyInfo>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item1));
+                Properties = new ReadOnlyDictionary<string, PropertyInfo>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item1));
                 Positions = new ReadOnlyDictionary<string, int>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item2));
-                Map = new ReadOnlyDictionary<PropertyInfo, ReflectedProperty>(Properties.Values.ToDictionary(p => p, p => new ReflectedProperty(p, cachedProperties[p.Name].Item2)));
+
+                var map = MapFactory.GetEntityMap(typeof(T));
+                if (map != null)
+                {
+                    var reflectedProperties = map.Properties.ToDictionary(p => p.Property.PropertyName, p => p.Property);
+                    Map = new ReadOnlyDictionary<PropertyInfo, ReflectedProperty>(Properties.Values.ToDictionary(p => p, p =>
+                    {
+                        ReflectedProperty r;
+                        if (!reflectedProperties.TryGetValue(p.Name, out r))
+                        {
+                            r = new ReflectedProperty(p, cachedProperties[p.Name].Item2);
+                        }
+                        return r;
+                    }));
+                }
+                else
+                {
+                    Map = new ReadOnlyDictionary<PropertyInfo, ReflectedProperty>(Properties.Values.ToDictionary(p => p, p => new ReflectedProperty(p, cachedProperties[p.Name].Item2)));
+                } 
+                
                 NameMap = new ReadOnlyDictionary<string, ReflectedProperty>(Map.ToDictionary(p => p.Key.Name, p => p.Value));
             }
             public static readonly ReadOnlyDictionary<string, PropertyInfo> Properties;
