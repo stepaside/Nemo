@@ -39,7 +39,7 @@ namespace Nemo.Data
                 objectType = Reflector.ExtractInterface(objectType);
             }
 
-            var map = MapFactory.GetEntityMap(objectType);
+            var map = MappingFactory.GetEntityMap(objectType);
             if (map != null)
             {
                 tableName = dialect.IdentifierEscapeStartCharacter + map.TableName + dialect.IdentifierEscapeEndCharacter;

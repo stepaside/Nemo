@@ -791,7 +791,7 @@ namespace Nemo
             if (ConfigurationFactory.Configuration.GenerateDeleteSql)
             {
                 string softDeleteColumn = null; 
-                var map = MapFactory.GetEntityMap<T>();
+                var map = MappingFactory.GetEntityMap<T>();
                 if (map != null)
                 {
                     softDeleteColumn = map.SoftDeleteColumnName;
@@ -1497,7 +1497,7 @@ namespace Nemo
         {
             string tableName = null;
             
-            var map = MapFactory.GetEntityMap<T>();
+            var map = MappingFactory.GetEntityMap<T>();
             if (map != null)
             {
                 tableName = map.TableName;
@@ -1532,7 +1532,7 @@ namespace Nemo
                 objectType = Reflector.ExtractInterface(objectType);
             }
 
-            var map = MapFactory.GetEntityMap(objectType);
+            var map = MappingFactory.GetEntityMap(objectType);
             if (map != null)
             {
                 tableName = map.TableName;

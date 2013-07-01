@@ -5,6 +5,7 @@ using Nemo.Caching.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
+using Nemo.Configuration.Mapping;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Serialization;
@@ -42,7 +43,8 @@ namespace NemoTest
                 .SetOperationPrefix("spDTO_")
                 .SetLogging(false)
                 .SetCacheCollisionDetection(false)
-                .SetTrackingCacheProvider(null);
+                .SetTrackingCacheProvider(null)
+                .SetQueryInvalidationByVersion(true);
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
@@ -762,7 +764,7 @@ namespace NemoTest
             Console.WriteLine("\tsize: {0} bytes", sizeList.Average());
         }
 
-        private static Random random = new Random((int)DateTime.Now.Ticks);
+        private static Random random = new Random((int)DateTime.UtcNow.Ticks);
         private static string ComputeRandomString(int size)
         {
             var builder = new StringBuilder();

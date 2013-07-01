@@ -899,7 +899,7 @@ namespace Nemo.Caching
 
             IList<QueryDependency> dependencies = new List<QueryDependency>();
 
-            var map = MapFactory.GetEntityMap<T>();
+            var map = MappingFactory.GetEntityMap<T>();
 
             if (map != null)
             {

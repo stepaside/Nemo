@@ -11,17 +11,28 @@ using ProtoBuf;
 using System.Data.Entity;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Nemo.Configuration.Mapping;
 
 namespace NemoTest
 {
-    [Nemo.Attributes.Table("Customers")]
-    //[Cache(Type=typeof(Nemo.Caching.Providers.MemoryCacheProvider))]
-    //[CacheDependency(typeof(IOrder), DependentProperty = "CustomerId", ValueProperty = "Id")]
+    public class ICustomerMap : EntityMap<ICustomer>
+    {
+        public ICustomerMap()
+        {
+            TableName = "Customers";
+
+            Cache.Type<Nemo.Caching.Providers.MemcachedCacheProvider>();
+            
+            Property(c => c.Id).Column("CustomerID").Parameter("CustomerID").PrimaryKey();
+            Property(c => c.TypeUnionTest).Not.Persistent().Not.Serializable();
+        }
+    }
+
+    [QueryDependency("CompanyName")]
     public interface ICustomer : IBusinessObject
     {
-        [PrimaryKey, MapColumn("CustomerID"), Parameter("CustomerID")]
         string Id { get; set; }
-        [Nemo.Validation.StringLength(50), DoNotPersist, XmlAttribute]
+        [Nemo.Validation.StringLength(50), XmlAttribute]
         string CompanyName { get; set; }
         //[Distinct]
         IList<IOrder> Orders { get; set; }

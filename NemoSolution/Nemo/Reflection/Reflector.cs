@@ -922,7 +922,7 @@ namespace Nemo.Reflection
                 Properties = new ReadOnlyDictionary<string, PropertyInfo>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item1));
                 Positions = new ReadOnlyDictionary<string, int>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item2));
 
-                var map = MapFactory.GetEntityMap(typeof(T));
+                var map = MappingFactory.GetEntityMap(typeof(T));
                 if (map != null)
                 {
                     var reflectedProperties = map.Properties.ToDictionary(p => p.Property.PropertyName, p => p.Property);

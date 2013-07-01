@@ -7,9 +7,9 @@ using Nemo.Reflection;
 
 namespace Nemo.Configuration.Mapping
 {
-    internal static class MapFactory
+    internal static class MappingFactory
     {
-        private static Lazy<Dictionary<Type, IEntityMap>> _types = new Lazy<Dictionary<Type, IEntityMap>>(MapFactory.Scan, true);
+        private static Lazy<Dictionary<Type, IEntityMap>> _types = new Lazy<Dictionary<Type, IEntityMap>>(MappingFactory.Scan, true);
 
         private static Dictionary<Type, IEntityMap> Scan()
         {

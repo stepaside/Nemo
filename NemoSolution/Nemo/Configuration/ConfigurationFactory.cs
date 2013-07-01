@@ -22,7 +22,7 @@ namespace Nemo.Configuration
         {
             if (!_configuration.IsValueCreated)
             {
-                MapFactory.Initialize();
+                MappingFactory.Initialize();
                 if (config != null)
                 {
                     _configuration = new Lazy<IConfiguration>(config, true);
