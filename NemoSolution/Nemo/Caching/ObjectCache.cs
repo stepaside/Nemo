@@ -241,8 +241,7 @@ namespace Nemo.Caching
             var cacheType = GetCacheType(objectType);
             if (cacheType != null && parameters != null && parameters.Count > 0)
             {
-                var typeKey = objectType.FullName;
-                var parameterKeys = parameters.Select(p => typeKey + "::" + p.Name.ToUpper() + "::" + (p.Value.SafeCast<string>() ?? string.Empty).ToUpper()).ToList();
+                var parameterKeys = parameters.Select(p => new CacheKey(new SortedDictionary<string, object> { { p.Name, p.Value } }, objectType).Compute().Item1).ToList();
 
                 var cache = (IPersistentCacheProvider)_trackingCache.Value;
                 IDictionary<string, object> versions;
@@ -462,7 +461,7 @@ namespace Nemo.Caching
                 && (!ConfigurationFactory.Configuration.QueryInvalidationByVersion || !(cache is IRevisionProvider)))
             {
                 var typeKey = typeof(T).FullName;
-                var parameterKeys = parameters.Select(p => string.Concat(typeKey, "::", p.Name.ToUpper() + "::" + (p.Value.SafeCast<string>() ?? string.Empty).ToUpper()));
+                var parameterKeys = parameters.Select(p => new CacheKey(new SortedDictionary<string, object> { { p.Name, p.Value } }, typeof(T)).Compute().Item1).ToList();
                 var persistentCache = (IPersistentCacheProvider)cache;
                 foreach (var parameterKey in parameterKeys)
                 {
