@@ -7,6 +7,7 @@ using Nemo.Configuration.Mapping;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
+using Nemo.Security.Cryptography;
 using Nemo.Serialization;
 using Nemo.Utilities;
 using System;
@@ -551,7 +552,7 @@ namespace Nemo.Caching
         private static IEnumerable<string> GetQuerySubscpacesImplementation(string typeName, List<string> names, IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
         {
             var query = names.GroupJoin(parameters, n => n, p => p.Name, (name, args) => args.FirstOrDefault().ToMaybe().Select(p => p.Value == null ? string.Empty : p.Value.ToString()).Value ?? "*").ToList();
-            return AllVariantsOf(query, query.Count, rules).Select(s => typeName + "::" + string.Join("::", s));
+            return AllVariantsOf(query, query.Count, rules).Select(s => typeName + "::" + Jenkins96Hash.Compute(Encoding.UTF8.GetBytes(string.Join("::", s))));
         }
 
         private static List<List<T>> AllVariantsOf<T>(List<T> source, int length, params Func<T, Tuple<T, bool>>[] rules)
