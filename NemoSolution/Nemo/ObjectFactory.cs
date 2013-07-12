@@ -548,9 +548,13 @@ namespace Nemo
                     {
                         result = result.ToList();
                     }
-                    else
+                    else if (result.Any())
                     {
                         result = result.AsStream();
+                    }
+                    else
+                    {
+                        result = new List<TResult>();
                     }
                 }
                 bufferCache.Save(queryKey, result);
