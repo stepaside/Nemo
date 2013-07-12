@@ -43,7 +43,7 @@ namespace Nemo.Caching
                     values = key.OrderBy(k => k.Key);
                 }
 
-                var keyValue = values.Select(k => Convert.ToString(k.Value)).ToDelimitedString(",");
+                var keyValue = values.Select(k => string.Format("{0}:={1}", k.Key.ToUpper(), k.Value)).ToDelimitedString(",");
                 if (!string.IsNullOrEmpty(operation))
                 {
                     _value = string.Format("{0}->{1}:{2}::{3}", typeName, operation, returnType, keyValue);
@@ -56,7 +56,7 @@ namespace Nemo.Caching
             }
             else
             {
-                Func<KeyValuePair<string, object>, IEnumerable<byte>> func = k => BitConverter.GetBytes(k.Value.GetHashCode()).Append((byte)',');
+                Func<KeyValuePair<string, object>, IEnumerable<byte>> func = k => BitConverter.GetBytes(k.Key.ToUpper().GetHashCode()).Append((byte)':').Concat(BitConverter.GetBytes(k.Value.GetHashCode())).Append((byte)',');
                 var keyValue = (sorted ? key.Select(func) : key.OrderBy(k => k.Key).Select(func)).Flatten().ToArray();
                 if (!string.IsNullOrEmpty(operation))
                 {
