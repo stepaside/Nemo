@@ -95,13 +95,13 @@ namespace Nemo.Data
                 {
                     if (dialect is SqlServerLegacyDialectProvider)
                     {
-                        var primaryKeyAscending = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + MapColumnAttribute.GetMappedColumnName(p) + dialect.IdentifierEscapeEndCharacter + " ASC").ToDelimitedString(",");
-                        var primaryKeyDescending = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + MapColumnAttribute.GetMappedColumnName(p) + dialect.IdentifierEscapeEndCharacter + " DESC").ToDelimitedString(",");
+                        var primaryKeyAscending = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " ASC").ToDelimitedString(",");
+                        var primaryKeyDescending = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " DESC").ToDelimitedString(",");
                         sql = string.Format(SQL_SELECT_PAGING_FORMAT_MSSQL_LEGACY, tableName, selection, primaryKeyAscending, primaryKeyDescending, whereClause, pageSize, page * pageSize);
                     }
                     else
                     {
-                        var primaryKey = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + MapColumnAttribute.GetMappedColumnName(p) + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");
+                        var primaryKey = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");
                         sql = string.Format(SQL_SELECT_PAGING_FORMAT_MSSQL, tableName, selection, primaryKey, whereClause, (page - 1) * pageSize, page * pageSize);
                     }
                 }
