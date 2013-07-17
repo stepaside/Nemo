@@ -255,7 +255,7 @@ namespace Nemo.Caching
                         object value;
                         if (cachedQueries.TryGetValue(parameterKey, out value) && value != null)
                         {
-                            IEnumerable<string> queries = ((string)value).Split(',');
+                            var queries = ((string)value).Split(',').Where(q => !string.IsNullOrWhiteSpace(q));
 
                             var count = ((string[])queries).Length ;
                             var uniqueCount = queries.Distinct().Count();
