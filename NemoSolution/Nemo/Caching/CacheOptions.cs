@@ -18,6 +18,7 @@ namespace Nemo.Caching
             {
                 var nvp = Http.ParseQueryString(configValue);
                 Namespace = nvp["namespace"];
+                // Revision = nvp["revision"].ToMaybe().Select(s => s.SafeCast<ulong>()).Let(m => m.HasValue ? m.Value : 0ul);
                 UserContext = nvp["usercontext"].ToMaybe().Select(s => s.SafeCast<bool>()).Let(m => m.HasValue ? m.Value : false);
                 LifeSpan = nvp["lifespan"].ToMaybe().Select(s => s.SafeCast<TimeSpan>());
                 ExpiresAt = nvp["expiresat"].ToMaybe().Select(s => s.SafeCast<DateTimeOffset>());

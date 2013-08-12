@@ -24,15 +24,13 @@ namespace Nemo.Caching
     public static class ObjectCache
     {
         private static ConcurrentDictionary<string, object> _cacheLocks = new ConcurrentDictionary<string, object>();
-        private static Lazy<CacheProvider> _trackingCache = new Lazy<CacheProvider>(() => 
-        {
-            if (!ConfigurationFactory.Configuration.QueryInvalidationByVersion)
-            {
-                return CacheFactory.GetProvider(ConfigurationFactory.Configuration.TrackingCacheProvider);
-            }
-            return null;
-        }, true);
 
+        private static Lazy<IPersistentCacheProvider> _trackingCache = new Lazy<IPersistentCacheProvider>(() => (IPersistentCacheProvider)CacheFactory.GetProvider(ConfigurationFactory.Configuration.TrackingCacheProvider), true);
+
+        private static Lazy<IRevisionProvider> _revisionCache = new Lazy<IRevisionProvider>(() => (IRevisionProvider)CacheFactory.GetProvider(ConfigurationFactory.Configuration.TrackingCacheProvider), true);
+
+        private static ConcurrentDictionary<string, ulong> _revisions = new ConcurrentDictionary<string, ulong>();
+        
         #region Helper Methods
 
         internal static bool IsCacheable<T>()
@@ -108,7 +106,7 @@ namespace Nemo.Caching
         
         internal static CacheOptions GetCacheOptions(Type objectType)
         {
-             if (objectType != null)
+            if (objectType != null)
             {
                 if (Reflector.IsEmitted(objectType))
                 {
@@ -116,9 +114,9 @@ namespace Nemo.Caching
                 }
 
                 var attribute = Reflector.GetAttribute<CacheAttribute>(objectType, false);
-                if (attribute != null )
+                if (attribute != null)
                 {
-                    return attribute.Options;
+                    return attribute.Options ?? new CacheOptions { Namespace = objectType.Name };
                 }
             }
             return null;
@@ -140,16 +138,72 @@ namespace Nemo.Caching
             }
 
             var cacheKey = new CacheKey(parametersForCaching, objectType, operation, returnType);
-            ulong[] version = null;
+            ulong[] signature = null;
 
-            if (parameters != null && ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache != null && cache is IRevisionProvider)
+            var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+            if (parameters != null && strategy == CacheInvalidationStrategy.IncrementOnly)
             {
+                // Compute subspaces
                 var subspaces = GetQuerySubscpaces<T>(parameters);
-                var revisions = ((IRevisionProvider)cache).GetRevisions(subspaces);
-                version = revisions.Values.ToArray();
+                var revisions = new Dictionary<string, ulong>();
+                var missingSubspaces = new List<string>();
+                // Look locally to see if revision is available
+                foreach (var subspace in subspaces)
+                {
+                    ulong revision;
+                    if (!_revisions.TryGetValue(subspace, out revision))
+                    {
+                        // No revision found: fetch it in bulk from the revision provider after the loop
+                        missingSubspaces.Add(subspace);
+                    }
+                    else
+                    {
+                        // Found it! Add to the list of revisions
+                        revisions.Add(subspace, revision);
+                    }
+                }
+
+                // Fetch only missing revisions
+                if (missingSubspaces.Count > 0)
+                {
+                    var missinRevisions = _revisionCache.Value.GetRevisions(missingSubspaces);
+                    foreach (var subspace in missingSubspaces)
+                    {
+                        ulong revision;
+                        // Check if the revision has been added while we were retrieving from the revision provider
+                        if (_revisions.TryGetValue(subspace, out revision))
+                        {
+                            // Check if the value retrieved is greater than the value stored locally
+                            if (missinRevisions[subspace] > revision)
+                            {
+                                revisions.Add(subspace, missinRevisions[subspace]);
+                            }
+                            else
+                            {
+                                revisions.Add(subspace, revision);
+                            }
+                        }
+                        else
+                        {
+                           // The revision has not been added, thus proceed with the retrieved value
+                           revisions.Add(subspace, missinRevisions[subspace]);
+                        }
+                    }
+                }
+
+                signature = revisions.Arrange(subspaces, p => p.Key).Select(p => p.Value).ToArray();
+            }
+            else if (strategy == CacheInvalidationStrategy.TrackAndIncrement)
+            {
+                var computedKey = cache.ComputeKey(cacheKey.Value);
+                var revision = _revisions.GetOrAdd(computedKey, key => _revisionCache.Value.GetRevision(cache.CleanKey(computedKey)));
+                if (revision > 0ul)
+                {
+                    signature = new[] { revision };
+                }
             }
 
-            return Tuple.Create(cacheKey.Value, version);
+            return Tuple.Create(cacheKey.Value, signature);
         }
 
         internal static bool CanBeBuffered<T>()
@@ -455,21 +509,20 @@ namespace Nemo.Caching
             }
         }
 
-        private static void TrackQuery<T>(string queryKey, IList<Param> parameters, CacheProvider cache)
+        private static void TrackQuery<T>(string queryKey, IList<Param> parameters, IPersistentCacheProvider cache)
             where T : class, IBusinessObject
         {
-            if (parameters != null && parameters.Count > 0 && cache.IsDistributed && cache != null && cache is IPersistentCacheProvider
-                && (!ConfigurationFactory.Configuration.QueryInvalidationByVersion || !(cache is IRevisionProvider)))
+            var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+            if (parameters != null && parameters.Count > 0 && cache != null && strategy != CacheInvalidationStrategy.IncrementOnly)
             {
                 var typeKey = typeof(T).FullName;
                 var parameterKeys = parameters.Select(p => new CacheKey(new SortedDictionary<string, object> { { p.Name, p.Value } }, typeof(T)).Compute().Item1).ToList();
-                var persistentCache = (IPersistentCacheProvider)cache;
                 foreach (var parameterKey in parameterKeys)
                 {
                     // In case append fails try to compact the value
-                    if (!persistentCache.Append(parameterKey, "," + queryKey))
+                    if (!cache.Append(parameterKey, "," + queryKey))
                     {
-                        CompactQueryKeys(persistentCache, parameterKey, queryKey: queryKey);
+                        CompactQueryKeys(cache, parameterKey, queryKey: queryKey);
                     }
                 }
             }
@@ -757,46 +810,91 @@ namespace Nemo.Caching
 
         #region Remove Methods
 
-        internal static bool Remove(string queryKey, CacheProvider cache)
+        internal static bool Remove<T>(string queryKey, IList<Param> parameters, CacheProvider cache)
+            where T : class, IBusinessObject
         {
+            var success = false;
             if (cache != null)
             {
-                var success = cache.Clear(queryKey);
+                var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+
+                if (strategy != CacheInvalidationStrategy.TrackAndRemove)
+                {
+                    if (strategy == CacheInvalidationStrategy.TrackAndIncrement)
+                    {
+                        var revision = _revisionCache.Value.IncrementRevision(queryKey);
+                        success = revision > 0ul;
+                        if (success)
+                        {
+                            UpdateRevision(queryKey, revision, cache);
+                            _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = cache, Key = queryKey, Revision = revision });
+                        }
+                    }
+                    else
+                    {
+                        success = Invalidate<T>(parameters);
+                    }
+                }
+                else
+                {
+                    success = cache.Clear(queryKey);
+                }
+
                 if (success)
                 {
                     ExecutionContext.Pop(queryKey);
                 }
-                return success;
             }
-            return false;
+            return success;
         }
 
         internal static bool Remove<T>(T item, CacheProvider cache = null)
             where T : class, IBusinessObject
         {
             var success = false;
+            Type cacheType = null;
             if (item != null)
             {
                 if (cache == null)
                 {
-                    if (cache == null)
+                    cacheType = GetCacheType<T>();
+                    if (cacheType != null)
                     {
-                        var cacheType = GetCacheType<T>();
-                        if (cacheType != null)
-                        {
-                            cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
-                        }
+                        cache = CacheFactory.GetProvider(cacheType, GetCacheOptions(typeof(T)));
                     }
                 }
 
                 if (cache != null)
                 {
                     var key = new CacheKey(item).Value;
-                    success = cache.Clear(key);
+                    var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+
+                    if (strategy != CacheInvalidationStrategy.TrackAndRemove)
+                    {
+                        if (strategy == CacheInvalidationStrategy.TrackAndIncrement)
+                        {
+                            var revision = _revisionCache.Value.IncrementRevision(key);
+                            success = revision > 0ul;
+                            if (success)
+                            {
+                                UpdateRevision(key, revision, cache);
+                                _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = cache, Key = key, Revision = revision });
+                            }
+                        }
+                        else
+                        {
+                            success = Invalidate<T>(item);
+                        }
+                    }
+                    else 
+                    {
+                        success = cache.Clear(key);
+                    }
+
                     if (success)
                     {
                         ExecutionContext.Pop(key);
-                        RemoveDependencies<T>(item, true);
+                        RemoveDependencies<T>(item);
                     }
                 }
             }
@@ -832,56 +930,66 @@ namespace Nemo.Caching
 
         #region Invalidate Methods
 
-        internal static bool Invalidate(Type objectType, IList<Param> parameters, CacheProvider cache)
+        internal static bool Invalidate(Type objectType, IList<Param> parameters)
         {
-            if (ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache != null && cache is IRevisionProvider)
+            if (ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.IncrementOnly)
             {
-                InvalidateImplementation(objectType, parameters, cache);
+                InvalidateImplementation(objectType, parameters);
                 return true;
             }
             return false;
         }
 
-        internal static bool Invalidate<T>(IList<Param> parameters, CacheProvider cache)
+        internal static bool Invalidate<T>(IList<Param> parameters)
             where T : class, IBusinessObject
         {
-            if (ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache != null && cache is IRevisionProvider)
+            if (ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.IncrementOnly)
             {
-                InvalidateImplementation<T>(parameters, cache);
+                InvalidateImplementation<T>(parameters);
                 return true;
             }
             return false;
         }
 
-        internal static bool Invalidate<T>(T businessObject, CacheProvider cache)
+        internal static bool Invalidate<T>(T businessObject)
             where T : class, IBusinessObject
         {
-            if (ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache != null && cache is IRevisionProvider)
+            if (ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.IncrementOnly)
             {
                 var nameMap = Reflector.PropertyCache<T>.NameMap;
                 var parameters = businessObject.GetPrimaryKey<T>(true).Select(pk => new Param { Name = nameMap[pk.Key].ParameterName, Value = pk.Value }).ToList();
-                InvalidateImplementation<T>(parameters, cache);
+                InvalidateImplementation<T>(parameters);
                 return true;
             }
             return false;
         }
 
-        private static void InvalidateImplementation(Type objectType, IList<Param> parameters, CacheProvider cache)
+        private static void InvalidateImplementation(Type objectType, IList<Param> parameters)
         {
             var variants = GetQuerySubscpacesForInvalidation(objectType, parameters);
             foreach (var variant in variants)
             {
-                ((IRevisionProvider)cache).IncrementRevision(variant);
+                var revision = _revisionCache.Value.IncrementRevision(variant);
+                if (revision > 0ul)
+                {
+                    UpdateRevision(variant, revision, null);
+                    _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = CacheFactory.GetProvider(GetCacheType(objectType)), Key = variant, Revision = revision });
+                }
             }
         }
 
-        private static void InvalidateImplementation<T>(IList<Param> parameters, CacheProvider cache)
+        private static void InvalidateImplementation<T>(IList<Param> parameters)
             where T : class, IBusinessObject
         {
             var variants = GetQuerySubscpacesForInvalidation<T>(parameters);
             foreach (var variant in variants)
             {
-                ((IRevisionProvider)cache).IncrementRevision(variant);
+                var revision = _revisionCache.Value.IncrementRevision(variant);
+                if (revision > 0ul)
+                {
+                    UpdateRevision(variant, revision, null);
+                    _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = CacheFactory.GetProvider(GetCacheType<T>()), Key = variant, Revision = revision });
+                }
             }
         }
 
@@ -919,20 +1027,21 @@ namespace Nemo.Caching
             return dependencies;
         }
 
-        internal static void RemoveDependencies<T>(T item, bool insert)
+        internal static void RemoveDependencies<T>(T item)
             where T : class, IBusinessObject
         {
             var properties = Reflector.PropertyCache<T>.NameMap;
-            var cache = CacheFactory.GetProvider(GetCacheType<T>());
+            var cacheType = GetCacheType<T>();
+            var cache = CacheFactory.GetProvider(cacheType);
 
-            var queryInvalidationByVersion = ConfigurationFactory.Configuration.QueryInvalidationByVersion && cache is IRevisionProvider;
+            var queryInvalidationByVersion = ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.IncrementOnly;
 
             var dependencies = GetQueryDependencies<T>();
             if (dependencies == null || dependencies.Count == 0)
             {
                 var validProperties = properties.Values.Where(p => p.IsPersistent && p.IsSelectable
-                                                    && (p.IsSimpleType || p.IsSimpleList) 
-                                                    && ((insert && !p.IsPrimaryKey) || !insert));
+                                                    && (p.IsSimpleType || p.IsSimpleList)
+                                                    && !p.IsAutoGenerated);
                 if (queryInvalidationByVersion)
                 {
                     dependencies = new List<QueryDependency> { new QueryDependency(validProperties.Select(p => p.PropertyName).ToArray()) };
@@ -960,18 +1069,64 @@ namespace Nemo.Caching
 
                     if (queryInvalidationByVersion)
                     {
-                        Invalidate(typeof(T), parameters, cache);
+                        Invalidate(typeof(T), parameters);
                     }
                     else
                     {
+                        var removeByIncrement = ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.TrackAndIncrement;
                         var keys = LookupQueries(typeof(T), parameters);
                         foreach (var queryKey in keys)
                         {
-                            cache.Remove(queryKey);
+                            if (removeByIncrement)
+                            {
+                                var revision = _revisionCache.Value.IncrementRevision(queryKey);
+                                if (revision > 0ul)
+                                {
+                                    UpdateRevision(queryKey, revision, cache);
+                                    _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = cache, Key = queryKey, Revision = revision });
+                                }
+                            }
+                            else
+                            {
+                                cache.Remove(queryKey);
+                            }
                         }
                     }
                 }
             }
+        }
+
+        #endregion
+
+        #region Signalling Methods
+
+        public class PublisheRevisionIncrementEventArgs : EventArgs
+        {
+            public CacheProvider Cache { get; set; }
+            public string Key { get; set; }
+            public ulong Revision { get; set; }
+        }
+
+        private static EventHandler<PublisheRevisionIncrementEventArgs> _publishRevisionEvent = delegate { };
+
+        public static event EventHandler<PublisheRevisionIncrementEventArgs> PublishRevisionIncrement
+        {
+            add
+            {
+                _publishRevisionEvent += value.MakeWeak(eh => _publishRevisionEvent -= eh);
+            }
+            remove 
+            {
+            }
+        }
+
+        public static void UpdateRevision(string key, ulong revision, CacheProvider cache)
+        {
+            if (cache != null)
+            {
+                key = cache.ComputeKey(key, revision);
+            }
+            _revisions.AddOrUpdate(key, revision, (k, r) => revision);
         }
 
         #endregion

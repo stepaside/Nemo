@@ -418,7 +418,7 @@ namespace Nemo
             CacheProvider cache = null;
             CacheItem[] cachedItems = null;
             string queryKey = null;
-            ulong[] queryKeyExpectedVerison = null;
+            ulong[] querySignature = null;
             string[] keys = null;
             bool collision = false;
             
@@ -431,11 +431,11 @@ namespace Nemo
 
                 var queryKeyResult = ObjectCache.GetQueryKey<TResult>(operation, parameters, returnType, cache);
                 queryKey = queryKeyResult.Item1;
-                queryKeyExpectedVerison = queryKeyResult.Item2;
+                querySignature = queryKeyResult.Item2;
 
-                if (cache is IRevisionProvider && queryKeyExpectedVerison != null)
+                if (querySignature != null && cache is IRevisionProvider)
                 {
-                    ((IRevisionProvider)cache).ExpectedVersion = queryKeyExpectedVerison;
+                    ((IRevisionProvider)cache).Signature = querySignature;
                 }
 
                 if (queryKey != null)
@@ -470,7 +470,7 @@ namespace Nemo
                     {
                         if (ConfigurationFactory.Configuration.CacheCollisionDetection && cachedItems.Any(c => !c.IsValid<TResult>()))
                         {
-                            ObjectCache.Remove(queryKey, cache);
+                            ObjectCache.Remove<TResult>(queryKey, parameters, cache);
                             collision = true;
                         }
                         else

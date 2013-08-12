@@ -185,7 +185,7 @@ namespace Nemo.Caching.Providers
             key = ComputeKey(key);
             var taskGet = _connection.Strings.Get(_database, key);
             var buffer = taskGet.Result;
-            return ProcessRetrieve(buffer, key, this.ExpectedVersion);
+            return ProcessRetrieve(buffer, key, ((IRevisionProvider)this).Signature);
         }
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
@@ -205,7 +205,7 @@ namespace Nemo.Caching.Providers
                     var key = keysArray[i];
                     var originalKey = realKeysArray[i];
 
-                    var item = ProcessRetrieve(buffer, key, this.ExpectedVersion);
+                    var item = ProcessRetrieve(buffer, key, ((IRevisionProvider)this).Signature);
                     if (item != null)
                     {
                         result.Add(originalKey, item);
@@ -235,7 +235,7 @@ namespace Nemo.Caching.Providers
 
         #region IRevisionProvider Members
 
-        public ulong GetRevision(string key)
+        ulong IRevisionProvider.GetRevision(string key)
         {
             key = "REVISION::" + key;
             var task = _connection.Strings.GetInt64(_database, key);
@@ -244,7 +244,7 @@ namespace Nemo.Caching.Providers
             {
                 var ticks = (ulong)GetTicks();
                 var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(ticks));
-                return isSet.Result ? ticks : GetRevision(key);
+                return isSet.Result ? ticks : ((IRevisionProvider)this).GetRevision(key);
             }
             else
             {
@@ -252,9 +252,10 @@ namespace Nemo.Caching.Providers
             }
         }
 
-        public IDictionary<string, ulong> GetRevisions(IEnumerable<string> keys)
+        IDictionary<string, ulong> IRevisionProvider.GetRevisions(IEnumerable<string> keys)
         {
-            var keyArray = keys.Select(k => "REVISION::" + k).ToArray();
+            var prefix = "REVISION::";
+            var keyArray = keys.Select(k => prefix + k).ToArray();
             var task = _connection.Strings.Get(_database, keyArray);
             var values = task.Result;
             if (values != null)
@@ -268,19 +269,20 @@ namespace Nemo.Caching.Providers
                     var buffer = values[i];
                     if (buffer != null)
                     {
-                        items.Add(keyArray[i], (ulong)BitConverter.ToInt64(buffer, 0));
+                        items.Add(keyArray[i].Substring(prefix.Length), (ulong)BitConverter.ToInt64(buffer, 0));
                     }
                     else
                     {
                         missingKeys.Add(keyArray[i]);
                     }
                 }
-                
+
                 foreach (var key in missingKeys)
                 {
+                    var originalKey = key.Substring(prefix.Length);
                     var ticks = (ulong)GetTicks();
                     var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(ticks));
-                    items.Add(key, isSet.Result ? ticks : GetRevision(key));
+                    items.Add(originalKey, isSet.Result ? ticks : ((IRevisionProvider)this).GetRevision(originalKey));
                 }
 
                 return items;
@@ -288,15 +290,15 @@ namespace Nemo.Caching.Providers
             return null;
         }
 
-        public ulong IncrementRevision(string key, ulong delta = 1)
+        ulong IRevisionProvider.IncrementRevision(string key, ulong delta = 1)
         {
             key = "REVISION::" + key;
             var task = _connection.Strings.Increment(_database, key, (long)delta);
             return (ulong)task.Result;
         }
 
-        public ulong[] ExpectedVersion { get; set; }
-        
+        ulong[] IRevisionProvider.Signature { get; set; }
+
         #endregion
 
         public override bool TryAcquireLock(string key)
@@ -391,7 +393,7 @@ namespace Nemo.Caching.Providers
                     var key = keysArray[i];
                     var originalKey = realKeysArray[i];
 
-                    var item = ProcessRetrieve(buffer, key, this.ExpectedVersion);
+                    var item = ProcessRetrieve(buffer, key, ((IRevisionProvider)this).Signature);
                     if (item != null)
                     {
                         result.Add(originalKey, item);
@@ -421,7 +423,7 @@ namespace Nemo.Caching.Providers
             var version = ticks;
             using (var tran = _connection.CreateTransaction())
             {
-                var versionKey = "VERSION::" + prefixedKey;
+                var versionKey = "CAS::" + prefixedKey;
                 var setnx = await tran.Strings.SetIfNotExists(_database, versionKey, BitConverter.GetBytes(version));
                 
                 if (!setnx)

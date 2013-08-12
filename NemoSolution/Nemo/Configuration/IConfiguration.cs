@@ -27,8 +27,9 @@ namespace Nemo.Configuration
         bool GenerateUpdateSql { get; }
         Type DefaultCacheProvider { get; }
         Type TrackingCacheProvider { get; }
+        Type RevisionCacheProvider { get; }
         Type AuditLogProvider { get; }
-        bool QueryInvalidationByVersion { get; }
+        CacheInvalidationStrategy CacheInvalidationStrategy { get; }
 
         IConfiguration SetDistributedLockTimeout(int value);
         IConfiguration SetDefaultContextLevelCache(ContextLevelCacheType value);
@@ -50,7 +51,8 @@ namespace Nemo.Configuration
         IConfiguration SetGenerateUpdateSql(bool value);
         IConfiguration SetDefaultCacheProvider(Type value);
         IConfiguration SetTrackingCacheProvider(Type value);
+        IConfiguration SetRevisionCacheProvider(Type value);
         IConfiguration SetAuditLogProvider(Type value);
-        IConfiguration SetQueryInvalidationByVersion(bool value);
+        IConfiguration SetCacheInvalidationStrategy(CacheInvalidationStrategy value);
     }
 }

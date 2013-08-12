@@ -65,6 +65,28 @@ namespace Nemo.Utilities
             return result;
         }
 
+        public static TEnum AppSettings<TEnum>(string name, TEnum defaultValue)
+            where TEnum : struct
+        {
+            if (!typeof(TEnum).IsEnum)
+            {
+                return defaultValue;
+            }
+
+            var value = AppSettings(name);
+            if (string.IsNullOrEmpty(value))
+            {
+                return defaultValue;
+            }
+
+            TEnum result;
+            if (!Enum.TryParse(value, true, out result))
+            {
+                result = defaultValue;
+            }
+            return result;
+        }
+
 		public static string ConnectionString(string keyName)
 		{
 			ConnectionStringSettings connSettings = ConnectionStringSetting(keyName);

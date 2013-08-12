@@ -19,7 +19,7 @@ namespace Nemo.Configuration
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
         private int _staleCacheTimeout = Config.AppSettings("StaleCacheTimeout", 2);
         private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 60);
-        private bool _queryInvalidationByVersion = Config.AppSettings("QueryInvalidationByVersion", false);
+        private CacheInvalidationStrategy _cacheInvalidationStrategy = Config.AppSettings<CacheInvalidationStrategy>("CacheInvalidationStrategy", CacheInvalidationStrategy.TrackAndIncrement);
 
         private ContextLevelCacheType _defaultContextLevelCache = ParseContextLevelCacheConfig();
         private OperationNamingConvention _operationNamingConvention = ParseOperationNamingConventionConfig();
@@ -34,6 +34,7 @@ namespace Nemo.Configuration
         private bool _generateUpdateSql = false;
         private Type _cacheProvider = typeof(MemoryCacheProvider);
         private Type _trackingCacheProvider = typeof(RedisCacheProvider);
+        private Type _revisionCacheProvider = typeof(RedisCacheProvider);
         private Type _auditLogProvider = null;
 
         private DefaultConfiguration() { }
@@ -198,6 +199,14 @@ namespace Nemo.Configuration
             }
         }
 
+        public Type RevisionCacheProvider
+        {
+            get
+            {
+                return _revisionCacheProvider;
+            }
+        }
+
         public Type AuditLogProvider
         {
             get
@@ -206,11 +215,11 @@ namespace Nemo.Configuration
             }
         }
 
-        public bool QueryInvalidationByVersion
+        public CacheInvalidationStrategy CacheInvalidationStrategy
         {
             get
             {
-                return _queryInvalidationByVersion;
+                return _cacheInvalidationStrategy;
             }
         }
 
@@ -367,6 +376,15 @@ namespace Nemo.Configuration
             return this;
         }
 
+        public IConfiguration SetRevisionCacheProvider(Type value)
+        {
+            if (value == null || (typeof(CacheProvider).IsAssignableFrom(value) && typeof(IPersistentCacheProvider).IsAssignableFrom(value) && typeof(IRevisionProvider).IsAssignableFrom(value)))
+            {
+                _revisionCacheProvider = value;
+            }
+            return this;
+        }
+
         public IConfiguration SetAuditLogProvider(Type value)
         {
             if (value == null || typeof(AuditLogProvider).IsAssignableFrom(value))
@@ -376,76 +394,40 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetQueryInvalidationByVersion(bool value)
+        public IConfiguration SetCacheInvalidationStrategy(CacheInvalidationStrategy value)
         {
-            _queryInvalidationByVersion = value;
+            _cacheInvalidationStrategy = value;
             return this;
         }
 
         private static ContextLevelCacheType ParseContextLevelCacheConfig()
         {
-            ContextLevelCacheType result;
-            var value = Config.AppSettings("DefaultContextLevelCache");
-            if (value == null || !Enum.TryParse<ContextLevelCacheType>(value, true, out result))
-            {
-                result = ContextLevelCacheType.LazyList;
-            }
-            return result;
+            return Config.AppSettings<ContextLevelCacheType>("DefaultContextLevelCache", ContextLevelCacheType.LazyList);
         }
 
         private static OperationNamingConvention ParseOperationNamingConventionConfig()
         {
-            OperationNamingConvention result;
-            var value = Config.AppSettings("OperationNamingConvention");
-            if (value == null || !Enum.TryParse<OperationNamingConvention>(value, true, out result))
-            {
-                result = OperationNamingConvention.PrefixTypeName_Operation;
-            }
-            return result;
+            return Config.AppSettings<OperationNamingConvention>("OperationNamingConvention", OperationNamingConvention.PrefixTypeName_Operation);
         }
 
         private static FetchMode ParseFetchModeConfig()
         {
-            FetchMode result;
-            var value = Config.AppSettings("DefaultFetchMode");
-            if (value == null || !Enum.TryParse<FetchMode>(value, true, out result))
-            {
-                result = FetchMode.Eager;
-            }
-            return result;
+            return Config.AppSettings<FetchMode>("DefaultFetchMode", FetchMode.Eager);
         }
 
         private static MaterializationMode ParseMaterializationModeConfig()
         {
-            MaterializationMode result;
-            var value = Config.AppSettings("DefaultMaterializationMode");
-            if (value == null || !Enum.TryParse<MaterializationMode>(value, true, out result))
-            {
-                result = MaterializationMode.Partial;
-            }
-            return result;
+            return Config.AppSettings<MaterializationMode>("DefaultMaterializationMode", MaterializationMode.Partial);
         }
 
         private static ChangeTrackingMode ParseChangeTrackingModeConfig()
         {
-            ChangeTrackingMode result;
-            var value = Config.AppSettings("DefaultChangeTrackingMode");
-            if (value == null || !Enum.TryParse<ChangeTrackingMode>(value, true, out result))
-            {
-                result = ChangeTrackingMode.Automatic;
-            }
-            return result;
+            return Config.AppSettings<ChangeTrackingMode>("DefaultChangeTrackingMode", ChangeTrackingMode.Automatic);
         }
 
         private static HashAlgorithmName ParseHashAlgorithmNameConfig()
         {
-            HashAlgorithmName result;
-            var value = Config.AppSettings("DefaultHashAlgorithmName");
-            if (value == null || !Enum.TryParse<HashAlgorithmName>(value, true, out result))
-            {
-                result = HashAlgorithmName.JenkinsHash;
-            }
-            return result;
+            return Config.AppSettings<HashAlgorithmName>("DefaultHashAlgorithmName", HashAlgorithmName.JenkinsHash);
         }
     }
 }

@@ -118,7 +118,7 @@ namespace Nemo.Caching.Providers.Generic
                 var value = _client.Get<byte[]>(key);
                 if (value != null)
                 {
-                    result = ProcessRetrieve(value, key, originalKey, LocalCache, this.ExpectedVersion);
+                    result = ProcessRetrieve(value, key, originalKey, LocalCache, ((IRevisionProvider)this).Signature);
                 }
             }
             return result;
@@ -131,7 +131,7 @@ namespace Nemo.Caching.Providers.Generic
             {
                 var computedKeys = ComputeKey(keys);
                 var localCache = LocalCache;
-                var expectedVersion = this.ExpectedVersion;
+                var expectedVersion = ((IRevisionProvider)this).Signature;
                 
                 Parallel.ForEach(computedKeys.Keys, k =>
                 {
@@ -145,7 +145,6 @@ namespace Nemo.Caching.Providers.Generic
                 if (items.Count < computedKeys.Count)
                 {
                     var missingItems = _client.Get(items.Count == 0 ? computedKeys.Keys : computedKeys.Keys.Except(items.Keys));
-                    var revisions = GetRevisions(missingItems.Keys);
 
                     Parallel.ForEach(computedKeys.Keys, k =>
                     {
@@ -233,14 +232,14 @@ namespace Nemo.Caching.Providers.Generic
 
         #region IRevisionProvider Members
 
-        public ulong GetRevision(string key)
+        ulong IRevisionProvider.GetRevision(string key)
         {
             key = "REVISION::" + key;
             var value = _client.Get(key);
             if (value == null)
             {
                 var ticks = (ulong)GetTicks();
-                return _client.Store(StoreMode.Add, key, ticks) ? ticks : GetRevision(key);
+                return _client.Store(StoreMode.Add, key, ticks) ? ticks : ((IRevisionProvider)this).GetRevision(key);
             }
             else
             {
@@ -248,9 +247,10 @@ namespace Nemo.Caching.Providers.Generic
             }
         }
 
-        public IDictionary<string, ulong> GetRevisions(IEnumerable<string> keys)
+        IDictionary<string, ulong> IRevisionProvider.GetRevisions(IEnumerable<string> keys)
         {
-            var keyArray = keys.Select(k => "REVISION::" + k).ToArray();
+            var prefix = "REVISION::";
+            var keyArray = keys.Select(k => prefix + k).ToArray();
             var values = _client.Get(keyArray);
             if (values != null)
             {
@@ -262,7 +262,7 @@ namespace Nemo.Caching.Providers.Generic
                     object value;
                     if (values.TryGetValue(key, out value) && value != null)
                     {
-                        items.Add(key, Convert.ToUInt64(value));
+                        items.Add(key.Substring(prefix.Length), Convert.ToUInt64(value));
                     }
                     else
                     {
@@ -272,8 +272,9 @@ namespace Nemo.Caching.Providers.Generic
 
                 foreach (var key in missingKeys)
                 {
+                    var originalKey = key.Substring(prefix.Length);
                     var ticks = (ulong)GetTicks();
-                    items.Add(key, _client.Store(StoreMode.Add, key, ticks) ? ticks : GetRevision(key));
+                    items.Add(originalKey, _client.Store(StoreMode.Add, key, ticks) ? ticks : ((IRevisionProvider)this).GetRevision(originalKey));
                 }
 
                 return items;
@@ -281,13 +282,13 @@ namespace Nemo.Caching.Providers.Generic
             return null;
         }
 
-        public ulong IncrementRevision(string key, ulong delta = 1)
+        ulong IRevisionProvider.IncrementRevision(string key, ulong delta = 1)
         {
             key = "REVISION::" + key;
             return _client.Increment(key, 1, delta == 0 ? 1 : delta);
         }
 
-        public ulong[] ExpectedVersion { get; set; }
+        ulong[] IRevisionProvider.Signature { get; set; }
 
         #endregion
 

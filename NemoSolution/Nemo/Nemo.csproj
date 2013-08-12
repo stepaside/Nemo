@@ -40,13 +40,13 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>packages\BookSleeve.1.3.38\lib\BookSleeve.dll</HintPath>
     </Reference>
-    <Reference Include="Couchbase, Version=1.2.6.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
+    <Reference Include="Couchbase, Version=1.2.7.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\CouchbaseNetClient.1.2.6\lib\net40\Couchbase.dll</HintPath>
+      <HintPath>packages\CouchbaseNetClient.1.2.7\lib\net40\Couchbase.dll</HintPath>
     </Reference>
-    <Reference Include="Enyim.Caching, Version=2.12.0.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
+    <Reference Include="Enyim.Caching, Version=1.2.7.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\CouchbaseNetClient.1.2.6\lib\net40\Enyim.Caching.dll</HintPath>
+      <HintPath>packages\CouchbaseNetClient.1.2.7\lib\net40\Enyim.Caching.dll</HintPath>
     </Reference>
     <Reference Include="log4net, Version=1.2.11.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -55,7 +55,7 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\Newtonsoft.Json.5.0.5\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <HintPath>packages\Newtonsoft.Json.5.0.6\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations">
@@ -93,6 +93,7 @@
     <Compile Include="Caching\Providers\Generic\MemcachedCacheProvider.cs" />
     <Compile Include="Caching\CacheValue.cs" />
     <Compile Include="Caching\Providers\CouchbaseCacheProvider.cs" />
+    <Compile Include="Caching\CacheInvalidationStrategy.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
     <Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" />
@@ -245,6 +246,7 @@
     <Compile Include="Utilities\Numbers.cs" />
     <Compile Include="Utilities\StringStream.cs" />
     <Compile Include="Utilities\ThreadSafeRandom.cs" />
+    <Compile Include="Utilities\WeakEvent.cs" />
     <Compile Include="Utilities\Xml.cs" />
     <Compile Include="Utilities\Xsd.cs" />
     <Compile Include="Validation\IResourceKeyProvider.cs" />

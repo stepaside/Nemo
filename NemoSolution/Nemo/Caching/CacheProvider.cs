@@ -6,6 +6,7 @@ using Nemo.Extensions;
 using Nemo.Fn;
 using System.Threading;
 using System.Collections.Concurrent;
+using Nemo.Configuration;
 
 namespace Nemo.Caching
 {
@@ -13,7 +14,6 @@ namespace Nemo.Caching
     {
         private readonly bool _userContext;
         protected readonly string _cacheNamespace;
-        private ulong? _revision;
 
         private bool _slidingExpiration;
         private CacheExpirationType _expirationType = CacheExpirationType.Never;
@@ -26,7 +26,6 @@ namespace Nemo.Caching
             if (options != null)
             {
                 _cacheNamespace = options.Namespace;
-                
                 _userContext = options.UserContext;
                 _slidingExpiration = options.SlidingExpiration;
                 
@@ -53,14 +52,6 @@ namespace Nemo.Caching
             }
         }
 
-        public virtual void RemoveByNamespace()
-        {
-            if (!string.IsNullOrEmpty(_cacheNamespace) && this is IRevisionProvider)
-            {
-                _revision = ((IRevisionProvider)this).IncrementRevision(_cacheNamespace);
-            }
-        }
-
         public abstract void RemoveAll();
         public abstract object Remove(string key);
         public abstract bool Clear(string key);
@@ -70,19 +61,7 @@ namespace Nemo.Caching
         public abstract object Retrieve(string key);
         public abstract IDictionary<string, object> Retrieve(IEnumerable<string> keys);
         public abstract bool Touch(string key, TimeSpan lifeSpan);
-
-        public Tuple<object, bool> RetrieveAndTouch(string key, TimeSpan lifeSpan)
-        {
-            var result = Retrieve(key);
-            var success = false;
-            if (result != null)
-            {
-                success = Touch(key, lifeSpan);
-            }
-            return Tuple.Create(result, success);
-        }
-
-        
+                
         public bool IsDistributed
         {
             get
@@ -105,35 +84,29 @@ namespace Nemo.Caching
             {
                 if (!string.IsNullOrEmpty(_cacheNamespace))
                 {
-                    var ns = _cacheNamespace + "::";
-                    if (_revision != null)
-                    {
-                        ns += NamespaceRevision + "::";
-                    }
-                    return ns;
+                    return _cacheNamespace + "::";
                 }
                 return string.Empty;
             }
         }
-
-        public ulong NamespaceRevision
-        {
-            get
-            {
-                if (!_revision.HasValue && !string.IsNullOrEmpty(_cacheNamespace) && this is IRevisionProvider)
-                {
-                    _revision = ((IRevisionProvider)this).GetRevision(_cacheNamespace);
-                }
-
-                return _revision.HasValue ? _revision.Value : 0ul;
-            }
-        }
-
+        
         public bool IsUserContext
         {
             get
             {
                 return _userContext;
+            }
+        }
+
+        public string UserPrefix
+        {
+            get
+            {
+                if (IsUserContext)
+                {
+                    return Thread.CurrentPrincipal.Identity.Name + "::";
+                }
+                return string.Empty;
             }
         }
 
@@ -227,50 +200,50 @@ namespace Nemo.Caching
             return Maybe<DateTimeOffset>.Empty;
         }
 
-        protected IDictionary<string, string> ComputeKey(IEnumerable<string> keys)
+        public IDictionary<string, string> ComputeKey(IEnumerable<string> keys)
         {
-            return keys.ToDictionary(key => ComputeKey(key), key => key);
+            return keys.ToDictionary(key => ComputeKey(key, null), key => key);
         }
 
-        protected string ComputeKey(string key)
+        public IDictionary<string, string> ComputeKey(IDictionary<string, ulong?> keysWithRevision)
+        {
+            return keysWithRevision.ToDictionary(p => ComputeKey(p.Key, p.Value), p => p.Key);
+        }
+
+        public string ComputeKey(string key, ulong? revision = null)
         {
             string result = null;
-            if (IsUserContext)
+
+            result = UserPrefix + Namespace + key;
+
+            if (revision != null)
             {
-                result = ComputeUserKey(Namespace + key);
+                result = result + ";" + revision.Value;
             }
-            else
-            {
-                result = Namespace + key;
-            }
+
             return result;
         }
 
-        protected string ComputeUserKey(string key)
+        public string CleanKey(string computedKey)
         {
-            return GetUserPrefix() + key;
-        }
-
-        protected string GetUserPrefix()
-        {
-            var userName = Thread.CurrentPrincipal.Identity.Name;
-            return "__U_" + userName.Length + "_" + userName + "_";
-        }
-
-        protected string RemoveUserPrefix(string key)
-        {
-            if (!string.IsNullOrEmpty(key) && key.StartsWith("__U_"))
+            var pos = computedKey.LastIndexOf(';');
+            if (pos > -1)
             {
-                var pos = key.IndexOf('_', 4);
-                var lengthValue = key.Substring(4, pos - 4);
-                int length;
-                if (int.TryParse(lengthValue, out length))
+                computedKey = computedKey.Substring(0, pos);
+            }
+
+            if (IsUserContext)
+            {
+                pos = computedKey.IndexOf("::");
+                if (pos > -1)
                 {
-                    // prefix (__U_) + length of the length value + underscore + length of the user id + underscore
-                    key = key.Substring(4 + lengthValue.Length + 1 + length + 1);
+                    computedKey = computedKey.Substring(pos + 2);
                 }
             }
-            return key;
+
+            computedKey = computedKey.Substring(Namespace.Length);
+
+            return computedKey;
         }
     }
 }
