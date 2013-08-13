@@ -138,6 +138,7 @@ namespace Nemo.Caching
             }
 
             var cacheKey = new CacheKey(parametersForCaching, objectType, operation, returnType);
+            string queryKey = null;
             ulong[] signature = null;
 
             var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
@@ -191,6 +192,7 @@ namespace Nemo.Caching
                     }
                 }
 
+                queryKey = cacheKey.Value;
                 signature = revisions.Arrange(subspaces, p => p.Key).Select(p => p.Value).ToArray();
             }
             else if (strategy == CacheInvalidationStrategy.TrackAndIncrement)
@@ -199,11 +201,12 @@ namespace Nemo.Caching
                 var revision = _revisions.GetOrAdd(computedKey, key => _revisionCache.Value.GetRevision(cache.CleanKey(computedKey)));
                 if (revision > 0ul)
                 {
-                    signature = new[] { revision };
+                    computedKey = cache.ComputeKey(cacheKey.Value, revision);
                 }
+                queryKey = computedKey;
             }
 
-            return Tuple.Create(cacheKey.Value, signature);
+            return Tuple.Create(queryKey, signature);
         }
 
         internal static bool CanBeBuffered<T>()
@@ -869,24 +872,11 @@ namespace Nemo.Caching
                     var key = new CacheKey(item).Value;
                     var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
 
-                    if (strategy != CacheInvalidationStrategy.TrackAndRemove)
+                    if (strategy == CacheInvalidationStrategy.IncrementOnly)
                     {
-                        if (strategy == CacheInvalidationStrategy.TrackAndIncrement)
-                        {
-                            var revision = _revisionCache.Value.IncrementRevision(key);
-                            success = revision > 0ul;
-                            if (success)
-                            {
-                                UpdateRevision(key, revision, cache);
-                                _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = cache, Key = key, Revision = revision });
-                            }
-                        }
-                        else
-                        {
-                            success = Invalidate<T>(item);
-                        }
+                        success = Invalidate<T>(item);
                     }
-                    else 
+                    else
                     {
                         success = cache.Clear(key);
                     }
