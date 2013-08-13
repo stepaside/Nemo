@@ -44,7 +44,7 @@ namespace NemoTest
                 .SetLogging(false)
                 .SetCacheCollisionDetection(false)
                 .SetTrackingCacheProvider(null)
-                .SetQueryInvalidationByVersion(true);
+                .SetCacheInvalidationStrategy(CacheInvalidationStrategy.IncrementOnly);
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
