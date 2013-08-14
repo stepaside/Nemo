@@ -282,6 +282,11 @@ namespace Nemo.Caching.Providers.Generic
             return null;
         }
 
+        IDictionary<string, ulong> IRevisionProvider.GetAllRevisions()
+        {
+            return new Dictionary<string, ulong>();
+        }
+
         ulong IRevisionProvider.IncrementRevision(string key, ulong delta = 1)
         {
             key = "REVISION::" + key;

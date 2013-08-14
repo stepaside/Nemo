@@ -9,6 +9,7 @@ namespace Nemo.Caching
     {
         ulong GetRevision(string key);
         IDictionary<string, ulong> GetRevisions(IEnumerable<string> keys);
+        IDictionary<string, ulong> GetAllRevisions();
         ulong IncrementRevision(string key, ulong delta = 1);
         ulong[] Signature { get; set; }
     }

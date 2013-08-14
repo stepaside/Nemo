@@ -29,8 +29,16 @@ namespace Nemo.Caching
 
         private static Lazy<IRevisionProvider> _revisionCache = new Lazy<IRevisionProvider>(() => (IRevisionProvider)CacheFactory.GetProvider(ConfigurationFactory.Configuration.TrackingCacheProvider), true);
 
-        private static ConcurrentDictionary<string, ulong> _revisions = new ConcurrentDictionary<string, ulong>();
-        
+        private static ConcurrentDictionary<string, ulong> _revisions = null;
+
+        public static void Initialize()
+        {
+            if (!_revisionCache.IsValueCreated && _revisionCache.Value != null)
+            {
+                _revisions = new ConcurrentDictionary<string,ulong>(_revisionCache.Value.GetAllRevisions());
+            }
+        }
+
         #region Helper Methods
 
         internal static bool IsCacheable<T>()

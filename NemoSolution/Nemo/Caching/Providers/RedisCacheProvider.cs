@@ -290,6 +290,14 @@ namespace Nemo.Caching.Providers
             return null;
         }
 
+        IDictionary<string, ulong> IRevisionProvider.GetAllRevisions()
+        {
+            var prefix = "REVISION::";
+            var task = _connection.Keys.Find(_database, prefix + "*");
+            var keys = task.Result;
+            return ((IRevisionProvider)this).GetRevisions(keys);
+        }
+
         ulong IRevisionProvider.IncrementRevision(string key, ulong delta = 1)
         {
             key = "REVISION::" + key;
