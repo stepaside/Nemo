@@ -62,9 +62,9 @@ namespace Nemo.Caching
             }
 
             var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
-            if (value.QueryKey && (strategy == CacheInvalidationStrategy.IncrementOnly || strategy == CacheInvalidationStrategy.TrackAndIncrement) && this is IRevisionProvider)
+            if (value.QueryKey && (strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature))
             {
-                value.Signature = ((IRevisionProvider)this).Signature;
+                value.Signature = this.Signature;
             }
 
             return value.ToBytes();

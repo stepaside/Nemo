@@ -61,7 +61,9 @@ namespace Nemo.Caching
         public abstract object Retrieve(string key);
         public abstract IDictionary<string, object> Retrieve(IEnumerable<string> keys);
         public abstract bool Touch(string key, TimeSpan lifeSpan);
-                
+
+        public ulong[] Signature { get; set; }
+
         public bool IsDistributed
         {
             get

@@ -433,9 +433,9 @@ namespace Nemo
                 queryKey = queryKeyResult.Item1;
                 querySignature = queryKeyResult.Item2;
 
-                if (querySignature != null && cache is IRevisionProvider)
+                if (querySignature != null)
                 {
-                    ((IRevisionProvider)cache).Signature = querySignature;
+                    cache.Signature = querySignature;
                 }
 
                 if (queryKey != null)

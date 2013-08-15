@@ -10,6 +10,7 @@ namespace Nemo.Caching
     {
         TrackAndRemove,
         TrackAndIncrement,
-        IncrementOnly
+        QuerySignature,
+        DelayedQuerySignature
     }
 }

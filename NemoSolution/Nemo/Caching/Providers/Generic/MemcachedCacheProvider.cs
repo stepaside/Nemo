@@ -118,7 +118,7 @@ namespace Nemo.Caching.Providers.Generic
                 var value = _client.Get<byte[]>(key);
                 if (value != null)
                 {
-                    result = ProcessRetrieve(value, key, originalKey, LocalCache, ((IRevisionProvider)this).Signature);
+                    result = ProcessRetrieve(value, key, originalKey);
                 }
             }
             return result;
@@ -131,7 +131,6 @@ namespace Nemo.Caching.Providers.Generic
             {
                 var computedKeys = ComputeKey(keys);
                 var localCache = LocalCache;
-                var expectedVersion = ((IRevisionProvider)this).Signature;
                 
                 Parallel.ForEach(computedKeys.Keys, k =>
                 {
@@ -152,7 +151,7 @@ namespace Nemo.Caching.Providers.Generic
                         if (missingItems.TryGetValue(k, out item))
                         {
                             var originalKey = computedKeys[k];
-                            item = ProcessRetrieve((byte[])item, k, originalKey, localCache, expectedVersion);
+                            item = ProcessRetrieve((byte[])item, k, originalKey);
                             if (item != null)
                             {
                                 items[originalKey] = item;
@@ -293,11 +292,14 @@ namespace Nemo.Caching.Providers.Generic
             return _client.Increment(key, 1, delta == 0 ? 1 : delta);
         }
 
-        ulong[] IRevisionProvider.Signature { get; set; }
+        ulong IRevisionProvider.GenerateRevision()
+        {
+            return (ulong)GetTicks();
+        }
 
         #endregion
 
-        private CacheValue ProcessRetrieve(byte[] result, string key, string originalKey, IDictionary<string, object> localCache, ulong[] expectedRevision)
+        private CacheValue ProcessRetrieve(byte[] result, string key, string originalKey)
         {
             var cacheValue = CacheValue.FromBytes(result);
             if (this is IStaleCacheProvider && !cacheValue.IsValid())
@@ -305,14 +307,14 @@ namespace Nemo.Caching.Providers.Generic
                 cacheValue = null;
             }
 
-            if (cacheValue != null && !cacheValue.IsValidVersion(expectedRevision))
+            if (cacheValue != null && !cacheValue.IsValidVersion(this.Signature))
             {
                 cacheValue = null;
             }
 
             if (cacheValue != null)
             {
-                localCache[key] = new CacheItem(originalKey, cacheValue);
+                LocalCache[key] = new CacheItem(originalKey, cacheValue);
             }
 
             if (cacheValue != null && SlidingExpiration)

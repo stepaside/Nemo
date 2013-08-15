@@ -185,7 +185,7 @@ namespace Nemo.Caching.Providers
             key = ComputeKey(key);
             var taskGet = _connection.Strings.Get(_database, key);
             var buffer = taskGet.Result;
-            return ProcessRetrieve(buffer, key, ((IRevisionProvider)this).Signature);
+            return ProcessRetrieve(buffer, key);
         }
 
         public override IDictionary<string, object> Retrieve(IEnumerable<string> keys)
@@ -205,7 +205,7 @@ namespace Nemo.Caching.Providers
                     var key = keysArray[i];
                     var originalKey = realKeysArray[i];
 
-                    var item = ProcessRetrieve(buffer, key, ((IRevisionProvider)this).Signature);
+                    var item = ProcessRetrieve(buffer, key);
                     if (item != null)
                     {
                         result.Add(originalKey, item);
@@ -215,11 +215,11 @@ namespace Nemo.Caching.Providers
             return result;
         }
 
-        private CacheValue ProcessRetrieve(byte[] result, string key, ulong[] expectedRevision)
+        private CacheValue ProcessRetrieve(byte[] result, string key)
         {
             var cacheValue = CacheValue.FromBytes(result);
             // If there is a revision mismatch simulate a miss
-            if (cacheValue != null && !cacheValue.IsValidVersion(expectedRevision))
+            if (cacheValue != null && !cacheValue.IsValidVersion(this.Signature))
             {
                 cacheValue = null;
             }
@@ -305,7 +305,10 @@ namespace Nemo.Caching.Providers
             return (ulong)task.Result;
         }
 
-        ulong[] IRevisionProvider.Signature { get; set; }
+        ulong IRevisionProvider.GenerateRevision()
+        {
+            return (ulong)GetTicks();
+        }
 
         #endregion
 
@@ -378,7 +381,7 @@ namespace Nemo.Caching.Providers
         object IPersistentCacheProvider.Retrieve(string key, out object version)
         {
             key = ComputeKey(key);
-            version = GenerateVersion(key).Result;
+            version = GenerateConcurrencyControlValue(key).Result;
             var taskGet = _connection.Strings.Get(_database, key);
             var buffer = taskGet.Result;
             return CacheValue.FromBytes(buffer);
@@ -401,7 +404,7 @@ namespace Nemo.Caching.Providers
                     var key = keysArray[i];
                     var originalKey = realKeysArray[i];
 
-                    var item = ProcessRetrieve(buffer, key, ((IRevisionProvider)this).Signature);
+                    var item = ProcessRetrieve(buffer, key);
                     if (item != null)
                     {
                         result.Add(originalKey, item);
@@ -409,23 +412,23 @@ namespace Nemo.Caching.Providers
                 }
             }
 
-            versions = GenerateVersion(keyMap).Result;
+            versions = GenerateConcurrencyControlValues(keyMap).Result;
 
             return result;
         }
 
-        private async Task<IDictionary<string, object>> GenerateVersion(IDictionary<string, string> keys)
+        private async Task<IDictionary<string, object>> GenerateConcurrencyControlValues(IDictionary<string, string> keys)
         {
             var items = new Dictionary<string, object>();
 
             var values = keys.Select(k => k.Value);
 
-            var versionTasks = keys.Select(k => GenerateVersion(k.Key));
+            var versionTasks = keys.Select(k => GenerateConcurrencyControlValue(k.Key));
 
             return values.Zip(await Task.WhenAll(versionTasks), (k, v) => new KeyValuePair<string, object>(k, v)).ToDictionary(k => k.Key, k => k.Value);
         }
 
-        private async Task<long> GenerateVersion(string prefixedKey)
+        private async Task<long> GenerateConcurrencyControlValue(string prefixedKey)
         {
             var ticks = GetTicks();
             var version = ticks;

@@ -31,15 +31,13 @@ namespace Nemo.Caching
 
         private static ConcurrentDictionary<string, ulong> _revisions = new ConcurrentDictionary<string,ulong>();
 
-        static ObjectCache()
+        public static void Initialize() 
         {
             if (!_revisionCache.IsValueCreated && _revisionCache.Value != null)
             {
-                _revisions = new ConcurrentDictionary<string,ulong>(_revisionCache.Value.GetAllRevisions());
+                _revisions = new ConcurrentDictionary<string, ulong>(_revisionCache.Value.GetAllRevisions());
             }
         }
-
-        public static void Initialize() { }
 
         #region Helper Methods
 
@@ -152,53 +150,68 @@ namespace Nemo.Caching
             ulong[] signature = null;
 
             var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
-            if (parameters != null && strategy == CacheInvalidationStrategy.IncrementOnly)
+            if (parameters != null && (strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature))
             {
                 // Compute subspaces
                 var subspaces = GetQuerySubscpaces<T>(parameters);
                 var revisions = new Dictionary<string, ulong>();
-                var missingSubspaces = new List<string>();
-                // Look locally to see if revision is available
-                foreach (var subspace in subspaces)
+                if (strategy == CacheInvalidationStrategy.QuerySignature)
                 {
-                    ulong revision;
-                    if (!_revisions.TryGetValue(subspace, out revision))
-                    {
-                        // No revision found: fetch it in bulk from the revision provider after the loop
-                        missingSubspaces.Add(subspace);
-                    }
-                    else
-                    {
-                        // Found it! Add to the list of revisions
-                        revisions.Add(subspace, revision);
-                    }
-                }
-
-                // Fetch only missing revisions
-                if (missingSubspaces.Count > 0)
-                {
-                    var missinRevisions = _revisionCache.Value.GetRevisions(missingSubspaces);
-                    foreach (var subspace in missingSubspaces)
+                    var missingSubspaces = new List<string>();
+                    // Look locally to see if revision is available
+                    foreach (var subspace in subspaces)
                     {
                         ulong revision;
-                        // Check if the revision has been added while we were retrieving from the revision provider
-                        if (_revisions.TryGetValue(subspace, out revision))
+                        if (!_revisions.TryGetValue(subspace, out revision))
                         {
-                            // Check if the value retrieved is greater than the value stored locally
-                            if (missinRevisions[subspace] > revision)
-                            {
-                                revisions.Add(subspace, missinRevisions[subspace]);
-                            }
-                            else
-                            {
-                                revisions.Add(subspace, revision);
-                            }
+                            // No revision found: fetch it in bulk from the revision provider after the loop
+                            missingSubspaces.Add(subspace);
                         }
                         else
                         {
-                           // The revision has not been added, thus proceed with the retrieved value
-                           revisions.Add(subspace, missinRevisions[subspace]);
+                            // Found it! Add to the list of revisions
+                            revisions.Add(subspace, revision);
                         }
+                    }
+
+                    // Fetch only missing revisions
+                    if (missingSubspaces.Count > 0)
+                    {
+                        var missinRevisions = _revisionCache.Value.GetRevisions(missingSubspaces);
+                        foreach (var subspace in missingSubspaces)
+                        {
+                            ulong revision;
+                            // Check if the revision has been added while we were retrieving from the revision provider
+                            if (_revisions.TryGetValue(subspace, out revision))
+                            {
+                                // Check if the value retrieved is greater than the value stored locally
+                                if (missinRevisions[subspace] > revision)
+                                {
+                                    revisions.Add(subspace, missinRevisions[subspace]);
+                                }
+                                else
+                                {
+                                    revisions.Add(subspace, revision);
+                                }
+                            }
+                            else
+                            {
+                                // The revision has not been added, thus proceed with the retrieved value
+                                revisions.Add(subspace, missinRevisions[subspace]);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var subspace in subspaces)
+                    {
+                        ulong revision;
+                        if (!_revisions.TryGetValue(subspace, out revision))
+                        {
+                            revision = 0ul;
+                        }
+                        revisions.Add(subspace, revision);
                     }
                 }
 
@@ -526,7 +539,8 @@ namespace Nemo.Caching
             where T : class, IBusinessObject
         {
             var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
-            if (parameters != null && parameters.Count > 0 && cache != null && strategy != CacheInvalidationStrategy.IncrementOnly)
+            if (parameters != null && parameters.Count > 0 && cache != null 
+                && strategy != CacheInvalidationStrategy.QuerySignature && strategy != CacheInvalidationStrategy.DelayedQuerySignature)
             {
                 var typeKey = typeof(T).FullName;
                 var parameterKeys = parameters.Select(p => new CacheKey(new SortedDictionary<string, object> { { p.Name, p.Value } }, typeof(T)).Compute().Item1).ToList();
@@ -882,7 +896,7 @@ namespace Nemo.Caching
                     var key = new CacheKey(item).Value;
                     var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
 
-                    if (strategy == CacheInvalidationStrategy.IncrementOnly)
+                    if (strategy == CacheInvalidationStrategy.QuerySignature)
                     {
                         success = Invalidate<T>(item);
                     }
@@ -932,9 +946,10 @@ namespace Nemo.Caching
 
         internal static bool Invalidate(Type objectType, IList<Param> parameters)
         {
-            if (ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.IncrementOnly)
+            var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+            if (strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature)
             {
-                InvalidateImplementation(objectType, parameters);
+                InvalidateImplementation(objectType, parameters, strategy == CacheInvalidationStrategy.DelayedQuerySignature);
                 return true;
             }
             return false;
@@ -943,9 +958,10 @@ namespace Nemo.Caching
         internal static bool Invalidate<T>(IList<Param> parameters)
             where T : class, IBusinessObject
         {
-            if (ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.IncrementOnly)
+            var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+            if (strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature)
             {
-                InvalidateImplementation<T>(parameters);
+                InvalidateImplementation<T>(parameters, strategy == CacheInvalidationStrategy.DelayedQuerySignature);
                 return true;
             }
             return false;
@@ -954,41 +970,58 @@ namespace Nemo.Caching
         internal static bool Invalidate<T>(T businessObject)
             where T : class, IBusinessObject
         {
-            if (ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.IncrementOnly)
+            var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+            if (strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature)
             {
                 var nameMap = Reflector.PropertyCache<T>.NameMap;
                 var parameters = businessObject.GetPrimaryKey<T>(true).Select(pk => new Param { Name = nameMap[pk.Key].ParameterName, Value = pk.Value }).ToList();
-                InvalidateImplementation<T>(parameters);
+                InvalidateImplementation<T>(parameters, strategy == CacheInvalidationStrategy.DelayedQuerySignature);
                 return true;
             }
             return false;
         }
 
-        private static void InvalidateImplementation(Type objectType, IList<Param> parameters)
+        private static void InvalidateImplementation(Type objectType, IList<Param> parameters, bool delayed)
         {
             var variants = GetQuerySubscpacesForInvalidation(objectType, parameters);
             foreach (var variant in variants)
             {
-                var revision = _revisionCache.Value.IncrementRevision(variant);
-                if (revision > 0ul)
+                if (delayed)
                 {
-                    UpdateRevision(variant, revision, null);
+                    var revision = _revisions.AddOrUpdate(variant, _revisionCache.Value.GenerateRevision(), (k, v) => v + 1ul);
                     _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = CacheFactory.GetProvider(GetCacheType(objectType)), Key = variant, Revision = revision });
+                }
+                else
+                {
+                    var revision = _revisionCache.Value.IncrementRevision(variant);
+                    if (revision > 0ul)
+                    {
+                        UpdateRevision(variant, revision, null);
+                        _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = CacheFactory.GetProvider(GetCacheType(objectType)), Key = variant, Revision = revision });
+                    }
                 }
             }
         }
 
-        private static void InvalidateImplementation<T>(IList<Param> parameters)
+        private static void InvalidateImplementation<T>(IList<Param> parameters, bool delayed)
             where T : class, IBusinessObject
         {
             var variants = GetQuerySubscpacesForInvalidation<T>(parameters);
             foreach (var variant in variants)
             {
-                var revision = _revisionCache.Value.IncrementRevision(variant);
-                if (revision > 0ul)
+                if (delayed)
                 {
-                    UpdateRevision(variant, revision, null);
+                    var revision = _revisions.AddOrUpdate(variant, _revisionCache.Value.GenerateRevision(), (k, v) => v + 1ul);
                     _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = CacheFactory.GetProvider(GetCacheType<T>()), Key = variant, Revision = revision });
+                }
+                else
+                {
+                    var revision = _revisionCache.Value.IncrementRevision(variant);
+                    if (revision > 0ul)
+                    {
+                        UpdateRevision(variant, revision, null);
+                        _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = CacheFactory.GetProvider(GetCacheType<T>()), Key = variant, Revision = revision });
+                    }
                 }
             }
         }
@@ -1034,7 +1067,8 @@ namespace Nemo.Caching
             var cacheType = GetCacheType<T>();
             var cache = CacheFactory.GetProvider(cacheType);
 
-            var queryInvalidationByVersion = ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.IncrementOnly;
+            var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+            var queryInvalidationBySignature = strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature;
 
             var dependencies = GetQueryDependencies<T>();
             if (dependencies == null || dependencies.Count == 0)
@@ -1042,7 +1076,7 @@ namespace Nemo.Caching
                 var validProperties = properties.Values.Where(p => p.IsPersistent && p.IsSelectable
                                                     && (p.IsSimpleType || p.IsSimpleList)
                                                     && !p.IsAutoGenerated);
-                if (queryInvalidationByVersion)
+                if (queryInvalidationBySignature)
                 {
                     dependencies = new List<QueryDependency> { new QueryDependency(validProperties.Select(p => p.PropertyName).ToArray()) };
                 }
@@ -1067,13 +1101,13 @@ namespace Nemo.Caching
                         }
                     }
 
-                    if (queryInvalidationByVersion)
+                    if (queryInvalidationBySignature)
                     {
                         Invalidate(typeof(T), parameters);
                     }
                     else
                     {
-                        var removeByIncrement = ConfigurationFactory.Configuration.CacheInvalidationStrategy == CacheInvalidationStrategy.TrackAndIncrement;
+                        var removeByIncrement = strategy == CacheInvalidationStrategy.TrackAndIncrement;
                         var keys = LookupQueries(typeof(T), parameters);
                         foreach (var queryKey in keys)
                         {
