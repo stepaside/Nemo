@@ -254,40 +254,41 @@ namespace Nemo.Caching.Providers
 
         IDictionary<string, ulong> IRevisionProvider.GetRevisions(IEnumerable<string> keys)
         {
-            var prefix = "REVISION::";
-            var keyArray = keys.Select(k => prefix + k).ToArray();
-            var task = _connection.Strings.Get(_database, keyArray);
-            var values = task.Result;
-            if (values != null)
+            var items = new Dictionary<string, ulong>();
+            if (keys.Any())
             {
-                var missingKeys = new List<string>();
-                var items = new Dictionary<string, ulong>();
-
-                var result = new Dictionary<string, object>();
-                for (int i = 0; i < keyArray.Length; i++)
+                var prefix = "REVISION::";
+                var keyArray = keys.Select(k => prefix + k).ToArray();
+                var task = _connection.Strings.Get(_database, keyArray);
+                var values = task.Result;
+                if (values != null)
                 {
-                    var buffer = values[i];
-                    if (buffer != null)
+                    var missingKeys = new List<string>();
+
+                    var result = new Dictionary<string, object>();
+                    for (int i = 0; i < keyArray.Length; i++)
                     {
-                        items.Add(keyArray[i].Substring(prefix.Length), (ulong)BitConverter.ToInt64(buffer, 0));
+                        var buffer = values[i];
+                        if (buffer != null)
+                        {
+                            items.Add(keyArray[i].Substring(prefix.Length), (ulong)BitConverter.ToInt64(buffer, 0));
+                        }
+                        else
+                        {
+                            missingKeys.Add(keyArray[i]);
+                        }
                     }
-                    else
+
+                    foreach (var key in missingKeys)
                     {
-                        missingKeys.Add(keyArray[i]);
+                        var originalKey = key.Substring(prefix.Length);
+                        var ticks = (ulong)GetTicks();
+                        var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(ticks));
+                        items.Add(originalKey, isSet.Result ? ticks : ((IRevisionProvider)this).GetRevision(originalKey));
                     }
                 }
-
-                foreach (var key in missingKeys)
-                {
-                    var originalKey = key.Substring(prefix.Length);
-                    var ticks = (ulong)GetTicks();
-                    var isSet = _connection.Strings.SetIfNotExists(_database, key, BitConverter.GetBytes(ticks));
-                    items.Add(originalKey, isSet.Result ? ticks : ((IRevisionProvider)this).GetRevision(originalKey));
-                }
-
-                return items;
             }
-            return null;
+            return items;
         }
 
         IDictionary<string, ulong> IRevisionProvider.GetAllRevisions()

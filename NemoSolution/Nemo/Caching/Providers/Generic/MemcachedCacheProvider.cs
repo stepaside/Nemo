@@ -248,37 +248,38 @@ namespace Nemo.Caching.Providers.Generic
 
         IDictionary<string, ulong> IRevisionProvider.GetRevisions(IEnumerable<string> keys)
         {
-            var prefix = "REVISION::";
-            var keyArray = keys.Select(k => prefix + k).ToArray();
-            var values = _client.Get(keyArray);
-            if (values != null)
+            var items = new Dictionary<string, ulong>();
+            if (keys.Any())
             {
-                var missingKeys = new List<string>();
-                var items = new Dictionary<string, ulong>();
-                for (int i = 0; i < keyArray.Length; i++ )
+                var prefix = "REVISION::";
+                var keyArray = keys.Select(k => prefix + k).ToArray();
+                var values = _client.Get(keyArray);
+                if (values != null)
                 {
-                    var key = keyArray[i];
-                    object value;
-                    if (values.TryGetValue(key, out value) && value != null)
+                    var missingKeys = new List<string>();
+                    for (int i = 0; i < keyArray.Length; i++)
                     {
-                        items.Add(key.Substring(prefix.Length), Convert.ToUInt64(value));
+                        var key = keyArray[i];
+                        object value;
+                        if (values.TryGetValue(key, out value) && value != null)
+                        {
+                            items.Add(key.Substring(prefix.Length), Convert.ToUInt64(value));
+                        }
+                        else
+                        {
+                            missingKeys.Add(key);
+                        }
                     }
-                    else
+
+                    foreach (var key in missingKeys)
                     {
-                        missingKeys.Add(key);
+                        var originalKey = key.Substring(prefix.Length);
+                        var ticks = (ulong)GetTicks();
+                        items.Add(originalKey, _client.Store(StoreMode.Add, key, ticks) ? ticks : ((IRevisionProvider)this).GetRevision(originalKey));
                     }
                 }
-
-                foreach (var key in missingKeys)
-                {
-                    var originalKey = key.Substring(prefix.Length);
-                    var ticks = (ulong)GetTicks();
-                    items.Add(originalKey, _client.Store(StoreMode.Add, key, ticks) ? ticks : ((IRevisionProvider)this).GetRevision(originalKey));
-                }
-
-                return items;
             }
-            return null;
+            return items;
         }
 
         IDictionary<string, ulong> IRevisionProvider.GetAllRevisions()
