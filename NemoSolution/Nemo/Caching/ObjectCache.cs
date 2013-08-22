@@ -206,11 +206,20 @@ namespace Nemo.Caching
                 {
                     foreach (var subspace in subspaces)
                     {
-                        ulong revision;
-                        if (!_revisions.TryGetValue(subspace, out revision))
+                        var added = false;
+                        
+                        var revision = _revisions.GetOrAdd(subspace, key => 
                         {
-                            revision = 0ul;
+                            var value = _revisionCache.Value.GenerateRevision();
+                            added = true;
+                            return value;
+                        });
+
+                        if (added)
+                        {
+                            _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = cache, Key = subspace, Revision = revision });
                         }
+
                         revisions.Add(subspace, revision);
                     }
                 }
