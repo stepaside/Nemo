@@ -613,36 +613,36 @@ namespace Nemo.Caching
 
         private static IEnumerable<string> GetQuerySubscpaces<T>(IList<Param> parameters)
         {
-            return GetQuerySubscpacesImplementation<T>(parameters, value => Tuple.Create("?", value != "*"));
+            return GetQuerySubscpacesImplementation<T>(parameters, true, value => Tuple.Create("?", value != "*"));
         }
 
         private static IEnumerable<string> GetQuerySubscpacesForInvalidation<T>(IList<Param> parameters)
         {
-            return GetQuerySubscpacesImplementation<T>(parameters, value => Tuple.Create("?", value == "*"), value => Tuple.Create("*", value != "*"));
+            return GetQuerySubscpacesImplementation<T>(parameters, false, value => Tuple.Create("?", value == "*"), value => Tuple.Create("*", value != "*"));
         }
 
         private static IEnumerable<string> GetQuerySubscpacesForInvalidation(Type objectType, IList<Param> parameters)
         {
-            return GetQuerySubscpacesImplementation(objectType, parameters, value => Tuple.Create("?", value == "*"), value => Tuple.Create("*", value != "*"));
+            return GetQuerySubscpacesImplementation(objectType, parameters, false, value => Tuple.Create("?", value == "*"), value => Tuple.Create("*", value != "*"));
         }
 
-        private static IEnumerable<string> GetQuerySubscpacesImplementation<T>(IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
+        private static IEnumerable<string> GetQuerySubscpacesImplementation<T>(IList<Param> parameters, bool generate, params Func<string, Tuple<string, bool>>[] rules)
         {
             var names = Reflector.PropertyCache<T>.NameMap.Values.Where(p => p.IsSelectable && p.IsPersistent && (p.IsSimpleType || p.IsSimpleList)).Select(p => p.ParameterName ?? p.PropertyName).OrderBy(_ => _).ToList();
-            return GetQuerySubscpacesImplementation(typeof(T).FullName, names, parameters, rules);
+            return GetQuerySubscpacesImplementation(typeof(T).FullName, names, parameters, generate, rules);
         }
 
-        private static IEnumerable<string> GetQuerySubscpacesImplementation(Type objectType, IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
+        private static IEnumerable<string> GetQuerySubscpacesImplementation(Type objectType, IList<Param> parameters, bool generate, params Func<string, Tuple<string, bool>>[] rules)
         {
             var names = Reflector.GetPropertyMap(objectType).Values.Where(p => p.IsSelectable && p.IsPersistent && (p.IsSimpleType || p.IsSimpleList)).Select(p => p.ParameterName ?? p.PropertyName).OrderBy(_ => _).ToList();
-            return GetQuerySubscpacesImplementation(objectType.FullName, names, parameters, rules);
+            return GetQuerySubscpacesImplementation(objectType.FullName, names, parameters, generate, rules);
         }
 
-        private static IEnumerable<string> GetQuerySubscpacesImplementation(string typeName, List<string> names, IList<Param> parameters, params Func<string, Tuple<string, bool>>[] rules)
+        private static IEnumerable<string> GetQuerySubscpacesImplementation(string typeName, List<string> names, IList<Param> parameters, bool generate, params Func<string, Tuple<string, bool>>[] rules)
         {
             var query = names.GroupJoin(parameters, n => n, p => p.Name, (name, args) => args.FirstOrDefault().ToMaybe().Select(p => p.Value == null ? string.Empty : p.Value.ToString()).Value ?? "*").ToList();
             List<List<string>> variants;
-            if (query.Contains("*"))
+            if (generate || query.Contains("*"))
             {
                 variants = AllVariantsOf(query, query.Count, rules);
             }
