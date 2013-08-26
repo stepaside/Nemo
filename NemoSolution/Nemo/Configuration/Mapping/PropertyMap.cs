@@ -52,6 +52,13 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
+        public PropertyMap<T, U> CacheParameter()
+        {
+            _property.IsCacheParameter = _not ? false : true;
+            _not = false;
+            return this;
+        }
+
         public PropertyMap<T, U> Generated(Type generator = null)
         {
             if (generator != null && typeof(IIdGenerator).IsAssignableFrom(generator))

@@ -80,6 +80,10 @@ namespace Nemo.Reflection
                     {
                         IsCacheKey = true;
                     }
+                    else if (item is CacheParameterAttribute)
+                    {
+                        IsCacheParameter = true;
+                    }
                     else if (item is ParameterAttribute)
                     {
                         ParameterName = ((ParameterAttribute)item).Name;
@@ -201,6 +205,12 @@ namespace Nemo.Reflection
         }
         
         public bool IsCacheKey
+        {
+            get;
+            internal set;
+        }
+
+        public bool IsCacheParameter
         {
             get;
             internal set;

@@ -20,11 +20,22 @@ namespace Nemo.Caching
             return this.ExpiresAt >= DateTimeOffset.Now.DateTime;
         }
 
-        public bool IsValidVersion(ulong[] expectedVersion)
+        public bool IsValidVersion(ulong[] expected)
         {
-            if (Signature != null && expectedVersion != null)
+            if (Signature != null && expected != null)
             {
-                return Signature.Zip(expectedVersion, (v, ev) => v >= ev).All(r => r);
+                var current = Signature;
+                var diff = current.Length - expected.Length;
+                if (diff > 0)
+                {
+                    expected = expected.Concat(new ulong[diff]).ToArray();
+                }
+                else if (diff < 0)
+                {
+                    current = current.Concat(new ulong[Math.Abs(diff)]).ToArray();
+                }
+
+                return current.Zip(expected, (v, ev) => v >= ev).All(r => r);
             }
             return true;
         }
