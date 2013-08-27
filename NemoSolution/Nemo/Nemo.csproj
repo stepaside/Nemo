@@ -76,6 +76,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Attributes\CacheParameterAttribute.cs" />
     <Compile Include="Attributes\QueryDependencyAttribute.cs" />
     <Compile Include="Attributes\ConnectionAttribute.cs" />
     <Compile Include="Attributes\DoNotSerializeAttribute.cs" />

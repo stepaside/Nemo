@@ -22,24 +22,24 @@ namespace Nemo.Caching.Providers
 
         private static readonly int _waitTimeOut = 5000;
 
-        public static RedisConnection GetRedisConnection(string hostName)
+        public static RedisConnection GetRedisConnection(string config)
         {
             RedisConnection connection = null;
-            hostName = !string.IsNullOrEmpty(hostName) ? hostName : DefaultHostName;
-            if (hostName.NullIfEmpty() != null)
+            config = !string.IsNullOrEmpty(config) ? config : DefaultHostName;
+            if (config.NullIfEmpty() != null)
             {
                 lock (_connectionLock)
                 {
-                    if (!_redisConnectionList.TryGetValue(hostName, out connection))
+                    if (!_redisConnectionList.TryGetValue(config, out connection))
                     {
-                        connection = new RedisConnection(hostName);
-                        _redisConnectionList.Add(hostName, connection);
+                        connection = ConnectionUtils.Connect(config);
+                        _redisConnectionList.Add(config, connection);
                     }
 
                     if (connection.State == RedisConnectionBase.ConnectionState.Closing 
                         || connection.State == RedisConnectionBase.ConnectionState.Closed)
                     {
-                        connection = new RedisConnection(hostName);
+                        connection = ConnectionUtils.Connect(config);
                     }
 
                     if (connection.State == RedisConnectionBase.ConnectionState.New)
