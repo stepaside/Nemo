@@ -1146,7 +1146,7 @@ namespace Nemo
         private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface)
              where T : class, IBusinessObject
         {
-            var value = mode == MaterializationMode.Exact ? Map<DataRow, T>(row, isInterface) : Wrap<T>(GetSerializableDataRow(row));
+            var value = mode == MaterializationMode.Exact || !isInterface ? Map<DataRow, T>(row, isInterface) : Wrap<T>(GetSerializableDataRow(row));
             if (value is IChangeTrackingBusinessObject)
             {
                 ((IChangeTrackingBusinessObject)value).ObjectState = ObjectState.Clean;
@@ -1159,7 +1159,7 @@ namespace Nemo
 
         private static object ConvertDataRow(DataRow row, Type targetType, MaterializationMode mode, bool isInterface)
         {
-            object value = mode == MaterializationMode.Exact ? Map((object)row, targetType, isInterface) : Wrap(GetSerializableDataRow(row), targetType);
+            object value = mode == MaterializationMode.Exact || !isInterface ? Map((object)row, targetType, isInterface) : Wrap(GetSerializableDataRow(row), targetType);
             if (value is IChangeTrackingBusinessObject)
             {
                 ((IChangeTrackingBusinessObject)value).ObjectState = ObjectState.Clean;
