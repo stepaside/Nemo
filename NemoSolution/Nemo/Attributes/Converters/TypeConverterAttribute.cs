@@ -141,5 +141,24 @@ namespace Nemo.Attributes.Converters
 
 			return result;
 		}
+
+        internal static Tuple<Type, Type> GetTypeConverter(Type indexerType, PropertyInfo property)
+        {
+            var propertyType = property.PropertyType;
+            var typeConverterAttribute = TypeConverterAttribute.GetTypeConverter(property);
+
+            Type typeConverterType = null;
+            Type typeConverterInterfaceType = null;
+
+            if (typeConverterAttribute != null && typeConverterAttribute.TypeConverterType != null)
+            {
+                typeConverterAttribute.ValidateTypeConverterType(indexerType, propertyType);
+                typeConverterType = typeConverterAttribute.TypeConverterType;
+                typeConverterInterfaceType = TypeConverterAttribute.GetExpectedConverterInterfaceType(indexerType, propertyType);
+            }
+
+            return Tuple.Create(typeConverterType, typeConverterInterfaceType);
+        }
+
 	}
 }

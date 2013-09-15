@@ -413,7 +413,7 @@ namespace Nemo.Reflection
             {
                 var getItemMethod = objectType.GetMethod("get_Item", new Type[] { typeof(string) });
 
-                var typeConverter = GetTypeConverterType(getItemMethod.ReturnType, property);
+                var typeConverter = TypeConverterAttribute.GetTypeConverter(getItemMethod.ReturnType, property);
 
                 // create the get method for the property.
                 var getMethodName = "get_" + property.Name;
@@ -454,7 +454,7 @@ namespace Nemo.Reflection
             {
                 var setItemMethod = objectType.GetMethod("set_Item", new Type[] { typeof(string), typeof(object) });
 
-                var typeConverter = GetTypeConverterType(setItemMethod.GetParameters()[1].ParameterType, property);
+                var typeConverter = TypeConverterAttribute.GetTypeConverter(setItemMethod.GetParameters()[1].ParameterType, property);
 
                 // create the set method of the property.
                 var setMethodName = "set_" + property.Name;
@@ -693,24 +693,6 @@ namespace Nemo.Reflection
                 propertyBuilder.SetSetMethod(setMethod);
                 typeBuilder.DefineMethodOverride(setMethod, property.ReflectedType.GetMethod(setMethodName));
             }
-        }
-
-        private static Tuple<Type, Type> GetTypeConverterType(Type indexerType, PropertyInfo property)
-        {
-            var propertyType = property.PropertyType;
-            var typeConverterAttribute = TypeConverterAttribute.GetTypeConverter(property);
-
-            Type typeConverterType = null;
-            Type typeConverterInterfaceType = null;
-
-            if (typeConverterAttribute != null && typeConverterAttribute.TypeConverterType != null)
-            {
-                typeConverterAttribute.ValidateTypeConverterType(indexerType, propertyType);
-                typeConverterType = typeConverterAttribute.TypeConverterType;
-                typeConverterInterfaceType = TypeConverterAttribute.GetExpectedConverterInterfaceType(indexerType, propertyType);
-            }
-
-            return Tuple.Create(typeConverterType, typeConverterInterfaceType);
         }
 
         private static bool IsWrappable(PropertyInfo property)

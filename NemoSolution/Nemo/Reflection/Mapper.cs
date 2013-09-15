@@ -4,6 +4,9 @@ using System.Linq;
 using System.Reflection.Emit;
 using Nemo.Attributes;
 using Nemo.Collections.Extensions;
+using Nemo.Attributes.Converters;
+using System.Reflection;
+using Nemo.Fn;
 
 namespace Nemo.Reflection
 {
@@ -60,11 +63,27 @@ namespace Nemo.Reflection
             var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && t.Value.IsSimpleType);
             foreach (var match in matches)
             {
+                var typeConverter = TypeConverterAttribute.GetTypeConverter(indexerType, match.Key);
+
+                if (typeConverter != null)
+                {
+                    //	New the converter
+                    il.Emit(OpCodes.Newobj, typeConverter.Item1.GetConstructor(Type.EmptyTypes));
+                }
+
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldstr, (ignoreMappings ? match.Key.Name : match.Value.MappedColumnName));
                 il.Emit(OpCodes.Callvirt, getItem);
-                il.EmitCastToReference(match.Key.PropertyType);
+                if (typeConverter.Item1 == null)
+                {
+                    il.EmitCastToReference(match.Key.PropertyType);
+                }
+                else
+                {
+                    //	Call the convert method
+                    il.Emit(OpCodes.Callvirt, typeConverter.Item2.GetMethod("ConvertForward"));
+                }
                 il.EmitCall(OpCodes.Callvirt, match.Key.GetSetMethod(), null);
             }
             il.Emit(OpCodes.Ret);
