@@ -19,7 +19,7 @@ namespace Nemo.Configuration
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
         private int _staleCacheTimeout = Config.AppSettings("StaleCacheTimeout", 2);
         private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 60);
-        private CacheInvalidationStrategy _cacheInvalidationStrategy = Config.AppSettings<CacheInvalidationStrategy>("CacheInvalidationStrategy", CacheInvalidationStrategy.TrackAndIncrement);
+        private CacheInvalidationStrategy _cacheInvalidationStrategy = Config.AppSettings<CacheInvalidationStrategy>("CacheInvalidationStrategy", CacheInvalidationStrategy.TrackAndRemove);
 
         private ContextLevelCacheType _defaultContextLevelCache = ParseContextLevelCacheConfig();
         private OperationNamingConvention _operationNamingConvention = ParseOperationNamingConventionConfig();

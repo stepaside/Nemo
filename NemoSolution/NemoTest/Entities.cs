@@ -22,15 +22,17 @@ namespace NemoTest
             TableName = "Customers";
 
             Cache.Type<Nemo.Caching.Providers.MemcachedCacheProvider>();
-            
+
             Property(c => c.Id).Column("CustomerID").Parameter("CustomerID").PrimaryKey();
             Property(c => c.TypeUnionTest).Not.Persistent().Not.Serializable();
         }
     }
 
     [QueryDependency("CompanyName")]
+    //[Nemo.Attributes.Table("Customers")]
     public interface ICustomer : IBusinessObject
     {
+        //[MapColumn("CustomerID"), PrimaryKey]
         string Id { get; set; }
         [Nemo.Validation.StringLength(50), XmlAttribute]
         string CompanyName { get; set; }

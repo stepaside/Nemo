@@ -334,45 +334,48 @@ namespace Nemo.Caching
                 var parameterKeys = parameters.Select(p => new CacheKey(new SortedDictionary<string, object> { { p.Name, p.Value } }, objectType).Compute().Item1).ToList();
 
                 var cache = (IPersistentCacheProvider)_trackingCache.Value;
-                IDictionary<string, object> versions;
-                var cachedQueries = cache.Retrieve(parameterKeys, out versions);
-                if (cachedQueries != null)
+                if (cache != null)
                 {
-                    HashSet<string> allQueries = null;
-                    foreach (var parameterKey in parameterKeys)
+                    IDictionary<string, object> versions;
+                    var cachedQueries = cache.Retrieve(parameterKeys, out versions);
+                    if (cachedQueries != null)
                     {
-                        object value;
-                        if (cachedQueries.TryGetValue(parameterKey, out value) && value != null)
+                        HashSet<string> allQueries = null;
+                        foreach (var parameterKey in parameterKeys)
                         {
-                            IEnumerable<string> queries = (((string)value)[0] == ',' ? ((string)value).Substring(1) : (string)value).Split(',');
-
-                            var count = ((string[])queries).Length ;
-                            var uniqueCount = queries.Distinct().Count();
-
-                            // Before the string grows too much try to compact it
-                            if ((count - uniqueCount) / (double)count > .3)
+                            object value;
+                            if (cachedQueries.TryGetValue(parameterKey, out value) && value != null)
                             {
-                                queries = CompactQueryKeys(cache, parameterKey, values: queries, version: versions[parameterKey]);
-                            }
+                                IEnumerable<string> queries = (((string)value)[0] == ',' ? ((string)value).Substring(1) : (string)value).Split(',');
 
-                            if (allQueries == null)
-                            {
-                                allQueries = queries as HashSet<string>;
+                                var count = ((string[])queries).Length;
+                                var uniqueCount = queries.Distinct().Count();
+
+                                // Before the string grows too much try to compact it
+                                if ((count - uniqueCount) / (double)count > .3)
+                                {
+                                    queries = CompactQueryKeys(cache, parameterKey, values: queries, version: versions[parameterKey]);
+                                }
+
                                 if (allQueries == null)
                                 {
-                                    allQueries = new HashSet<string>(queries);
+                                    allQueries = queries as HashSet<string>;
+                                    if (allQueries == null)
+                                    {
+                                        allQueries = new HashSet<string>(queries);
+                                    }
+                                }
+                                else
+                                {
+                                    allQueries.IntersectWith(queries);
                                 }
                             }
-                            else
-                            {
-                                allQueries.IntersectWith(queries);
-                            }
                         }
-                    }
 
-                    if (allQueries != null)
-                    {
-                        return allQueries;
+                        if (allQueries != null)
+                        {
+                            return allQueries;
+                        }
                     }
                 }
             }
