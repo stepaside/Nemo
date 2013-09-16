@@ -1151,14 +1151,7 @@ namespace Nemo.Caching
         #endregion
 
         #region Signalling Methods
-
-        public class PublisheRevisionIncrementEventArgs : EventArgs
-        {
-            public CacheProvider Cache { get; set; }
-            public string Key { get; set; }
-            public ulong Revision { get; set; }
-        }
-
+        
         private static EventHandler<PublisheRevisionIncrementEventArgs> _publishRevisionEvent = delegate { };
 
         public static event EventHandler<PublisheRevisionIncrementEventArgs> PublishRevisionIncrement

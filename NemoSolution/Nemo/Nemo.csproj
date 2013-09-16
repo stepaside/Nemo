@@ -95,6 +95,7 @@
     <Compile Include="Caching\CacheValue.cs" />
     <Compile Include="Caching\Providers\CouchbaseCacheProvider.cs" />
     <Compile Include="Caching\CacheInvalidationStrategy.cs" />
+    <Compile Include="Caching\PublisheRevisionIncrementEventArgs.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
     <Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" />

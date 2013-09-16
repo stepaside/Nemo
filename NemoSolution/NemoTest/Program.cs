@@ -46,6 +46,11 @@ namespace NemoTest
                 .SetTrackingCacheProvider(null)
                 .SetCacheInvalidationStrategy(CacheInvalidationStrategy.QuerySignature);
 
+            ObjectCache.PublishRevisionIncrement += new EventHandler<PublisheRevisionIncrementEventArgs>((sender, e) =>
+            {
+                // publish the key and revision here
+            });
+
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
 
