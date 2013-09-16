@@ -149,93 +149,97 @@ namespace Nemo.Caching
             string queryKey = null;
             ulong[] signature = null;
 
-            var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
-            if (parameters != null && (strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature))
+            // Use invalidation strategy only if it is a cache enabled call
+            if (cache != null)
             {
-                // Compute subspaces
-                var subspaces = GetQuerySubscpaces<T>(parameters);
-                var revisions = new Dictionary<string, ulong>();
-                if (strategy == CacheInvalidationStrategy.QuerySignature)
+                var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
+                if (parameters != null && (strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature))
                 {
-                    var missingSubspaces = new List<string>();
-                    // Look locally to see if revision is available
-                    foreach (var subspace in subspaces)
+                    // Compute subspaces
+                    var subspaces = GetQuerySubscpaces<T>(parameters);
+                    var revisions = new Dictionary<string, ulong>();
+                    if (strategy == CacheInvalidationStrategy.QuerySignature)
                     {
-                        ulong revision;
-                        if (!_revisions.TryGetValue(subspace, out revision))
+                        var missingSubspaces = new List<string>();
+                        // Look locally to see if revision is available
+                        foreach (var subspace in subspaces)
                         {
-                            // No revision found: fetch it in bulk from the revision provider after the loop
-                            missingSubspaces.Add(subspace);
+                            ulong revision;
+                            if (!_revisions.TryGetValue(subspace, out revision))
+                            {
+                                // No revision found: fetch it in bulk from the revision provider after the loop
+                                missingSubspaces.Add(subspace);
+                            }
+                            else
+                            {
+                                // Found it! Add to the list of revisions
+                                revisions.Add(subspace, revision);
+                            }
                         }
-                        else
+
+                        // Fetch only missing revisions
+                        if (missingSubspaces.Count > 0)
                         {
-                            // Found it! Add to the list of revisions
+                            var missinRevisions = _revisionCache.Value.GetRevisions(missingSubspaces);
+                            foreach (var subspace in missingSubspaces)
+                            {
+                                ulong revision;
+                                // Check if the revision has been added while we were retrieving from the revision provider
+                                if (_revisions.TryGetValue(subspace, out revision))
+                                {
+                                    // Check if the value retrieved is greater than the value stored locally
+                                    if (missinRevisions[subspace] > revision)
+                                    {
+                                        revisions.Add(subspace, missinRevisions[subspace]);
+                                    }
+                                    else
+                                    {
+                                        revisions.Add(subspace, revision);
+                                    }
+                                }
+                                else
+                                {
+                                    // The revision has not been added, thus proceed with the retrieved value
+                                    revisions.Add(subspace, missinRevisions[subspace]);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (var subspace in subspaces)
+                        {
+                            var added = false;
+
+                            var revision = _revisions.GetOrAdd(subspace, key =>
+                            {
+                                var value = _revisionCache.Value.GenerateRevision();
+                                added = true;
+                                return value;
+                            });
+
+                            if (added)
+                            {
+                                _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = cache, Key = subspace, Revision = revision });
+                            }
+
                             revisions.Add(subspace, revision);
                         }
                     }
 
-                    // Fetch only missing revisions
-                    if (missingSubspaces.Count > 0)
-                    {
-                        var missinRevisions = _revisionCache.Value.GetRevisions(missingSubspaces);
-                        foreach (var subspace in missingSubspaces)
-                        {
-                            ulong revision;
-                            // Check if the revision has been added while we were retrieving from the revision provider
-                            if (_revisions.TryGetValue(subspace, out revision))
-                            {
-                                // Check if the value retrieved is greater than the value stored locally
-                                if (missinRevisions[subspace] > revision)
-                                {
-                                    revisions.Add(subspace, missinRevisions[subspace]);
-                                }
-                                else
-                                {
-                                    revisions.Add(subspace, revision);
-                                }
-                            }
-                            else
-                            {
-                                // The revision has not been added, thus proceed with the retrieved value
-                                revisions.Add(subspace, missinRevisions[subspace]);
-                            }
-                        }
-                    }
+                    queryKey = cacheKey.Value;
+                    signature = revisions.Arrange(subspaces, p => p.Key).Select(p => p.Value).ToArray();
                 }
-                else
+                else if (strategy == CacheInvalidationStrategy.TrackAndIncrement)
                 {
-                    foreach (var subspace in subspaces)
+                    var computedKey = cache.ComputeKey(cacheKey.Value);
+                    var revision = _revisions.GetOrAdd(computedKey, key => _revisionCache.Value.GetRevision(cache.CleanKey(computedKey)));
+                    if (revision > 0ul)
                     {
-                        var added = false;
-                        
-                        var revision = _revisions.GetOrAdd(subspace, key => 
-                        {
-                            var value = _revisionCache.Value.GenerateRevision();
-                            added = true;
-                            return value;
-                        });
-
-                        if (added)
-                        {
-                            _publishRevisionEvent(null, new PublisheRevisionIncrementEventArgs { Cache = cache, Key = subspace, Revision = revision });
-                        }
-
-                        revisions.Add(subspace, revision);
+                        computedKey = cache.ComputeKey(cacheKey.Value, revision);
                     }
+                    queryKey = computedKey;
                 }
-
-                queryKey = cacheKey.Value;
-                signature = revisions.Arrange(subspaces, p => p.Key).Select(p => p.Value).ToArray();
-            }
-            else if (strategy == CacheInvalidationStrategy.TrackAndIncrement)
-            {
-                var computedKey = cache.ComputeKey(cacheKey.Value);
-                var revision = _revisions.GetOrAdd(computedKey, key => _revisionCache.Value.GetRevision(cache.CleanKey(computedKey)));
-                if (revision > 0ul)
-                {
-                    computedKey = cache.ComputeKey(cacheKey.Value, revision);
-                }
-                queryKey = computedKey;
             }
 
             return Tuple.Create(queryKey, signature);
