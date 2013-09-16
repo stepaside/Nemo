@@ -65,7 +65,7 @@ namespace Nemo.Reflection
             {
                 var typeConverter = TypeConverterAttribute.GetTypeConverter(indexerType, match.Key);
 
-                if (typeConverter != null)
+                if (typeConverter.Item1 != null)
                 {
                     //	New the converter
                     il.Emit(OpCodes.Newobj, typeConverter.Item1.GetConstructor(Type.EmptyTypes));
