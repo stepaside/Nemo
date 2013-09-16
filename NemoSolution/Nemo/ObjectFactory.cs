@@ -371,11 +371,11 @@ namespace Nemo
 
         #region Retrieve Methods
 
-        public static Maybe<T> RetrieveScalar<T, I>(string operation, Param[] parameters = null, string connectionName = null)
+        public static Maybe<T> RetrieveScalar<T, I>(string operation, Param[] parameters = null, string connectionName = null, string schema = null)
             where T : struct
             where I : class, IBusinessObject
         {
-            var request = new OperationRequest { Operation = operation, Parameters = parameters, ReturnType = OperationReturnType.Scalar, ConnectionName = connectionName };
+            var request = new OperationRequest { Operation = operation, Parameters = parameters, ReturnType = OperationReturnType.Scalar, ConnectionName = connectionName, SchemaName = schema };
             var response = ObjectFactory.Execute<I>(request);
 
             object value = response.Value;
@@ -389,7 +389,7 @@ namespace Nemo
             }
         }
 
-        private static IEnumerable<TResult> RetrieveImplemenation<TResult, T1, T2, T3, T4>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default)
+        private static IEnumerable<TResult> RetrieveImplemenation<TResult, T1, T2, T3, T4>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null)
             where T1 : class, IBusinessObject
             where T2 : class, IBusinessObject
             where T3 : class, IBusinessObject
@@ -493,7 +493,7 @@ namespace Nemo
                     // and we need to force the add
                     var forceRetrieve = keys != null;
                     Log.Capture(() => "Add to cache: " + queryKey);
-                    var tuple = ObjectCache.Add<TResult>(queryKey, parameters, () => RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode), forceRetrieve, cache);
+                    var tuple = ObjectCache.Add<TResult>(queryKey, parameters, () => RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode, schema), forceRetrieve, cache);
                     if (!tuple.Item1)
                     {
                         if (forceRetrieve)
@@ -514,7 +514,7 @@ namespace Nemo
                             }
                             else
                             {
-                                result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode);
+                                result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode, schema);
                             }
                         }
                         else if (tuple.Item2.Any())
@@ -523,7 +523,7 @@ namespace Nemo
                         }
                         else
                         {
-                            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode);
+                            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode, schema);
                         }
                     }
                     else
@@ -533,7 +533,7 @@ namespace Nemo
                 }
                 else
                 {
-                    result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode);
+                    result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode, schema);
                 }
             }
 
@@ -563,17 +563,17 @@ namespace Nemo
             return result;
         }
 
-        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool canBeBuffered, MaterializationMode mode)
+        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool canBeBuffered, MaterializationMode mode, string schema)
             where T : class, IBusinessObject
         {
             OperationResponse response = null;
             if (connection != null)
             {
-                response = ObjectFactory.Execute<T>(operation, parameters, returnType, connection: connection, operationType: operationType, types: types);
+                response = ObjectFactory.Execute<T>(operation, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema);
             }
             else
             {
-                response = ObjectFactory.Execute<T>(operation, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types);
+                response = ObjectFactory.Execute<T>(operation, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
             }
             var result = Transform<T>(response, map, types, canBeBuffered, mode);
             return result;
@@ -588,7 +588,7 @@ namespace Nemo
         /// <param name="connectionName"></param>
         /// <param name="stream"></param>
         /// <returns></returns>
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
             where T1 : class, IBusinessObject
             where T2 : class, IBusinessObject
             where T3 : class, IBusinessObject
@@ -662,37 +662,37 @@ namespace Nemo
                     parameterList = (Param[])parameters;
                 }
             }
-            return RetrieveImplemenation<TResult, T1, T2, T3, T4>(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization);
+            return RetrieveImplemenation<TResult, T1, T2, T3, T4>(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
             where T1 : class, IBusinessObject
             where T2 : class, IBusinessObject
             where T3 : class, IBusinessObject
             where TResult : class, IBusinessObject
         {
             Func<TResult, T1, T2, T3, Fake, TResult> newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
-            return Retrieve<TResult, T1, T2, T3, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization);
+            return Retrieve<TResult, T1, T2, T3, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
             where T1 : class, IBusinessObject
             where T2 : class, IBusinessObject
             where TResult : class, IBusinessObject
         {
             Func<TResult, T1, T2, Fake, Fake, TResult> newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
-            return Retrieve<TResult, T1, T2, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization);
+            return Retrieve<TResult, T1, T2, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
             where T1 : class, IBusinessObject
             where TResult : class, IBusinessObject
         {
             Func<TResult, T1, Fake, Fake, Fake, TResult> newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
-            return Retrieve<TResult, T1, Fake, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization);
+            return Retrieve<TResult, T1, Fake, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema);
         }
 
-        public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default)
+        public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
             where T : class, IBusinessObject
         {
             var returnType = OperationReturnType.SingleResult;
@@ -716,7 +716,7 @@ namespace Nemo
                     parameterList = (Param[])parameters;
                 }
             }
-            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization);
+            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization, schema);
         }
 
         internal class Fake : IBusinessObject { }
@@ -725,13 +725,13 @@ namespace Nemo
 
         #region Insert/Update/Delete/Execute Methods
 
-        public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false)
+        public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
-            return Insert<T>(parameters.ExtractParameters(typeof(T), OPERATION_INSERT), connectionName, captureException);
+            return Insert<T>(parameters.ExtractParameters(typeof(T), OPERATION_INSERT), connectionName, captureException, schema);
         }
 
-        public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false)
+        public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
@@ -744,18 +744,19 @@ namespace Nemo
             {
                 request.Operation = OPERATION_INSERT;
                 request.OperationType = OperationType.StoredProcedure;
+                request.SchemaName = schema;
             }
             var response = Execute<T>(request);
             return response;
         }
 
-        public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false)
+        public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
-            return Update<T>(parameters.ExtractParameters(typeof(T), OPERATION_UPDATE), connectionName, captureException);
+            return Update<T>(parameters.ExtractParameters(typeof(T), OPERATION_UPDATE), connectionName, captureException, schema);
         }
 
-        public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false)
+        public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
@@ -777,18 +778,19 @@ namespace Nemo
             {
                 request.Operation = OPERATION_UPDATE;
                 request.OperationType = OperationType.StoredProcedure;
+                request.SchemaName = schema;
             }
             var response = Execute<T>(request);
             return response;
         }
 
-        public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false)
+        public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
             return Delete<T>(parameters.ExtractParameters(typeof(T), OPERATION_DELETE), connectionName, captureException);
         }
 
-        public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false)
+        public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
@@ -817,21 +819,22 @@ namespace Nemo
             {
                 request.Operation = OPERATION_DELETE;
                 request.OperationType = OperationType.StoredProcedure;
+                request.SchemaName = schema;
             }
             var response = Execute<T>(request);
             return response;
         }
 
-        public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false)
+        public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
-            return Destroy<T>(parameters.ExtractParameters(typeof(T), OPERATION_DESTROY), connectionName, captureException);
+            return Destroy<T>(parameters.ExtractParameters(typeof(T), OPERATION_DESTROY), connectionName, captureException, schema);
         }
 
-        public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false)
+        public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException, SchemaName = schema };
             if (ConfigurationFactory.Configuration.GenerateDeleteSql)
             {
                 request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName));
@@ -841,12 +844,13 @@ namespace Nemo
             {
                 request.Operation = OPERATION_DESTROY;
                 request.OperationType = OperationType.StoredProcedure;
+                request.SchemaName = schema;
             }
             var response = Execute<T>(request);
             return response;
         }
 
-        internal static OperationResponse Execute<T>(string operation, IList<Param> parameters, OperationReturnType returnType, OperationType operationType = OperationType.Guess, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false)
+        internal static OperationResponse Execute<T>(string operation, IList<Param> parameters, OperationReturnType returnType, OperationType operationType = OperationType.Guess, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null)
             where T : class, IBusinessObject
         {
             if (types == null)
@@ -890,7 +894,7 @@ namespace Nemo
                 }
             }
 
-            var operationText = ObjectFactory.GetOperationText(typeof(T), operation, operationType);
+            var operationText = ObjectFactory.GetOperationText(typeof(T), operation, operationType, schema);
             Dictionary<DbParameter, Param> outputParameters = null;
 
             var command = dbConnection.CreateCommand();
@@ -1040,8 +1044,6 @@ namespace Nemo
 
             return response;
         }
-
-        private static ConcurrentDictionary<int, DbCommand> _commands = new ConcurrentDictionary<int, DbCommand>();
 
         public static OperationResponse Execute<T>(OperationRequest request)
             where T : class, IBusinessObject
@@ -1443,7 +1445,7 @@ namespace Nemo
             return new TransactionScope(TransactionScopeOption.Required, options);
         }
 
-        internal static string GetOperationText(Type objectType, string operation, OperationType operationType)
+        internal static string GetOperationText(Type objectType, string operation, OperationType operationType, string schema)
         {
             if (operationType == OperationType.StoredProcedure)
             {
@@ -1491,6 +1493,12 @@ namespace Nemo
                 {
                     procName = operation;
                 }
+
+                if (!string.IsNullOrEmpty(schema))
+                {
+                    procName = schema + "." + procName;
+                }
+
                 operation = procName;
             }
             return operation;

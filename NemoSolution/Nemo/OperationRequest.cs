@@ -112,6 +112,8 @@ namespace Nemo
         }
 
         public bool CaptureException { get; set; }
+
+        public string SchemaName { get; set; }
         
         private static DbConnection GetConnection(string connectionString)
         {
