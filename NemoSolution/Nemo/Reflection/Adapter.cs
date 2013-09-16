@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using Nemo.Attributes;
 using Nemo.Attributes.Converters;
 using ObjectActivator = Nemo.Reflection.Activator.ObjectActivator;
+using Nemo.Configuration.Mapping;
 
 namespace Nemo.Reflection
 {
@@ -285,10 +286,12 @@ namespace Nemo.Reflection
 
         private static void DefineProperties(Type objectType, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type interfaceType, DynamicProxyType proxyType, bool ignoreMappings)
         {
+            var entityMap = MappingFactory.GetEntityMap(interfaceType);
+
             foreach (var property in Reflector.GetAllProperties(interfaceType))
             {
                 // check if we can support the wrapping.
-                var propertyName = ignoreMappings ? property.Name : MapPropertyAttribute.GetMappedPropertyName(property);
+                var propertyName = MappingFactory.GetPropertyOrColumnName(property, ignoreMappings, entityMap, false);
                 var objectProperty = objectType != null ? objectType.GetProperty(propertyName) : null;
 
                 if (objectProperty != null && ((property.CanRead && !objectProperty.CanRead) || (property.CanWrite && !objectProperty.CanWrite)))
@@ -303,15 +306,15 @@ namespace Nemo.Reflection
                 // define the property.
                 if (proxyType == DynamicProxyType.FullIndexer)
                 {
-                    DefineIndexerProperty(property, typeBuilder, field, objectType, ignoreMappings);
+                    DefineIndexerProperty(property, typeBuilder, field, objectType, ignoreMappings, entityMap);
                 }
                 else if (proxyType == DynamicProxyType.SimpleIndexer && IsWrappable(property))
                 {
-                    DefineIndexerProperty(property, typeBuilder, field, objectType, ignoreMappings);
+                    DefineIndexerProperty(property, typeBuilder, field, objectType, ignoreMappings, entityMap);
                 }
                 else if (proxyType == DynamicProxyType.Guard)
                 {
-                    DefineGuardedProperty(property, typeBuilder, field, objectType, ignoreMappings);
+                    DefineGuardedProperty(property, typeBuilder, field, objectType, ignoreMappings, entityMap);
                 }
                 else if (objectProperty != null)
                 {
@@ -398,7 +401,7 @@ namespace Nemo.Reflection
             }
         }
 
-        private static void DefineIndexerProperty(PropertyInfo property, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type objectType, bool ignoreMappings)
+        private static void DefineIndexerProperty(PropertyInfo property, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type objectType, bool ignoreMappings, IEntityMap entityMap)
         {
             // create the new property.
             var propertyBuilder = typeBuilder.DefineProperty(property.Name, System.Reflection.PropertyAttributes.HasDefault, property.PropertyType, null);
@@ -406,7 +409,7 @@ namespace Nemo.Reflection
             // The property "set" and property "get" methods require a special set of attributes.
             //var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig | MethodAttributes.Virtual;
             var getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
-            var columnName = ignoreMappings ? property.Name : MapColumnAttribute.GetMappedColumnName(property);
+            var columnName = MappingFactory.GetPropertyOrColumnName(property, ignoreMappings, entityMap, true);
 
             // create the getter if we can read.
             if (property.CanRead)
@@ -493,7 +496,7 @@ namespace Nemo.Reflection
             }
         }
 
-        private static void DefineGuardedProperty(PropertyInfo property, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type objectType, bool ignoreMappings)
+        private static void DefineGuardedProperty(PropertyInfo property, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type objectType, bool ignoreMappings, IEntityMap entityMap)
         {
             // create the new property.
             var propertyBuilder = typeBuilder.DefineProperty(property.Name, System.Reflection.PropertyAttributes.HasDefault, property.PropertyType, null);
@@ -501,7 +504,7 @@ namespace Nemo.Reflection
             // The property "set" and property "get" methods require a special set of attributes.
             //var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig | MethodAttributes.Virtual;
             var getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
-            var columnName = ignoreMappings ? property.Name : MapColumnAttribute.GetMappedColumnName(property);
+            var columnName = MappingFactory.GetPropertyOrColumnName(property, ignoreMappings, entityMap, true);
 
             // create the getter if we can read.
             if (property.CanRead)

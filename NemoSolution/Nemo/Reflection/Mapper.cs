@@ -7,6 +7,7 @@ using Nemo.Collections.Extensions;
 using Nemo.Attributes.Converters;
 using System.Reflection;
 using Nemo.Fn;
+using Nemo.Configuration.Mapping;
 
 namespace Nemo.Reflection
 {
@@ -30,7 +31,9 @@ namespace Nemo.Reflection
             var sourceProperties = Reflector.GetAllProperties(sourceType);
             var targetProperties = Reflector.GetAllProperties(targetType);
 
-            var matches = sourceProperties.CrossJoin(targetProperties).Where(t => t.Item2.Name == (ignoreMappings ? t.Item3.Name : MapPropertyAttribute.GetMappedPropertyName(t.Item3))
+            var entityMap = MappingFactory.GetEntityMap(targetType);
+
+            var matches = sourceProperties.CrossJoin(targetProperties).Where(t => t.Item2.Name == MappingFactory.GetPropertyOrColumnName(t.Item3, ignoreMappings, entityMap, false)
                                                                                     && t.Item2.PropertyType == t.Item3.PropertyType
                                                                                     && t.Item2.PropertyType.IsPublic
                                                                                     && t.Item3.PropertyType.IsPublic
@@ -58,22 +61,23 @@ namespace Nemo.Reflection
             var il = method.GetILGenerator();
 
             var targetProperties = Reflector.GetPropertyMap(targetType);
+            var entityMap = MappingFactory.GetEntityMap(targetType);
+
             var getItem = indexerType.GetMethod("get_Item", new Type[] { typeof(string) });
 
             var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && t.Value.IsSimpleType);
             foreach (var match in matches)
             {
-                var typeConverter = TypeConverterAttribute.GetTypeConverter(indexerType, match.Key);
+                var typeConverter = TypeConverterAttribute.GetTypeConverter(getItem.ReturnType, match.Key);
 
+                il.Emit(OpCodes.Ldarg_1);
                 if (typeConverter.Item1 != null)
                 {
                     //	New the converter
                     il.Emit(OpCodes.Newobj, typeConverter.Item1.GetConstructor(Type.EmptyTypes));
                 }
-
-                il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldstr, (ignoreMappings ? match.Key.Name : match.Value.MappedColumnName));
+                il.Emit(OpCodes.Ldstr, MappingFactory.GetPropertyOrColumnName(match.Key, ignoreMappings, entityMap, true));
                 il.Emit(OpCodes.Callvirt, getItem);
                 if (typeConverter.Item1 == null)
                 {

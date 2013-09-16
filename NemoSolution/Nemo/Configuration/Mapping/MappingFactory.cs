@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Nemo.Reflection;
+using System.Reflection;
+using Nemo.Attributes;
 
 namespace Nemo.Configuration.Mapping
 {
@@ -54,6 +56,32 @@ namespace Nemo.Configuration.Mapping
                 return map;
             }
             return null;
+        }
+
+        internal static string GetPropertyOrColumnName(PropertyInfo property, bool ignoreMappings, IEntityMap entityMap, bool isColumn)
+        {
+            string propertyOrColumnName;
+            if (ignoreMappings)
+            {
+                propertyOrColumnName = property.Name;
+            }
+            else if (entityMap != null)
+            {
+                var propertyMap = entityMap.Properties.FirstOrDefault(p => p.Property.PropertyName == property.Name);
+                if (propertyMap != null && ((isColumn && propertyMap.Property.MappedColumnName != null) || propertyMap.Property.MappedPropertyName != null))
+                {
+                    propertyOrColumnName = isColumn ? propertyMap.Property.MappedColumnName : propertyMap.Property.MappedPropertyName;
+                }
+                else
+                {
+                    propertyOrColumnName = isColumn ? MapColumnAttribute.GetMappedColumnName(property) : MapPropertyAttribute.GetMappedPropertyName(property);
+                }
+            }
+            else
+            {
+                propertyOrColumnName = isColumn ? MapColumnAttribute.GetMappedColumnName(property) : MapPropertyAttribute.GetMappedPropertyName(property);
+            }
+            return propertyOrColumnName;
         }
     }
 }

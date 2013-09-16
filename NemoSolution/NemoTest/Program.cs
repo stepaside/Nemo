@@ -78,10 +78,10 @@ namespace NemoTest
             var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 
             // Simple retrieve with dynamic parameters
-            var retrieve_customer_dyn = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" });
-
+            var retrieve_customer_dyn = ObjectFactory.Retrieve<Customer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
+           
             // Simple retrieve with actual parameters
-            var retrieve_customer = ObjectFactory.Retrieve<ICustomer>(parameters: new[] { new Param { Name = "CustomerID", Value = "ALFKI" } });
+            var retrieve_customer = ObjectFactory.Retrieve<ICustomer>(parameters: new[] { new Param { Name = "CustomerID", Value = "ALFKI" } }).FirstOrDefault();
 
             // Simple retrieve with dynamic parameters and custom operation name
             var retrieve_customers_by_country = ObjectFactory.Retrieve<ICustomer>(operation: "RetrieveByCountry", parameters: new ParamList { Country => "USA" });
