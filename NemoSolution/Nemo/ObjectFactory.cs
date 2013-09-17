@@ -1051,11 +1051,11 @@ namespace Nemo
             OperationResponse response;
             if (request.Connection != null)
             {
-                response = Execute<T>(request.Operation, request.Parameters, request.ReturnType, request.OperationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException);
+                response = Execute<T>(request.Operation, request.Parameters, request.ReturnType, request.OperationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
             }
             else
             {
-                response = Execute<T>(request.Operation, request.Parameters, request.ReturnType, request.OperationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException);
+                response = Execute<T>(request.Operation, request.Parameters, request.ReturnType, request.OperationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
             }
             return response;
         }
