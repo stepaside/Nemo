@@ -18,7 +18,17 @@ namespace Nemo.Configuration.Mapping
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var types = assemblies
                 .Where(a => !a.IsDynamic && !a.ReflectionOnly)
-                .Select(a => a.DefinedTypes)
+                .Select(a =>
+                {
+                    try
+                    {
+                        return a.DefinedTypes;
+                    }
+                    catch
+                    {
+                        return new TypeInfo[] { };
+                    }
+                })
                 .SelectMany(_ => _)
                 .Where(t => t.BaseType != null
                             && t.BaseType.IsAbstract
