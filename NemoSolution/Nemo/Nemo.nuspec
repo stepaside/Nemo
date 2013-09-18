@@ -9,24 +9,19 @@
     <projectUrl>https://github.com/stepaside/Nemo/wiki</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <copyright>Copyright © Max Stepanskiy 2012</copyright>
+    <copyright>Copyright Â© Max Stepanskiy 2012-2013</copyright>
     <tags>ORM micro-ORM sql mapper</tags>
 	<releaseNotes>
-	* Modified distributed cache locking mechanism
-	* Modified cache implementation
-		- Added cache dependency classes
-		- Updated cache dependency implementation
-		- Modified distributed cache provider implementation
-	* Performance optimizations for parameter extraction
-	* Got rid of CacheType enumeration; cache provider is now specified as a real type
-	* BREAKING CHANGE: Renamed LocalCacheProvider to MemoryCacheProvider
-	* BREAKING CHANGE: Renamemd MemcachedProvider to MemcachedCacheProvider
-	* Modififed RemoveByNamesapce
-	* Modified cache options parsing
-	* Added ability to specify default configuration through app settings
-	* Refactored configuration implementation
-	* Added ability to specify default configuration through app settings
-	* Fixed stream handling with L1 cache
-	</releaseNotes>
+    New features:
+    * Cache invalidation strategy
+    * Audit trail mechanism
+    * Fluent attribute-less mapping
+    * Oracle dialect provider
+    * Cache implementation refactoring
+
+    Bug fixes
+    * Fixed delayed cache repopulation
+    * Resolved issue with saving empty enumerables into L1 cache
+  </releaseNotes>
   </metadata>
 </package>
