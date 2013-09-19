@@ -109,6 +109,8 @@ namespace NemoTest
                                                                             where c.CustomerID = @CustomerID",
                                                                     parameters: new ParamList { CustomerId => "ALFKI" },
                                                                     map: (o, c) => { o.Customer = c; return o; });
+            var orders = retrieve_orders_with_customer.ToList();
+            var same = orders[0].Customer == orders[1].Customer;
 
             // Advanced!
             // Retrieve customers with orders as a single row mapping

@@ -1233,6 +1233,7 @@ namespace Nemo
             {
                 var isAccumulator = false;
                 var count = reader.FieldCount;
+                var references = new Dictionary<Tuple<Type, string>, object>();
                 while (reader.Read())
                 {
                     if (!isInterface || mode == MaterializationMode.Exact)
@@ -1245,7 +1246,14 @@ namespace Nemo
                             args[0] = item;
                             for (int i = 1; i < types.Count; i++)
                             {
-                                args[i] = Map((object)reader, types[i]);
+                                var identity = CreateIdentity(types[i], reader);
+                                object reference;
+                                if (!references.TryGetValue(identity, out reference))
+                                {
+                                    reference = Map((object)reader, types[i]);
+                                    references.Add(identity, reference);
+                                }
+                                args[i] = reference;
                             }
                             var mappedItem = map(args);
                             if (mappedItem != null)
@@ -1277,7 +1285,15 @@ namespace Nemo
                             args[0] = item;
                             for (int i = 1; i < types.Count; i++)
                             {
-                                args[i] = Wrap(bag, types[i]);
+
+                                var identity = CreateIdentity(types[i], reader);
+                                object reference;
+                                if (!references.TryGetValue(identity, out reference))
+                                {
+                                    reference = Wrap(bag, types[i]);
+                                    references.Add(identity, reference);
+                                }
+                                args[i] = reference;
                             }
                             var mappedItem = map(args);
                             if (mappedItem != null)
@@ -1314,6 +1330,16 @@ namespace Nemo
                     reader.Dispose();
                 }
             }
+        }
+
+        private static Tuple<Type, string> CreateIdentity(Type objectType, IDataReader reader)
+        {
+            var nameMap = Reflector.GetPropertyNameMap(objectType);
+            var identity = Tuple.Create(objectType, string.Join(",", nameMap.Values.Where(p => p.IsPrimaryKey)
+                                                                                .Select(p => p.MappedColumnName ?? p.PropertyName)
+                                                                                .OrderBy(_ => _)
+                                                                                .Select(n => Convert.ToString(reader.GetValue(reader.GetOrdinal(n))))));
+            return identity;
         }
 
         private static IEnumerable<ITypeUnion> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, MaterializationMode mode, bool isInterface)
