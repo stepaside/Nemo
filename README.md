@@ -23,7 +23,7 @@ Nemo
   * Declarative validation
   * [Data type conversion](https://github.com/stepaside/Nemo/wiki/Data-Type-Conversion) options (handling enumerations, nullable types, DBNull values, type coercion)
   * [Key generation](https://github.com/stepaside/Nemo/wiki/Key-Generation) options
-  * Active Record through extension methods
+  * [Active Record](https://github.com/stepaside/Nemo/wiki/Active-Record) through extension methods
  8. Targeting .Net 4.0 and higher
 
 Install [NuGet package](http://nuget.org/packages/Nemo)
