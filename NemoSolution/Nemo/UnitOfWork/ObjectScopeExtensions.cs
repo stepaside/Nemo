@@ -38,7 +38,7 @@ namespace Nemo.UnitOfWork
                         var statement = GetCommitStatement<T>(changes, connection);
                         if (!string.IsNullOrEmpty(statement.Item1))
                         {
-                            var response = ObjectFactory.Execute<T>(new OperationRequest { Operation = statement.Item1, OperationType = OperationType.Sql, Parameters = statement.Item2, Connection = connection, ReturnType = OperationReturnType.SingleResult });
+                            var response = ObjectFactory.Execute<T>(new OperationRequest { Operation = statement.Item1, OperationType = OperationType.Sql, Parameters = statement.Item2, Connection = connection, ReturnType = OperationReturnType.DataTable });
                             success = response.Value != null;
                             if (success)
                             {
