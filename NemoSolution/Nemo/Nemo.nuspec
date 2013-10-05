@@ -12,16 +12,8 @@
     <copyright>Copyright © Max Stepanskiy 2012-2013</copyright>
     <tags>ORM micro-ORM sql mapper</tags>
 	<releaseNotes>
-    New features:
-    * Cache invalidation strategy
-    * Audit trail mechanism
-    * Fluent attribute-less mapping
-    * Oracle dialect provider
-    * Cache implementation refactoring
-
     Bug fixes
-    * Fixed delayed cache repopulation
-    * Resolved issue with saving empty enumerables into L1 cache
+    * Fixed ObjectScope.Commit functionality 
   </releaseNotes>
   </metadata>
 </package>
