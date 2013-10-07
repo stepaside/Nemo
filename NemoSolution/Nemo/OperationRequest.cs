@@ -114,6 +114,11 @@ namespace Nemo
         public bool CaptureException { get; set; }
 
         public string SchemaName { get; set; }
+
+        public bool IsValid()
+        {
+            return _transaction != null || _connection != null || !string.IsNullOrEmpty(_connectionString) || (Types != null && Types.Count > 0);
+        }
         
         private static DbConnection GetConnection(string connectionString)
         {

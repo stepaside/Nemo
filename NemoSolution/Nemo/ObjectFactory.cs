@@ -330,19 +330,7 @@ namespace Nemo
                 connection.Open();
             }
             var sql = SqlBuilder.GetSelectCountStatement<T>(predicate, DialectFactory.GetProvider(connection, providerName));
-
-            var request = new OperationRequest { Operation = sql, OperationType = Nemo.OperationType.Sql, ReturnType = OperationReturnType.Scalar, Connection = connection };
-            var response = ObjectFactory.Execute<T>(request);
-
-            var value = response.Value;
-            if (value == null)
-            {
-                return Maybe<int>.Empty;
-            }
-            else
-            {
-                return ((int)value).ToMaybe();
-            }
+            return RetrieveScalar<int>(sql, connection: connection);
         }
 
         #endregion
@@ -363,21 +351,26 @@ namespace Nemo
                 connection.Open();
             }
             var sql = SqlBuilder.GetSelectStatement<T>(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName));
-            var result = RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection);
-            return result;
+            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection);
         }
         
         #endregion
 
         #region Retrieve Methods
 
-        public static Maybe<T> RetrieveScalar<T, I>(string operation, Param[] parameters = null, string connectionName = null, string schema = null)
+        public static Maybe<T> RetrieveScalar<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null)
             where T : struct
-            where I : class, IBusinessObject
         {
-            var request = new OperationRequest { Operation = operation, Parameters = parameters, ReturnType = OperationReturnType.Scalar, ConnectionName = connectionName, SchemaName = schema };
-            var response = ObjectFactory.Execute<I>(request);
-
+            OperationResponse response;
+            if (connection != null)
+            {
+                response = Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema);
+            }
+            else
+            {
+                response = Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema);
+            }
+            
             object value = response.Value;
             if (value == null)
             {
@@ -569,11 +562,11 @@ namespace Nemo
             OperationResponse response = null;
             if (connection != null)
             {
-                response = ObjectFactory.Execute<T>(operation, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema);
+                response = ObjectFactory.Execute(operation, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema);
             }
             else
             {
-                response = ObjectFactory.Execute<T>(operation, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
+                response = ObjectFactory.Execute(operation, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
             }
             var result = Transform<T>(response, map, types, canBeBuffered, mode);
             return result;
@@ -850,13 +843,9 @@ namespace Nemo
             return response;
         }
 
-        internal static OperationResponse Execute<T>(string operation, IList<Param> parameters, OperationReturnType returnType, OperationType operationType = OperationType.Guess, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null)
-            where T : class, IBusinessObject
+        internal static OperationResponse Execute(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType = OperationType.Guess, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null)
         {
-            if (types == null)
-            {
-                types = new[] { typeof(T) };
-            }
+            var rootType = types != null ? types[0] : null;
 
             DbConnection dbConnection = null;
             var closeConnection = false;
@@ -871,20 +860,20 @@ namespace Nemo
             }
             else
             {
-                dbConnection = DbFactory.CreateConnection(connectionName, typeof(T));
+                dbConnection = DbFactory.CreateConnection(connectionName, rootType);
                 closeConnection = true;
             }
 
             if (operationType == OperationType.Guess)
             {
-                operationType = operation.Any(c => Char.IsWhiteSpace(c)) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = operationText.Any(c => Char.IsWhiteSpace(c)) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
             if (returnType == OperationReturnType.Guess)
             {
-                if (operation.IndexOf("insert", StringComparison.OrdinalIgnoreCase) > -1
-                         || operation.IndexOf("update", StringComparison.OrdinalIgnoreCase) > -1
-                         || operation.IndexOf("delete", StringComparison.OrdinalIgnoreCase) > -1)
+                if (operationText.IndexOf("insert", StringComparison.OrdinalIgnoreCase) > -1
+                         || operationText.IndexOf("update", StringComparison.OrdinalIgnoreCase) > -1
+                         || operationText.IndexOf("delete", StringComparison.OrdinalIgnoreCase) > -1)
                 {
                     returnType = OperationReturnType.NonQuery;
                 }
@@ -894,7 +883,6 @@ namespace Nemo
                 }
             }
 
-            var operationText = ObjectFactory.GetOperationText(typeof(T), operation, operationType, schema);
             Dictionary<DbParameter, Param> outputParameters = null;
 
             var command = dbConnection.CreateCommand();
@@ -980,7 +968,7 @@ namespace Nemo
                         adapter.SelectCommand = command;
                         if (returnType == OperationReturnType.DataTable)
                         {
-                            var table = new DataTable(GetTableName(typeof(T)));
+                            var table = rootType != null ? new DataTable(GetTableName(rootType)) : new DataTable();
                             adapter.Fill(table);
                             response.Value = table;
                         }
@@ -1001,14 +989,17 @@ namespace Nemo
                             }
                             else
                             {
-                                var tableName = GetTableName<T>();
+                                var tableName = rootType != null ? GetTableName(rootType) : null;
                                 if (tableName.NullIfEmpty() != null)
                                 {
                                     set.Tables[0].TableName = tableName;
                                 }
                             }
                             response.Value = set;
-                            InferRelations(set, typeof(T));
+                            if (rootType != null)
+                            {
+                                InferRelations(set, rootType);
+                            }
                         }
                         break;
                 }
@@ -1048,14 +1039,21 @@ namespace Nemo
         public static OperationResponse Execute<T>(OperationRequest request)
             where T : class, IBusinessObject
         {
+            if (request.Types == null)
+            {
+                request.Types = new[] { typeof(T) };
+            }
+
+            var operationText = ObjectFactory.GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName);
+
             OperationResponse response;
             if (request.Connection != null)
             {
-                response = Execute<T>(request.Operation, request.Parameters, request.ReturnType, request.OperationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
+                response = Execute(operationText, request.Parameters, request.ReturnType, request.OperationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
             }
             else
             {
-                response = Execute<T>(request.Operation, request.Parameters, request.ReturnType, request.OperationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
+                response = Execute(operationText, request.Parameters, request.ReturnType, request.OperationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
             }
             return response;
         }
@@ -1404,23 +1402,6 @@ namespace Nemo
         private static bool IsValidType(Assembly assembly, string typeName)
         {
             return assembly.GetTypes().FirstOrDefault(t => t.Name == typeName) != null;
-        }
-
-        private static object ExecuteObject(Type objectType, string typeName, IList<Param> parameters)
-        {
-            object result = null;
-            var type = objectType.Assembly.GetTypes().FirstOrDefault(t => t.Name == typeName);
-            if (type != null)
-            {
-                var methodArgs = parameters.Select(p => p.Value.GetType()).ToArray();
-                var methodInfo = type.GetMethod("Execute", BindingFlags.Public | BindingFlags.Static, null, methodArgs, null);
-                if (methodInfo != null)
-                {
-                    var invoker = Reflector.Method.CreateDelegate(methodInfo.MethodHandle);
-                    result = invoker(null, parameters.Select(p => p.Value).ToArray());
-                }
-            }
-            return result;
         }
 
         private static void InferRelations(DataSet set, Type objectType, string tableName = null)
