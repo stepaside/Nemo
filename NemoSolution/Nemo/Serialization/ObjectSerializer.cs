@@ -123,7 +123,7 @@ namespace Nemo.Serialization
             T result = default(T);
             using (var reader = SerializationReader.CreateReader(data))
             {
-                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.BusinessObject);
+                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.BusinessObject, default(T) is IConvertible);
             }
             return result;
         }

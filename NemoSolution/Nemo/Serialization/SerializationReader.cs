@@ -468,10 +468,10 @@ namespace Nemo.Serialization
         
         public object ReadObject(Type objectType)
         {
-            return ReadObject(objectType, _objectByte.HasValue ? (ObjectTypeCode)_objectByte.Value : Reflector.GetObjectTypeCode(objectType));
+            return ReadObject(objectType, _objectByte.HasValue ? (ObjectTypeCode)_objectByte.Value : Reflector.GetObjectTypeCode(objectType), typeof(IConvertible).IsAssignableFrom(objectType));
         }
 
-        public object ReadObject(Type objectType, ObjectTypeCode expectedTypeCode)
+        public object ReadObject(Type objectType, ObjectTypeCode expectedTypeCode, bool isConvertible)
         {
             ObjectTypeCode typeCode;
             if (_objectByte.HasValue)
@@ -487,35 +487,35 @@ namespace Nemo.Serialization
             switch (typeCode)
             {
                 case ObjectTypeCode.Boolean:
-                    return ReadBoolean();
+                    return ConvertIfNecessary(ReadBoolean(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.Byte:
-                    return ReadByte();
+                    return ConvertIfNecessary(ReadByte(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.UInt16:
-                    return ReadUInt16();
+                    return ConvertIfNecessary(ReadUInt16(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.UInt32:
-                    return ReadUInt32();
+                    return ConvertIfNecessary(ReadUInt32(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.UInt64:
-                    return ReadUInt64();
+                    return ConvertIfNecessary(ReadUInt64(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.SByte:
-                    return ReadSByte();
+                    return ConvertIfNecessary(ReadSByte(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.Int16:
-                    return ReadInt16();
+                    return ConvertIfNecessary(ReadInt16(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.Int32:
-                    return ReadInt32();
+                    return ConvertIfNecessary(ReadInt32(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.Int64:
-                    return ReadInt64();
+                    return ConvertIfNecessary(ReadInt64(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.Char:
-                    return ReadChar();
+                    return ConvertIfNecessary(ReadChar(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.String:
-                    return ReadString();
+                    return ConvertIfNecessary(ReadString(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.Single:
-                    return ReadSingle();
+                    return ConvertIfNecessary(ReadSingle(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.Double:
-                    return ReadDouble();
+                    return ConvertIfNecessary(ReadDouble(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.Decimal:
-                    return ReadDecimal();
+                    return ConvertIfNecessary(ReadDecimal(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.DateTime:
-                    return ReadDateTime();
+                    return ConvertIfNecessary(ReadDateTime(), objectType, typeCode, expectedTypeCode, isConvertible);
                 case ObjectTypeCode.ByteArray:
                     return ReadBytes();
                 case ObjectTypeCode.CharArray:
@@ -671,6 +671,18 @@ namespace Nemo.Serialization
             return result;
         }
 
+        private static object ConvertIfNecessary(object value, Type objectType, ObjectTypeCode typeCode, ObjectTypeCode expectedTypeCode, bool isConvertible)
+        {
+            if (expectedTypeCode != typeCode && isConvertible)
+            {
+                return Reflector.ChangeType(value, objectType);
+            }
+            else
+            {
+                return value;
+            }
+        }
+
         private ObjectDeserializer CreateDelegate(Type objectType)
         {
             var exists = true;
@@ -731,7 +743,7 @@ namespace Nemo.Serialization
             var method = new DynamicMethod("Deserialize_" + objectType.Name, typeof(object[]), new[] { typeof(SerializationReader), typeof(int) }, typeof(SerializationReader).Module);
             var il = method.GetILGenerator();
 
-            var readObject = this.GetType().GetMethod("ReadObject", new[] { typeof(Type), typeof(ObjectTypeCode) });
+            var readObject = this.GetType().GetMethod("ReadObject", new[] { typeof(Type), typeof(ObjectTypeCode), typeof(bool) });
             var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
 
             var interfaceType = objectType;
@@ -790,6 +802,14 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Ldtoken, propertyType);
                 il.Emit(OpCodes.Call, getTypeFromHandle);
                 il.Emit(OpCodes.Ldc_I4, (int)Reflector.GetObjectTypeCode(propertyType));
+                if (typeof(IConvertible).IsAssignableFrom(propertyType))
+                {
+                    il.Emit(OpCodes.Ldc_I4_1);
+                }
+                else
+                {
+                    il.Emit(OpCodes.Ldc_I4_0);
+                }
                 il.Emit(OpCodes.Callvirt, readObject);
                 il.EmitCastToReference(property.PropertyType);
                 il.EmitCall(OpCodes.Callvirt, property.GetSetMethod(), null);
