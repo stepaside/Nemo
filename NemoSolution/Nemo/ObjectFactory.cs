@@ -559,14 +559,21 @@ namespace Nemo
         private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool canBeBuffered, MaterializationMode mode, string schema)
             where T : class, IBusinessObject
         {
+            if (operationType == OperationType.Guess)
+            {
+                operationType = operation.Any(c => Char.IsWhiteSpace(c)) ? OperationType.Sql : OperationType.StoredProcedure;
+            }
+
+            var operationText = ObjectFactory.GetOperationText(typeof(T), operation, operationType, schema);
+
             OperationResponse response = null;
             if (connection != null)
             {
-                response = ObjectFactory.Execute(operation, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema);
+                response = ObjectFactory.Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema);
             }
             else
             {
-                response = ObjectFactory.Execute(operation, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
+                response = ObjectFactory.Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
             }
             var result = Transform<T>(response, map, types, canBeBuffered, mode);
             return result;
@@ -843,7 +850,7 @@ namespace Nemo
             return response;
         }
 
-        internal static OperationResponse Execute(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType = OperationType.Guess, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null)
+        internal static OperationResponse Execute(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null)
         {
             var rootType = types != null ? types[0] : null;
 
@@ -863,12 +870,7 @@ namespace Nemo
                 dbConnection = DbFactory.CreateConnection(connectionName, rootType);
                 closeConnection = true;
             }
-
-            if (operationType == OperationType.Guess)
-            {
-                operationType = operationText.Any(c => Char.IsWhiteSpace(c)) ? OperationType.Sql : OperationType.StoredProcedure;
-            }
-
+            
             if (returnType == OperationReturnType.Guess)
             {
                 if (operationText.IndexOf("insert", StringComparison.OrdinalIgnoreCase) > -1
@@ -1044,16 +1046,22 @@ namespace Nemo
                 request.Types = new[] { typeof(T) };
             }
 
-            var operationText = ObjectFactory.GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName);
+            var operationType = request.OperationType;
+            if (operationType == OperationType.Guess)
+            {
+                operationType = request.Operation.Any(c => Char.IsWhiteSpace(c)) ? OperationType.Sql : OperationType.StoredProcedure;
+            }
 
+            var operationText = ObjectFactory.GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName);
+            
             OperationResponse response;
             if (request.Connection != null)
             {
-                response = Execute(operationText, request.Parameters, request.ReturnType, request.OperationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
+                response = Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
             }
             else
             {
-                response = Execute(operationText, request.Parameters, request.ReturnType, request.OperationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
+                response = Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
             }
             return response;
         }

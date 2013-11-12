@@ -13,7 +13,8 @@
     <tags>ORM micro-ORM sql mapper</tags>
 	<releaseNotes>
     Bug fixes
-    * Fixed ObjectScope.Commit functionality 
+    * Fixed type coercion during de-serialization
+    * Fixed support for byte[] properties
   </releaseNotes>
   </metadata>
 </package>
