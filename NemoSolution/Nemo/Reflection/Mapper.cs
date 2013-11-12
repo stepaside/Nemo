@@ -65,7 +65,7 @@ namespace Nemo.Reflection
 
             var getItem = indexerType.GetMethod("get_Item", new Type[] { typeof(string) });
 
-            var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && t.Value.IsSimpleType);
+            var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && (t.Value.IsSimpleType || t.Value.IsBinary));
             foreach (var match in matches)
             {
                 var typeConverter = TypeConverterAttribute.GetTypeConverter(getItem.ReturnType, match.Key);

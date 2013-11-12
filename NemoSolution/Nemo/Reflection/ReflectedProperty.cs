@@ -17,11 +17,14 @@ namespace Nemo.Reflection
             IsPersistent = Maybe<bool>.Empty;
             IsSelectable = Maybe<bool>.Empty;
             IsSerializable = Maybe<bool>.Empty;
-            IsSimpleList = Reflector.IsSimpleList(property.PropertyType);
+            IsBinary = property.PropertyType == typeof(byte[]);
+            IsSimpleList = !IsBinary && Reflector.IsSimpleList(property.PropertyType);
             IsBusinessObject = Reflector.IsBusinessObject(property.PropertyType);
+            
             Type elementType;
             IsBusinessObjectList = Reflector.IsBusinessObjectList(property.PropertyType, out elementType);
             ElementType = elementType;
+                        
             if (IsBusinessObjectList)
             {
                 IsList = true;
@@ -29,14 +32,15 @@ namespace Nemo.Reflection
             }
             else
             {
-                IsList = Reflector.IsList(property.PropertyType);
+                IsList = !IsBinary && Reflector.IsList(property.PropertyType);
                 if (IsList)
                 {
                     ElementType = Reflector.ExtractCollectionElementType(property.PropertyType);
                     IsListInterface = property.PropertyType.GetGenericTypeDefinition() == typeof(IList<>);
                 }
             }
-            IsSimpleType = Reflector.IsSimpleType(property.PropertyType);
+
+            IsSimpleType = !IsBinary && Reflector.IsSimpleType(property.PropertyType);
             IsTypeUnion = Reflector.IsTypeUnion(property.PropertyType);
             IsTuple = Reflector.IsTuple(property.PropertyType);
             IsNullableType = Reflector.IsNullableType(property.PropertyType);
@@ -307,6 +311,12 @@ namespace Nemo.Reflection
         }
 
         internal int RefPosition
+        {
+            get;
+            set;
+        }
+
+        internal bool IsBinary
         {
             get;
             set;
