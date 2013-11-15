@@ -33,18 +33,24 @@ namespace Nemo.Caching.Providers
                     if (!_redisConnectionList.TryGetValue(config, out connection))
                     {
                         connection = ConnectionUtils.Connect(config);
-                        _redisConnectionList.Add(config, connection);
+                        if (connection != null)
+                        {
+                            _redisConnectionList.Add(config, connection);
+                        }
                     }
 
-                    if (connection.State == RedisConnectionBase.ConnectionState.Closing 
-                        || connection.State == RedisConnectionBase.ConnectionState.Closed)
+                    if (connection != null)
                     {
-                        connection = ConnectionUtils.Connect(config);
-                    }
+                        if (connection.State == RedisConnectionBase.ConnectionState.Closing
+                            || connection.State == RedisConnectionBase.ConnectionState.Closed)
+                        {
+                            connection = ConnectionUtils.Connect(config);
+                        }
 
-                    if (connection.State == RedisConnectionBase.ConnectionState.New)
-                    {
-                        connection.Open();
+                        if (connection.State == RedisConnectionBase.ConnectionState.New)
+                        {
+                            connection.Open();
+                        }
                     }
                 }
             }
