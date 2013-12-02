@@ -771,7 +771,7 @@ namespace Nemo.Caching
             return Tuple.Create(result, values, keys, stale);
         }
         
-        internal static bool Add<T>(T item, CacheProvider cache)
+        public static bool Add<T>(T item, CacheProvider cache = null)
             where T : class, IBusinessObject
         {
             if (item != null)
@@ -782,7 +782,7 @@ namespace Nemo.Caching
                     var key = new CacheKey(item).Value;
                     if (cache.IsOutOfProcess)
                     {
-                        cache.AddNew(key, new CacheItem(key, item).Value);
+                        return cache.AddNew(key, new CacheItem(key, item).Value);
                     }
                     else
                     {
@@ -900,7 +900,7 @@ namespace Nemo.Caching
             return success;
         }
 
-        internal static bool Remove<T>(T item, CacheProvider cache = null)
+        public static bool Remove<T>(T item, CacheProvider cache = null)
             where T : class, IBusinessObject
         {
             var success = false;
@@ -921,9 +921,13 @@ namespace Nemo.Caching
                     var key = new CacheKey(item).Value;
                     var strategy = ConfigurationFactory.Configuration.CacheInvalidationStrategy;
 
-                    if (strategy == CacheInvalidationStrategy.QuerySignature)
+                    if (strategy == CacheInvalidationStrategy.QuerySignature || strategy == CacheInvalidationStrategy.DelayedQuerySignature)
                     {
                         success = Invalidate<T>(item);
+                        if (!cache.IsDistributed)
+                        {
+                            success = cache.Clear(key) && success;
+                        }
                     }
                     else
                     {
@@ -944,7 +948,7 @@ namespace Nemo.Caching
 
         #region Modify Methods
 
-        internal static bool Modify<T>(T item, CacheProvider cache)
+        public static bool Modify<T>(T item, CacheProvider cache = null)
             where T : class, IBusinessObject
         {
             if (item != null)
