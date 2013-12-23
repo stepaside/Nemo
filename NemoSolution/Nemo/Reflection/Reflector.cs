@@ -618,7 +618,11 @@ namespace Nemo.Reflection
         internal static DbType ClrToDbType(Type clrType)
         {
             DbType dbType;
-            if (!_clrToDbTypeLookup.TryGetValue(clrType, out dbType))
+            if (clrType == null)
+            {
+                dbType = DbType.Xml;
+            }
+            else if (!_clrToDbTypeLookup.TryGetValue(clrType, out dbType))
             {
                 if (clrType.IsEnum)
                 {
