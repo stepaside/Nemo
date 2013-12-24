@@ -900,18 +900,22 @@ namespace Nemo
                     dbParam.ParameterName = parameter.Name.TrimStart('@', '?', ':');
                     dbParam.Direction = parameter.Direction;
                     dbParam.Value = parameter.Value ?? DBNull.Value;
-                    if (parameter.Size > -1)
+                    
+                    if (parameter.Value != null)
                     {
-                        dbParam.Size = parameter.Size;
-                    }
+                        if (parameter.Size > -1)
+                        {
+                            dbParam.Size = parameter.Size;
+                        }
 
-                    if (!parameter.DbType.HasValue)
-                    {
-                        dbParam.DbType = Reflector.ClrToDbType(parameter.Type);
-                    }
-                    else
-                    {
-                        dbParam.DbType = parameter.DbType.Value;
+                        if (!parameter.DbType.HasValue)
+                        {
+                            dbParam.DbType = Reflector.ClrToDbType(parameter.Type);
+                        }
+                        else
+                        {
+                            dbParam.DbType = parameter.DbType.Value;
+                        }
                     }
 
                     if (dbParam.Direction == ParameterDirection.Output)
