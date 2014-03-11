@@ -1,4 +1,4 @@
-﻿using Nemo.Caching;
+﻿using Nemo.Cache;
 using Nemo.Configuration;
 using Nemo.Fn;
 using System;

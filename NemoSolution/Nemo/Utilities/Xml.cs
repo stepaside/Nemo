@@ -17,13 +17,13 @@ namespace Nemo.Utilities
         internal static IEnumerable<XmlSchema> InferXmlSchema(Type type)
         {
             var reflectedType = Reflector.GetReflectedType(type);
-            var isBusinessObject = reflectedType.IsBusinessObject;
-            if (isBusinessObject || reflectedType.IsList)
+            var isDataEntity = reflectedType.IsDataEntity;
+            if (isDataEntity || reflectedType.IsList)
             {
                 var innerTypes = new HashSet<Type>();
                 var objectType = type;
                 var isArray = false;
-                if (!isBusinessObject)
+                if (!isDataEntity)
                 {
                     objectType = reflectedType.ElementType;
                     isArray = true;
@@ -106,7 +106,7 @@ namespace Nemo.Utilities
                         nillable = true;
                         simpleCollection = true;
                     }
-                    else if (property.Value.IsBusinessObject)
+                    else if (property.Value.IsDataEntity)
                     {
                         innerTypes.Add(property.Value.PropertyType);
                         nillable = true;

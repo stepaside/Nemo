@@ -36,25 +36,11 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BookSleeve, Version=1.3.38.0, Culture=neutral, PublicKeyToken=9056fda458ff61cf, processorArchitecture=MSIL">
+    <Reference Include="log4net, Version=1.2.13.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\BookSleeve.1.3.39\lib\BookSleeve.dll</HintPath>
-    </Reference>
-    <Reference Include="Couchbase, Version=1.2.9.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\CouchbaseNetClient.1.2.9\lib\net40\Couchbase.dll</HintPath>
-    </Reference>
-    <Reference Include="Enyim.Caching, Version=1.2.9.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\CouchbaseNetClient.1.2.9\lib\net40\Enyim.Caching.dll</HintPath>
-    </Reference>
-    <Reference Include="log4net">
-      <HintPath>packages\log4net.2.0.2\lib\net40-full\log4net.dll</HintPath>
+      <HintPath>packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>packages\Newtonsoft.Json.5.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -85,15 +71,26 @@
     <Compile Include="Attributes\DistinctAttribute.cs" />
     <Compile Include="Audit\AuditLog.cs" />
     <Compile Include="Audit\AuditLogProvider.cs" />
-    <Compile Include="Caching\CacheExpirationType.cs" />
-    <Compile Include="Caching\IRevisionProvider.cs" />
-    <Compile Include="Caching\IPersistentCacheProvider.cs" />
-    <Compile Include="Caching\IStaleCacheProvider.cs" />
-    <Compile Include="Caching\Providers\Generic\MemcachedCacheProvider.cs" />
-    <Compile Include="Caching\CacheValue.cs" />
-    <Compile Include="Caching\Providers\CouchbaseCacheProvider.cs" />
-    <Compile Include="Caching\CacheInvalidationStrategy.cs" />
-    <Compile Include="Caching\PublisheRevisionIncrementEventArgs.cs" />
+    <Compile Include="Cache\CacheExpirationType.cs" />
+    <Compile Include="Cache\CacheFactory.cs" />
+    <Compile Include="Cache\CacheInvalidationStrategy.cs" />
+    <Compile Include="Cache\CacheItem.cs" />
+    <Compile Include="Cache\CacheKey.cs" />
+    <Compile Include="Cache\CacheOptions.cs" />
+    <Compile Include="Cache\CacheProvider.cs" />
+    <Compile Include="Cache\CacheScope.cs" />
+    <Compile Include="Cache\CacheValue.cs" />
+    <Compile Include="Cache\ContextLevelCacheType.cs" />
+    <Compile Include="Cache\DistributedCacheProvider.cs" />
+    <Compile Include="Cache\HashAlgorithmName.cs" />
+    <Compile Include="Cache\IPersistentCacheProvider.cs" />
+    <Compile Include="Cache\IStaleCacheProvider.cs" />
+    <Compile Include="Cache\ObjectCache.cs" />
+    <Compile Include="Cache\Providers\ExecutionContextCacheProvider.cs" />
+    <Compile Include="Cache\Providers\FileCacheProvider.cs" />
+    <Compile Include="Cache\Providers\MemoryCacheProvider.cs" />
+    <Compile Include="Cache\PublishQueryInvalidationEventArgs.cs" />
+    <Compile Include="Cache\QueryDependency.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
     <Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" />
@@ -124,9 +121,13 @@
     <Compile Include="Fn\MaybeExtensions.cs" />
     <Compile Include="Fn\Stream.cs" />
     <Compile Include="Fn\StreamExtensions.cs" />
-    <Compile Include="Fn\Tuple.cs" />
-    <Compile Include="Fn\TypeUnion.cs" />
     <Compile Include="Audit\IAuditable.cs" />
+    <Compile Include="Fn\Tuple.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Fn\TypeUnion.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="ParamList.cs" />
     <Compile Include="Reflection\ReflectedProperty.cs" />
     <Compile Include="Attributes\DoNotSelectAttribute.cs" />
@@ -163,15 +164,6 @@
     <Compile Include="Extensions\ExceptionExtensions.cs" />
     <Compile Include="UnitOfWork\ChangeTrackingMode.cs" />
     <Compile Include="UnitOfWork\ObjectScopeExtensions.cs" />
-    <Compile Include="Caching\CacheOptions.cs" />
-    <Compile Include="Caching\QueryDependency.cs" />
-    <Compile Include="Caching\ContextLevelCacheType.cs" />
-    <Compile Include="Caching\HashAlgorithmName.cs" />
-    <Compile Include="Caching\CacheScope.cs" />
-    <Compile Include="Caching\Providers\FileCacheProvider.cs" />
-    <Compile Include="Caching\Providers\ExecutionContextCacheProvider.cs" />
-    <Compile Include="Caching\Providers\MemcachedCacheProvider.cs" />
-    <Compile Include="Caching\Providers\RedisCacheProvider.cs" />
     <Compile Include="Collections\MultiResult.cs" />
     <Compile Include="Collections\TypeArray.cs" />
     <Compile Include="Configuration\DefaultConfiguration.cs" />
@@ -188,10 +180,6 @@
     <Compile Include="OperationRequest.cs" />
     <Compile Include="OperationReturnType.cs" />
     <Compile Include="OperationResponse.cs" />
-    <Compile Include="Caching\CacheFactory.cs" />
-    <Compile Include="Caching\DistributedCacheProvider.cs" />
-    <Compile Include="Caching\Providers\MemoryCacheProvider.cs" />
-    <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Extensions\CastExtensions.cs" />
     <Compile Include="OperationType.cs" />
     <Compile Include="Reflection\Adapter.cs" />
@@ -204,9 +192,6 @@
     <Compile Include="MaterializationMode.cs" />
     <Compile Include="Serialization\ObjectJsonSerializer.cs" />
     <Compile Include="Serialization\ObjectXmlSerializer.cs" />
-    <Compile Include="Caching\ObjectCache.cs" />
-    <Compile Include="Caching\CacheItem.cs" />
-    <Compile Include="Caching\CacheKey.cs" />
     <Compile Include="Serialization\SerializationWriter.cs" />
     <Compile Include="Collections\BinaryHeap.cs" />
     <Compile Include="Collections\Comparers\ProjectionComparer.cs" />
@@ -255,7 +240,7 @@
     <Compile Include="Validation\ValidationError.cs" />
     <Compile Include="Validation\ValidationExtensions.cs" />
     <Compile Include="Reflection\Reflector.cs" />
-    <Compile Include="IBusinessObject.cs" />
+    <Compile Include="IDataEntity.cs" />
     <Compile Include="Validation\ValidationResult.cs" />
     <Compile Include="Validation\CompareAttribute.cs" />
     <Compile Include="Validation\ContainsAttribute.cs" />

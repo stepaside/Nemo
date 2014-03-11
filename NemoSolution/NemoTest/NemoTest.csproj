@@ -50,22 +50,29 @@
     <StartupObject>NemoTest.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Couchbase, Version=1.2.9.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
+    <Reference Include="BookSleeve, Version=1.3.41.0, Culture=neutral, PublicKeyToken=9056fda458ff61cf, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Nemo\packages\CouchbaseNetClient.1.2.9\lib\net40\Couchbase.dll</HintPath>
+      <HintPath>..\Nemo\packages\BookSleeve.1.3.41\lib\BookSleeve.dll</HintPath>
     </Reference>
-    <Reference Include="EntityFramework">
-      <HintPath>..\Nemo\packages\EntityFramework.6.0.1\lib\net45\EntityFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="EntityFramework.SqlServer">
-      <HintPath>..\Nemo\packages\EntityFramework.6.0.1\lib\net45\EntityFramework.SqlServer.dll</HintPath>
-    </Reference>
-    <Reference Include="Enyim.Caching, Version=1.2.9.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
+    <Reference Include="Couchbase, Version=1.3.3.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Nemo\packages\CouchbaseNetClient.1.2.9\lib\net40\Enyim.Caching.dll</HintPath>
+      <HintPath>..\Nemo\packages\CouchbaseNetClient.1.3.3\lib\net40\Couchbase.dll</HintPath>
     </Reference>
-    <Reference Include="log4net">
-      <HintPath>..\Nemo\packages\log4net.2.0.2\lib\net40-full\log4net.dll</HintPath>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Nemo\packages\EntityFramework.6.0.2\lib\net45\EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Nemo\packages\EntityFramework.6.0.2\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
+    <Reference Include="Enyim.Caching, Version=1.3.3.0, Culture=neutral, PublicKeyToken=05e9c6b5a9ec94c2, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Nemo\packages\CouchbaseNetClient.1.3.3\lib\net40\Enyim.Caching.dll</HintPath>
+    </Reference>
+    <Reference Include="log4net, Version=1.2.13.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Nemo\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -75,9 +82,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Nemo\packages\protobuf-net.2.0.0.668\lib\net40\protobuf-net.dll</HintPath>
     </Reference>
-    <Reference Include="ServiceStack.Text, Version=3.9.70.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="ServiceStack.Text, Version=4.0.11.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Nemo\packages\ServiceStack.Text.3.9.70\lib\net35\ServiceStack.Text.dll</HintPath>
+      <HintPath>..\Nemo\packages\ServiceStack.Text.4.0.11\lib\net40\ServiceStack.Text.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -97,6 +104,14 @@
     <Compile Include="SqlMapper.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Nemo.Cache.Memcached\Nemo.Cache.Memcached.csproj">
+      <Project>{49a196f5-852a-4206-af80-c58f041e922e}</Project>
+      <Name>Nemo.Cache.Memcached</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Nemo.Cache.Redis\Nemo.Cache.Redis.csproj">
+      <Project>{6f88875f-89a8-4fc0-ac68-e4d0a0f3a022}</Project>
+      <Name>Nemo.Cache.Redis</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Nemo\Nemo.csproj">
       <Project>{C9B28604-E959-4D44-92C9-BE999C423DC3}</Project>
       <Name>Nemo</Name>

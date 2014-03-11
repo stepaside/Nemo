@@ -733,7 +733,7 @@ namespace Nemo.Collections.Extensions
         #endregion
 
         #region Cartesian Product Methods
-
+        
         public static IEnumerable<Tuple<int, T1, T2>> CrossJoin<T1, T2>(this IEnumerable<T1> first, IEnumerable<T2> second)
         {
             first.ThrowIfNull("first");
@@ -757,8 +757,22 @@ namespace Nemo.Collections.Extensions
 
         #endregion
 
+        #region PowerSet Method
+
+        public static IEnumerable<IEnumerable<T>> PowerSet<T>(this IList<T> source)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException("source");
+            }
+
+            return Enumerable.Range(0, 1 << source.Count).Select(m => Enumerable.Range(0, source.Count).Where(i => (m & (1 << i)) != 0).Select(i => source[i]));
+        }
+
+        #endregion
+
         #region Flatten Methods
-        
+
         public static IEnumerable<T> Flatten<T>(this IEnumerable<IEnumerable<T>> source)
         {
             source.ThrowIfNull("source");

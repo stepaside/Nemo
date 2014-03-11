@@ -166,7 +166,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return Reflector.IsBusinessObject(this.Value);
+                return Reflector.IsDataEntity(this.Value);
             }
         }
 

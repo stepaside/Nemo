@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Nemo.Configuration.Mapping
 {
     public abstract class EntityMap<T> : IEntityMap
-        where T : class, IBusinessObject
+        where T : class, IDataEntity
     {
         private Dictionary<string, IPropertyMap> _properties;
            

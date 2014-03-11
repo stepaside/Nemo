@@ -1,4 +1,4 @@
-﻿using Nemo.Caching;
+﻿using Nemo.Cache;
 using System;
 using System.Collections.Generic;
 using System.Linq;

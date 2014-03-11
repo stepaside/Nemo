@@ -175,7 +175,7 @@ namespace Nemo.Serialization
                             {
                                 xmlValue = ((Guid)value).ToString("D");
                             }
-                            else if (value is IBusinessObject)
+                            else if (value is IDataEntity)
                             {
                                 var serializer = CreateDelegate(objectType);
                                 serializer(value, output, addSchemaDeclaration);
@@ -184,7 +184,7 @@ namespace Nemo.Serialization
                             {
                                 WriteStartElement(name, output, false, null);
                                 var items = ((IList)value).Cast<object>().ToArray();
-                                if (items.Length > 0 && items[0] is IBusinessObject)
+                                if (items.Length > 0 && items[0] is IDataEntity)
                                 {
                                     var elementType = items[0].GetType();
                                     var serializer = CreateDelegate(elementType);
@@ -196,41 +196,6 @@ namespace Nemo.Serialization
                                 else
                                 {
                                     WriteList((IList)value, true, output);
-                                }
-                                WriteEndElement(name, output);
-                            }
-                            else if (value is ITypeUnion)
-                            {
-                                var typeUnion = (ITypeUnion)value;
-                                WriteStartElement(name, output, false, new Dictionary<string, string> { { "__index", (typeUnion.AllTypes.FindIndex(t => t == typeUnion.UnionType) + 1).ToString() }, { "__empty", (typeUnion.GetObject() == null).ToString().ToLower() } });
-                                var reflectedUnionType = Reflector.GetReflectedType(typeUnion.UnionType);
-                                for (int i = 0; i < typeUnion.AllTypes.Length; i++)
-                                {
-                                    var itemName = "Item" + (i + 1);
-                                    if (typeUnion.AllTypes[i] == typeUnion.UnionType)
-                                    {
-                                        WriteStartElement(itemName, output, false, null);
-                                        if (reflectedUnionType.IsSimpleType)
-                                        {
-                                            WriteObject(typeUnion.GetObject(), Reflector.SimpleClrToXmlType(typeUnion.UnionType), output, false);
-                                        }
-                                        else if (reflectedUnionType.IsList)
-                                        {
-                                            WriteStartElement("ArrayOf" + reflectedUnionType.ElementType.Name, output, false, null);
-                                            WriteList((IList)typeUnion.GetObject(), reflectedUnionType.IsSimpleList, output);
-                                            WriteEndElement("ArrayOf" + reflectedUnionType.ElementType.Name, output);
-                                        }
-                                        else
-                                        {
-                                            var serializer = CreateDelegate(typeUnion.UnionType);
-                                            serializer(typeUnion.GetObject(), output, addSchemaDeclaration);
-                                        }
-                                        WriteEndElement(itemName, output);
-                                    }
-                                    else
-                                    {
-                                        WriteEmptyElement(itemName, output, false, null);
-                                    }
                                 }
                                 WriteEndElement(name, output);
                             }

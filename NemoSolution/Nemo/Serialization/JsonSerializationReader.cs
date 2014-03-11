@@ -29,7 +29,7 @@ namespace Nemo.Serialization
 
             if (root.Type == JsonType.Object)
             {
-                if (reflectedType.IsBusinessObject)
+                if (reflectedType.IsDataEntity)
                 {
                     result = ObjectFactory.Create(objectType);
                     elementType = objectType;
@@ -44,12 +44,12 @@ namespace Nemo.Serialization
             }
             else if (root.Type == JsonType.Array)
             {
-                if (reflectedType.IsBusinessObject)
+                if (reflectedType.IsDataEntity)
                 {
                     result = List.Create(objectType);
                     elementType = objectType;
                 }
-                else if (reflectedType.IsBusinessObjectList)
+                else if (reflectedType.IsDataEntityList)
                 {
                     elementType = reflectedType.ElementType;
                     if (!reflectedType.IsInterface)
@@ -97,18 +97,7 @@ namespace Nemo.Serialization
                         case JsonType.Boolean:
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
-                                if (property.IsTypeUnion)
-                                {
-                                    var unionType = property.PropertyType.GenericTypeArguments.FirstOrDefault(t => t == typeof(bool));
-                                    if (unionType != null)
-                                    {
-                                        ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, current.Value.As<bool>()));
-                                    }
-                                }
-                                else
-                                {
-                                    ((IBusinessObject)result).Property(property.PropertyName, current.Value.As<bool>());
-                                }
+                                ((IDataEntity)result).Property(property.PropertyName, current.Value.As<bool>());
                             }
                             if (result is IList)
                             {
@@ -133,28 +122,13 @@ namespace Nemo.Serialization
                                     switch (typeCode)
                                     {
                                         case TypeCode.Double:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (double)value);
+                                            ((IDataEntity)result).Property(property.PropertyName, (double)value);
                                             break;
                                         case TypeCode.Single:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (float)value);
+                                            ((IDataEntity)result).Property(property.PropertyName, (float)value);
                                             break;
                                         case TypeCode.Decimal:
-                                            ((IBusinessObject)result).Property(property.PropertyName, value);
-                                            break;
-                                        case TypeCode.Object:
-                                            {
-                                                if (property.IsTypeUnion)
-                                                {
-                                                    var unionType = property.PropertyType.GenericTypeArguments.FirstOrDefault(t =>
-                                                                            (t == typeof(decimal) && value >= decimal.MinValue &&value <= decimal.MaxValue)
-                                                                            || (t == typeof(double) && (double)value >= double.MinValue && (double)value <= double.MaxValue)
-                                                                            || (t == typeof(float) && (float)value >= float.MinValue && (float)value <= float.MaxValue));
-                                                    if (unionType != null)
-                                                    {
-                                                        ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, Reflector.ChangeType(value, unionType)));
-                                                    }
-                                                }
-                                            }
+                                            ((IDataEntity)result).Property(property.PropertyName, value);
                                             break;
                                     }
                                 }
@@ -223,48 +197,28 @@ namespace Nemo.Serialization
                                     switch (typeCode)
                                     {
                                         case TypeCode.Byte:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (byte)value);
+                                            ((IDataEntity)result).Property(property.PropertyName, (byte)value);
                                             break;
                                         case TypeCode.SByte:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (sbyte)value);
+                                            ((IDataEntity)result).Property(property.PropertyName, (sbyte)value);
                                             break;
                                         case TypeCode.Int16:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (short)value);
+                                            ((IDataEntity)result).Property(property.PropertyName, (short)value);
                                             break;
                                         case TypeCode.Int32:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (int)value);
+                                            ((IDataEntity)result).Property(property.PropertyName, (int)value);
                                             break;
                                         case TypeCode.Int64:
-                                            ((IBusinessObject)result).Property(property.PropertyName, value);
+                                            ((IDataEntity)result).Property(property.PropertyName, value);
                                             break;
                                         case TypeCode.UInt16:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (ushort)value);
+                                            ((IDataEntity)result).Property(property.PropertyName, (ushort)value);
                                             break;
                                         case TypeCode.UInt32:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (uint)value);
+                                            ((IDataEntity)result).Property(property.PropertyName, (uint)value);
                                             break;
                                         case TypeCode.UInt64:
-                                            ((IBusinessObject)result).Property(property.PropertyName, (ulong)value);
-                                            break;
-                                        case TypeCode.Object:
-                                            {
-                                                if (property.IsTypeUnion)
-                                                {
-                                                    var unionType = property.PropertyType.GenericTypeArguments.FirstOrDefault(t =>
-                                                                            (t == typeof(ulong) && (ulong)value >= ulong.MinValue && (ulong)value <= ulong.MaxValue)
-                                                                            || (t == typeof(long) && value >= long.MinValue && value <= long.MaxValue)
-                                                                            || (t == typeof(uint) && (uint)value >= uint.MinValue && (uint)value <= uint.MaxValue)
-                                                                            || (t == typeof(int) && (int)value >= int.MinValue && (int)value <= int.MaxValue)
-                                                                            || (t == typeof(ushort) && (ushort)value >= ushort.MinValue && (ushort)value <= ushort.MaxValue)
-                                                                            || (t == typeof(short) && (short)value >= short.MinValue && (short)value <= short.MaxValue)
-                                                                            || (t == typeof(byte) && (byte)value >= byte.MinValue && (byte)value <= byte.MaxValue)
-                                                                            || (t == typeof(sbyte) && (sbyte)value >= sbyte.MinValue && (sbyte)value <= sbyte.MaxValue));
-                                                    if (unionType != null)
-                                                    {
-                                                        ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, Reflector.ChangeType(value, unionType)));
-                                                    }
-                                                }
-                                            }
+                                            ((IDataEntity)result).Property(property.PropertyName, (ulong)value);
                                             break;
                                     }
                                 }
@@ -397,58 +351,16 @@ namespace Nemo.Serialization
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
                                 var value = current.Value.As<string>();
-                                if (property.IsTypeUnion)
+                                if (property.PropertyType == typeof(string))
                                 {
-                                    DateTime date = default(DateTime);
-                                    DateTimeOffset dateOffset = default(DateTimeOffset);
-                                    TimeSpan time = default(TimeSpan);
-                                    Guid guid = Guid.Empty;
-
-                                    var unionType = property.PropertyType.GenericTypeArguments.FirstOrDefault(t =>
-                                                            (t == typeof(DateTime) && DateTime.TryParse(value, out date))
-                                                            || (t == typeof(TimeSpan) && TimeSpan.TryParse(value, out time))
-                                                            || (t == typeof(DateTimeOffset) && DateTimeOffset.TryParse(value, out dateOffset))
-                                                            || (t == typeof(Guid) && Guid.TryParse(value, out guid))
-                                                            || (t == typeof(char) && value.Length == 1)
-                                                            || t == typeof(string));
-                                    if (unionType != null)
-                                    {
-                                        if (unionType == typeof(string))
-                                        {
-                                            ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, value));
-                                        }
-                                        else if (unionType == typeof(char))
-                                        {
-                                            ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, value[0]));
-                                        }
-                                        else if (unionType == typeof(DateTime))
-                                        {
-                                            ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, date));
-                                        }
-                                        else if (unionType == typeof(DateTimeOffset))
-                                        {
-                                            ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, dateOffset));
-                                        }
-                                        else if (unionType == typeof(TimeSpan))
-                                        {
-                                            ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, time));
-                                        }
-                                        else if (unionType == typeof(Guid))
-                                        {
-                                            ((IBusinessObject)result).Property(property.PropertyName, TypeUnion.Create(property.PropertyType.GenericTypeArguments, guid));
-                                        }
-                                    }
-                                }
-                                else if (property.PropertyType == typeof(string))
-                                {
-                                    ((IBusinessObject)result).Property(property.PropertyName, value);
+                                    ((IDataEntity)result).Property(property.PropertyName, value);
                                 }
                                 else if (property.PropertyType == typeof(DateTime))
                                 {
                                     DateTime date;
                                     if (DateTime.TryParse(value, out date))
                                     {
-                                        ((IBusinessObject)result).Property(property.PropertyName, date);
+                                        ((IDataEntity)result).Property(property.PropertyName, date);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(TimeSpan))
@@ -456,7 +368,7 @@ namespace Nemo.Serialization
                                     TimeSpan time;
                                     if (TimeSpan.TryParse(value, out time))
                                     {
-                                        ((IBusinessObject)result).Property(property.PropertyName, time);
+                                        ((IDataEntity)result).Property(property.PropertyName, time);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(DateTimeOffset))
@@ -464,7 +376,7 @@ namespace Nemo.Serialization
                                     DateTimeOffset date;
                                     if (DateTimeOffset.TryParse(value, out date))
                                     {
-                                        ((IBusinessObject)result).Property(property.PropertyName, date);
+                                        ((IDataEntity)result).Property(property.PropertyName, date);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(Guid))
@@ -472,12 +384,12 @@ namespace Nemo.Serialization
                                     Guid guid;
                                     if (Guid.TryParse(value, out guid))
                                     {
-                                        ((IBusinessObject)result).Property(property.PropertyName, guid);
+                                        ((IDataEntity)result).Property(property.PropertyName, guid);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(char) && !string.IsNullOrEmpty(value))
                                 {
-                                    ((IBusinessObject)result).Property(property.PropertyName, value[0]);
+                                    ((IDataEntity)result).Property(property.PropertyName, value[0]);
                                 }
                             }
                             else
@@ -595,28 +507,11 @@ namespace Nemo.Serialization
                         case JsonType.Object:
                             {
                                 var propertyType = property.PropertyType;
-                                if (property.IsTypeUnion)
-                                {
-                                    var match = property.PropertyType.GenericTypeArguments
-                                                .Where(t => !Reflector.IsSimpleType(t) && !Reflector.IsList(t))
-                                                .Select(t => new { Type = t, Rank = ComputeTypeMatchRank(current, t) })
-                                                .MaxElement(t => t.Rank);
-                                    if (match != null)
-                                    {
-                                        propertyType = match.Type;
-                                    }
-                                }
-
                                 var item = ReadObject(current, propertyType);
-                                
-                                if (property.IsTypeUnion)
-                                {
-                                    item = TypeUnion.Create(property.PropertyType.GenericTypeArguments, item);
-                                }
-
+                               
                                 if (root.Type == JsonType.Object)
                                 {
-                                    ((IBusinessObject)result).Property(property.PropertyName, item);
+                                    ((IDataEntity)result).Property(property.PropertyName, item);
                                 }
                                 else if (root.Type == JsonType.Array)
                                 {
@@ -630,57 +525,23 @@ namespace Nemo.Serialization
                                 {
                                     if (property != null)
                                     {
-                                        if (property.IsTypeUnion)
+                                        IList list;
+                                        if (!property.IsListInterface)
                                         {
-                                            var allTypes = property.PropertyType.GetGenericArguments();
-                                            var child = current.FirstChild;
-                                            var unionType = allTypes.FirstOrDefault(t =>
-                                                                (child.Type == JsonType.Boolean && typeof(IList<bool>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Decimal && typeof(IList<decimal>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Decimal && typeof(IList<double>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Decimal && typeof(IList<float>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Integer && typeof(IList<ulong>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Integer && typeof(IList<long>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Integer && typeof(IList<uint>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Integer && typeof(IList<int>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Integer && typeof(IList<ushort>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Integer && typeof(IList<short>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Integer && typeof(IList<byte>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Integer && typeof(IList<sbyte>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.String && typeof(IList<string>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.String && typeof(IList<char>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.String && typeof(IList<DateTime>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.String && typeof(IList<DateTimeOffset>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.String && typeof(IList<TimeSpan>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.String && typeof(IList<Guid>).IsAssignableFrom(t))
-                                                                || (child.Type == JsonType.Object && typeof(IList).IsAssignableFrom(t) && typeof(IEnumerable<IBusinessObject>).IsAssignableFrom(t)));
-                                            if (unionType != null)
-                                            {
-                                                var item = ReadObject(current, unionType);
-                                                var typeUnion = TypeUnion.Create(allTypes, item);
-                                                ((IBusinessObject)result).Property(property.PropertyName, typeUnion);
-                                            }
+                                            list = (IList)Nemo.Reflection.Activator.New(property.PropertyType);
                                         }
                                         else
                                         {
-                                            IList list;
-                                            if (!property.IsListInterface)
-                                            {
-                                                list = (IList)Nemo.Reflection.Activator.New(property.PropertyType);
-                                            }
-                                            else
-                                            {
-                                                list = List.Create(property.ElementType, property.Distinct, property.Sorted);
-                                            }
-                                            var child = current.FirstChild;
-                                            while (child != null)
-                                            {
-                                                var item = (IBusinessObject)ReadObject(child, property.ElementType);
-                                                list.Add(item);
-                                                child = child.NexSibling;
-                                            }
-                                            ((IBusinessObject)result).Property(property.PropertyName, list);
+                                            list = List.Create(property.ElementType, property.Distinct, property.Sorted);
                                         }
+                                        var child = current.FirstChild;
+                                        while (child != null)
+                                        {
+                                            var item = (IDataEntity)ReadObject(child, property.ElementType);
+                                            list.Add(item);
+                                            child = child.NexSibling;
+                                        }
+                                        ((IDataEntity)result).Property(property.PropertyName, list);
                                     }
                                     else if (result is IDictionary)
                                     {

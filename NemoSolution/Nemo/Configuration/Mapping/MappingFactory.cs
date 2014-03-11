@@ -48,7 +48,7 @@ namespace Nemo.Configuration.Mapping
         }
 
         internal static IEntityMap GetEntityMap<T>()
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             IEntityMap map;
             if (_types.Value.TryGetValue(typeof(T), out map))
@@ -61,7 +61,7 @@ namespace Nemo.Configuration.Mapping
         internal static IEntityMap GetEntityMap(Type type)
         {
             IEntityMap map;
-            if (Reflector.IsBusinessObject(type) && _types.Value.TryGetValue(type, out map))
+            if (Reflector.IsDataEntity(type) && _types.Value.TryGetValue(type, out map))
             {
                 return map;
             }

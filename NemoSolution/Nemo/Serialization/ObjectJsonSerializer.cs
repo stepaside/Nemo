@@ -19,42 +19,42 @@ namespace Nemo.Serialization
 {
     public static class ObjectJsonSerializer
     {
-        public static string ToJson<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static string ToJson<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
             var output = new StringBuilder(1024);
             using (var writer = new StringWriter(output))
             {
-                JsonSerializationWriter.WriteObject(businessObject, null, writer);
+                JsonSerializationWriter.WriteObject(dataEntity, null, writer);
             }
             return output.ToString();
         }
 
-        public static void ToJson<T>(this T businessObject, TextWriter writer)
-            where T : class, IBusinessObject
+        public static void ToJson<T>(this T dataEntity, TextWriter writer)
+            where T : class, IDataEntity
         {
-            JsonSerializationWriter.WriteObject(businessObject, null, writer);
+            JsonSerializationWriter.WriteObject(dataEntity, null, writer);
         }
 
-        public static string ToJson<T>(this IEnumerable<T> businessObjects)
-            where T : class, IBusinessObject
+        public static string ToJson<T>(this IEnumerable<T> dataEntitys)
+            where T : class, IDataEntity
         {
             var output = new StringBuilder(1024);
             using (var writer = new StringWriter(output))
             {
-                JsonSerializationWriter.WriteObject(businessObjects.ToList(), null, writer);
+                JsonSerializationWriter.WriteObject(dataEntitys.ToList(), null, writer);
             }
             return output.ToString();
         }
 
-        public static void ToJson<T>(this IEnumerable<T> businessObjects, TextWriter writer)
-            where T : class, IBusinessObject
+        public static void ToJson<T>(this IEnumerable<T> dataEntitys, TextWriter writer)
+            where T : class, IDataEntity
         {
-            JsonSerializationWriter.WriteObject(businessObjects.ToList(), null, writer);
+            JsonSerializationWriter.WriteObject(dataEntitys.ToList(), null, writer);
         }
 
         public static IEnumerable<T> FromJson<T>(this string json)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             var value = Json.Parse(json);
             var result = JsonSerializationReader.ReadObject(value, typeof(T));

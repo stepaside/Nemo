@@ -518,7 +518,7 @@ namespace Nemo.Reflection
                                                
                 // directly call the inner object's get method of the property.
                 Type elementType;
-                if (Reflector.IsBusinessObjectList(property.PropertyType, out elementType))
+                if (Reflector.IsDataEntityList(property.PropertyType, out elementType))
                 {
                     var isInterface = property.PropertyType.GetGenericTypeDefinition() == typeof(IList<>);
                     var asReadOnlyMethod = typeof(ObjectExtensions).GetMethods(BindingFlags.Public | BindingFlags.Static).Where(m => m.Name == "AsReadOnly").First(m => m.GetParameters()[0].ParameterType.Name == (isInterface ? "IList`1" : "List`1"));
@@ -535,7 +535,7 @@ namespace Nemo.Reflection
                     il.Emit(OpCodes.Stloc_0, result);
                     il.Emit(OpCodes.Ldloc_0);
                 }
-                else if (Reflector.IsBusinessObject(property.PropertyType))
+                else if (Reflector.IsDataEntity(property.PropertyType))
                 {
                     var asReadOnlyMethod = typeof(ObjectExtensions).GetMethods(BindingFlags.Public | BindingFlags.Static).Where(m => m.Name == "AsReadOnly").First(m => m.GetParameters()[0].ParameterType.IsGenericParameter);
 
@@ -551,7 +551,7 @@ namespace Nemo.Reflection
                     il.Emit(OpCodes.Stloc_0, result);
                     il.Emit(OpCodes.Ldloc_0);
                 }
-                else if (property.DeclaringType.InheritsFrom(typeof(IChangeTrackingBusinessObject)) && property.PropertyType == typeof(ObjectState) && property.Name == "ObjectState")
+                else if (property.DeclaringType.InheritsFrom(typeof(ITrackableDataEntity)) && property.PropertyType == typeof(ObjectState) && property.Name == "ObjectState")
                 {
                     il.Emit(OpCodes.Ldc_I4, (int)ObjectState.ReadOnly);
                 }

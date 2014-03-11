@@ -7,7 +7,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using Nemo.Attributes;
-using Nemo.Caching;
+using Nemo.Cache;
 using Nemo.Reflection;
 using Nemo.Validation;
 using Nemo.Serialization;
@@ -22,7 +22,7 @@ using Nemo.UnitOfWork;
 namespace Nemo.Extensions
 {
     /// <summary>
-    /// Extension methods for each BusinessObject implementation to provide default ActiveRecord functionality.
+    /// Extension methods for each DataEntity implementation to provide default ActiveRecord functionality.
     /// </summary>
     public static class ObjectExtensions
     {
@@ -32,19 +32,19 @@ namespace Nemo.Extensions
         /// Property method returns a value of a property.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <returns></returns>
-        public static TResult Property<T, TResult>(this T businessObject, string propertyName)
-            where T : class, IBusinessObject
+        public static TResult Property<T, TResult>(this T dataEntity, string propertyName)
+            where T : class, IDataEntity
         {
             if (Reflector.IsMarkerInterface<T>())
             {
-                return (TResult)Reflector.Property.Get(businessObject.GetType(), businessObject, propertyName);
+                return (TResult)Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
             }
             else
             {
-                return (TResult)Reflector.Property.Get<T>(businessObject, propertyName);
+                return (TResult)Reflector.Property.Get<T>(dataEntity, propertyName);
             }
         }
 
@@ -52,21 +52,21 @@ namespace Nemo.Extensions
         /// Property method returns a value of a property.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
-        public static TResult PropertyOrDefault<T, TResult>(this T businessObject, string propertyName, TResult defaultValue)
-            where T : class, IBusinessObject
+        public static TResult PropertyOrDefault<T, TResult>(this T dataEntity, string propertyName, TResult defaultValue)
+            where T : class, IDataEntity
         {
             object result = null;
             if (Reflector.IsMarkerInterface<T>())
             {
-                result = Reflector.Property.Get(businessObject.GetType(), businessObject, propertyName);
+                result = Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
             }
             else
             {
-                result = Reflector.Property.Get<T>(businessObject, propertyName);
+                result = Reflector.Property.Get<T>(dataEntity, propertyName);
             }
             return result != null ? (TResult)result : defaultValue;
         }
@@ -74,61 +74,61 @@ namespace Nemo.Extensions
         /// <summary>
         /// Property method returns a value of a property.
         /// </summary>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <returns></returns>
-        public static object Property<T>(this T businessObject, string propertyName)
-            where T : class, IBusinessObject
+        public static object Property<T>(this T dataEntity, string propertyName)
+            where T : class, IDataEntity
         {
-            return businessObject.Property<T, object>(propertyName);
+            return dataEntity.Property<T, object>(propertyName);
         }
 
         /// <summary>
         /// Property method sets a value of a property.
         /// </summary>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <param name="propertyValue"></param>
-        public static void Property<T>(this T businessObject, string propertyName, object propertyValue)
-            where T : class, IBusinessObject
+        public static void Property<T>(this T dataEntity, string propertyName, object propertyValue)
+            where T : class, IDataEntity
         {
             if (Reflector.IsMarkerInterface<T>())
             {
-                Reflector.Property.Set(businessObject.GetType(), businessObject, propertyName, propertyValue);
+                Reflector.Property.Set(dataEntity.GetType(), dataEntity, propertyName, propertyValue);
             }
             else
             {
-                Reflector.Property.Set<T>(businessObject, propertyName, propertyValue);
+                Reflector.Property.Set<T>(dataEntity, propertyName, propertyValue);
             }
         }
 
         /// <summary>
         /// PropertyExists method verifies if the property has value.
         /// </summary>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
-        public static bool PropertyExists<T>(this T businessObject, string propertyName)
-            where T : class, IBusinessObject
+        public static bool PropertyExists<T>(this T dataEntity, string propertyName)
+            where T : class, IDataEntity
         {
             object value;
-            return businessObject.PropertyTryGet(propertyName, out value);
+            return dataEntity.PropertyTryGet(propertyName, out value);
         }
 
         /// <summary>
         /// PropertyTryGet method verifies if the property has value and returns the value.
         /// </summary>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static bool PropertyTryGet<T>(this T businessObject, string propertyName, out object value)
-            where T : class, IBusinessObject
+        public static bool PropertyTryGet<T>(this T dataEntity, string propertyName, out object value)
+            where T : class, IDataEntity
         {
             var exists = false;
             value = null;
             try
             {
-                value = businessObject.Property(propertyName);
+                value = dataEntity.Property(propertyName);
                 exists = true;
             }
             catch { }
@@ -143,12 +143,12 @@ namespace Nemo.Extensions
         /// Populate method provides an ability to populate an object by primary key.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
-        public static void Populate<T>(this T businessObject)
-            where T : class, IBusinessObject
+        /// <param name="dataEntity"></param>
+        public static void Populate<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            businessObject.ThrowIfNull("businessObject");
-            businessObject.CheckReadOnly();
+            dataEntity.ThrowIfNull("dataEntity");
+            dataEntity.CheckReadOnly();
 
             // Get properties and build a property map
             var propertyMap = Reflector.GetPropertyMap<T>();
@@ -159,7 +159,7 @@ namespace Nemo.Extensions
                             .Select(p => new Param
                             {
                                 Name = p.ParameterName ?? p.PropertyName,
-                                Value = businessObject.Property<T>(p.PropertyName),
+                                Value = dataEntity.Property<T>(p.PropertyName),
                                 Direction = ParameterDirection.Input
                             }).ToArray();
 
@@ -167,10 +167,10 @@ namespace Nemo.Extensions
 
             if (retrievedObject != null)
             {
-                ObjectFactory.Map(retrievedObject, businessObject, true);
-                if (businessObject is IChangeTrackingBusinessObject)
+                ObjectFactory.Map(retrievedObject, dataEntity, true);
+                if (dataEntity is ITrackableDataEntity)
                 {
-                    ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Clean;
+                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Clean;
                 }
             }
         }
@@ -179,18 +179,18 @@ namespace Nemo.Extensions
         /// Insert method provides an ability to insert an object to the underlying data store.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="additionalParameters"></param>
         /// <param name="errorMessage"></param>
         /// <returns></returns>
-        public static bool Insert<T>(this T businessObject, params Param[] additionalParameters)
-            where T : class, IBusinessObject
+        public static bool Insert<T>(this T dataEntity, params Param[] additionalParameters)
+            where T : class, IDataEntity
         {
-            businessObject.ThrowIfNull("businessObject");
-            businessObject.CheckReadOnly();
+            dataEntity.ThrowIfNull("dataEntity");
+            dataEntity.CheckReadOnly();
 
             // Validate an object before persisting
-            var errors = businessObject.Validate();
+            var errors = dataEntity.Validate();
             if (errors.Any())
             {
                 throw new ValidationException(errors);
@@ -210,13 +210,13 @@ namespace Nemo.Extensions
                                         .Select(p => p.Key);
 
             // Generate key if primary key value was not set and no identity (autogenerated) property is defined
-            if (identityProperty == null && businessObject.IsNew())
+            if (identityProperty == null && dataEntity.IsNew())
             {
-                businessObject.GenerateKey();
+                dataEntity.GenerateKey();
             }
 
             string identityPropertyName = null;
-            var parameters = GetInsertParameters(businessObject, propertyMap);
+            var parameters = GetInsertParameters(dataEntity, propertyMap);
 
             if (additionalParameters != null && additionalParameters.Length > 0)
             {
@@ -234,25 +234,25 @@ namespace Nemo.Extensions
                     object identityValue = parameters.Single(p => p.Name == identityPropertyName).Value;
                     if (identityValue != null && !Convert.IsDBNull(identityValue))
                     {
-                        Reflector.Property.Set<T>(businessObject, identityProperty.Name, identityValue);
+                        Reflector.Property.Set<T>(dataEntity, identityProperty.Name, identityValue);
                     }
                 }
 
-                ObjectCache.RemoveDependencies(businessObject);
+                ObjectCache.RemoveDependencies(dataEntity);
 
-                SetOutputParameterValues<T>(businessObject, outputProperties, propertyMap, parameters);
+                SetOutputParameterValues<T>(dataEntity, outputProperties, propertyMap, parameters);
 
-                if (businessObject is IChangeTrackingBusinessObject)
+                if (dataEntity is ITrackableDataEntity)
                 {
-                    ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Clean;
+                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Clean;
                 }
 
-                if (businessObject is IAuditable)
+                if (dataEntity is IAuditable)
                 {
                     var logProvider = AuditLogProvider.Current;
                     if (logProvider != null)
                     {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_INSERT, default(T), businessObject));
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_INSERT, default(T), dataEntity));
                     }
                 }
             }
@@ -264,25 +264,25 @@ namespace Nemo.Extensions
         ///  Update method provides an ability to update an object in the underlying data store.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="parameters"></param>
         /// <returns></returns>
-        public static bool Update<T>(this T businessObject, params Param[] additionalParameters)
-            where T : class, IBusinessObject
+        public static bool Update<T>(this T dataEntity, params Param[] additionalParameters)
+            where T : class, IDataEntity
         {
-            businessObject.ThrowIfNull("businessObject");
-            businessObject.CheckReadOnly();
+            dataEntity.ThrowIfNull("dataEntity");
+            dataEntity.CheckReadOnly();
 
             // Validate an object before persisting
-            var errors = businessObject.Validate();
+            var errors = dataEntity.Validate();
             if (errors.Any())
             {
                 throw new ValidationException(errors);
             }
 
             var errorMessage = string.Empty;
-            var supportsChangeTracking = businessObject is IChangeTrackingBusinessObject;
-            if (supportsChangeTracking && ((IChangeTrackingBusinessObject)businessObject).IsReadOnly())
+            var supportsChangeTracking = dataEntity is ITrackableDataEntity;
+            if (supportsChangeTracking && ((ITrackableDataEntity)dataEntity).IsReadOnly())
             {
                 throw new ApplicationException("Update Failed: provided object is read-only.");
             }
@@ -294,7 +294,7 @@ namespace Nemo.Extensions
                                                     && (propertyMap[p].Direction == ParameterDirection.InputOutput
                                                         || propertyMap[p].Direction == ParameterDirection.Output));
 
-            var parameters = GetUpdateParameters(businessObject, propertyMap);
+            var parameters = GetUpdateParameters(dataEntity, propertyMap);
 
             if (additionalParameters != null && additionalParameters.Length > 0)
             {
@@ -307,21 +307,21 @@ namespace Nemo.Extensions
 
             if (success)
             {
-                ObjectCache.Remove(businessObject);
+                ObjectCache.Remove(dataEntity);
 
-                SetOutputParameterValues<T>(businessObject, outputProperties, propertyMap, parameters);
+                SetOutputParameterValues<T>(dataEntity, outputProperties, propertyMap, parameters);
 
                 if (supportsChangeTracking)
                 {
-                    ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Clean;
+                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Clean;
                 }
 
-                if (businessObject is IAuditable)
+                if (dataEntity is IAuditable)
                 {
                     var logProvider = AuditLogProvider.Current;
                     if (logProvider != null)
                     {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_UPDATE, (businessObject.Old() ?? businessObject), businessObject));
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_UPDATE, (dataEntity.Old() ?? dataEntity), dataEntity));
                     }
                 }
             }
@@ -333,37 +333,37 @@ namespace Nemo.Extensions
         /// Delete method provides an ability to soft-delete an object from the underlying data store.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <returns></returns>
-        public static bool Delete<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static bool Delete<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            businessObject.ThrowIfNull("businessObject");
-            businessObject.CheckReadOnly();
+            dataEntity.ThrowIfNull("dataEntity");
+            dataEntity.CheckReadOnly();
 
             // Get properties and build a property map
             var propertyMap = Reflector.GetPropertyMap<T>();
 
-            var parameters = GetDeleteParameters(businessObject, propertyMap);
+            var parameters = GetDeleteParameters(dataEntity, propertyMap);
 
             var response = ObjectFactory.Delete<T>(parameters);
             var success = response != null && response.RecordsAffected > 0;
 
             if (success)
             {
-                ObjectCache.Remove(businessObject);
+                ObjectCache.Remove(dataEntity);
 
-                if (businessObject is IChangeTrackingBusinessObject)
+                if (dataEntity is ITrackableDataEntity)
                 {
-                    ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Deleted;
+                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Deleted;
                 }
 
-                if (businessObject is IAuditable)
+                if (dataEntity is IAuditable)
                 {
                     var logProvider = AuditLogProvider.Current;
                     if (logProvider != null)
                     {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DELETE, businessObject, default(T)));
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DELETE, dataEntity, default(T)));
                     }
                 }
             }
@@ -375,37 +375,37 @@ namespace Nemo.Extensions
         /// Destroy method provides an ability to hard-delete an object from the underlying data store.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <returns></returns>
-        public static bool Destroy<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static bool Destroy<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            businessObject.ThrowIfNull("businessObject");
-            businessObject.CheckReadOnly();
+            dataEntity.ThrowIfNull("dataEntity");
+            dataEntity.CheckReadOnly();
 
             // Get properties and build a property map
             var propertyMap = Reflector.GetPropertyMap<T>();
 
-            var parameters = GetDeleteParameters(businessObject, propertyMap);
+            var parameters = GetDeleteParameters(dataEntity, propertyMap);
 
             var response = ObjectFactory.Destroy<T>(parameters);
             var success = response != null && response.RecordsAffected > 0;
 
             if (success)
             {
-                ObjectCache.Remove(businessObject);
+                ObjectCache.Remove(dataEntity);
 
-                if (businessObject is IChangeTrackingBusinessObject)
+                if (dataEntity is ITrackableDataEntity)
                 {
-                    ((IChangeTrackingBusinessObject)businessObject).ObjectState = ObjectState.Deleted;
+                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Deleted;
                 }
 
-                if (businessObject is IAuditable)
+                if (dataEntity is IAuditable)
                 {
                     var logProvider = AuditLogProvider.Current;
                     if (logProvider != null)
                     {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DESTROY, businessObject, default(T)));
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DESTROY, dataEntity, default(T)));
                     }
                 }
             }
@@ -413,73 +413,73 @@ namespace Nemo.Extensions
             return success;
         }
 
-        #region IChangeTrackingBusinessObject Methods
+        #region ITrackableDataEntity Methods
 
-        public static bool Save<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static bool Save<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
             var result = false;
             
-            if (businessObject.IsNew())
+            if (dataEntity.IsNew())
             {
-                result = businessObject.Insert();
+                result = dataEntity.Insert();
             }
-            else if (!(businessObject is IChangeTrackingBusinessObject) || ((IChangeTrackingBusinessObject)businessObject).IsDirty())
+            else if (!(dataEntity is ITrackableDataEntity) || ((ITrackableDataEntity)dataEntity).IsDirty())
             {
-                result = businessObject.Update();
+                result = dataEntity.Update();
             }
 
             return result;
         }
 
-        public static bool IsNew<T>(this T businessObject)
-          where T : class, IBusinessObject
+        public static bool IsNew<T>(this T dataEntity)
+          where T : class, IDataEntity
         {
-            if (businessObject is IChangeTrackingBusinessObject)
+            if (dataEntity is ITrackableDataEntity)
             {
-                return ((IChangeTrackingBusinessObject)businessObject).ObjectState == ObjectState.New;
+                return ((ITrackableDataEntity)dataEntity).ObjectState == ObjectState.New;
             }
             else
             {
-                var primaryKey = businessObject.GetPrimaryKey();
+                var primaryKey = dataEntity.GetPrimaryKey();
                 return primaryKey.Values.Sum(v => v == null || v == v.GetType().GetDefault() ? 1 : 0) == primaryKey.Values.Count;
             }
         }
 
-        public static bool IsReadOnly<T>(this T businessObject)
-           where T : class, IBusinessObject
+        public static bool IsReadOnly<T>(this T dataEntity)
+           where T : class, IDataEntity
         {
-            if (businessObject is IChangeTrackingBusinessObject)
+            if (dataEntity is ITrackableDataEntity)
             {
-                return ((IChangeTrackingBusinessObject)businessObject).ObjectState == ObjectState.ReadOnly;
+                return ((ITrackableDataEntity)dataEntity).ObjectState == ObjectState.ReadOnly;
             }
-            return Reflector.GetAttribute<ReadOnlyAttribute>(businessObject.GetType(), false) != null;
+            return Reflector.GetAttribute<ReadOnlyAttribute>(dataEntity.GetType(), false) != null;
         }
 
-        public static bool IsDirty<T>(this T businessObject)
-           where T : class, IChangeTrackingBusinessObject
+        public static bool IsDirty<T>(this T dataEntity)
+           where T : class, ITrackableDataEntity
         {
-            return businessObject.ObjectState == ObjectState.Dirty;
+            return dataEntity.ObjectState == ObjectState.Dirty;
         }
 
-        public static bool IsDeleted<T>(this T businessObject)
-           where T : class, IChangeTrackingBusinessObject
+        public static bool IsDeleted<T>(this T dataEntity)
+           where T : class, ITrackableDataEntity
         {
-            return businessObject.ObjectState == ObjectState.Deleted;
+            return dataEntity.ObjectState == ObjectState.Deleted;
         }
 
         #endregion
 
         #region Parameter Methods
 
-        internal static Param[] GetInsertParameters(object businessObject, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, int statementId = -1)
+        internal static Param[] GetInsertParameters(object dataEntity, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, int statementId = -1)
         {
             var parameters = propertyMap.Values
                             .Where(p => p.IsPersistent && (p.IsSimpleType || p.IsSimpleList) && (p.CanWrite || p.IsAutoGenerated))
                             .Select(p => new Param
                             {
                                 Name = (p.ParameterName.NullIfEmpty() ?? p.PropertyName) + (statementId == -1 ? string.Empty : "_" + statementId),
-                                Value = GetParameterValue(businessObject, p),
+                                Value = GetParameterValue(dataEntity, p),
                                 DbType = Reflector.ClrToDbType(p.PropertyType),
                                 Direction = p.IsAutoGenerated ? ParameterDirection.Output : p.Direction,
                                 Source = p.MappedColumnName,
@@ -489,14 +489,14 @@ namespace Nemo.Extensions
             return parameters.ToArray();
         }
 
-        internal static Param[] GetUpdateParameters(object businessObject, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, int statementId = -1)
+        internal static Param[] GetUpdateParameters(object dataEntity, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, int statementId = -1)
         {
             var parameters = propertyMap.Values
                     .Where(p => p.IsPersistent && (p.IsSimpleType || p.IsSimpleList) && (p.CanWrite || p.IsAutoGenerated))
                     .Select(p => new Param
                     {
                         Name = (p.ParameterName.NullIfEmpty() ?? p.PropertyName) + (statementId == -1 ? string.Empty : "_" + statementId),
-                        Value = GetParameterValue(businessObject, p),
+                        Value = GetParameterValue(dataEntity, p),
                         DbType = Reflector.ClrToDbType(p.PropertyType),
                         Direction = p.Direction,
                         Source = p.MappedColumnName,
@@ -507,14 +507,14 @@ namespace Nemo.Extensions
             return parameters.ToArray();
         }
 
-        internal static Param[] GetDeleteParameters(object businessObject, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, int statementId = -1)
+        internal static Param[] GetDeleteParameters(object dataEntity, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, int statementId = -1)
         {
             var parameters = propertyMap.Values
                     .Where(p => p.CanRead && p.IsPrimaryKey)
                     .Select(p => new Param
                     {
                         Name = (p.ParameterName.NullIfEmpty() ?? p.PropertyName) + (statementId == -1 ? string.Empty : "_" + statementId),
-                        Value = GetParameterValue(businessObject, p),
+                        Value = GetParameterValue(dataEntity, p),
                         Source = p.MappedColumnName,
                         IsPrimaryKey = true
                     });
@@ -522,9 +522,9 @@ namespace Nemo.Extensions
             return parameters.ToArray();
         }
 
-        private static object GetParameterValue(object businessObject, ReflectedProperty property)
+        private static object GetParameterValue(object dataEntity, ReflectedProperty property)
         {
-            var result = Reflector.Property.Get(businessObject.GetType(), businessObject, property.PropertyName);
+            var result = Reflector.Property.Get(dataEntity.GetType(), dataEntity, property.PropertyName);
             if (result != null && property.IsSimpleList && property.ElementType != typeof(byte))
             {
                 result = ((IEnumerable)result).SafeCast<string>().ToDelimitedString(",");
@@ -532,7 +532,7 @@ namespace Nemo.Extensions
             return result;
         }
 
-        private static void SetOutputParameterValues<T>(T businessObject, IEnumerable<PropertyInfo> outputProperties, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, IList<Param> parameters)
+        private static void SetOutputParameterValues<T>(T dataEntity, IEnumerable<PropertyInfo> outputProperties, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, IList<Param> parameters)
         {
             var parameterMap = parameters.GroupBy(p => p.Name).ToDictionary(g => g.Key, g => g.First().Value);
 
@@ -552,7 +552,7 @@ namespace Nemo.Extensions
                 object outputPropertyValue;
                 if (parameterMap.TryGetValue(outputPropertyName, out outputPropertyValue) && !Convert.IsDBNull(outputPropertyValue))
                 {
-                    Reflector.Property.Set<T>(businessObject, outputProperty.Name, outputPropertyValue);
+                    Reflector.Property.Set<T>(dataEntity, outputProperty.Name, outputPropertyValue);
                 }
             }
         }
@@ -571,17 +571,17 @@ namespace Nemo.Extensions
         /// GetPrimaryKey method returns primary key of a business object (if available)
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <param name="includeCacheKey"></param>
         /// <returns></returns>
-        public static IDictionary<string, object> GetPrimaryKey<T>(this T businessObject, bool includeCacheKey = false)
-            where T : class, IBusinessObject
+        public static IDictionary<string, object> GetPrimaryKey<T>(this T dataEntity, bool includeCacheKey = false)
+            where T : class, IDataEntity
         {
             // Get properties and build a property map
             var interfaceType = typeof(T);
             if (Reflector.IsMarkerInterface<T>())
             {
-                interfaceType = businessObject.GetType();
+                interfaceType = dataEntity.GetType();
             }
 
             string[] primaryKeyProperties = null;
@@ -605,15 +605,15 @@ namespace Nemo.Extensions
 
             for (int i = 0; i < primaryKeyProperties.Length; i++)
             {
-                var value = businessObject.Property(primaryKeyProperties[i]);
+                var value = dataEntity.Property(primaryKeyProperties[i]);
                 primaryKey[primaryKeyProperties[i]] = value;
             }
 
             return primaryKey;
         }
 
-        public static void GenerateKey<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static void GenerateKey<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
             var propertyMap = Reflector.GetPropertyMap<T>();
             var generatorKeys = propertyMap.Where(p => p.Value != null && p.Value.Generator != null).Select(p => Tuple.Create(typeof(T), p.Key, p.Value.Generator));
@@ -621,55 +621,55 @@ namespace Nemo.Extensions
             {
                 var generator = _idGenerators.GetOrAdd(key, k => (IIdGenerator)Nemo.Reflection.Activator.New(k.Item3));
 
-                businessObject.Property(key.Item2.Name, generator.Generate());
+                dataEntity.Property(key.Item2.Name, generator.Generate());
             }
         }
 
-        public static string ComputeHash<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static string ComputeHash<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            return new CacheKey(businessObject).Value;
+            return new CacheKey(dataEntity).Value;
         }
 
         #endregion
         
         #region ReadOnly Methods
 
-        public static T AsReadOnly<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static T AsReadOnly<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            if (businessObject == null)
+            if (dataEntity == null)
             {
                 return null;
             }
-            return Adapter.Guard(businessObject);
+            return Adapter.Guard(dataEntity);
         }
 
-        public static List<T> AsReadOnly<T>(this List<T> businessObjects)
-            where T : class, IBusinessObject
+        public static List<T> AsReadOnly<T>(this List<T> dataEntitys)
+            where T : class, IDataEntity
         {
-            if (businessObjects == null)
+            if (dataEntitys == null)
             {
                 return null;
             }
-            return businessObjects.Select(b => b.AsReadOnly()).ToList();
+            return dataEntitys.Select(b => b.AsReadOnly()).ToList();
         }
 
-        public static IList<T> AsReadOnly<T>(this IList<T> businessObjects)
-            where T : class, IBusinessObject
+        public static IList<T> AsReadOnly<T>(this IList<T> dataEntitys)
+            where T : class, IDataEntity
         {
-            if (businessObjects == null)
+            if (dataEntitys == null)
             {
                 return null;
             }
-            return businessObjects.Select(b => b.AsReadOnly()).ToArray();
+            return dataEntitys.Select(b => b.AsReadOnly()).ToArray();
         }
 
-        internal static void CheckReadOnly<T>(this T businessObject)
-            where T : class, IBusinessObject
+        internal static void CheckReadOnly<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
             // Read-only objects can't participate in CRUD
-            if (businessObject.IsReadOnly())
+            if (dataEntity.IsReadOnly())
             {
                 throw new NotSupportedException("Operation is not allowed: object instance is read-only.");
             }
@@ -687,7 +687,7 @@ namespace Nemo.Extensions
         /// <param name="instance"></param>
         /// <returns></returns>
         public static T Clone<T>(this T instance)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             var data = instance.Serialize(SerializationMode.SerializeAll);
             var value = ObjectSerializer.Deserialize<T>(data);
@@ -702,7 +702,7 @@ namespace Nemo.Extensions
         /// <param name="instance"></param>
         /// <returns></returns>
         public static IEnumerable<T> Clone<T>(this IEnumerable<T> collection)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             var data = collection.Serialize(SerializationMode.SerializeAll);
             var value = ObjectSerializer.Deserialize<T>(data);

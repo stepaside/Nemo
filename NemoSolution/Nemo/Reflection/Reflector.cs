@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Xml.Linq;
 using Nemo.Attributes;
-using Nemo.Caching;
+using Nemo.Cache;
 using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
@@ -89,23 +89,23 @@ namespace Nemo.Reflection
             return objectValue is IComparable;
         }
 
-        public static bool IsBusinessObject(object objectValue)
+        public static bool IsDataEntity(object objectValue)
         {
-            return objectValue is IBusinessObject;
+            return objectValue is IDataEntity;
         }
 
-        public static bool IsBusinessObject(Type objectType)
+        public static bool IsDataEntity(Type objectType)
         {
-            return typeof(IBusinessObject).IsAssignableFrom(objectType);
+            return typeof(IDataEntity).IsAssignableFrom(objectType);
         }
 
-        public static bool IsBusinessObjectList(Type objectType, out Type elementType)
+        public static bool IsDataEntityList(Type objectType, out Type elementType)
         {
             var result = false;
             if (Reflector.IsList(objectType))
             {
                 elementType = Reflector.ExtractCollectionElementType(objectType);
-                if (elementType != null && Reflector.IsBusinessObject(elementType))
+                if (elementType != null && Reflector.IsDataEntity(elementType))
                 {
                     result = true;
                 }
@@ -117,9 +117,9 @@ namespace Nemo.Reflection
             return result;
         }
 
-        public static bool IsCacheableBusinessObject(Type objectType)
+        public static bool IsCacheableDataEntity(Type objectType)
         {
-            return Reflector.IsBusinessObject(objectType) && ObjectCache.IsCacheable(objectType);
+            return Reflector.IsDataEntity(objectType) && ObjectCache.IsCacheable(objectType);
         }
 
         public static bool IsInterface(Type objectType)
@@ -139,7 +139,7 @@ namespace Nemo.Reflection
 
         public static bool IsMarkerInterface(Type objectType)
         {
-            return objectType == typeof(IBusinessObject) || objectType == typeof(IChangeTrackingBusinessObject);
+            return objectType == typeof(IDataEntity) || objectType == typeof(ITrackableDataEntity);
         }
 
         public static bool IsMarkerInterface<T>()
@@ -366,7 +366,7 @@ namespace Nemo.Reflection
         {
             Type[] interfaces = type.GetInterfaces();
             Array.Reverse(interfaces);
-            return (type.IsInterface ? interfaces.Append(type) : interfaces).Where(t => t != typeof(IBusinessObject) /*&& t != typeof(IChangeTrackingBusinessObject)*/ && typeof(IBusinessObject).IsAssignableFrom(t));
+            return (type.IsInterface ? interfaces.Append(type) : interfaces).Where(t => t != typeof(IDataEntity) && typeof(IDataEntity).IsAssignableFrom(t));
         }
 
         public static PropertyInfo[] GetAllProperties(Type objectType)
@@ -526,9 +526,9 @@ namespace Nemo.Reflection
             }
         }
 
-        public static IEnumerable<Type> AllBusinessObjectTypes()
+        public static IEnumerable<Type> AllDataEntityTypes()
         {
-            return Reflector.AllTypes().Where(t => Reflector.IsBusinessObject(t));
+            return Reflector.AllTypes().Where(t => Reflector.IsDataEntity(t));
         }
 
         public static IEnumerable<MethodInfo> GetExtensionMethods(this Type extendedType)
@@ -698,7 +698,7 @@ namespace Nemo.Reflection
             {
                 schemaType = "xs:anyType";
             }
-            else if (reflectedType.IsBusinessObject)
+            else if (reflectedType.IsDataEntity)
             {
                 schemaType = clrType.Name;
                 if (Reflector.IsEmitted(clrType))
@@ -761,25 +761,21 @@ namespace Nemo.Reflection
                     return ObjectTypeCode.DBNull;
                 default:
                     var name = type.Name;
-                    if (Reflector.IsBusinessObject(type))
+                    if (Reflector.IsDataEntity(type))
                     {
-                        return ObjectTypeCode.BusinessObject;
+                        return ObjectTypeCode.DataEntity;
                     }
                     else if (Reflector.IsList(type))
                     {
                         var elementType = Reflector.ExtractCollectionElementType(type);
-                        if (Reflector.IsBusinessObject(elementType))
+                        if (Reflector.IsDataEntity(elementType))
                         {
-                            return ObjectTypeCode.BusinessObjectList;
+                            return ObjectTypeCode.DataEntityList;
                         }
                         else
                         {
                             return ObjectTypeCode.ObjectList;
                         }
-                    }
-                    else if (Reflector.IsTypeUnion(type))
-                    {
-                        return ObjectTypeCode.TypeUnion;
                     }
                     else if (name == "Byte[]")
                     {

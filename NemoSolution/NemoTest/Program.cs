@@ -1,7 +1,7 @@
 ﻿using Dapper;
 using Nemo;
-using Nemo.Caching;
-using Nemo.Caching.Providers;
+using Nemo.Cache;
+using Nemo.Cache.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
@@ -43,11 +43,10 @@ namespace NemoTest
                 .SetOperationPrefix("spDTO_")
                 .SetLogging(false)
                 .SetCacheCollisionDetection(false)
-                .SetTrackingCacheProvider(null)
-                .SetCacheInvalidationStrategy(CacheInvalidationStrategy.QuerySignature);
+                .SetCacheInvalidationStrategy(CacheInvalidationStrategy.InvalidateByParameters);
 
-            var handler = new IncrementHandler();
-            ObjectCache.PublishRevisionIncrement += new EventHandler<PublisheRevisionIncrementEventArgs>(handler.HandleRevisionIncrement);
+            var handler = new InvalidationtHandler();
+            ObjectCache.PublishInvalidation += new EventHandler<PublishQueryInvalidationEventArgs>(handler.HandleInvalidation);
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
@@ -188,9 +187,6 @@ namespace NemoTest
 
             var read_only = customer.AsReadOnly();
             var is_read_only = read_only.IsReadOnly();
-
-            //// Test serialization of TypeUnion
-            customer.TypeUnionTest = new TypeUnion<int, string, double, List<int>, List<IOrder>>(customer.Orders.ToList());
 
             var json = customer.ToJson();
             var customer_from_json = json.FromJson<ICustomer>().FirstOrDefault();
@@ -397,9 +393,9 @@ namespace NemoTest
             //Console.ReadLine();
         }
 
-        private class IncrementHandler
+        private class InvalidationtHandler
         {
-            public void HandleRevisionIncrement(object sender, PublisheRevisionIncrementEventArgs args)
+            public void HandleInvalidation(object sender, PublishQueryInvalidationEventArgs args)
             {
                 // publish the key and revision here
             }
@@ -686,14 +682,15 @@ namespace NemoTest
             where T : class
         {
             // Warm-up
+            var serializer = new ServiceStack.Text.JsonSerializer<T>();
             var json = ServiceStack.Text.JsonSerializer.SerializeToString(item);
-            var root = ServiceStack.Text.Json.JsonReader<T>.Parse(json);
+            var root = serializer.DeserializeFromString(json);
 
             var t = new HiPerfTimer(true);
             t.Start();
             for (int i = 0; i < count; i++)
             {
-                root = ServiceStack.Text.Json.JsonReader<T>.Parse(json);
+                root = serializer.DeserializeFromString(json);
             }
             t.Stop();
             var time = t.GetElapsedTimeInMicroseconds();

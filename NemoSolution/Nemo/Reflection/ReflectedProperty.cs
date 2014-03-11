@@ -19,13 +19,13 @@ namespace Nemo.Reflection
             IsSerializable = Maybe<bool>.Empty;
             IsBinary = property.PropertyType == typeof(byte[]);
             IsSimpleList = !IsBinary && Reflector.IsSimpleList(property.PropertyType);
-            IsBusinessObject = Reflector.IsBusinessObject(property.PropertyType);
+            IsDataEntity = Reflector.IsDataEntity(property.PropertyType);
             
             Type elementType;
-            IsBusinessObjectList = Reflector.IsBusinessObjectList(property.PropertyType, out elementType);
+            IsDataEntityList = Reflector.IsDataEntityList(property.PropertyType, out elementType);
             ElementType = elementType;
                         
-            if (IsBusinessObjectList)
+            if (IsDataEntityList)
             {
                 IsList = true;
                 IsListInterface = property.PropertyType.GetGenericTypeDefinition() == typeof(IList<>);
@@ -130,7 +130,7 @@ namespace Nemo.Reflection
             private set;
         }
 
-        public bool IsBusinessObjectList
+        public bool IsDataEntityList
         {
             get;
             private set;
@@ -142,7 +142,7 @@ namespace Nemo.Reflection
             private set;
         }
 
-        public bool IsBusinessObject
+        public bool IsDataEntity
         {
             get;
             private set;

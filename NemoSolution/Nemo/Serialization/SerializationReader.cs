@@ -50,7 +50,7 @@ namespace Nemo.Serialization
             if (_mode != SerializationMode.Manual)
             {
                 _objectByte = ReadByte();
-                if (_objectByte.Value == (byte)ObjectTypeCode.BusinessObject || _objectByte.Value == (byte)ObjectTypeCode.BusinessObjectList)
+                if (_objectByte.Value == (byte)ObjectTypeCode.DataEntity || _objectByte.Value == (byte)ObjectTypeCode.DataEntityList)
                 {
                     _objectTypeHash = ReadInt32();
                 }
@@ -547,20 +547,20 @@ namespace Nemo.Serialization
                         ReadDictionary(objectMap, genericArgs[0], genericArgs[1]);
                         return objectMap;
                     }
-                case ObjectTypeCode.BusinessObject:
+                case ObjectTypeCode.DataEntity:
                     {
                         var deserializer = CreateDelegate(objectType);
-                        var businessObjects = deserializer(this, 1);
-                        if (businessObjects != null && businessObjects.Length > 0)
+                        var dataEntitys = deserializer(this, 1);
+                        if (dataEntitys != null && dataEntitys.Length > 0)
                         {
-                            return businessObjects[0];
+                            return dataEntitys[0];
                         }
                         else
                         {
                             return null;
                         }
                     }
-                case ObjectTypeCode.BusinessObjectList:
+                case ObjectTypeCode.DataEntityList:
                     {
                         var itemCount = (int)ReadUInt32();
 
@@ -587,20 +587,13 @@ namespace Nemo.Serialization
 
                         var list = List.Create(objectType, distinctAttribute, sortedAttribute);
                         var deserializer = CreateDelegate(objectType);
-                        var businessObjects = deserializer(this, itemCount);
-                        for (int i = 0; i < businessObjects.Length; i++ )
+                        var dataEntitys = deserializer(this, itemCount);
+                        for (int i = 0; i < dataEntitys.Length; i++ )
                         {
-                            list.Add(businessObjects[i]);
+                            list.Add(dataEntitys[i]);
                         }
                         return list;
                     }
-                case ObjectTypeCode.TypeUnion:
-                    var unionTypeIndex = ReadInt32();
-                    var unionTypes = objectType.GetGenericArguments();
-                    var unionValue = ReadObject(unionTypes[unionTypeIndex]);
-                    var union = TypeUnion.Create(unionTypes, unionValue);
-                    return union;
-
                 default:
                     return null;
             }
@@ -725,7 +718,7 @@ namespace Nemo.Serialization
 
         private ObjectDeserializer CreateDeserializer(Type objectType, int propertyCount, ref bool exists)
         {
-            var businessObject = ObjectFactory.Create(objectType);
+            var dataEntity = ObjectFactory.Create(objectType);
             var propertyNames = new List<string>();
             if (_includePropertyNames)
             {
@@ -735,7 +728,7 @@ namespace Nemo.Serialization
                 }
             }
             exists = false;
-            return GenerateDelegate(businessObject.GetType(), propertyNames);
+            return GenerateDelegate(dataEntity.GetType(), propertyNames);
         }
 
         private ObjectDeserializer GenerateDelegate(Type objectType, List<string> propertyNames)
@@ -795,7 +788,7 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Ldloc_2);
                 il.Emit(OpCodes.Ldarg_0);
                 Type propertyType;
-                if (!Reflector.IsBusinessObjectList(property.PropertyType, out propertyType))
+                if (!Reflector.IsDataEntityList(property.PropertyType, out propertyType))
                 {
                     propertyType = property.PropertyType;
                 }

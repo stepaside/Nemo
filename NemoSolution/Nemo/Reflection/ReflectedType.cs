@@ -19,11 +19,11 @@ namespace Nemo.Reflection
             }
             IsArray = type.IsArray;
             IsSimpleList = Reflector.IsSimpleList(type);
-            IsBusinessObject = Reflector.IsBusinessObject(type);
+            IsDataEntity = Reflector.IsDataEntity(type);
             Type elementType;
-            IsBusinessObjectList = Reflector.IsBusinessObjectList(type, out elementType);
+            IsDataEntityList = Reflector.IsDataEntityList(type, out elementType);
             ElementType = elementType;
-            if (IsBusinessObjectList)
+            if (IsDataEntityList)
             {
                 IsListInterface = type.GetGenericTypeDefinition() == typeof(IList<>);
             }
@@ -39,9 +39,9 @@ namespace Nemo.Reflection
             IsNullableType = Reflector.IsNullableType(type);
             IsMarkerInterface = Reflector.IsMarkerInterface(type);
             HashCode = type.GetHashCode();
-            if (IsBusinessObject)
+            if (IsDataEntity)
             {
-                IsCacheableBusinessObject = Reflector.IsCacheableBusinessObject(type);
+                IsCacheableEntity = Reflector.IsCacheableDataEntity(type);
             }
             IsGenericType = type.IsGenericType;
             IsInterface = type.IsInterface;
@@ -60,13 +60,13 @@ namespace Nemo.Reflection
             private set;
         }
 
-        public bool IsBusinessObject
+        public bool IsDataEntity
         {
             get;
             private set;
         }
 
-        public bool IsBusinessObjectList
+        public bool IsDataEntityList
         {
             get;
             private set;
@@ -150,7 +150,7 @@ namespace Nemo.Reflection
             private set;
         }
 
-        public bool IsCacheableBusinessObject
+        public bool IsCacheableEntity
         {
             get;
             private set;

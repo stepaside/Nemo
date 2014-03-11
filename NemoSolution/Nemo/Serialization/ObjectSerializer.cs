@@ -34,9 +34,8 @@ namespace Nemo.Serialization
         CharArray = 65,
         ObjectList = 66,
         ObjectMap = 67,
-        TypeUnion = 128,
-        BusinessObject = 129,
-        BusinessObjectList = 130,
+        DataEntity = 128,
+        DataEntityList = 129,
         ProtocolBuffer = 255
     }
 
@@ -69,46 +68,51 @@ namespace Nemo.Serialization
     public static class UnixDateTime
     {
         public static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        public static long GetTicks()
+        {
+            return (DateTime.UtcNow - UnixDateTime.Epoch).Ticks;
+        }
     }
 
     public static class ObjectSerializer
     {
         #region Serialize Methods
 
-        public static byte[] Serialize<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static byte[] Serialize<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            return Serialize(businessObject, ConfigurationFactory.Configuration.DefaultSerializationMode);
+            return Serialize(dataEntity, ConfigurationFactory.Configuration.DefaultSerializationMode);
         }
 
-        internal static byte[] Serialize<T>(this T businessObject, SerializationMode mode)
-            where T : class, IBusinessObject
+        internal static byte[] Serialize<T>(this T dataEntity, SerializationMode mode)
+            where T : class, IDataEntity
         {
             byte[] buffer = null;
 
             using (var writer = SerializationWriter.CreateWriter(mode))
             {
-                writer.WriteObject(businessObject, ObjectTypeCode.BusinessObject);
+                writer.WriteObject(dataEntity, ObjectTypeCode.DataEntity);
                 buffer = writer.GetBytes();
             }
 
             return buffer;
         }
 
-        public static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection)
-            where T : class, IBusinessObject
+        public static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> dataEntityCollection)
+            where T : class, IDataEntity
         {
-            return Serialize(businessObjectCollection, ConfigurationFactory.Configuration.DefaultSerializationMode);
+            return Serialize(dataEntityCollection, ConfigurationFactory.Configuration.DefaultSerializationMode);
         }
 
-        internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> businessObjectCollection, SerializationMode mode)
-            where T : class, IBusinessObject
+        internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> dataEntityCollection, SerializationMode mode)
+            where T : class, IDataEntity
         {
-            foreach (T businessObject in businessObjectCollection)
+            foreach (T dataEntity in dataEntityCollection)
             {
-                if (businessObject != null)
+                if (dataEntity != null)
                 {
-                    yield return businessObject.Serialize(mode);
+                    yield return dataEntity.Serialize(mode);
                 }
             }
         }
@@ -118,18 +122,18 @@ namespace Nemo.Serialization
         #region Deserialize Methods
 
         public static T Deserialize<T>(this byte[] data)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             T result = default(T);
             using (var reader = SerializationReader.CreateReader(data))
             {
-                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.BusinessObject, default(T) is IConvertible);
+                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.DataEntity, default(T) is IConvertible);
             }
             return result;
         }
 
         public static IEnumerable<T> Deserialize<T>(this IEnumerable<byte[]> dataCollection)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             foreach (byte[] data in dataCollection)
             {
@@ -141,7 +145,7 @@ namespace Nemo.Serialization
         }
 
         internal static bool CheckType<T>(byte[] data)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             var objectTypeHash = SerializationReader.GetObjectTypeHash(data);
             var type = Reflector.TypeCache<T>.Type;

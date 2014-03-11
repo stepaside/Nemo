@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace Nemo.Configuration.Mapping
 {
     public class PropertyMap<T, U> : IPropertyMap
-                   where T : class, IBusinessObject
+                   where T : class, IDataEntity
     {
         private readonly ReflectedProperty _property;
         private readonly Expression<Func<T, U>> _selector;
@@ -76,7 +76,7 @@ namespace Nemo.Configuration.Mapping
         }
 
         public PropertyMap<T, U> References<V>(int position = 0)
-            where V : class, IBusinessObject
+            where V : class, IDataEntity
         {
             _property.Parent = typeof(V);
             _property.RefPosition = position;

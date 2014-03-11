@@ -11,10 +11,5 @@
     <description>$description$</description>
     <copyright>Copyright © Max Stepanskiy 2012-2013</copyright>
     <tags>ORM micro-ORM sql mapper</tags>
-	<releaseNotes>
-    Bug fixes
-    * Fixed type coercion during de-serialization
-    * Fixed support for byte[] properties
-  </releaseNotes>
   </metadata>
 </package>

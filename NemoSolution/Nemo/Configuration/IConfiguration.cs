@@ -1,5 +1,5 @@
 ﻿using System;
-using Nemo.Caching;
+using Nemo.Cache;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 
@@ -26,8 +26,6 @@ namespace Nemo.Configuration
         bool GenerateInsertSql { get; }
         bool GenerateUpdateSql { get; }
         Type DefaultCacheProvider { get; }
-        Type TrackingCacheProvider { get; }
-        Type RevisionCacheProvider { get; }
         Type AuditLogProvider { get; }
         CacheInvalidationStrategy CacheInvalidationStrategy { get; }
 
@@ -50,9 +48,7 @@ namespace Nemo.Configuration
         IConfiguration SetGenerateInsertSql(bool value);
         IConfiguration SetGenerateUpdateSql(bool value);
         IConfiguration SetDefaultCacheProvider(Type value);
-        IConfiguration SetTrackingCacheProvider(Type value);
-        IConfiguration SetRevisionCacheProvider(Type value);
         IConfiguration SetAuditLogProvider(Type value);
-        IConfiguration SetCacheInvalidationStrategy(CacheInvalidationStrategy value);
+        IConfiguration SetCacheInvalidationStrategy(CacheInvalidationStrategy cacheInvalidationStrategy);
     }
 }

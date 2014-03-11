@@ -470,14 +470,14 @@ namespace Nemo.Serialization
                     case ObjectTypeCode.DBNull:
                         break;
 
-                    case ObjectTypeCode.BusinessObject:
+                    case ObjectTypeCode.DataEntity:
                         {
                             var serializer = CreateDelegate(value.GetType());
                             serializer(this, new object[] { value }, 1);
                         }
                         break;
 
-                    case ObjectTypeCode.BusinessObjectList:
+                    case ObjectTypeCode.DataEntityList:
                         {
                             var items = (IList)value;
                             var serializer = CreateDelegate(value.GetType());
@@ -490,12 +490,6 @@ namespace Nemo.Serialization
                             var items = (IList)value;
                             WriteList(items);
                         }
-                        break;
-
-                    case ObjectTypeCode.TypeUnion:
-                        var typeUnion = (ITypeUnion)value;
-                        Write(typeUnion.AllTypes.FindIndex(t => t == typeUnion.UnionType));
-                        WriteObject(typeUnion.GetObject(), Reflector.GetObjectTypeCode(typeUnion.UnionType));
                         break;
 
                     case ObjectTypeCode.ByteArray:
@@ -651,13 +645,13 @@ namespace Nemo.Serialization
             var orderedProperties = _includePropertyNames ? properties.ToArray() : properties.Arrange(propertyPositions, p => p.Name).ToArray();
             var objectTypeCode = Reflector.GetObjectTypeCode(objectType);
 
-            if (objectTypeCode == ObjectTypeCode.BusinessObject || objectTypeCode == ObjectTypeCode.BusinessObjectList)
+            if (objectTypeCode == ObjectTypeCode.DataEntity || objectTypeCode == ObjectTypeCode.DataEntityList)
             {
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldc_I4, interfaceType.FullName.GetHashCode());
                 il.Emit(OpCodes.Callvirt, writeObjectType);
 
-                if (objectTypeCode == ObjectTypeCode.BusinessObjectList)
+                if (objectTypeCode == ObjectTypeCode.DataEntityList)
                 {
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldarg_2);

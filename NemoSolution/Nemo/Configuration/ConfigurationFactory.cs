@@ -10,7 +10,7 @@ namespace Nemo.Configuration
     {
         private static Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(() => DefaultConfiguration.New(), true);
 
-        internal static IConfiguration Configuration
+        public static IConfiguration Configuration
         {
             get
             {

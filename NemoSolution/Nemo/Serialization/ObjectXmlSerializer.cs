@@ -25,56 +25,56 @@ namespace Nemo.Serialization
         /// ToXml method provides an ability to convert an object to XML string. 
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="businessObject"></param>
+        /// <param name="dataEntity"></param>
         /// <returns></returns>
-        private static void ToXml<T>(this T businessObject, string documentElement, TextWriter output, bool addSchemaDeclaration)
-            where T : class, IBusinessObject
+        private static void ToXml<T>(this T dataEntity, string documentElement, TextWriter output, bool addSchemaDeclaration)
+            where T : class, IDataEntity
         {
             var documentElementName = documentElement ?? Xml.GetElementNameFromType<T>();
-            XmlSerializationWriter.WriteObject(businessObject, documentElementName, output, addSchemaDeclaration);
+            XmlSerializationWriter.WriteObject(dataEntity, documentElementName, output, addSchemaDeclaration);
         }
 
-        private static string ToXml<T>(this T businessObject, string documentElement, bool addSchemaDeclaration)
-            where T : class, IBusinessObject
+        private static string ToXml<T>(this T dataEntity, string documentElement, bool addSchemaDeclaration)
+            where T : class, IDataEntity
         {
             var output = new StringBuilder(1024);
             using (var writer = new StringWriter(output))
             {
-                businessObject.ToXml(documentElement, writer, addSchemaDeclaration);
+                dataEntity.ToXml(documentElement, writer, addSchemaDeclaration);
             }
             return output.ToString();
         }
 
-        public static string ToXml<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static string ToXml<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            return businessObject.ToXml(null, true);
+            return dataEntity.ToXml(null, true);
         }
 
-        public static void ToXml<T>(this T businessObject, TextWriter writer)
-            where T : class, IBusinessObject
+        public static void ToXml<T>(this T dataEntity, TextWriter writer)
+            where T : class, IDataEntity
         {
-            businessObject.ToXml(null, writer, true);
+            dataEntity.ToXml(null, writer, true);
         }
 
-        public static string ToXml<T>(this IEnumerable<T> businessObjects)
-           where T : class, IBusinessObject
+        public static string ToXml<T>(this IEnumerable<T> dataEntitys)
+           where T : class, IDataEntity
         {
             var output = new StringBuilder(1024);
             using (var writer = new StringWriter(output))
             {
-                businessObjects.ToXml(writer);
+                dataEntitys.ToXml(writer);
             }
             return output.ToString();
         }
 
-        public static void ToXml<T>(this IEnumerable<T> businessObjects, TextWriter writer)
-            where T : class, IBusinessObject
+        public static void ToXml<T>(this IEnumerable<T> dataEntitys, TextWriter writer)
+            where T : class, IDataEntity
         {
             var documentElementName = string.Empty;
             var addSchemaDeclaration = true;
 
-            foreach (var businessObject in businessObjects)
+            foreach (var dataEntity in dataEntitys)
             {
                 if (string.IsNullOrEmpty(documentElementName))
                 {
@@ -85,7 +85,7 @@ namespace Nemo.Serialization
                         addSchemaDeclaration = false;
                     }
                 }
-                businessObject.ToXml(null, addSchemaDeclaration);
+                dataEntity.ToXml(null, addSchemaDeclaration);
             }
 
             if (!string.IsNullOrEmpty(documentElementName))
@@ -95,13 +95,13 @@ namespace Nemo.Serialization
         }
 
         public static IEnumerable<T> FromXml<T>(this string xml)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             return FromXml<T>(new StringReader(xml));
         }
 
         public static IEnumerable<T> FromXml<T>(this Stream stream)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             using (var reader = new StreamReader(stream))
             {
@@ -110,7 +110,7 @@ namespace Nemo.Serialization
         }
 
         public static IEnumerable<T> FromXml<T>(this TextReader textReader)
-           where T : class, IBusinessObject
+           where T : class, IDataEntity
         {
             using (var reader = XmlReader.Create(textReader))
             {
@@ -119,7 +119,7 @@ namespace Nemo.Serialization
         }
 
         public static IEnumerable<T> FromXml<T>(this XmlReader reader)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             bool isArray;
             var result = XmlSerializationReader.ReadObject(reader, typeof(T), out isArray);

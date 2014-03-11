@@ -21,8 +21,8 @@ namespace Nemo.UnitOfWork
         private static ConcurrentDictionary<Type, RuntimeMethodHandle> _commitMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
         private static ConcurrentDictionary<Type, RuntimeMethodHandle> _rollbackMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
 
-        public static bool Commit<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static bool Commit<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
             var success = true;
             var context = ObjectScope.Current;
@@ -34,7 +34,7 @@ namespace Nemo.UnitOfWork
                     using (var connection = DbFactory.CreateConnection(null, typeof(T)))
                     {
                         connection.Open();
-                        var changes = CompareObjects(businessObject, businessObject.Old());
+                        var changes = CompareObjects(dataEntity, dataEntity.Old());
                         var statement = GetCommitStatement<T>(changes, connection);
                         if (!string.IsNullOrEmpty(statement.Item1))
                         {
@@ -52,7 +52,7 @@ namespace Nemo.UnitOfWork
                     using (var connection = DbFactory.CreateConnection(null, typeof(T)))
                     {
                         connection.Open();
-                        var changes = CompareObjects(businessObject, businessObject.Old());
+                        var changes = CompareObjects(dataEntity, dataEntity.Old());
                         var statement = GetCommitStatement<T>(changes, connection);
                         Console.WriteLine(statement.Item1);
                     }
@@ -60,7 +60,7 @@ namespace Nemo.UnitOfWork
 
                 if (context.IsNested)
                 {
-                    success = context.UpdateOuterSnapshot(businessObject);
+                    success = context.UpdateOuterSnapshot(dataEntity);
                 }
 
                 if (success)
@@ -76,7 +76,7 @@ namespace Nemo.UnitOfWork
             return success;
         }
         
-        internal static bool Commit(this IBusinessObject businessObject, Type objectType)
+        internal static bool Commit(this IDataEntity dataEntity, Type objectType)
         {
             var methodHandle = _commitMethods.GetOrAdd(objectType, type => 
             {
@@ -85,24 +85,24 @@ namespace Nemo.UnitOfWork
                 return genericCommitMethod.MethodHandle;
             });
             var invoker = Reflector.Method.CreateDelegate(methodHandle);
-            return (bool)invoker(null, new object[] { businessObject });
+            return (bool)invoker(null, new object[] { dataEntity });
         }
 
-        public static bool Rollback<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static bool Rollback<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            businessObject.ThrowIfNull("businessObject");
+            dataEntity.ThrowIfNull("dataEntity");
 
             var context = ObjectScope.Current;
             if (context == null) return false;
 
-            var oldObject = businessObject.Old();
-            ObjectFactory.Map(oldObject, businessObject, true);
+            var oldObject = dataEntity.Old();
+            ObjectFactory.Map(oldObject, dataEntity, true);
             context.Cleanup();
             return true;
         }
 
-        internal static bool Rollback(this IBusinessObject businessObject, Type objectType)
+        internal static bool Rollback(this IDataEntity dataEntity, Type objectType)
         {
             var methodHandle = _rollbackMethods.GetOrAdd(objectType, type =>
             {
@@ -111,13 +111,13 @@ namespace Nemo.UnitOfWork
                 return genericRollbackMethod.MethodHandle;
             });
             var invoker = Reflector.Method.CreateDelegate(methodHandle);
-            return (bool)invoker(null, new object[] { businessObject });
+            return (bool)invoker(null, new object[] { dataEntity });
         }
 
-        public static T Old<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static T Old<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
-            businessObject.ThrowIfNull("businessObject");
+            dataEntity.ThrowIfNull("dataEntity");
 
             var context = ObjectScope.Current;
             if (context == null) return default(T);
@@ -134,36 +134,36 @@ namespace Nemo.UnitOfWork
 
         #region Cascade Methods
 
-        public static void Cascade<T>(this T businessObject, string propertyName, object propertyValue)
-            where T : class, IBusinessObject
+        public static void Cascade<T>(this T dataEntity, string propertyName, object propertyValue)
+            where T : class, IDataEntity
         {
-            Cascade((object)businessObject, propertyName, propertyValue);
+            Cascade((object)dataEntity, propertyName, propertyValue);
         }
 
-        private static void Cascade(object businessObject, string propertyName, object propertyValue)
+        private static void Cascade(object dataEntity, string propertyName, object propertyValue)
         {
-            if (businessObject == null) return;
+            if (dataEntity == null) return;
 
-            var objectType = businessObject.GetType();
+            var objectType = dataEntity.GetType();
             var propertyMap = Reflector.GetPropertyMap(objectType);
 
             foreach (var property in propertyMap.Values)
             {
-                if (property.IsBusinessObjectList)
+                if (property.IsDataEntityList)
                 {
-                    var childCollection = (IEnumerable)((IBusinessObject)businessObject).Property(property.PropertyName);
+                    var childCollection = (IEnumerable)((IDataEntity)dataEntity).Property(property.PropertyName);
                     if (childCollection != null)
                     {
                         foreach (var item in childCollection)
                         {
-                            CascadeToChild(businessObject, item, propertyName, propertyValue);
+                            CascadeToChild(dataEntity, item, propertyName, propertyValue);
                         }
                     }
                 }
-                else if (property.IsBusinessObject)
+                else if (property.IsDataEntity)
                 {
-                    var childObject = ((IBusinessObject)businessObject).Property(property.PropertyName);
-                    CascadeToChild(businessObject, childObject, propertyName, propertyValue);
+                    var childObject = ((IDataEntity)dataEntity).Property(property.PropertyName);
+                    CascadeToChild(dataEntity, childObject, propertyName, propertyValue);
                 }
             }
         }
@@ -175,23 +175,23 @@ namespace Nemo.UnitOfWork
                 var childProperty = Reflector.GetProperty(childObject.GetType(), propertyName);
                 if (childProperty != null)
                 {
-                    ((IBusinessObject)childObject).Property(propertyName, propertyValue);
+                    ((IDataEntity)childObject).Property(propertyName, propertyValue);
                 }
                 Cascade(childObject, propertyName, propertyValue);
             }
         }
 
-        private static void SetGeneratedPropertyValues(List<IBusinessObject> businessObjects, DataTable generatedValues)
+        private static void SetGeneratedPropertyValues(List<IDataEntity> dataEntitys, DataTable generatedValues)
         {
             var map = generatedValues.AsEnumerable().ToDictionary(r => r.Field<int>("StatementId"), r => Tuple.Create(r.Field<object>("GeneratedId"), r.Field<string>("ParameterName"), r.Field<string>("PropertyName")));
             Tuple<object, string, string> value;
 
-            for (int i = 0; i < businessObjects.Count; i++)
+            for (int i = 0; i < dataEntitys.Count; i++)
             {
                 if (map.TryGetValue(i, out value))
                 {
-                    businessObjects[i].Property(value.Item3, value.Item1);
-                    businessObjects[i].Cascade(value.Item3, value.Item1);
+                    dataEntitys[i].Property(value.Item3, value.Item1);
+                    dataEntitys[i].Cascade(value.Item3, value.Item1);
                 }
             }
         }
@@ -200,7 +200,7 @@ namespace Nemo.UnitOfWork
 
         #region Change Detection Methods
 
-        private static ChangeNode CompareObjects(IBusinessObject currentObject, IBusinessObject oldObject, ChangeNode parentNode = null)
+        private static ChangeNode CompareObjects(IDataEntity currentObject, IDataEntity oldObject, ChangeNode parentNode = null)
         {
             if (currentObject == null && oldObject == null)
                 throw new ArgumentNullException("currentObject and oldObject cannot be null at the same time");
@@ -282,7 +282,7 @@ namespace Nemo.UnitOfWork
                         changeNode.ObjectState = ObjectState.Dirty;
                     }
                 }*/
-                else if (reflectedType.IsBusinessObjectList)
+                else if (reflectedType.IsDataEntityList)
                 {
                     var changes = CompareLists((IList)currentValue, (IList)oldValue, changeNode, property.PropertyName);
                     if (changes.Count > 0)
@@ -291,9 +291,9 @@ namespace Nemo.UnitOfWork
                     }
                     rootNode.ListProperties.Add(property.PropertyName);
                 }
-                else if (reflectedType.IsBusinessObject)
+                else if (reflectedType.IsDataEntity)
                 {
-                    var changes = CompareObjects((IBusinessObject)currentValue, (IBusinessObject)oldValue, parentNode);
+                    var changes = CompareObjects((IDataEntity)currentValue, (IDataEntity)oldValue, parentNode);
                     if (changes.Count > 0)
                     {
                         changeNode.Value = currentValue ?? oldValue;
@@ -382,14 +382,14 @@ namespace Nemo.UnitOfWork
                 return changeList;
             }
 
-            Dictionary<string, IBusinessObject> objectMapCurrent = new Dictionary<string, IBusinessObject>();
-            Dictionary<string, IBusinessObject> objectMapOld = new Dictionary<string, IBusinessObject>();
+            Dictionary<string, IDataEntity> objectMapCurrent = new Dictionary<string, IDataEntity>();
+            Dictionary<string, IDataEntity> objectMapOld = new Dictionary<string, IDataEntity>();
 
             if (currentList != null)
             {
                 for (int i = 0; i < currentList.Count; i++)
                 {
-                    objectMapCurrent.Add(((IBusinessObject)currentList[i]).ComputeHash(), (IBusinessObject)currentList[i]);
+                    objectMapCurrent.Add(((IDataEntity)currentList[i]).ComputeHash(), (IDataEntity)currentList[i]);
                 }
             }
 
@@ -397,7 +397,7 @@ namespace Nemo.UnitOfWork
             {
                 for (int i = 0; i < oldList.Count; i++)
                 {
-                    objectMapOld.Add(((IBusinessObject)oldList[i]).ComputeHash(), (IBusinessObject)oldList[i]);
+                    objectMapOld.Add(((IDataEntity)oldList[i]).ComputeHash(), (IDataEntity)oldList[i]);
                 }
             }
 
@@ -527,11 +527,11 @@ namespace Nemo.UnitOfWork
 
         #region Batch Update Methods
 
-        private static Tuple<string, Param[], List<IBusinessObject>> GetCommitStatement<T>(ChangeNode rootNode, DbConnection connection)
-            where T : class, IBusinessObject
+        private static Tuple<string, Param[], List<IDataEntity>> GetCommitStatement<T>(ChangeNode rootNode, DbConnection connection)
+            where T : class, IDataEntity
         {
             var dialect = DialectFactory.GetProvider(connection);
-            var businessObjects = new List<IBusinessObject>();
+            var dataEntitys = new List<IDataEntity>();
             var sql = new StringBuilder();
             var statementId = 0;
 
@@ -545,9 +545,9 @@ namespace Nemo.UnitOfWork
 
             foreach (var newNode in newNodes.Where(n => n.IsObject))
             {
-                if (newNode.Value is IBusinessObject)
+                if (newNode.Value is IDataEntity)
                 {
-                    businessObjects.Add((IBusinessObject)newNode.Value);
+                    dataEntitys.Add((IDataEntity)newNode.Value);
                 }
                 else
                 {
@@ -633,7 +633,7 @@ namespace Nemo.UnitOfWork
                 var primaryKey = new List<Param>();
                 foreach (var primaryKeyMap in propertyMap.Values.Where(p => p.Value.IsPrimaryKey))
                 {
-                    object value = ((IBusinessObject)dirtyNode.Value).Property(primaryKeyMap.Key.Name);
+                    object value = ((IDataEntity)dirtyNode.Value).Property(primaryKeyMap.Key.Name);
 
                     string parameterName = primaryKeyMap.Key.Name;
                     if (primaryKeyMap.Value != null && !string.IsNullOrEmpty(primaryKeyMap.Value.ParameterName))
@@ -666,7 +666,7 @@ namespace Nemo.UnitOfWork
                 statementId++;
             }
 
-            return Tuple.Create(sql.ToString(), allParameters.ToArray(), businessObjects);
+            return Tuple.Create(sql.ToString(), allParameters.ToArray(), dataEntitys);
         }
 
         #endregion

@@ -19,9 +19,9 @@ namespace Nemo.UnitOfWork
     public class ObjectScope : IDisposable
     {
         private const string SCOPE_NAME = "__ObjectScope";
-        internal IBusinessObject Item = null;
+        internal IDataEntity Item = null;
         internal byte[] ItemSnapshot = null;
-        internal IBusinessObject OriginalItem = null;
+        internal IDataEntity OriginalItem = null;
         internal readonly Type ItemType = null;
         private bool? _hasException = null;
 
@@ -47,18 +47,18 @@ namespace Nemo.UnitOfWork
             }
         }
 
-        static byte[] CreateSnapshot(IBusinessObject item)
+        static byte[] CreateSnapshot(IDataEntity item)
         {
             return item.Serialize(SerializationMode.SerializeAll);
         }
 
         public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default)
-            where T : class, IBusinessObject
+            where T : class, IDataEntity
         {
             return new ObjectScope(item, autoCommit, mode, typeof(T));
         }
 
-        private ObjectScope(IBusinessObject item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null)
+        private ObjectScope(IDataEntity item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null)
         {
             if (item == null && type == null)
             {
@@ -126,27 +126,27 @@ namespace Nemo.UnitOfWork
             OriginalItem = null;
         }
 
-        internal bool UpdateOuterSnapshot<T>(T businessObject)
-            where T : class, IBusinessObject
+        internal bool UpdateOuterSnapshot<T>(T dataEntity)
+            where T : class, IDataEntity
         {
-            return UpdateSnapshot<T>(businessObject, 1);
+            return UpdateSnapshot<T>(dataEntity, 1);
         }
 
-        internal bool UpdateCurrentSnapshot<T>(T businessObject)
-            where T : class, IBusinessObject
+        internal bool UpdateCurrentSnapshot<T>(T dataEntity)
+            where T : class, IDataEntity
         {
-            return UpdateSnapshot<T>(businessObject, 0);
+            return UpdateSnapshot<T>(dataEntity, 0);
         }
 
-        private bool UpdateSnapshot<T>(T businessObject, int index)
-            where T : class, IBusinessObject
+        private bool UpdateSnapshot<T>(T dataEntity, int index)
+            where T : class, IDataEntity
         {
             var outerScope = ObjectScope.Scopes.ElementAtOrDefault(index);
             if (outerScope != null)
             {
-                if (outerScope.Item == businessObject)
+                if (outerScope.Item == dataEntity)
                 {
-                    outerScope.ItemSnapshot = CreateSnapshot(businessObject);
+                    outerScope.ItemSnapshot = CreateSnapshot(dataEntity);
                     outerScope.OriginalItem = null;
                     return true;
                 }

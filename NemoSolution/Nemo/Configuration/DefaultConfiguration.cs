@@ -1,6 +1,6 @@
 ﻿using Nemo.Audit;
-using Nemo.Caching;
-using Nemo.Caching.Providers;
+using Nemo.Cache;
+using Nemo.Cache.Providers;
 using Nemo.Extensions;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
@@ -19,7 +19,7 @@ namespace Nemo.Configuration
         private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
         private int _staleCacheTimeout = Config.AppSettings("StaleCacheTimeout", 2);
         private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 60);
-        private CacheInvalidationStrategy _cacheInvalidationStrategy = Config.AppSettings<CacheInvalidationStrategy>("CacheInvalidationStrategy", CacheInvalidationStrategy.TrackAndRemove);
+        private CacheInvalidationStrategy _cacheInvalidationStrategy = Config.AppSettings<CacheInvalidationStrategy>("CacheInvalidationStrategy", CacheInvalidationStrategy.InvalidateByParameters);
 
         private ContextLevelCacheType _defaultContextLevelCache = ParseContextLevelCacheConfig();
         private OperationNamingConvention _operationNamingConvention = ParseOperationNamingConventionConfig();
@@ -33,8 +33,6 @@ namespace Nemo.Configuration
         private bool _generateInsertSql = false;
         private bool _generateUpdateSql = false;
         private Type _cacheProvider = typeof(MemoryCacheProvider);
-        private Type _trackingCacheProvider = typeof(RedisCacheProvider);
-        private Type _revisionCacheProvider = typeof(RedisCacheProvider);
         private Type _auditLogProvider = null;
 
         private DefaultConfiguration() { }
@@ -190,23 +188,7 @@ namespace Nemo.Configuration
                 return _cacheProvider;
             }
         }
-
-        public Type TrackingCacheProvider
-        {
-            get
-            {
-                return _trackingCacheProvider;
-            }
-        }
-
-        public Type RevisionCacheProvider
-        {
-            get
-            {
-                return _revisionCacheProvider;
-            }
-        }
-
+        
         public Type AuditLogProvider
         {
             get
@@ -217,12 +199,9 @@ namespace Nemo.Configuration
 
         public CacheInvalidationStrategy CacheInvalidationStrategy
         {
-            get
-            {
-                return _cacheInvalidationStrategy;
-            }
+            get { return _cacheInvalidationStrategy; }
         }
-
+        
         public static IConfiguration New()
         {
             return new DefaultConfiguration();
@@ -367,24 +346,6 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetTrackingCacheProvider(Type value)
-        {
-            if (value == null || (typeof(CacheProvider).IsAssignableFrom(value) && typeof(IPersistentCacheProvider).IsAssignableFrom(value)))
-            {
-                _trackingCacheProvider = value;
-            }
-            return this;
-        }
-
-        public IConfiguration SetRevisionCacheProvider(Type value)
-        {
-            if (value == null || (typeof(CacheProvider).IsAssignableFrom(value) && typeof(IPersistentCacheProvider).IsAssignableFrom(value) && typeof(IRevisionProvider).IsAssignableFrom(value)))
-            {
-                _revisionCacheProvider = value;
-            }
-            return this;
-        }
-
         public IConfiguration SetAuditLogProvider(Type value)
         {
             if (value == null || typeof(AuditLogProvider).IsAssignableFrom(value))
@@ -394,12 +355,12 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetCacheInvalidationStrategy(CacheInvalidationStrategy value)
+        public IConfiguration SetCacheInvalidationStrategy(CacheInvalidationStrategy cacheInvalidationStrategy)
         {
-            _cacheInvalidationStrategy = value;
+            _cacheInvalidationStrategy = cacheInvalidationStrategy;
             return this;
         }
-
+        
         private static ContextLevelCacheType ParseContextLevelCacheConfig()
         {
             return Config.AppSettings<ContextLevelCacheType>("DefaultContextLevelCache", ContextLevelCacheType.LazyList);

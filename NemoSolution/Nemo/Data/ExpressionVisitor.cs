@@ -156,7 +156,7 @@ namespace Nemo.Data
                 //return m.Member.Name;
                 return MapColumnAttribute.GetMappedColumnName((PropertyInfo)m.Member);
             }
-            else if (m.Expression != null && Reflector.IsBusinessObjectList(m.Expression.Type, out elementType) && m.Member.Name == "Count")
+            else if (m.Expression != null && Reflector.IsDataEntityList(m.Expression.Type, out elementType) && m.Member.Name == "Count")
             {
                 var parentTable = ObjectFactory.GetTableName(typeof(T));
                 var childTable = ObjectFactory.GetTableName(elementType);

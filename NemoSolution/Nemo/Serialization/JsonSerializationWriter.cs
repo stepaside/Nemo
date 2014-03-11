@@ -162,7 +162,7 @@ namespace Nemo.Serialization
                                 jsonValue = ((Guid)value).ToString("D");
                                 isText = true;
                             }
-                            else if (value is IBusinessObject)
+                            else if (value is IDataEntity)
                             {
                                 var serializer = CreateDelegate(objectType);
                                 serializer(value, output, compact);
@@ -199,7 +199,7 @@ namespace Nemo.Serialization
                                     Write("[", output);
                                 }
                                 var items = ((IList)value).Cast<object>().ToArray();
-                                if (items.Length > 0 && items[0] is IBusinessObject)
+                                if (items.Length > 0 && items[0] is IDataEntity)
                                 {
                                     var elementType = items[0].GetType();
                                     var serializer = CreateDelegate(elementType);
@@ -217,27 +217,6 @@ namespace Nemo.Serialization
                                     WriteList((IList)value, output);
                                 }
                                 Write("]", output);
-                                if (hasMore)
-                                {
-                                    Write(",", output);
-                                }
-                            }
-                            else if (value is ITypeUnion)
-                            {
-                                var typeUnion = (ITypeUnion)value;
-                                var elementType = typeUnion.UnionType;
-                                if (!(typeUnion.GetObject() is IList))
-                                {
-                                    Write(string.Format("\"{0}\":", name), output);
-                                }
-                                if (Reflector.IsSimpleType(elementType))
-                                {
-                                    WriteObject(typeUnion.GetObject(), null, output, false, compact);
-                                }
-                                else
-                                {
-                                    WriteObject(typeUnion.GetObject(), name, output, false, compact);
-                                }
                                 if (hasMore)
                                 {
                                     Write(",", output);

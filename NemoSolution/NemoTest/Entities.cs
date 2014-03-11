@@ -21,25 +21,22 @@ namespace NemoTest
         {
             TableName = "Customers";
 
-            Cache.Type<Nemo.Caching.Providers.MemcachedCacheProvider>();
+            Cache.Type<Nemo.Cache.Providers.MemcachedCacheProvider>();
 
             Property(c => c.Id).Column("CustomerID").Parameter("CustomerID").PrimaryKey();
-            Property(c => c.TypeUnionTest).Not.Persistent().Not.Serializable();
         }
     }
 
     [QueryDependency("CompanyName")]
     //[Nemo.Attributes.Table("Customers")]
-    public interface ICustomer : IBusinessObject
+    public interface ICustomer : IDataEntity
     {
-        //[MapColumn("CustomerID"), PrimaryKey]
+        [MapColumn("CustomerID"), PrimaryKey]
         string Id { get; set; }
         [Nemo.Validation.StringLength(50), XmlAttribute]
         string CompanyName { get; set; }
         //[Distinct]
         IList<IOrder> Orders { get; set; }
-        //[DoNotPersist, DoNotSerialize]
-        TypeUnion<int, string, double, List<int>, List<IOrder>> TypeUnionTest { get; set; }
         //[DoNotPersist, DoNotSerialize]
         //List<int> ListTest { get; set; }
         //[DoNotPersist, DoNotSerialize]
@@ -47,7 +44,7 @@ namespace NemoTest
     }
 
     [Nemo.Attributes.Table("Orders"), ProtoContract, ProtoInclude(50, typeof(OrderLegacy))]
-    public interface IOrder : IBusinessObject
+    public interface IOrder : IDataEntity
     {
         [MapColumn("OrderID"), Generate.Using(typeof(UniqueNegativeNumberGenerator)), PrimaryKey, ProtoMember(1)]
         int OrderId { get; set; }
@@ -116,8 +113,6 @@ namespace NemoTest
         [DataMember, ProtoIgnore]
         public List<int> Values { get; set; }
         [ProtoIgnore]
-        public TypeUnion<int, string, double, List<int>, List<IOrder>> TypeUnionTest { get; set; }
-        [ProtoIgnore]
         public List<int> ListTest { get; set; }
         [ProtoIgnore]
         public Dictionary<int, string> MapTest { get; set; }
@@ -162,7 +157,7 @@ namespace NemoTest
     }
 
     [Nemo.Attributes.Table("Employee")]
-    public interface IPerson : IBusinessObject
+    public interface IPerson : IDataEntity
     {
         [MapProperty("person_id"), MapColumn("EmployeeID")]
         int Id { get; set; }
@@ -171,7 +166,7 @@ namespace NemoTest
         DateTime DateOfBirth { get; set; }
     }
 
-    public interface IPersonReadOnly : IBusinessObject
+    public interface IPersonReadOnly : IDataEntity
     {
         [MapProperty("person_id")]
         int Id { get; }
@@ -209,7 +204,6 @@ namespace NemoTest
         public string Id { get; set; }
         public string CompanyName { get; set; }
         public IList<IOrder> Orders { get; set; }
-        public TypeUnion<int, string, double, List<int>, List<IOrder>> TypeUnionTest { get; set; }
         //public List<int> ListTest { get; set; }
         //public Dictionary<int, string> MapTest { get; set; }   
     }
@@ -236,7 +230,7 @@ namespace NemoTest
     }
 
     [ProtoContract, Serializable, DataContract]
-    public class SimpleObject : IBusinessObject
+    public class SimpleObject : IDataEntity
     {
         [ProtoMember(1), DataMember(Order = 1)]
         public int Id { get; set; }
@@ -252,7 +246,7 @@ namespace NemoTest
     }
 
     [ProtoContract, Serializable, DataContract]
-    public class ComplexObject : IBusinessObject
+    public class ComplexObject : IDataEntity
     {
         [ProtoMember(1), DataMember(Order = 1)]
         public int Id { get; set; }

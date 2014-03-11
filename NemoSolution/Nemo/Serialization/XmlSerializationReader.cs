@@ -38,9 +38,8 @@ namespace Nemo.Serialization
             object result = null;
             isArray = false;
 
-            IBusinessObject item = null;
+            IDataEntity item = null;
             IList list = null;
-            ITypeUnion union = null;
             Type elementType = null;
             IDictionary<string, ReflectedProperty> propertyMap = null;
             var isSimple = false;
@@ -66,10 +65,10 @@ namespace Nemo.Serialization
                     }
                     result = list;
                 }
-                else if (reflectedType.IsBusinessObject)
+                else if (reflectedType.IsDataEntity)
                 {
                     propertyMap = Reflector.GetPropertyNameMap(objectType);
-                    item = (IBusinessObject)ObjectFactory.Create(objectType);
+                    item = (IDataEntity)ObjectFactory.Create(objectType);
                     result = item;
                     // Handle attributes
                     if (reader.HasAttributes)
@@ -103,7 +102,7 @@ namespace Nemo.Serialization
                 return result;
             }
 
-            states.AddLast(new SerializationReaderState { Name = name, Item = item, List = list, Union = union, ElementType = elementType, PropertyMap = propertyMap, IsSimple = isSimple });
+            states.AddLast(new SerializationReaderState { Name = name, Item = item, List = list, ElementType = elementType, PropertyMap = propertyMap, IsSimple = isSimple });
 
             while (reader.IsStartElement())
             {
@@ -114,26 +113,22 @@ namespace Nemo.Serialization
                 ReflectedProperty property;
                 if (currentMap != null && currentMap.TryGetValue(name, out property))
                 {
-                    if (property.IsBusinessObject)
+                    if (property.IsDataEntity)
                     {
                         propertyMap = Reflector.GetPropertyNameMap(property.PropertyType);
-                        item = (IBusinessObject)ObjectFactory.Create(property.PropertyType);
+                        item = (IDataEntity)ObjectFactory.Create(property.PropertyType);
                         states.AddLast(new SerializationReaderState { Name = name, Item = item, PropertyMap = propertyMap });
 
                         if (currentValue.Item != null)
                         {
                             currentValue.Item.Property(name, item);
                         }
-                        else if (currentValue.Union != null)
-                        {
-                            currentValue.Union = TypeUnion.Create(currentValue.Union.AllTypes, item);
-                        }
                         else
                         {
                             currentValue.List.Add(item);
                         }
                     }
-                    else if (property.IsBusinessObjectList)
+                    else if (property.IsDataEntityList)
                     {
                         elementType = property.ElementType;
                         propertyMap = Reflector.GetPropertyNameMap(elementType);
@@ -150,46 +145,6 @@ namespace Nemo.Serialization
                         if (currentValue.Item != null)
                         {
                             currentValue.Item.Property(name, list);
-                        }
-                    }
-                    else if (property.IsTypeUnion)
-                    {
-                        var unionTypeEmpty = reader.GetAttribute("__empty") == "true";
-                        if (unionTypeEmpty) continue;
-                        
-                        var allTypes = property.PropertyType.GetGenericArguments();
-                        var unionTypeIndex = int.Parse(reader.GetAttribute("__index")) - 1;
-                        var unionType = allTypes.ElementAtOrDefault(unionTypeIndex);
-                        if (unionType != null)
-                        {
-                            var unionTypeReflected = Reflector.GetReflectedType(unionType);
-                            object unionValue = null;
-                            if (unionType == typeof(string))
-                            {
-                                unionValue = string.Empty;
-                            }
-                            else if (unionTypeReflected.IsSimpleType)
-                            {
-                                unionValue = unionType.GetDefault();
-                            }
-                            else if (unionTypeReflected.IsBusinessObject)
-                            {
-                                unionValue = ObjectFactory.Create(unionType);
-                            }
-                            else if (unionTypeReflected.IsList)
-                            {
-                                unionValue = List.Create(unionTypeReflected.ElementType);
-                            }
-                            else
-                            {
-                                unionValue = Nemo.Reflection.Activator.New(unionType);
-                            }
-                            union = TypeUnion.Create(allTypes, unionValue);
-                            states.AddLast(new SerializationReaderState { Name = name, Union = union, ElementType = unionType });
-                            if (currentValue.Item != null)
-                            {
-                                currentValue.Item.Property(name, union);
-                            }
                         }
                     }
                     else
@@ -216,30 +171,6 @@ namespace Nemo.Serialization
                         }
                     }
                 }
-                else if (currentValue.Union != null)
-                {
-                    var previousState = lastState.Previous;
-                    if (previousState.Value.Item != null)
-                    {
-                        var currentUnion = currentValue.Union;
-                        var unionType = currentUnion.UnionType;
-                        for (int i = 0; i < currentUnion.AllTypes.Length; i++)
-                        {
-                            reader.ReadStartElement();
-                            if (unionType == currentUnion.AllTypes[i])
-                            {
-                                var reflectedType = Reflector.GetReflectedType(unionType);
-                                var subtree = reader.ReadSubtree();
-                                var isArraySybtree = false;
-                                var value = ReadObject(subtree, unionType, out isArraySybtree);
-                                currentUnion = TypeUnion.Create(currentUnion.AllTypes, value);
-                                previousState.Value.Item.Property(currentValue.Name, currentUnion);
-                                reader.Read();
-                                reader.ReadEndElement();
-                            }
-                        }
-                    }
-                }
                 else if (currentValue.ElementType != null)
                 {
                     if (currentValue.IsSimple)
@@ -260,7 +191,7 @@ namespace Nemo.Serialization
                     }
                     else
                     {
-                        item = (IBusinessObject)ObjectFactory.Create(currentValue.ElementType);
+                        item = (IDataEntity)ObjectFactory.Create(currentValue.ElementType);
                         if (currentValue.List != null)
                         {
                             currentValue.List.Add(item);

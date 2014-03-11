@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Nemo.Caching;
+using Nemo.Cache;
 using Nemo.Extensions;
 
 namespace Nemo.Attributes

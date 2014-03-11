@@ -17,20 +17,20 @@ namespace Nemo.Validation
         /// <returns>
         /// Returns a dictionary of properties and error messages
         /// </returns>
-        public static ValidationResult Validate<T>(this T businessObject)
-            where T : class, IBusinessObject
+        public static ValidationResult Validate<T>(this T dataEntity)
+            where T : class, IDataEntity
         {
             // Get properties and build a property map
             var properties = Reflector.GetAllProperties<T>();
 
             var errors = from prop in properties
                          from attribute in prop.GetCustomAttributes(typeof(ValidationAttribute), false).Cast<ValidationAttribute>()
-                         where !IsValid(businessObject, prop.Name, prop.PropertyType, attribute)
+                         where !IsValid(dataEntity, prop.Name, prop.PropertyType, attribute)
                          select new ValidationError
                          {
                              PropertyName = prop.Name,
                              ErrorMessage = attribute.FormatErrorMessage(string.Join(" ", Regex.Split(prop.Name, "(?=[A-Z])"))),
-                             TargetInstance = businessObject,
+                             TargetInstance = dataEntity,
                              ValidationType = attribute.GetValidationType(),
                              SeverityType = attribute is ISeverityTypeProvider ? ((ISeverityTypeProvider)attribute).SeverityType : SeverityType.Error
                          };
@@ -44,24 +44,24 @@ namespace Nemo.Validation
             return attributeName.EndsWith("Attribute") ? attributeName.Substring(0, attributeName.Length - 9) : attributeName;
         }
 
-        private static bool IsValid(IBusinessObject businessObject, string propertyName, Type propertyType, ValidationAttribute attribute)
+        private static bool IsValid(IDataEntity dataEntity, string propertyName, Type propertyType, ValidationAttribute attribute)
         {
             object value = null;
             if (attribute is CompareAttribute)
             {
-                value = new object[] { businessObject.Property(propertyName), businessObject.Property(((CompareAttribute)attribute).PropertyName) };
+                value = new object[] { dataEntity.Property(propertyName), dataEntity.Property(((CompareAttribute)attribute).PropertyName) };
             }
             else if (attribute is CustomAttribute)
             {
-                value = new object[] { new CustomValidatorContext(businessObject, propertyName, attribute), businessObject.Property(propertyName) };
+                value = new object[] { new CustomValidatorContext(dataEntity, propertyName, attribute), dataEntity.Property(propertyName) };
             }
             else if (attribute is XmlSchemaAttribute && !string.IsNullOrEmpty(((XmlSchemaAttribute)attribute).SchemaProperty))
             {
-                value = new object[] { businessObject.Property(propertyName), businessObject.Property(((XmlSchemaAttribute)attribute).SchemaProperty) };
+                value = new object[] { dataEntity.Property(propertyName), dataEntity.Property(((XmlSchemaAttribute)attribute).SchemaProperty) };
             }
             else
             {
-                if (!businessObject.PropertyTryGet(propertyName, out value) || Convert.IsDBNull(value))
+                if (!dataEntity.PropertyTryGet(propertyName, out value) || Convert.IsDBNull(value))
                 {
                     value = propertyType.GetDefault();
                 }
