@@ -68,7 +68,7 @@
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
     <Compile Include="Audit\AuditLog.cs" />
-    <Compile Include="Audit\AuditLogProvider.cs" />
+    <Compile Include="Audit\IAuditLogProvider.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
     <Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" />

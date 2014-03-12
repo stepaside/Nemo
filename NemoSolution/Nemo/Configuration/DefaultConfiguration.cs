@@ -23,7 +23,7 @@ namespace Nemo.Configuration
         private bool _generateDeleteSql = false;
         private bool _generateInsertSql = false;
         private bool _generateUpdateSql = false;
-        private Type _auditLogProvider = null;
+        private IAuditLogProvider _auditLogProvider = null;
         private IExecutionContext _executionContext = DefaultExecutionContext.Current;
 
         private DefaultConfiguration() { }
@@ -123,8 +123,8 @@ namespace Nemo.Configuration
                 return _generateUpdateSql;
             }
         }
-        
-        public Type AuditLogProvider
+
+        public IAuditLogProvider AuditLogProvider
         {
             get
             {
@@ -229,12 +229,9 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetAuditLogProvider(Type value)
+        public IConfiguration SetAuditLogProvider(IAuditLogProvider value)
         {
-            if (value == null || typeof(AuditLogProvider).IsAssignableFrom(value))
-            {
-                _auditLogProvider = value;
-            }
+            _auditLogProvider = value;
             return this;
         }
 

@@ -18,6 +18,7 @@ using Nemo.Audit;
 using Nemo.UnitOfWork;
 using Nemo.Validation;
 using Nemo.Security.Cryptography;
+using Nemo.Configuration;
 
 namespace Nemo.Extensions
 {
@@ -249,7 +250,7 @@ namespace Nemo.Extensions
 
                 if (dataEntity is IAuditable)
                 {
-                    var logProvider = AuditLogProvider.Current;
+                    var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
                     if (logProvider != null)
                     {
                         logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_INSERT, default(T), dataEntity));
@@ -318,7 +319,7 @@ namespace Nemo.Extensions
 
                 if (dataEntity is IAuditable)
                 {
-                    var logProvider = AuditLogProvider.Current;
+                    var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
                     if (logProvider != null)
                     {
                         logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_UPDATE, (dataEntity.Old() ?? dataEntity), dataEntity));
@@ -360,7 +361,7 @@ namespace Nemo.Extensions
 
                 if (dataEntity is IAuditable)
                 {
-                    var logProvider = AuditLogProvider.Current;
+                    var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
                     if (logProvider != null)
                     {
                         logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DELETE, dataEntity, default(T)));
@@ -402,7 +403,7 @@ namespace Nemo.Extensions
 
                 if (dataEntity is IAuditable)
                 {
-                    var logProvider = AuditLogProvider.Current;
+                    var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
                     if (logProvider != null)
                     {
                         logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DESTROY, dataEntity, default(T)));

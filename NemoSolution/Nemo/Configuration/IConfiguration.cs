@@ -1,6 +1,7 @@
 ﻿using System;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
+using Nemo.Audit;
 
 namespace Nemo.Configuration
 {
@@ -18,7 +19,7 @@ namespace Nemo.Configuration
         bool GenerateDeleteSql { get; }
         bool GenerateInsertSql { get; }
         bool GenerateUpdateSql { get; }
-        Type AuditLogProvider { get; }
+        IAuditLogProvider AuditLogProvider { get; }
         IExecutionContext ExecutionContext { get; }
 
         IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value);
@@ -33,7 +34,7 @@ namespace Nemo.Configuration
         IConfiguration SetGenerateDeleteSql(bool value);
         IConfiguration SetGenerateInsertSql(bool value);
         IConfiguration SetGenerateUpdateSql(bool value);
-        IConfiguration SetAuditLogProvider(Type value);
+        IConfiguration SetAuditLogProvider(IAuditLogProvider value);
         IConfiguration SetExecutionContext(IExecutionContext value);
     }
 }
