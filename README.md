@@ -12,7 +12,7 @@ Nemo
   * [Classes](https://github.com/stepaside/Nemo/wiki/Data-Transfer-Objects#wiki-class)  
   * [Interfaces](https://github.com/stepaside/Nemo/wiki/Data-Transfer-Objects#wiki-interface)
  7. With
-  * L1 and L2 [cache support](https://github.com/stepaside/Nemo/wiki/Caching)
+  * L1 [cache support](https://github.com/stepaside/Nemo/wiki/Caching)
   * Fast serialization
      * Binary - very small footprint, one of the fastest and most compact binary serializers
      * XML - fast XML serializer supporting both element and attribute based serialization
