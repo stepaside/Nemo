@@ -9,17 +9,22 @@ using System.Threading;
 
 namespace Nemo
 {
-    internal sealed class ExecutionContext
+    public sealed class DefaultExecutionContext : IExecutionContext
     {
         [ThreadStatic]
-        private static Dictionary<string, object> _callContext = new Dictionary<string, object>();
+        private readonly static Dictionary<string, object> _callContext = new Dictionary<string, object>();
 
-        private ExecutionContext()
+        private readonly static Lazy<DefaultExecutionContext> _current = new Lazy<DefaultExecutionContext>(() => new DefaultExecutionContext(), true);
+
+        public static DefaultExecutionContext Current
         {
-            throw new NotSupportedException("must not be instantiated");
+            get
+            {
+                return _current.Value;
+            }
         }
 
-        internal static bool Exists(string name)
+        public bool Exists(string name)
         {
             var principal = Thread.CurrentPrincipal;
             if (principal is ThreadedPrincipal)
@@ -32,7 +37,7 @@ namespace Nemo
             }
         }
 
-        internal static object Get(string name)
+        public object Get(string name)
         {
             var principal = Thread.CurrentPrincipal;
             if (principal is ThreadedPrincipal)
@@ -49,7 +54,7 @@ namespace Nemo
             }
         }
 
-        internal static bool TryGet(string name, out object value)
+        public bool TryGet(string name, out object value)
         {
             value = null;
             var principal = Thread.CurrentPrincipal;
@@ -63,7 +68,7 @@ namespace Nemo
             }
         }
 
-        internal static void Set(string name, object value)
+        public void Set(string name, object value)
         {
             var principal = Thread.CurrentPrincipal;
             if (principal is ThreadedPrincipal)
@@ -76,7 +81,7 @@ namespace Nemo
             }
         }
 
-        internal static void Remove(string name)
+        public void Remove(string name)
         {
             var principal = Thread.CurrentPrincipal;
             if (principal is ThreadedPrincipal)
@@ -89,14 +94,14 @@ namespace Nemo
             }
         }
 
-        internal static object Pop(string name)
+        public object Pop(string name)
         {
             var result = Get(name);
             Remove(name);
             return result;
         }
 
-        internal static void Clear()
+        public void Clear()
         {
             var principal = Thread.CurrentPrincipal;
             if (principal is ThreadedPrincipal)
@@ -109,7 +114,7 @@ namespace Nemo
             }
         }
 
-        internal static IList<string> AllKeys
+        public IList<string> AllKeys
         {
             get
             {

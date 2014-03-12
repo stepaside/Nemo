@@ -74,21 +74,6 @@ namespace Nemo.Utilities
                 schemaXml.Append("</xs:sequence></xs:complexType>");
                 WriteTypeSchema(elementType, schemaXml, allInnerTypes);
             }
-            else if (reflectedType.IsTypeUnion)
-            {
-                var innerTypes = new List<Type>();
-                for (int i = 0; i < reflectedType.GenericArguments.Length; i++)
-                {
-                    var elementType = reflectedType.GenericArguments[i];
-                    schemaXml.AppendFormat("<xs:element minOccurs=\"0\" maxOccurs=\"1\" name=\"{0}\" nillable=\"true\" type=\"{1}\" />", "Item" + (i + 1), Reflector.ClrToXmlType(elementType));
-                    var reflectedElementType = Reflector.GetReflectedType(elementType);
-                    if (!reflectedElementType.IsSimpleType && !reflectedType.IsSimpleList)
-                    {
-                        allInnerTypes.Add(elementType);
-                    }
-                }
-                schemaXml.Append("</xs:sequence><xs:attribute name=\"__index\" type=\"xs:int\" /><xs:attribute name=\"__empty\" type=\"xs:boolean\" /></xs:complexType>");
-            }
             else
             {
                 var innerTypes = new List<Type>();
@@ -116,11 +101,6 @@ namespace Nemo.Utilities
                         //propertyType = property.Value.ElementType;
                         innerTypes.Add(propertyType);
                         //isList = true;
-                        nillable = true;
-                    }
-                    else if (property.Value.IsTypeUnion)
-                    {
-                        innerTypes.Add(property.Value.PropertyType);
                         nillable = true;
                     }
                     else if (property.Value.IsNullableType)

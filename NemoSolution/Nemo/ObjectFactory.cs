@@ -1,6 +1,4 @@
 ﻿using Nemo.Attributes;
-using Nemo.Cache;
-using Nemo.Cache.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
@@ -10,6 +8,7 @@ using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Fn.Extensions;
 using Nemo.Reflection;
+using Nemo.Security.Cryptography;
 using Nemo.Serialization;
 using Nemo.Utilities;
 using System;
@@ -21,6 +20,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 using System.Transactions;
 using ObjectActivator = Nemo.Reflection.Activator.ObjectActivator;
 
@@ -337,7 +337,7 @@ namespace Nemo
 
         #region Select Methods
 
-        public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0)
+        public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null)
             where T : class, IDataEntity
         {
             string providerName = null;
@@ -351,7 +351,7 @@ namespace Nemo
                 connection.Open();
             }
             var sql = SqlBuilder.GetSelectStatement<T>(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName));
-            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection);
+            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, cached: cached);
         }
         
         #endregion
@@ -382,7 +382,7 @@ namespace Nemo
             }
         }
 
-        private static IEnumerable<TResult> RetrieveImplemenation<TResult, T1, T2, T3, T4>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null)
+        private static IEnumerable<TResult> RetrieveImplemenation<TResult, T1, T2, T3, T4>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class, IDataEntity
             where T2 : class, IDataEntity
             where T3 : class, IDataEntity
@@ -391,150 +391,61 @@ namespace Nemo
         {
             Log.CaptureBegin(() => string.Format("RetrieveImplemenation: {0}::{1}", typeof(TResult).FullName, operation));
             IEnumerable<TResult> result = null;
-
-            bool canBeBuffered;
-            Type cacheType;
-            ObjectCache.GetCacheInfo<TResult>(out canBeBuffered, out cacheType);
-            var enableCache = cacheType != null;
-            // Cancel caching for multi-result queries; need to think of way to cache IMultiResult
-            if (enableCache && types != null && types.Count > 1 && returnType == OperationReturnType.MultiResult)
-            {
-                enableCache = false;
-            }
-
-            CacheProvider bufferCache = null;
-            if (canBeBuffered)
-            {
-                bufferCache = new ExecutionContextCacheProvider();
-            }
-
-            CacheProvider cache = null;
-            CacheDataObject[] cachedItems = null;
-            string queryKey = null;
-            ulong querySignature = 0;
-            HashSet<string> queryVariants = null;
-            string[] keys = null;
-            bool collision = false;
             
-            if (enableCache || canBeBuffered)
+            string queryKey = null;
+            IdentityMap<TResult> identityMap = null;
+
+            if (!cached.HasValue)
             {
-                if (enableCache)
-                {
-                    cache = CacheFactory.GetProvider(cacheType, ObjectCache.GetCacheOptions(typeof(TResult)));
-                }
-
-                var queryKeyResult = ObjectCache.GetQueryKey<TResult>(operation, parameters, returnType, cache);
-                queryKey = queryKeyResult.Item1;
-                querySignature = queryKeyResult.Item2;
-                queryVariants = queryKeyResult.Item3;
-
-                if (queryKey != null)
-                {
-                    // Try to retrieve from the local context
-                    if (canBeBuffered)
-                    {
-                        var result2 = bufferCache.Get(queryKey) as IEnumerable<TResult>;
-                        if (result2 != null)
-                        {
-                            Log.Capture(() => "Retrieve from buffer: " + queryKey);
-                            Log.CaptureEnd();
-                            if (result2 is IMultiResult)
-                            {
-                                ((IMultiResult)result2).Reset();
-                            }
-                            return result2;
-                        }
-                    }
-
-                    if (enableCache)
-                    {
-                        keys = ObjectCache.LookupKeys(queryKey, cache);
-                    }
-                }
-
-                if (keys != null)
-                {
-                    cachedItems = ObjectCache.Lookup<TResult>(keys, cache);
-                    // Detect data type collision
-                    if (cachedItems != null)
-                    {
-                        if (ConfigurationFactory.Configuration.CacheCollisionDetection && cachedItems.Any(c => !c.IsValid<TResult>()))
-                        {
-                            ObjectCache.Remove<TResult>(queryKey, parameters, cache);
-                            collision = true;
-                        }
-                        else
-                        {
-                            Log.Capture(() => "Retrieve from cache: " + queryKey);
-                            result = cachedItems.Deserialize<TResult>();
-                        }
-                    }
-                }
+                cached = ConfigurationFactory.Configuration.DefaultL1CacheRepresentation != L1CacheRepresentation.None;
             }
 
-            if (cachedItems == null || collision)
+            if (cached.Value)
             {
-                //var request = new OperationRequest { Operation = operation, OperationType = operationType, Parameters = parameters, ReturnType = returnType, ConnectionName = connectionName, Connection = connection, Types = types };
+                queryKey = GetQueryKey<TResult>(operation, parameters, returnType);
 
-                if (enableCache && queryKey != null && !collision)
+                Log.CaptureBegin(() => string.Format("Retrieving from L1 cache: {0}", queryKey));
+
+                if (returnType == OperationReturnType.MultiResult)
                 {
-                    // keys is not null 
-                    // thus items expired before the query 
-                    // and we need to force the add
-                    var forceRetrieve = keys != null;
-                    Log.Capture(() => "Add to cache: " + queryKey);
-                    var tuple = ObjectCache.Add<TResult>(queryKey, queryVariants, parameters, () => RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode, schema), forceRetrieve, cache);
-                    if (!tuple.Item1)
-                    {
-                        if (forceRetrieve)
-                        {
-                            // if retrieve was forced during cache.add method, then lookup keys again
-                            keys = ObjectCache.LookupKeys(queryKey, cache);
-                        }
-                        else
-                        {
-                            keys = tuple.Item3;
-                        }
-                        if (keys != null)
-                        {
-                            cachedItems = ObjectCache.Lookup<TResult>(keys, cache, tuple.Item4);
-                            if (cachedItems != null)
-                            {
-                                result = cachedItems.Deserialize<TResult>();
-                            }
-                            else
-                            {
-                                result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode, schema);
-                            }
-                        }
-                        else if (tuple.Item2.Any())
-                        {
-                            result = tuple.Item2;
-                        }
-                        else
-                        {
-                            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode, schema);
-                        }
-                    }
-                    else
-                    {
-                        result = tuple.Item2;
-                    }
+                    result = ConfigurationFactory.Configuration.ExecutionContext.Get(queryKey) as IEnumerable<TResult>;
                 }
                 else
                 {
-                    result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, canBeBuffered, mode, schema);
+                    identityMap = Identity.Get<TResult>();
+                    result = identityMap.GetIndex(queryKey);
+                }
+                
+                Log.CaptureEnd();
+
+                if (result != null)
+                {
+                    Log.Capture(() => string.Format("Found in L1 cache: {0}", queryKey));
+                    
+                    if (returnType == OperationReturnType.MultiResult)
+                    {
+                        ((IMultiResult)result).Reset();
+                    }
+                    
+                    Log.CaptureEnd();
+                    return result;
+                }
+                else
+                {
+                    Log.Capture(() => string.Format("Not found in L1 cache: {0}", queryKey));
                 }
             }
 
-            Log.CaptureEnd();
-
+            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema);
+            
             // Cache in the local context if the 2nd level cache is distributed
-            if (canBeBuffered && queryKey != null)
+            if (queryKey != null)
             {
+                Log.CaptureBegin(() => string.Format("Saving to L1 cache: {0}", queryKey));
+
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
-                    if (ConfigurationFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.List)
+                    if (ConfigurationFactory.Configuration.DefaultL1CacheRepresentation == L1CacheRepresentation.List)
                     {
                         result = result.ToList();
                     }
@@ -547,13 +458,24 @@ namespace Nemo
                         result = new List<TResult>();
                     }
                 }
-                bufferCache.Set(queryKey, result);
+
+                if (identityMap != null)
+                {
+                    identityMap.AddIndex(queryKey, result);
+                }
+                else if (result is IMultiResult)
+                {
+                    ConfigurationFactory.Configuration.ExecutionContext.Set(queryKey, result);
+                }
+
+                Log.CaptureEnd();
             }
 
+            Log.CaptureEnd();
             return result;
         }
 
-        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool canBeBuffered, MaterializationMode mode, string schema)
+        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, MaterializationMode mode, string schema)
             where T : class, IDataEntity
         {
             if (operationType == OperationType.Guess)
@@ -572,10 +494,16 @@ namespace Nemo
             {
                 response = ObjectFactory.Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
             }
-            var result = Transform<T>(response, map, types, canBeBuffered, mode);
+            var result = Transform<T>(response, map, types, cached, mode);
             return result;
         }
 
+        private static string GetQueryKey<T>(string operation, IList<Param> parameters, OperationReturnType returnType)
+        {
+            var hash = Jenkins96Hash.Compute(Encoding.UTF8.GetBytes(returnType + "/" + operation + "/" + string.Join(",", parameters.AsSorted(p => p.Name).Select(p => p.Name + "=" + p.Value))));
+            return typeof(T).FullName + "/" + hash;
+        }
+        
         /// <summary>
         /// Retrieves an enumerable of type T using provided rule parameters.
         /// </summary>
@@ -585,7 +513,7 @@ namespace Nemo
         /// <param name="connectionName"></param>
         /// <param name="stream"></param>
         /// <returns></returns>
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class, IDataEntity
             where T2 : class, IDataEntity
             where T3 : class, IDataEntity
@@ -659,37 +587,37 @@ namespace Nemo
                     parameterList = (Param[])parameters;
                 }
             }
-            return RetrieveImplemenation<TResult, T1, T2, T3, T4>(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema);
+            return RetrieveImplemenation<TResult, T1, T2, T3, T4>(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema, cached);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class, IDataEntity
             where T2 : class, IDataEntity
             where T3 : class, IDataEntity
             where TResult : class, IDataEntity
         {
             Func<TResult, T1, T2, T3, Fake, TResult> newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
-            return Retrieve<TResult, T1, T2, T3, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema);
+            return Retrieve<TResult, T1, T2, T3, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class, IDataEntity
             where T2 : class, IDataEntity
             where TResult : class, IDataEntity
         {
             Func<TResult, T1, T2, Fake, Fake, TResult> newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
-            return Retrieve<TResult, T1, T2, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema);
+            return Retrieve<TResult, T1, T2, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class, IDataEntity
             where TResult : class, IDataEntity
         {
             Func<TResult, T1, Fake, Fake, Fake, TResult> newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
-            return Retrieve<TResult, T1, Fake, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema);
+            return Retrieve<TResult, T1, Fake, Fake, Fake>(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
         }
 
-        public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null)
+        public static IEnumerable<T> Retrieve<T>(string operation = OPERATION_RETRIEVE, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T : class, IDataEntity
         {
             var returnType = OperationReturnType.SingleResult;
@@ -713,7 +641,7 @@ namespace Nemo
                     parameterList = (Param[])parameters;
                 }
             }
-            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization, schema);
+            return RetrieveImplemenation<T, Fake, Fake, Fake, Fake>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached);
         }
 
         internal class Fake : IDataEntity { }
@@ -1071,7 +999,7 @@ namespace Nemo
 
         #region Transform/Convert Methods
 
-        private static IEnumerable<T> Transform<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool buffered, MaterializationMode mode)
+        private static IEnumerable<T> Transform<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode)
             where T : class, IDataEntity
         {
             object value = response.Value;
@@ -1087,7 +1015,7 @@ namespace Nemo
                 if (map == null && types != null && types.Count > 1)
                 {
                     var multiResultItems = ConvertDataReaderMultiResult((IDataReader)value, types, mode, isInterface);
-                    return (IEnumerable<T>)MultiResult.Create(types, multiResultItems, buffered);
+                    return (IEnumerable<T>)MultiResult.Create(types, multiResultItems, cached);
                 }
                 else
                 {
@@ -1586,10 +1514,10 @@ namespace Nemo
             return tableName;
         }
 
-        internal static string[] GetPrimaryKeyProperties(Type interfaceType, bool includeCacheKey)
+        internal static string[] GetPrimaryKeyProperties(Type interfaceType)
         {
             var propertyMap = Reflector.GetPropertyMap(interfaceType);
-            return propertyMap.Values.Where(p => p.CanRead && (p.IsPrimaryKey || (includeCacheKey && p.IsCacheKey))).Select(p => p.PropertyName).ToArray();
+            return propertyMap.Values.Where(p => p.CanRead && p.IsPrimaryKey).Select(p => p.PropertyName).ToArray();
         }
 
         #endregion

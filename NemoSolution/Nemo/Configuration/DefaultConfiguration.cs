@@ -1,6 +1,4 @@
 ﻿using Nemo.Audit;
-using Nemo.Cache;
-using Nemo.Cache.Providers;
 using Nemo.Extensions;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
@@ -13,59 +11,28 @@ namespace Nemo.Configuration
     {
         private string _defaultConnectionName = Config.AppSettings("DefaultConnectionName", "DbConnection");
         private string _operationPrefix = Config.AppSettings("OperationPrefix", string.Empty);
-        private int _defaultCacheLifeTime = Config.AppSettings("DefaultCacheLifeTime", 900);
-        private bool _cacheCollisionDetection = Config.AppSettings("EnableCacheCollisionDetection", false);
         private bool _logging = Config.AppSettings("EnableLogging", false);
-        private string _secretKey = Config.AppSettings("SecretKey", Bytes.ToHex(Bytes.Random(10)));
-        private int _staleCacheTimeout = Config.AppSettings("StaleCacheTimeout", 2);
-        private int _distributedLockTimeout = Config.AppSettings("DistributedLockTimeout", 60);
-        private CacheInvalidationStrategy _cacheInvalidationStrategy = Config.AppSettings<CacheInvalidationStrategy>("CacheInvalidationStrategy", CacheInvalidationStrategy.InvalidateByParameters);
 
-        private ContextLevelCacheType _defaultContextLevelCache = ParseContextLevelCacheConfig();
+        private L1CacheRepresentation _defaultL1CacheRepresentation = ParseExecutionContextCacheConfig();
         private OperationNamingConvention _operationNamingConvention = ParseOperationNamingConventionConfig();
         private FetchMode _defaultFetchMode = ParseFetchModeConfig();
         private MaterializationMode _defaultMaterializationMode = ParseMaterializationModeConfig();
         private ChangeTrackingMode _defaultChangeTrackingMode = ParseChangeTrackingModeConfig();
-        private HashAlgorithmName _defaultHashAlgorithm = ParseHashAlgorithmNameConfig();
         private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
 
         private bool _generateDeleteSql = false;
         private bool _generateInsertSql = false;
         private bool _generateUpdateSql = false;
-        private Type _cacheProvider = typeof(MemoryCacheProvider);
         private Type _auditLogProvider = null;
+        private IExecutionContext _executionContext = DefaultExecutionContext.Current;
 
         private DefaultConfiguration() { }
-
-        public int DistributedLockTimeout
+        
+        public L1CacheRepresentation DefaultL1CacheRepresentation
         {
             get
             {
-                return _distributedLockTimeout;
-            }
-        }
-
-        public ContextLevelCacheType DefaultContextLevelCache
-        {
-            get
-            {
-                return _defaultContextLevelCache;
-            }
-        }
-
-        public int DefaultCacheLifeTime
-        {
-            get
-            {
-                return _defaultCacheLifeTime;
-            }
-        }
-
-        public bool CacheCollisionDetection
-        {
-            get
-            {
-                return _cacheCollisionDetection;
+                return _defaultL1CacheRepresentation;
             }
         }
 
@@ -125,30 +92,6 @@ namespace Nemo.Configuration
             }
         }
 
-        public HashAlgorithmName DefaultHashAlgorithm
-        {
-            get
-            {
-                return _defaultHashAlgorithm;
-            }
-        }
-
-        public string SecretKey
-        {
-            get
-            {
-                return _secretKey;
-            }
-        }
-
-        public int StaleCacheTimeout
-        {
-            get
-            {
-                return _staleCacheTimeout;
-            }
-        }
-
         public SerializationMode DefaultSerializationMode
         {
             get
@@ -180,14 +123,6 @@ namespace Nemo.Configuration
                 return _generateUpdateSql;
             }
         }
-
-        public Type DefaultCacheProvider
-        {
-            get
-            {
-                return _cacheProvider;
-            }
-        }
         
         public Type AuditLogProvider
         {
@@ -197,40 +132,25 @@ namespace Nemo.Configuration
             }
         }
 
-        public CacheInvalidationStrategy CacheInvalidationStrategy
+        public IExecutionContext ExecutionContext
         {
-            get { return _cacheInvalidationStrategy; }
+            get
+            {
+                return _executionContext;
+            }
         }
-        
+       
         public static IConfiguration New()
         {
             return new DefaultConfiguration();
         }
 
-        public IConfiguration SetDistributedLockTimeout(int value)
+        public IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value)
         {
-            _distributedLockTimeout = value;
+            _defaultL1CacheRepresentation = value;
             return this;
         }
-
-        public IConfiguration SetDefaultContextLevelCache(ContextLevelCacheType value)
-        {
-            _defaultContextLevelCache = value;
-            return this;
-        }
-
-        public IConfiguration SetDefaultCacheLifeTime(int value)
-        {
-            _defaultCacheLifeTime = value;
-            return this;
-        }
-
-        public IConfiguration SetCacheCollisionDetection(bool value)
-        {
-            _cacheCollisionDetection = value;
-            return this;
-        }
-
+        
         public IConfiguration SetLogging(bool value)
         {
             _logging = value;
@@ -284,35 +204,7 @@ namespace Nemo.Configuration
             }
             return this;
         }
-
-        public IConfiguration SetDefaultHashAlgorithm(HashAlgorithmName value)
-        {
-            if (value != HashAlgorithmName.Default)
-            {
-                _defaultHashAlgorithm = value;
-            }
-            return this;
-        }
-
-        public IConfiguration SetSecretKey(string value)
-        {
-            if (!string.IsNullOrEmpty(value))
-            {
-                _secretKey = value;
-            }
-            return this;
-        }
-
-        public IConfiguration SetStaleCacheTimeout(int value)
-        {
-            if (value < 1)
-            {
-                value = 1;
-            }
-            _staleCacheTimeout = value;
-            return this;
-        }
-
+                
         public IConfiguration SetDefaultSerializationMode(SerializationMode value)
         {
             _defaultSerializationMode = value;
@@ -337,15 +229,6 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetDefaultCacheProvider(Type value)
-        {
-            if (value == null || typeof(CacheProvider).IsAssignableFrom(value))
-            {
-                _cacheProvider = value;
-            }
-            return this;
-        }
-
         public IConfiguration SetAuditLogProvider(Type value)
         {
             if (value == null || typeof(AuditLogProvider).IsAssignableFrom(value))
@@ -355,15 +238,15 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetCacheInvalidationStrategy(CacheInvalidationStrategy cacheInvalidationStrategy)
+        public IConfiguration SetExecutionContext(IExecutionContext value)
         {
-            _cacheInvalidationStrategy = cacheInvalidationStrategy;
+            _executionContext = value;
             return this;
         }
-        
-        private static ContextLevelCacheType ParseContextLevelCacheConfig()
+
+        private static L1CacheRepresentation ParseExecutionContextCacheConfig()
         {
-            return Config.AppSettings<ContextLevelCacheType>("DefaultContextLevelCache", ContextLevelCacheType.LazyList);
+            return Config.AppSettings<L1CacheRepresentation>("DefaultExecutionContextCacheType", L1CacheRepresentation.LazyList);
         }
 
         private static OperationNamingConvention ParseOperationNamingConventionConfig()
@@ -384,11 +267,6 @@ namespace Nemo.Configuration
         private static ChangeTrackingMode ParseChangeTrackingModeConfig()
         {
             return Config.AppSettings<ChangeTrackingMode>("DefaultChangeTrackingMode", ChangeTrackingMode.Automatic);
-        }
-
-        private static HashAlgorithmName ParseHashAlgorithmNameConfig()
-        {
-            return Config.AppSettings<HashAlgorithmName>("DefaultHashAlgorithmName", HashAlgorithmName.JenkinsHash);
         }
     }
 }

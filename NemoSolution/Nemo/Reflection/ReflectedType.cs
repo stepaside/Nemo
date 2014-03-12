@@ -28,21 +28,11 @@ namespace Nemo.Reflection
                 IsListInterface = type.GetGenericTypeDefinition() == typeof(IList<>);
             }
             IsSimpleType = Reflector.IsSimpleType(type);
-            IsTypeUnion = Reflector.IsTypeUnion(type);
-            if (IsTypeUnion)
-            {
-                GenericArguments = type.GetGenericArguments();
-            }
-            IsTuple = Reflector.IsTuple(type);
             IsList = Reflector.IsList(type);
             IsDictionary = Reflector.IsDictionary(type);
             IsNullableType = Reflector.IsNullableType(type);
             IsMarkerInterface = Reflector.IsMarkerInterface(type);
             HashCode = type.GetHashCode();
-            if (IsDataEntity)
-            {
-                IsCacheableEntity = Reflector.IsCacheableDataEntity(type);
-            }
             IsGenericType = type.IsGenericType;
             IsInterface = type.IsInterface;
             IsAnonymous = Reflector.IsAnonymousType(type);
@@ -89,19 +79,7 @@ namespace Nemo.Reflection
             get;
             private set;
         }
-
-        public bool IsTypeUnion
-        {
-            get;
-            private set;
-        }
-
-        public bool IsTuple
-        {
-            get;
-            private set;
-        }
-
+                
         public bool IsNullableType
         {
             get;
@@ -149,19 +127,7 @@ namespace Nemo.Reflection
             get;
             private set;
         }
-
-        public bool IsCacheableEntity
-        {
-            get;
-            private set;
-        }
-
-        public Type[] GenericArguments
-        {
-            get;
-            private set;
-        }
-
+        
         public bool IsGenericType
         {
             get;

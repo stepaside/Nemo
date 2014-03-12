@@ -15,7 +15,6 @@ namespace Nemo.Configuration.Mapping
         public EntityMap()
         {
             _properties = new Dictionary<string, IPropertyMap>();
-            Cache = new CacheMap();
         }
 
         public PropertyMap<T, U> Property<U>(Expression<Func<T, U>> selector)
@@ -45,17 +44,7 @@ namespace Nemo.Configuration.Mapping
         public string DatabaseName { get; protected set; }
 
         public string ConnectionStringName { get; protected set; }
-
-        ICacheMap IEntityMap.Cache
-        {
-            get
-            {
-                return this.Cache;
-            }
-        }
-
-        public CacheMap Cache { get; private set; }
-
+        
         public bool ReadOnly { get; protected set; }
 
         public string SoftDeleteColumnName { get; protected set; }

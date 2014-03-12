@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>$id$</id>
-    <version>$version$</version>
-    <title>$title$</title>
-    <authors>$author$</authors>
-    <owners>$author$</owners>
+    <id>Nemo</id>
+    <version>2.0.0</version>
+    <title>Nemo</title>
+    <authors>Max Stepanskiy</authors>
+    <owners>Stepaside, Inc.</owners>
     <projectUrl>https://github.com/stepaside/Nemo/wiki</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>$description$</description>
-    <copyright>Copyright © Max Stepanskiy 2012-2013</copyright>
-    <tags>ORM micro-ORM sql mapper</tags>
+    <description>.Net Enterprise Micro-ORM</description>
+    <copyright>Copyright © Max Stepanskiy 2012-2014</copyright>
+    <tags>ORM micro-ORM data-mapper sql-mapper</tags>
   </metadata>
 </package>

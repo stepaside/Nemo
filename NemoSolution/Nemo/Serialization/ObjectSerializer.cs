@@ -64,17 +64,7 @@ namespace Nemo.Serialization
         Ticks = 5,
         MinMax = 15
     }
-
-    public static class UnixDateTime
-    {
-        public static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        public static long GetTicks()
-        {
-            return (DateTime.UtcNow - UnixDateTime.Epoch).Ticks;
-        }
-    }
-
+    
     public static class ObjectSerializer
     {
         #region Serialize Methods

@@ -131,7 +131,7 @@ namespace Nemo.Utilities
             get
             {
                 object context;
-                if (ExecutionContext.TryGet(LOG_CONTEXT_NAME, out context))
+                if (ConfigurationFactory.Configuration.ExecutionContext.TryGet(LOG_CONTEXT_NAME, out context))
                 {
                     var logContext = (Stack<Tuple<Guid, HiPerfTimer>>)context;
                     if (logContext != null && logContext.Count > 0)
@@ -146,7 +146,7 @@ namespace Nemo.Utilities
         private static void ClearContext()
         {
             object context;
-            if (ExecutionContext.TryGet(LOG_CONTEXT_NAME, out context))
+            if (ConfigurationFactory.Configuration.ExecutionContext.TryGet(LOG_CONTEXT_NAME, out context))
             {
                 var logContext = (Stack<Tuple<Guid, HiPerfTimer>>)context;
                 if (logContext != null && logContext.Count > 0)
@@ -159,10 +159,10 @@ namespace Nemo.Utilities
         private static void CreateContext()
         {
             object logContext;
-            if (!ExecutionContext.TryGet(LOG_CONTEXT_NAME, out logContext))
+            if (!ConfigurationFactory.Configuration.ExecutionContext.TryGet(LOG_CONTEXT_NAME, out logContext))
             {
                 logContext = new Stack<Tuple<Guid, HiPerfTimer>>();
-                ExecutionContext.Set(LOG_CONTEXT_NAME, logContext);
+                ConfigurationFactory.Configuration.ExecutionContext.Set(LOG_CONTEXT_NAME, logContext);
             }
 
             if (logContext != null)

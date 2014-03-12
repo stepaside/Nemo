@@ -41,8 +41,6 @@ namespace Nemo.Reflection
             }
 
             IsSimpleType = !IsBinary && Reflector.IsSimpleType(property.PropertyType);
-            IsTypeUnion = Reflector.IsTypeUnion(property.PropertyType);
-            IsTuple = Reflector.IsTuple(property.PropertyType);
             IsNullableType = Reflector.IsNullableType(property.PropertyType);
             CanWrite = property.CanWrite;
             CanRead = property.CanRead;
@@ -79,14 +77,6 @@ namespace Nemo.Reflection
                     {
                         Parent = ((ReferencesAttribute)item).Parent;
                         RefPosition = ((ReferencesAttribute)item).Position;
-                    }
-                    else if (item is CacheKeyAttribute)
-                    {
-                        IsCacheKey = true;
-                    }
-                    else if (item is CacheParameterAttribute)
-                    {
-                        IsCacheParameter = true;
                     }
                     else if (item is ParameterAttribute)
                     {
@@ -153,19 +143,7 @@ namespace Nemo.Reflection
             get;
             private set;
         }
-
-        public bool IsTypeUnion
-        {
-            get;
-            private set;
-        }
-
-        public bool IsTuple
-        {
-            get;
-            private set;
-        }
-
+        
         public Maybe<bool> IsPersistent
         {
             get;
@@ -207,19 +185,7 @@ namespace Nemo.Reflection
             get;
             internal set;
         }
-        
-        public bool IsCacheKey
-        {
-            get;
-            internal set;
-        }
-
-        public bool IsCacheParameter
-        {
-            get;
-            internal set;
-        }
-
+      
         public string ParameterName
         {
             get;

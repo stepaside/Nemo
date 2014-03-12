@@ -60,8 +60,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Attributes\CacheParameterAttribute.cs" />
-    <Compile Include="Attributes\QueryDependencyAttribute.cs" />
     <Compile Include="Attributes\ConnectionAttribute.cs" />
     <Compile Include="Attributes\DoNotSerializeAttribute.cs" />
     <Compile Include="Attributes\DoNotPersistAttribute.cs" />
@@ -71,26 +69,6 @@
     <Compile Include="Attributes\DistinctAttribute.cs" />
     <Compile Include="Audit\AuditLog.cs" />
     <Compile Include="Audit\AuditLogProvider.cs" />
-    <Compile Include="Cache\CacheExpirationType.cs" />
-    <Compile Include="Cache\CacheFactory.cs" />
-    <Compile Include="Cache\CacheInvalidationStrategy.cs" />
-    <Compile Include="Cache\CacheItem.cs" />
-    <Compile Include="Cache\CacheKey.cs" />
-    <Compile Include="Cache\CacheOptions.cs" />
-    <Compile Include="Cache\CacheProvider.cs" />
-    <Compile Include="Cache\CacheScope.cs" />
-    <Compile Include="Cache\CacheValue.cs" />
-    <Compile Include="Cache\ContextLevelCacheType.cs" />
-    <Compile Include="Cache\DistributedCacheProvider.cs" />
-    <Compile Include="Cache\HashAlgorithmName.cs" />
-    <Compile Include="Cache\IPersistentCacheProvider.cs" />
-    <Compile Include="Cache\IStaleCacheProvider.cs" />
-    <Compile Include="Cache\ObjectCache.cs" />
-    <Compile Include="Cache\Providers\ExecutionContextCacheProvider.cs" />
-    <Compile Include="Cache\Providers\FileCacheProvider.cs" />
-    <Compile Include="Cache\Providers\MemoryCacheProvider.cs" />
-    <Compile Include="Cache\PublishQueryInvalidationEventArgs.cs" />
-    <Compile Include="Cache\QueryDependency.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
     <Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" />
@@ -105,13 +83,12 @@
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Collections\SortedList.cs" />
     <Compile Include="Configuration\ConfigurationFactory.cs" />
-    <Compile Include="Configuration\Mapping\CacheMap.cs" />
     <Compile Include="Configuration\Mapping\EntityMap.cs" />
-    <Compile Include="Configuration\Mapping\ICacheMap.cs" />
     <Compile Include="Configuration\Mapping\IEntityMap.cs" />
     <Compile Include="Configuration\Mapping\IPropertyMap.cs" />
     <Compile Include="Configuration\Mapping\MappingFactory.cs" />
     <Compile Include="Configuration\Mapping\PropertyMap.cs" />
+    <Compile Include="L1CacheRepresentation.cs" />
     <Compile Include="Data\OracleDialectProvider.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />
@@ -128,6 +105,9 @@
     <Compile Include="Fn\TypeUnion.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="IdentityMap.cs" />
+    <Compile Include="IExecutionContext.cs" />
+    <Compile Include="Identity.cs" />
     <Compile Include="ParamList.cs" />
     <Compile Include="Reflection\ReflectedProperty.cs" />
     <Compile Include="Attributes\DoNotSelectAttribute.cs" />
@@ -168,8 +148,6 @@
     <Compile Include="Collections\TypeArray.cs" />
     <Compile Include="Configuration\DefaultConfiguration.cs" />
     <Compile Include="Configuration\IConfiguration.cs" />
-    <Compile Include="Attributes\CacheAttribute.cs" />
-    <Compile Include="Attributes\CacheKeyAttribute.cs" />
     <Compile Include="Attributes\ParameterAttribute.cs" />
     <Compile Include="Attributes\ReferencesAttribute.cs" />
     <Compile Include="Attributes\GenerateAttribute.cs" />
@@ -199,7 +177,7 @@
     <Compile Include="Collections\OrderedEnumerable.cs" />
     <Compile Include="Collections\OrderedEnumerableConverter.cs" />
     <Compile Include="Collections\Extensions\LinqExtensions.cs" />
-    <Compile Include="ExecutionContext.cs" />
+    <Compile Include="DefaultExecutionContext.cs" />
     <Compile Include="Extensions\ObjectExtensions.cs" />
     <Compile Include="ObjectFactory.cs" />
     <Compile Include="Serialization\ObjectSerializer.cs" />
@@ -231,31 +209,70 @@
     <Compile Include="Utilities\Numbers.cs" />
     <Compile Include="Utilities\StringStream.cs" />
     <Compile Include="Utilities\ThreadSafeRandom.cs" />
+    <Compile Include="Utilities\UnixDateTime.cs" />
     <Compile Include="Utilities\WeakEvent.cs" />
     <Compile Include="Utilities\Xml.cs" />
     <Compile Include="Utilities\Xsd.cs" />
-    <Compile Include="Validation\IResourceKeyProvider.cs" />
-    <Compile Include="Validation\ISeverityTypeProvider.cs" />
-    <Compile Include="Validation\ValidationAttributeBase.cs" />
-    <Compile Include="Validation\ValidationError.cs" />
-    <Compile Include="Validation\ValidationExtensions.cs" />
     <Compile Include="Reflection\Reflector.cs" />
     <Compile Include="IDataEntity.cs" />
-    <Compile Include="Validation\ValidationResult.cs" />
-    <Compile Include="Validation\CompareAttribute.cs" />
-    <Compile Include="Validation\ContainsAttribute.cs" />
-    <Compile Include="Validation\CustomAttribute.cs" />
-    <Compile Include="Validation\CustomValidatorContext.cs" />
-    <Compile Include="Validation\DataTypeAttribute.cs" />
-    <Compile Include="Validation\CustomValidator.cs" />
-    <Compile Include="Validation\RangeAttribute.cs" />
-    <Compile Include="Validation\RegularExpressionAttribute.cs" />
-    <Compile Include="Validation\RequiredAttribute.cs" />
-    <Compile Include="Validation\StringLengthAttribute.cs" />
-    <Compile Include="Validation\ValidationException.cs" />
-    <Compile Include="Validation\ValidationFunctions.cs" />
-    <Compile Include="Validation\XmlSchemaAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Validation\CompareAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\ContainsAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\CustomAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\CustomValidator.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\CustomValidatorContext.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\DataTypeAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\IResourceKeyProvider.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\ISeverityTypeProvider.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\RangeAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\RegularExpressionAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\RequiredAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\StringLengthAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\ValidationAttributeBase.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\ValidationError.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\ValidationException.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\ValidationExtensions.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\ValidationFunctions.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\ValidationResult.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Validation\XmlSchemaAttribute.cs">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

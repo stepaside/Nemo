@@ -20,14 +20,10 @@ namespace NemoTest
         public ICustomerMap()
         {
             TableName = "Customers";
-
-            Cache.Type<Nemo.Cache.Providers.MemcachedCacheProvider>();
-
             Property(c => c.Id).Column("CustomerID").Parameter("CustomerID").PrimaryKey();
         }
     }
 
-    [QueryDependency("CompanyName")]
     //[Nemo.Attributes.Table("Customers")]
     public interface ICustomer : IDataEntity
     {

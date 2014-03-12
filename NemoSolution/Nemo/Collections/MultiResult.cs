@@ -1,5 +1,4 @@
-﻿using Nemo.Cache;
-using Nemo.Configuration;
+﻿using Nemo.Configuration;
 using Nemo.Fn;
 using System;
 using System.Collections;
@@ -21,15 +20,15 @@ namespace Nemo.Collections
     {
         private IEnumerable<ITypeUnion> _source;
         private IEnumerator<ITypeUnion> _iter;
-        private bool _buffered;
+        private bool _cached;
         private ITypeUnion _last;
 
-        public MultiResult(IEnumerable<ITypeUnion> source, bool buffered)
+        public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
         {
-            _buffered = buffered;
-            if (buffered)
+            _cached = cached;
+            if (cached)
             {
-                if (ConfigurationFactory.Configuration.DefaultContextLevelCache == ContextLevelCacheType.List)
+                if (ConfigurationFactory.Configuration.DefaultL1CacheRepresentation == L1CacheRepresentation.List)
                 {
                     _source = source.ToList();
                 }
@@ -89,7 +88,7 @@ namespace Nemo.Collections
 
         public bool Reset()
         {
-            if (_buffered)
+            if (_cached)
             {
                 _last = null;
                 _iter = _source.GetEnumerator();
@@ -102,8 +101,8 @@ namespace Nemo.Collections
     [Serializable]
     public class MultiResult<T1, T2, T3> : MultiResult<T1, T2>, IMultiResult
     {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool buffered)
-            : base(source, buffered)
+        public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
+            : base(source, cached)
         { }
 
         public override Type[] AllTypes
@@ -115,8 +114,8 @@ namespace Nemo.Collections
     [Serializable]
     public class MultiResult<T1, T2, T3, T4> : MultiResult<T1, T2, T3>,  IMultiResult
     {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool buffered)
-            : base(source, buffered)
+        public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
+            : base(source, cached)
         { }
 
         public override Type[] AllTypes
@@ -128,8 +127,8 @@ namespace Nemo.Collections
     [Serializable]
     public class MultiResult<T1, T2, T3, T4, T5> : MultiResult<T1, T2, T3, T4>, IMultiResult
     {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool buffered)
-            : base(source, buffered)
+        public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
+            : base(source, cached)
         { }
 
         public override Type[] AllTypes
@@ -142,7 +141,7 @@ namespace Nemo.Collections
     {
         private static ConcurrentDictionary<TypeArray, Type> _types = new ConcurrentDictionary<TypeArray, Type>();
 
-        public static IMultiResult Create(IList<Type> types, IEnumerable<ITypeUnion> source, bool buffered)
+        public static IMultiResult Create(IList<Type> types, IEnumerable<ITypeUnion> source, bool cached)
         {
             IMultiResult multiResult = null;
             if (types != null && source != null)
@@ -170,7 +169,7 @@ namespace Nemo.Collections
                     var key = new TypeArray(types);
                     var type = _types.GetOrAdd(key, t => genericType.MakeGenericType(t.Types is Type[] ? (Type[])t.Types : t.Types.ToArray()));
                     var activator = Nemo.Reflection.Activator.CreateDelegate(type, typeof(IEnumerable<ITypeUnion>), typeof(bool));
-                    multiResult = (IMultiResult)activator(new object[] { source, buffered });
+                    multiResult = (IMultiResult)activator(new object[] { source, cached });
                 }
             }
             return multiResult;

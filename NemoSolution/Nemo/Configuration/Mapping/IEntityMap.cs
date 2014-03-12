@@ -15,6 +15,5 @@ namespace Nemo.Configuration.Mapping
         string ConnectionStringName { get; }
         string SoftDeleteColumnName { get; }
         ICollection<IPropertyMap> Properties { get; }
-        ICacheMap Cache { get; }
     }
 }

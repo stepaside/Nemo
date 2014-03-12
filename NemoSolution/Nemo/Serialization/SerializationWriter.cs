@@ -14,6 +14,7 @@ using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Fn;
 using Nemo.Reflection;
+using Nemo.Utilities;
 
 /*
  * 1. DateTime/TimeSpan serialization are taken from protobuf-net

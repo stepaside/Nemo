@@ -9,7 +9,6 @@ using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Xml.Linq;
 using Nemo.Attributes;
-using Nemo.Cache;
 using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
@@ -116,12 +115,7 @@ namespace Nemo.Reflection
             }
             return result;
         }
-
-        public static bool IsCacheableDataEntity(Type objectType)
-        {
-            return Reflector.IsDataEntity(objectType) && ObjectCache.IsCacheable(objectType);
-        }
-
+        
         public static bool IsInterface(Type objectType)
         {
             return objectType != null && objectType.IsInterface;
@@ -280,30 +274,6 @@ namespace Nemo.Reflection
             return objectType.IsArray;
         }
 
-        public static bool IsTuple(Type objectType)
-        {
-            if (objectType.IsGenericType)
-            {
-                _genericTupleTypes.Contains(objectType.GetGenericTypeDefinition());
-            }
-            return false;
-        }
-
-        public static bool IsTypeUnion(Type objectType)
-        {
-            return objectType.InheritsFrom(typeof(ITypeUnion));
-        }
-
-        public static bool IsTypeUnionList(Type objectType)
-        {
-            var elementType = Reflector.ExtractCollectionElementType(objectType);
-            if (elementType != null)
-            {
-                return elementType.InheritsFrom(typeof(ITypeUnion));
-            }
-            return false;
-        }
-        
         public static bool IsAnonymousType(Type objectType)
         {
             return objectType != null 
@@ -333,14 +303,14 @@ namespace Nemo.Reflection
             return interfaceType;
         }
 
-        public static IEnumerable<Type> ExtractInterfaces(Type objectType)
+        public static IEnumerable<Type> ExtractAllInterfaces(Type objectType)
         {
             var methodHandle = _extractInterfacesCache.GetOrAdd(objectType, t => _extractInterfacesMethod.MakeGenericMethod(t).MethodHandle);
             var func = Reflector.Method.CreateDelegate(methodHandle);
             return (IEnumerable<Type>)func(null, new object[] { });
         }
 
-        public static IEnumerable<Type> ExtractInterfaces<T>()
+        public static IEnumerable<Type> ExtractAllInterfaces<T>()
         {
             var interfaces = InterfaceCache<T>.Interfaces;
             return interfaces.Keys;
@@ -348,12 +318,12 @@ namespace Nemo.Reflection
 
         private static Dictionary<Type, List<Type>> CacheInterfaces<T>()
         {
-            var interfaceTypes = ExtractInterfacesImplementation(typeof(T));
+            var interfaceTypes = ExtractAllInterfacesImplementation(typeof(T));
             var interfaces = new Dictionary<Type, List<Type>>();
 
             foreach (var interfaceType in interfaceTypes)
             {
-                var extractedInterfaces = ExtractInterfacesImplementation(interfaceType);
+                var extractedInterfaces = ExtractAllInterfacesImplementation(interfaceType);
                 if (extractedInterfaces != null && extractedInterfaces.Any())
                 {
                     interfaces[interfaceType] = extractedInterfaces.ToList();
@@ -362,7 +332,7 @@ namespace Nemo.Reflection
             return interfaces;
         }
 
-        private static IEnumerable<Type> ExtractInterfacesImplementation(Type type)
+        private static IEnumerable<Type> ExtractAllInterfacesImplementation(Type type)
         {
             Type[] interfaces = type.GetInterfaces();
             Array.Reverse(interfaces);
@@ -415,7 +385,7 @@ namespace Nemo.Reflection
         private static Dictionary<string, Tuple<PropertyInfo, int>> CacheProperties<T>()
         {
             var typeList = new HashSet<Type>();
-            foreach (var interfaceType in Reflector.ExtractInterfaces<T>(/*objectType*/))
+            foreach (var interfaceType in Reflector.ExtractAllInterfaces<T>(/*objectType*/))
             {
                 typeList.Add(interfaceType);
             }
@@ -714,10 +684,6 @@ namespace Nemo.Reflection
                     elementType = Reflector.ExtractInterface(elementType);
                 }
                 schemaType = "ArrayOf" + elementType.Name;
-            }
-            else if (reflectedType.IsTypeUnion)
-            {
-                schemaType = "TypeUnionOf_" + reflectedType.GenericArguments.Select(t => XmlConvert.EncodeName(t.Name)).ToDelimitedString("_");
             }
             return schemaType;
         }

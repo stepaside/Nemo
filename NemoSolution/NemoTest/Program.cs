@@ -1,7 +1,5 @@
 ﻿using Dapper;
 using Nemo;
-using Nemo.Cache;
-using Nemo.Cache.Providers;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
@@ -32,21 +30,14 @@ namespace NemoTest
         static void Main(string[] args)
         {
             ConfigurationFactory.Configure()
-                .SetDefaultCacheLifeTime(3600)
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
                 .SetDefaultFetchMode(FetchMode.Lazy)
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
-                .SetDefaultContextLevelCache(ContextLevelCacheType.None)
-                .SetDefaultHashAlgorithm(HashAlgorithmName.JenkinsHash)
+                .SetDefaultL1CacheRepresentation(L1CacheRepresentation.None)
                 .SetDefaultSerializationMode(SerializationMode.Compact)
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
-                .SetLogging(false)
-                .SetCacheCollisionDetection(false)
-                .SetCacheInvalidationStrategy(CacheInvalidationStrategy.InvalidateByParameters);
-
-            var handler = new InvalidationtHandler();
-            ObjectCache.PublishInvalidation += new EventHandler<PublishQueryInvalidationEventArgs>(handler.HandleInvalidation);
+                .SetLogging(false);
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
@@ -393,14 +384,6 @@ namespace NemoTest
             //Console.ReadLine();
         }
 
-        private class InvalidationtHandler
-        {
-            public void HandleInvalidation(object sender, PublishQueryInvalidationEventArgs args)
-            {
-                // publish the key and revision here
-            }
-        }
-
         private static void RunNative(int count)
         {
             var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
@@ -472,55 +455,49 @@ namespace NemoTest
             Console.WriteLine("Nemo.Execute:" + timer.GetElapsedTimeInMicroseconds() / 1000);
         }
 
-        private static void RunRetrieve(int count, bool buffered = false)
+        private static void RunRetrieve(int count, bool cached)
         {
-            using (new CacheScope(buffered: buffered))
+            var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+            var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
+
+            connection.Open();
+
+            // Warm-up
+            var result = ObjectFactory.Retrieve<ICustomer>(connection: connection, sql: sql, parameters: parameters, cached: cached).FirstOrDefault();
+
+            var timer = new HiPerfTimer(true);
+            timer.Start();
+            for (int i = 0; i < count; i++)
             {
-                var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
-                var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
-                var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
-
-                connection.Open();
-
-                // Warm-up
-                var result = ObjectFactory.Retrieve<ICustomer>(connection: connection, sql: sql, parameters: parameters).FirstOrDefault();
-
-                var timer = new HiPerfTimer(true);
-                timer.Start();
-                for (int i = 0; i < count; i++)
-                {
-                    result = ObjectFactory.Retrieve<ICustomer>(connection: connection, sql: sql, parameters: parameters).FirstOrDefault();
-                }
-                timer.Stop();
-                connection.Close();
-
-                Console.WriteLine("Nemo.Retrieve: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+                result = ObjectFactory.Retrieve<ICustomer>(connection: connection, sql: sql, parameters: parameters, cached: cached).FirstOrDefault();
             }
+            timer.Stop();
+            connection.Close();
+
+            Console.WriteLine("Nemo.Retrieve: " + timer.GetElapsedTimeInMicroseconds() / 1000);
         }
 
         private static void RunSelect(int count, bool buffered = false)
         {
-            using (new CacheScope(buffered: buffered))
+            var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+            Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
+
+            connection.Open();
+
+            // Warm-up
+            var result = ObjectFactory.Select<ICustomer>(predicate, connection: connection).FirstOrDefault();
+
+            var timer = new HiPerfTimer(true);
+            timer.Start();
+            for (int i = 0; i < count; i++)
             {
-                var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
-                Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
-
-                connection.Open();
-
-                // Warm-up
-                var result = ObjectFactory.Select<ICustomer>(predicate, connection: connection).FirstOrDefault();
-
-                var timer = new HiPerfTimer(true);
-                timer.Start();
-                for (int i = 0; i < count; i++)
-                {
-                    result = ObjectFactory.Select<ICustomer>(predicate, connection: connection).FirstOrDefault();
-                }
-                timer.Stop();
-                connection.Close();
-
-                Console.WriteLine("Nemo.Select: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+                result = ObjectFactory.Select<ICustomer>(predicate, connection: connection).FirstOrDefault();
             }
+            timer.Stop();
+            connection.Close();
+
+            Console.WriteLine("Nemo.Select: " + timer.GetElapsedTimeInMicroseconds() / 1000);
         }
 
         private static void RunDapper(int count, bool buffered)

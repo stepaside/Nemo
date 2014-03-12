@@ -7,9 +7,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using Nemo.Attributes;
-using Nemo.Cache;
 using Nemo.Reflection;
-using Nemo.Validation;
 using Nemo.Serialization;
 using System.Transactions;
 using Nemo.Data;
@@ -18,6 +16,8 @@ using System.Text;
 using Nemo.Id;
 using Nemo.Audit;
 using Nemo.UnitOfWork;
+using Nemo.Validation;
+using Nemo.Security.Cryptography;
 
 namespace Nemo.Extensions
 {
@@ -238,7 +238,7 @@ namespace Nemo.Extensions
                     }
                 }
 
-                ObjectCache.RemoveDependencies(dataEntity);
+                Identity.Get<T>().Set(dataEntity);
 
                 SetOutputParameterValues<T>(dataEntity, outputProperties, propertyMap, parameters);
 
@@ -307,7 +307,7 @@ namespace Nemo.Extensions
 
             if (success)
             {
-                ObjectCache.Remove(dataEntity);
+                Identity.Get<T>().Set(dataEntity);
 
                 SetOutputParameterValues<T>(dataEntity, outputProperties, propertyMap, parameters);
 
@@ -351,7 +351,7 @@ namespace Nemo.Extensions
 
             if (success)
             {
-                ObjectCache.Remove(dataEntity);
+                Identity.Get<T>().Remove(dataEntity);
 
                 if (dataEntity is ITrackableDataEntity)
                 {
@@ -393,7 +393,7 @@ namespace Nemo.Extensions
 
             if (success)
             {
-                ObjectCache.Remove(dataEntity);
+                Identity.Get<T>().Remove(dataEntity);
 
                 if (dataEntity is ITrackableDataEntity)
                 {
@@ -574,7 +574,7 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <param name="includeCacheKey"></param>
         /// <returns></returns>
-        public static IDictionary<string, object> GetPrimaryKey<T>(this T dataEntity, bool includeCacheKey = false)
+        public static IDictionary<string, object> GetPrimaryKey<T>(this T dataEntity)
             where T : class, IDataEntity
         {
             // Get properties and build a property map
@@ -587,14 +587,7 @@ namespace Nemo.Extensions
             string[] primaryKeyProperties = null;
             if (interfaceType != null)
             {
-                if (includeCacheKey)
-                {
-                    primaryKeyProperties = _primaryAndCacheKeys.GetOrAdd(interfaceType, type => ObjectFactory.GetPrimaryKeyProperties(type, true));
-                }
-                else
-                {
-                    primaryKeyProperties = _primaryKeys.GetOrAdd(interfaceType, type => ObjectFactory.GetPrimaryKeyProperties(type, false));
-                }
+                primaryKeyProperties = _primaryAndCacheKeys.GetOrAdd(interfaceType, type => ObjectFactory.GetPrimaryKeyProperties(type));
             }
             else
             {
@@ -628,7 +621,8 @@ namespace Nemo.Extensions
         public static string ComputeHash<T>(this T dataEntity)
             where T : class, IDataEntity
         {
-            return new CacheKey(dataEntity).Value;
+            var hash = Jenkins96Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", dataEntity.GetPrimaryKey<T>().Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
+            return typeof(T).FullName + "/" + hash;
         }
 
         #endregion

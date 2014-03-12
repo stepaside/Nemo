@@ -104,14 +104,6 @@
     <Compile Include="SqlMapper.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Nemo.Cache.Memcached\Nemo.Cache.Memcached.csproj">
-      <Project>{49a196f5-852a-4206-af80-c58f041e922e}</Project>
-      <Name>Nemo.Cache.Memcached</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Nemo.Cache.Redis\Nemo.Cache.Redis.csproj">
-      <Project>{6f88875f-89a8-4fc0-ac68-e4d0a0f3a022}</Project>
-      <Name>Nemo.Cache.Redis</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Nemo\Nemo.csproj">
       <Project>{C9B28604-E959-4D44-92C9-BE999C423DC3}</Project>
       <Name>Nemo</Name>
