@@ -37,6 +37,10 @@ namespace Nemo.Collections.Extensions
                 {
                     sortingOrder = ((OrderedEnumerable<T>)source).IsDescending ? 1 : -1;
                 }
+                else if (source is OrderedEnumerableConverter<T>)
+                {
+                    sortingOrder = ((OrderedEnumerableConverter<T>)source).IsDescending ? 1 : -1;
+                }
                 else
                 {
                     var field = source.GetType().GetField("descending", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -53,8 +57,8 @@ namespace Nemo.Collections.Extensions
                     comparer = Comparer<T>.Default;
                 }
 
-                T previous = default(T);
-                bool previousExists = false;
+                var previous = default(T);
+                var previousExists = false;
                 foreach (var current in source)
                 {
                     if (previousExists)

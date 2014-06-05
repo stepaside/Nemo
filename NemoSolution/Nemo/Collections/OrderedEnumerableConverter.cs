@@ -10,13 +10,18 @@ namespace Nemo.Collections
     {
         private readonly IEnumerable<T> _source;
         private readonly ElementComparer<T> _elementComparer;
-        internal bool descending;
+        private readonly bool _descending;
 
         public OrderedEnumerableConverter(IEnumerable<T> source, ElementComparer<T> elementComparer)
         {
             _source = source;
-            this._elementComparer = elementComparer;
-            this.descending = elementComparer.IsDescending;
+            _elementComparer = elementComparer;
+            _descending = elementComparer.IsDescending;
+        }
+
+        public bool IsDescending
+        {
+            get { return _descending; }
         }
 
         #region IOrderedEnumerable<T> Members
@@ -33,6 +38,20 @@ namespace Nemo.Collections
 
         public IEnumerator<T> GetEnumerator()
         {
+            try
+            {
+                return GetEnumeratorImplementation();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return (_descending
+                    ? _source.OrderByDescending(x => x, new ComparisonComparer<T>((x, y) => _elementComparer.Compare(x, y)))
+                    : _source.OrderBy(x => x, new ComparisonComparer<T>((x, y) => _elementComparer.Compare(x, y)))).GetEnumerator();
+            }
+        }
+
+        private IEnumerator<T> GetEnumeratorImplementation()
+        {
             int? sortingOrder = null;
 
             if (_source is IOrderedEnumerable<T>)
@@ -44,8 +63,8 @@ namespace Nemo.Collections
             }
             else
             {
-                T previous = default(T);
-                bool previousExists = false;
+                var previous = default(T);
+                var previousExists = false;
                 foreach (var current in _source)
                 {
                     if (previousExists)
@@ -56,7 +75,7 @@ namespace Nemo.Collections
                             if (result != 0)
                             {
                                 sortingOrder = result;
-                                if ((descending && sortingOrder.Value < 0) || (!descending && sortingOrder.Value > 0))
+                                if ((_descending && sortingOrder.Value < 0) || (!_descending && sortingOrder.Value > 0))
                                 {
                                     throw new InvalidOperationException("Invalid sorting direction specified. The sequence may not be sorted.");
                                 }
@@ -80,7 +99,7 @@ namespace Nemo.Collections
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return this.GetEnumerator();
+            return GetEnumerator();
         }
 
         #endregion
