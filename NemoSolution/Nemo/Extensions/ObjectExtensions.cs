@@ -60,15 +60,7 @@ namespace Nemo.Extensions
         public static TResult PropertyOrDefault<T, TResult>(this T dataEntity, string propertyName, TResult defaultValue)
             where T : class, IDataEntity
         {
-            object result = null;
-            if (Reflector.IsMarkerInterface<T>())
-            {
-                result = Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
-            }
-            else
-            {
-                result = Reflector.Property.Get<T>(dataEntity, propertyName);
-            }
+            var result = Reflector.IsMarkerInterface<T>() ? Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName) : Reflector.Property.Get(dataEntity, propertyName);
             return result != null ? (TResult)result : defaultValue;
         }
 
@@ -99,7 +91,7 @@ namespace Nemo.Extensions
             }
             else
             {
-                Reflector.Property.Set<T>(dataEntity, propertyName, propertyValue);
+                Reflector.Property.Set(dataEntity, propertyName, propertyValue);
             }
         }
 
@@ -164,15 +156,14 @@ namespace Nemo.Extensions
                                 Direction = ParameterDirection.Input
                             }).ToArray();
 
-            T retrievedObject = ObjectFactory.Retrieve<T>(parameters: parameters).FirstOrDefault();
+            var retrievedObject = ObjectFactory.Retrieve<T>(parameters: parameters).FirstOrDefault();
 
-            if (retrievedObject != null)
+            if (retrievedObject == null) return;
+            ObjectFactory.Map(retrievedObject, dataEntity, true);
+            var entity = dataEntity as ITrackableDataEntity;
+            if (entity != null)
             {
-                ObjectFactory.Map(retrievedObject, dataEntity, true);
-                if (dataEntity is ITrackableDataEntity)
-                {
-                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Clean;
-                }
+                entity.ObjectState = ObjectState.Clean;
             }
         }
 
@@ -216,7 +207,6 @@ namespace Nemo.Extensions
                 dataEntity.GenerateKey();
             }
 
-            string identityPropertyName = null;
             var parameters = GetInsertParameters(dataEntity, propertyMap);
 
             if (additionalParameters != null && additionalParameters.Length > 0)
@@ -228,33 +218,32 @@ namespace Nemo.Extensions
             var response = ObjectFactory.Insert<T>(parameters);
             var success = response != null && response.RecordsAffected > 0;
 
-            if (success)
+            if (!success) return success;
+            if (identityProperty != null)
             {
-                if (identityProperty != null)
+                object identityValue = parameters.Single(p => p.Name == identityProperty.Name).Value;
+                if (identityValue != null && !Convert.IsDBNull(identityValue))
                 {
-                    object identityValue = parameters.Single(p => p.Name == identityPropertyName).Value;
-                    if (identityValue != null && !Convert.IsDBNull(identityValue))
-                    {
-                        Reflector.Property.Set<T>(dataEntity, identityProperty.Name, identityValue);
-                    }
+                    Reflector.Property.Set(dataEntity, identityProperty.Name, identityValue);
                 }
+            }
 
-                Identity.Get<T>().Set(dataEntity);
+            Identity.Get<T>().Set(dataEntity);
 
-                SetOutputParameterValues<T>(dataEntity, outputProperties, propertyMap, parameters);
+            SetOutputParameterValues(dataEntity, outputProperties, propertyMap, parameters);
 
-                if (dataEntity is ITrackableDataEntity)
+            var entity = dataEntity as ITrackableDataEntity;
+            if (entity != null)
+            {
+                entity.ObjectState = ObjectState.Clean;
+            }
+
+            if (dataEntity is IAuditable)
+            {
+                var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+                if (logProvider != null)
                 {
-                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Clean;
-                }
-
-                if (dataEntity is IAuditable)
-                {
-                    var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
-                    if (logProvider != null)
-                    {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_INSERT, default(T), dataEntity));
-                    }
+                    logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationInsert, default(T), dataEntity));
                 }
             }
 
@@ -322,7 +311,7 @@ namespace Nemo.Extensions
                     var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
                     if (logProvider != null)
                     {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_UPDATE, (dataEntity.Old() ?? dataEntity), dataEntity));
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationUpdate, (dataEntity.Old() ?? dataEntity), dataEntity));
                     }
                 }
             }
@@ -354,9 +343,10 @@ namespace Nemo.Extensions
             {
                 Identity.Get<T>().Remove(dataEntity);
 
-                if (dataEntity is ITrackableDataEntity)
+                var entity = dataEntity as ITrackableDataEntity;
+                if (entity != null)
                 {
-                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Deleted;
+                    entity.ObjectState = ObjectState.Deleted;
                 }
 
                 if (dataEntity is IAuditable)
@@ -364,7 +354,7 @@ namespace Nemo.Extensions
                     var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
                     if (logProvider != null)
                     {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DELETE, dataEntity, default(T)));
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationDelete, dataEntity, default(T)));
                     }
                 }
             }
@@ -396,9 +386,10 @@ namespace Nemo.Extensions
             {
                 Identity.Get<T>().Remove(dataEntity);
 
-                if (dataEntity is ITrackableDataEntity)
+                var entity = dataEntity as ITrackableDataEntity;
+                if (entity != null)
                 {
-                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Deleted;
+                    entity.ObjectState = ObjectState.Deleted;
                 }
 
                 if (dataEntity is IAuditable)
@@ -406,7 +397,7 @@ namespace Nemo.Extensions
                     var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
                     if (logProvider != null)
                     {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OPERATION_DESTROY, dataEntity, default(T)));
+                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationDestroy, dataEntity, default(T)));
                     }
                 }
             }
@@ -564,16 +555,14 @@ namespace Nemo.Extensions
 
         #region Hash/ID Generation Methods
 
-        private static ConcurrentDictionary<Type, string[]> _primaryKeys = new ConcurrentDictionary<Type, string[]>();
-        private static ConcurrentDictionary<Type, string[]> _primaryAndCacheKeys = new ConcurrentDictionary<Type, string[]>();
-        private static ConcurrentDictionary<Tuple<Type, PropertyInfo, Type>, IIdGenerator> _idGenerators = new ConcurrentDictionary<Tuple<Type, PropertyInfo, Type>, IIdGenerator>();
+        private static readonly ConcurrentDictionary<Type, string[]> _primaryAndCacheKeys = new ConcurrentDictionary<Type, string[]>();
+        private static readonly ConcurrentDictionary<Tuple<Type, PropertyInfo, Type>, IIdGenerator> _idGenerators = new ConcurrentDictionary<Tuple<Type, PropertyInfo, Type>, IIdGenerator>();
         
         /// <summary>
         /// GetPrimaryKey method returns primary key of a business object (if available)
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="dataEntity"></param>
-        /// <param name="includeCacheKey"></param>
         /// <returns></returns>
         public static IDictionary<string, object> GetPrimaryKey<T>(this T dataEntity)
             where T : class, IDataEntity
@@ -585,19 +574,11 @@ namespace Nemo.Extensions
                 interfaceType = dataEntity.GetType();
             }
 
-            string[] primaryKeyProperties = null;
-            if (interfaceType != null)
-            {
-                primaryKeyProperties = _primaryAndCacheKeys.GetOrAdd(interfaceType, type => ObjectFactory.GetPrimaryKeyProperties(type));
-            }
-            else
-            {
-                primaryKeyProperties = new string[] { };
-            }
+            var primaryKeyProperties = _primaryAndCacheKeys.GetOrAdd(interfaceType, ObjectFactory.GetPrimaryKeyProperties) ?? new string[] { };
 
             var primaryKey = new SortedDictionary<string, object>();
 
-            for (int i = 0; i < primaryKeyProperties.Length; i++)
+            for (var i = 0; i < primaryKeyProperties.Length; i++)
             {
                 var value = dataEntity.Property(primaryKeyProperties[i]);
                 primaryKey[primaryKeyProperties[i]] = value;
@@ -613,7 +594,7 @@ namespace Nemo.Extensions
             var generatorKeys = propertyMap.Where(p => p.Value != null && p.Value.Generator != null).Select(p => Tuple.Create(typeof(T), p.Key, p.Value.Generator));
             foreach (var key in generatorKeys)
             {
-                var generator = _idGenerators.GetOrAdd(key, k => (IIdGenerator)Nemo.Reflection.Activator.New(k.Item3));
+                var generator = _idGenerators.GetOrAdd(key, k => (IIdGenerator)k.Item3.New());
 
                 dataEntity.Property(key.Item2.Name, generator.Generate());
             }
@@ -622,7 +603,7 @@ namespace Nemo.Extensions
         public static string ComputeHash<T>(this T dataEntity)
             where T : class, IDataEntity
         {
-            var hash = Jenkins96Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", dataEntity.GetPrimaryKey<T>().Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
+            var hash = Jenkins96Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", dataEntity.GetPrimaryKey().Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
             return typeof(T).FullName + "/" + hash;
         }
 

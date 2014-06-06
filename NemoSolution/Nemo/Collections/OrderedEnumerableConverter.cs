@@ -38,20 +38,6 @@ namespace Nemo.Collections
 
         public IEnumerator<T> GetEnumerator()
         {
-            try
-            {
-                return GetEnumeratorImplementation();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return (_descending
-                    ? _source.OrderByDescending(x => x, new ComparisonComparer<T>((x, y) => _elementComparer.Compare(x, y)))
-                    : _source.OrderBy(x => x, new ComparisonComparer<T>((x, y) => _elementComparer.Compare(x, y)))).GetEnumerator();
-            }
-        }
-
-        private IEnumerator<T> GetEnumeratorImplementation()
-        {
             int? sortingOrder = null;
 
             if (_source is IOrderedEnumerable<T>)
