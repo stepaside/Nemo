@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
 using Nemo.Attributes;
@@ -14,7 +15,7 @@ namespace Nemo.Reflection
     public static class Mapper
     {
         public delegate void PropertyMapper(object source, object target);
-        private static ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper> _mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper>();
+        private static readonly ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper> _mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper>();
 
         internal static PropertyMapper CreateDelegate(Type sourceType, Type targetType, bool indexer, bool ignoreMappings)
         {
@@ -63,7 +64,7 @@ namespace Nemo.Reflection
             var targetProperties = Reflector.GetPropertyMap(targetType);
             var entityMap = MappingFactory.GetEntityMap(targetType);
 
-            var getItem = indexerType.GetMethod("get_Item", new Type[] { typeof(string) });
+            var getItem = indexerType.GetMethod("get_Item", new[] { typeof(string) });
 
             var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && (t.Value.IsSimpleType || t.Value.IsBinary));
             foreach (var match in matches)

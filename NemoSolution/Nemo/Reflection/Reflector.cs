@@ -228,15 +228,9 @@ namespace Nemo.Reflection
                 {
                     return genericTypeDefinition.Prepend(genericTypeDefinition.GetInterfaces()).Where(s => s.IsGenericType).Select(s => s.GetGenericTypeDefinition()).Contains(typeof(IList<>));
                 }
-                else
-                {
-                    return true;
-                }
+                return true;
             }
-            else
-            {
-                return objectType.GetInterface("System.Collections.IList") != null;
-            }
+            return objectType.GetInterface("System.Collections.IList") != null;
         }
 
         public static bool IsSimpleList(Type type)
@@ -258,15 +252,9 @@ namespace Nemo.Reflection
                 {
                     return genericTypeDefinition.Prepend(genericTypeDefinition.GetInterfaces()).Where(s => s.IsGenericType).Select(s => s.GetGenericTypeDefinition()).Contains(typeof(IDictionary<,>));
                 }
-                else
-                {
-                    return true;
-                }
+                return true;
             }
-            else
-            {
-                return objectType.GetInterface("System.Collections.IDictionary") != null;
-            }
+            return objectType.GetInterface("System.Collections.IDictionary") != null;
         }
 
         public static bool IsArray(Type objectType)
@@ -292,7 +280,7 @@ namespace Nemo.Reflection
         public static Type ExtractInterface(Type objectType)
         {
             var methodHandle = _extractInterfaceCache.GetOrAdd(objectType, t => _extractInterfaceMethod.MakeGenericMethod(t).MethodHandle);
-            var func = Reflector.Method.CreateDelegate(methodHandle);
+            var func = Method.CreateDelegate(methodHandle);
             return (Type)func(null, new object[] { });
         }
 
@@ -306,7 +294,7 @@ namespace Nemo.Reflection
         public static IEnumerable<Type> ExtractAllInterfaces(Type objectType)
         {
             var methodHandle = _extractInterfacesCache.GetOrAdd(objectType, t => _extractInterfacesMethod.MakeGenericMethod(t).MethodHandle);
-            var func = Reflector.Method.CreateDelegate(methodHandle);
+            var func = Method.CreateDelegate(methodHandle);
             return (IEnumerable<Type>)func(null, new object[] { });
         }
 
@@ -355,7 +343,7 @@ namespace Nemo.Reflection
         public static PropertyInfo GetProperty(Type objectType, string name)
         {
             var methodHandle = _getPropertyCache.GetOrAdd(objectType, t => _getPropertyMethod.MakeGenericMethod(t).MethodHandle);
-            var func = Reflector.Method.CreateDelegate(methodHandle);
+            var func = Method.CreateDelegate(methodHandle);
             return (PropertyInfo)func(null, new object[] { name });
         }
 
@@ -410,7 +398,7 @@ namespace Nemo.Reflection
         {
             //var type = !objectType.IsInterface ? Reflector.ExtractInterface(objectType) : objectType;
             var methodHandle = _getPropertyMapCache.GetOrAdd(objectType, t => _getPropertyMapMethod.MakeGenericMethod(t).MethodHandle);
-            var func = Reflector.Method.CreateDelegate(methodHandle);
+            var func = Method.CreateDelegate(methodHandle);
             return (IDictionary<PropertyInfo, ReflectedProperty>)func(null, new object[] { });
         }
 
@@ -422,7 +410,7 @@ namespace Nemo.Reflection
         internal static IDictionary<string, ReflectedProperty> GetPropertyNameMap(Type objectType)
         {
             var methodHandle = _getPropertyNameMapCache.GetOrAdd(objectType, t => _getPropertyNameMapMethod.MakeGenericMethod(t).MethodHandle);
-            var func = Reflector.Method.CreateDelegate(methodHandle);
+            var func = Method.CreateDelegate(methodHandle);
             return (IDictionary<string, ReflectedProperty>)func(null, new object[] { });
         }
 
@@ -434,7 +422,7 @@ namespace Nemo.Reflection
         internal static ReflectedType GetReflectedType(Type objectType)
         {
             var methodHandle = _getReflectedTypeCache.GetOrAdd(objectType, t => _getReflectedTypeMethod.MakeGenericMethod(t).MethodHandle);
-            var func = Reflector.Method.CreateDelegate(methodHandle);
+            var func = Method.CreateDelegate(methodHandle);
             return (ReflectedType)func(null, new object[] { });
         }
 
@@ -445,11 +433,7 @@ namespace Nemo.Reflection
 
         public static Type ExtractCollectionElementType(Type collectionType)
         {
-            var elementType = collectionType.GetElementType();
-            if (elementType == null)
-            {
-                elementType = ExtractGenericCollectionElementType(collectionType);
-            }
+            var elementType = collectionType.GetElementType() ?? ExtractGenericCollectionElementType(collectionType);
             return elementType;
         }
 
@@ -457,7 +441,7 @@ namespace Nemo.Reflection
         {
             Type elementType = null;
             var genericArguments = genericCollectionType.GetGenericArguments();
-            if (genericArguments != null && genericArguments.Length == 1)
+            if (genericArguments.Length == 1)
             {
                 elementType = genericArguments[0];
             }
@@ -473,24 +457,23 @@ namespace Nemo.Reflection
         public static IEnumerable<Type> AllTypes()
         {
             var appDomain = AppDomain.CurrentDomain;
-            if (appDomain != null)
+            var assemblies = appDomain.GetAssemblies();
+            foreach (var asm in assemblies)
             {
-                var assemblies = appDomain.GetAssemblies();
-                foreach (var asm in assemblies)
+                Type[] types = null;
+                try
                 {
-                    Type[] types = null;
-                    try
-                    {
-                        types = asm.GetTypes();
-                    }
-                    catch { }
+                    types = asm.GetTypes();
+                }
+                catch
+                {
+                }
 
-                    if (types != null)
+                if (types != null)
+                {
+                    foreach (var type in types)
                     {
-                        foreach (var type in types)
-                        {
-                            yield return type;
-                        }
+                        yield return type;
                     }
                 }
             }
@@ -498,13 +481,15 @@ namespace Nemo.Reflection
 
         public static IEnumerable<Type> AllDataEntityTypes()
         {
-            return Reflector.AllTypes().Where(t => Reflector.IsDataEntity(t));
+            return AllTypes().Where(IsDataEntity);
         }
 
         public static IEnumerable<MethodInfo> GetExtensionMethods(this Type extendedType)
         {
-            var methods = extendedType.Assembly.GetTypes().Where(t => t.IsSealed && !t.IsGenericType && !t.IsNested).SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)).
-                        Where(m => m.IsDefined(typeof(ExtensionAttribute), false) && m.GetParameters()[0].ParameterType == extendedType);
+            var methods = extendedType.Assembly.GetTypes()
+                .Where(t => t.IsSealed && !t.IsGenericType && !t.IsNested)
+                .SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                .Where(m => m.IsDefined(typeof(ExtensionAttribute), false) && m.GetParameters()[0].ParameterType == extendedType);
             return methods;
         }
 
@@ -594,14 +579,7 @@ namespace Nemo.Reflection
             }
             else if (!_clrToDbTypeLookup.TryGetValue(clrType, out dbType))
             {
-                if (clrType.IsEnum)
-                {
-                    dbType = DbType.Int32;
-                }
-                else
-                {
-                    dbType = DbType.Xml;
-                } 
+                dbType = clrType.IsEnum ? DbType.Int32 : DbType.Xml; 
             }
             return dbType;
         }
@@ -610,7 +588,7 @@ namespace Nemo.Reflection
 
         #region CLR to XML Schema Type
 
-        private static Dictionary<Type, string> _clrToXmlLookup = new Dictionary<Type, string>
+        private static readonly Dictionary<Type, string> _clrToXmlLookup = new Dictionary<Type, string>
         {
             {typeof(Uri),"xs:anyURI"},
             {typeof(byte),"xs:unsignedByte"},
@@ -813,14 +791,7 @@ namespace Nemo.Reflection
 
         internal static void EmitCastToReference(this ILGenerator il, System.Type type)
         {
-            if (type.IsValueType)
-            {
-                il.Emit(OpCodes.Unbox_Any, type);
-            }
-            else
-            {
-                il.Emit(OpCodes.Castclass, type);
-            }
+            il.Emit(type.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass, type);
         }
 
         internal static void EmitFastInt(this ILGenerator il, int value)
@@ -952,8 +923,7 @@ namespace Nemo.Reflection
         {
             static TypeCache()
             {
-                Type = new ReflectedType(typeof(T));
-                Type.XmlElementName = Xml.GetElementNameFromType(typeof(T));
+                Type = new ReflectedType(typeof(T)) { XmlElementName = Xml.GetElementNameFromType(typeof(T)) };
             }
 
             public readonly static ReflectedType Type;

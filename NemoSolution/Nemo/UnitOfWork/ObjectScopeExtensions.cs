@@ -18,8 +18,8 @@ namespace Nemo.UnitOfWork
 {
     public static class ObjectScopeExtensions
     {
-        private static ConcurrentDictionary<Type, RuntimeMethodHandle> _commitMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static ConcurrentDictionary<Type, RuntimeMethodHandle> _rollbackMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _commitMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _rollbackMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
 
         public static bool Commit<T>(this T dataEntity)
             where T : class, IDataEntity
@@ -127,7 +127,7 @@ namespace Nemo.UnitOfWork
                 return context.OriginalItem as T;
             }
 
-            var result = ObjectSerializer.Deserialize<T>(context.ItemSnapshot);
+            var result = context.ItemSnapshot.Deserialize<T>();
             context.OriginalItem = result;
             return result;
         }
@@ -238,33 +238,39 @@ namespace Nemo.UnitOfWork
 
                 if (currentValue == null && oldValue == null) continue;
 
-                var changeNode = new ChangeNode();
-                changeNode.ObjectState = ObjectState.Clean;
+                var changeNode = new ChangeNode { ObjectState = ObjectState.Clean };
 
-                Type objectType = property.PropertyType;
-                var reflectedType = Reflector.GetReflectedType(objectType);
+                var objectType = property.PropertyType;
                 changeNode.Type = objectType;
                 changeNode.Property = property;
 
-                if (!context.IsNew && rootNode.ObjectState != ObjectState.DirtyPrimaryKey && (reflectedType.IsSimpleType || reflectedType.IsSimpleList))
+                if (!context.IsNew && rootNode.ObjectState != ObjectState.DirtyPrimaryKey && (property.IsSimpleType || property.IsSimpleList || property.IsBinary))
                 {
-                    if (reflectedType.IsSimpleList)
+                    if (property.IsSimpleList)
                     {
                         if (currentValue != null)
                         {
-                            currentValue = ((IEnumerable)currentValue).Cast<object>().ToDelimitedString(",");
+                            currentValue = ((IEnumerable)currentValue).Cast<object>().ToArray();
                         }
-
+                        
                         if (oldValue != null)
                         {
-                            oldValue = ((IEnumerable)oldValue).Cast<object>().ToDelimitedString(",");
+                            oldValue = ((IEnumerable)oldValue).Cast<object>().ToArray();
                         }
                     }
 
-                    if (currentObject != null && oldObject != null && !object.Equals(currentValue, oldValue))
+                    if (currentObject != null && oldObject != null)
                     {
-                        changeNode.Value = currentValue;
-                        changeNode.ObjectState = ObjectState.Dirty;
+                        var same = property.IsSimpleList
+                            ? ((IEnumerable<object>)currentValue).SequenceEqual((IEnumerable<object>)oldValue)
+                            : property.IsBinary
+                                ? ((byte[])currentValue).SequenceEqual((byte[])oldValue)
+                                : Equals(currentValue, oldValue);
+                        if (!same)
+                        {
+                            changeNode.Value = currentValue;
+                            changeNode.ObjectState = ObjectState.Dirty;
+                        }
                     }
                     else if (currentObject != null && oldObject == null)
                     {
@@ -282,7 +288,7 @@ namespace Nemo.UnitOfWork
                         changeNode.ObjectState = ObjectState.Dirty;
                     }
                 }*/
-                else if (reflectedType.IsDataEntityList)
+                else if (property.IsDataEntityList)
                 {
                     var changes = CompareLists((IList)currentValue, (IList)oldValue, changeNode, property.PropertyName);
                     if (changes.Count > 0)
@@ -291,7 +297,7 @@ namespace Nemo.UnitOfWork
                     }
                     rootNode.ListProperties.Add(property.PropertyName);
                 }
-                else if (reflectedType.IsDataEntity)
+                else if (property.IsDataEntity)
                 {
                     var changes = CompareObjects((IDataEntity)currentValue, (IDataEntity)oldValue, parentNode);
                     if (changes.Count > 0)

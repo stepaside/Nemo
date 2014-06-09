@@ -1,4 +1,5 @@
-﻿using Nemo.Configuration;
+﻿using System.Linq;
+using Nemo.Configuration;
 using Nemo.Reflection;
 using System;
 using System.Collections.Generic;
@@ -114,7 +115,7 @@ namespace Nemo.Serialization
         public static T Deserialize<T>(this byte[] data)
             where T : class, IDataEntity
         {
-            T result = default(T);
+            var result = default(T);
             using (var reader = SerializationReader.CreateReader(data))
             {
                 result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.DataEntity, default(T) is IConvertible);
@@ -125,13 +126,7 @@ namespace Nemo.Serialization
         public static IEnumerable<T> Deserialize<T>(this IEnumerable<byte[]> dataCollection)
             where T : class, IDataEntity
         {
-            foreach (byte[] data in dataCollection)
-            {
-                if (data != null)
-                {
-                    yield return Deserialize<T>(data);
-                }
-            }
+            return dataCollection.Where(data => data != null).Select(Deserialize<T>);
         }
 
         internal static bool CheckType<T>(byte[] data)
@@ -143,10 +138,7 @@ namespace Nemo.Serialization
             {
                 return type.ElementType.FullName.GetHashCode() == objectTypeHash;
             }
-            else
-            {
-                return type.FullTypeName.GetHashCode() == objectTypeHash;
-            }
+            return type.FullTypeName.GetHashCode() == objectTypeHash;
         }
 
         #endregion

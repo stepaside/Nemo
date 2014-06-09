@@ -18,7 +18,7 @@ namespace Nemo.UnitOfWork
 {
     public class ObjectScope : IDisposable
     {
-        private const string SCOPE_NAME = "__ObjectScope";
+        private const string ScopeNameStore = "__ObjectScope";
         internal IDataEntity Item = null;
         internal byte[] ItemSnapshot = null;
         internal IDataEntity OriginalItem = null;
@@ -29,11 +29,11 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                var scopes = ConfigurationFactory.Configuration.ExecutionContext.Get(SCOPE_NAME);
+                var scopes = ConfigurationFactory.Configuration.ExecutionContext.Get(ScopeNameStore);
                 if (scopes == null)
                 {
                     scopes = new Stack<ObjectScope>();
-                    ConfigurationFactory.Configuration.ExecutionContext.Set(SCOPE_NAME, scopes);
+                    ConfigurationFactory.Configuration.ExecutionContext.Set(ScopeNameStore, scopes);
                 }
                 return (Stack<ObjectScope>)scopes;
             }
@@ -43,7 +43,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return ObjectScope.Scopes.FirstOrDefault();
+                return Scopes.FirstOrDefault();
             }
         }
 
@@ -70,11 +70,11 @@ namespace Nemo.UnitOfWork
                 item.CheckReadOnly();
             }
 
-            this.AutoCommit = autoCommit;
-            this.IsNew = item == null;
+            AutoCommit = autoCommit;
+            IsNew = item == null;
             ItemType = type;
-            this.ChangeTracking = mode != ChangeTrackingMode.Default ? mode : ConfigurationFactory.Configuration.DefaultChangeTrackingMode;
-            if (!this.IsNew)
+            ChangeTracking = mode != ChangeTrackingMode.Default ? mode : ConfigurationFactory.Configuration.DefaultChangeTrackingMode;
+            if (!IsNew)
             {
                 if (type == null)
                 {
@@ -83,7 +83,7 @@ namespace Nemo.UnitOfWork
                 Item = item;
                 ItemSnapshot = CreateSnapshot(item);
             }
-            ObjectScope.Scopes.Push(this);
+            Scopes.Push(this);
             Transaction = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions { IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted });
         }
 
@@ -109,7 +109,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return ObjectScope.Scopes.Count > 1;
+                return Scopes.Count > 1;
             }
         }
 
@@ -129,19 +129,19 @@ namespace Nemo.UnitOfWork
         internal bool UpdateOuterSnapshot<T>(T dataEntity)
             where T : class, IDataEntity
         {
-            return UpdateSnapshot<T>(dataEntity, 1);
+            return UpdateSnapshot(dataEntity, 1);
         }
 
         internal bool UpdateCurrentSnapshot<T>(T dataEntity)
             where T : class, IDataEntity
         {
-            return UpdateSnapshot<T>(dataEntity, 0);
+            return UpdateSnapshot(dataEntity, 0);
         }
 
         private bool UpdateSnapshot<T>(T dataEntity, int index)
             where T : class, IDataEntity
         {
-            var outerScope = ObjectScope.Scopes.ElementAtOrDefault(index);
+            var outerScope = Scopes.ElementAtOrDefault(index);
             if (outerScope != null)
             {
                 if (outerScope.Item == dataEntity)
@@ -156,7 +156,7 @@ namespace Nemo.UnitOfWork
 
         public void Dispose()
         {
-            if (this.AutoCommit)
+            if (AutoCommit)
             {
                 if (_hasException == null)
                 {
@@ -170,7 +170,7 @@ namespace Nemo.UnitOfWork
                 }
             }
             Transaction.Dispose();
-            ObjectScope.Scopes.Pop();
+            Scopes.Pop();
         }
     }
 }
