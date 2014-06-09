@@ -10,3 +10,4 @@ NemoSolution/Nemo/packages
 NemoSolution/Nemo/packages/*
 NemoSolution/Nemo/Nemo.v11.suo
 
+*.nupkg
