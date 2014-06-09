@@ -15,7 +15,7 @@ namespace Nemo.Attributes.Converters
 				return null;
 			}
 
-			return from.ToString().Split(',').Where(v => !string.IsNullOrEmpty(v)).Select(v => (T)Convert.ChangeType(v.Trim(), typeof(T))).ToList();
+			return from.ToString().Split('|').Where(v => !string.IsNullOrEmpty(v)).Select(v => (T)Convert.ChangeType(v.Trim(), typeof(T))).ToList();
 		}
 
 		object ITypeConverter<object, List<T>>.ConvertBackward(List<T> to)
@@ -25,7 +25,7 @@ namespace Nemo.Attributes.Converters
 				return null;
 			}
 
-			return string.Join(",", to.Select(v => v.ToString()).ToArray());
+			return string.Join("|", to.Select(v => v.ToString()).ToArray());
 		}
 		
         #endregion

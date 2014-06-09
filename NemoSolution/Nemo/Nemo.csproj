@@ -61,6 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Attributes\ConnectionAttribute.cs" />
+    <Compile Include="Attributes\Converters\DBNullableByteArrayConverter.cs" />
     <Compile Include="Attributes\DoNotSerializeAttribute.cs" />
     <Compile Include="Attributes\DoNotPersistAttribute.cs" />
     <Compile Include="Attributes\SortedAttribute.cs" />
