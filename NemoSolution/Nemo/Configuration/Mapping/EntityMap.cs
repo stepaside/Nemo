@@ -10,9 +10,9 @@ namespace Nemo.Configuration.Mapping
     public abstract class EntityMap<T> : IEntityMap
         where T : class, IDataEntity
     {
-        private Dictionary<string, IPropertyMap> _properties;
-           
-        public EntityMap()
+        private readonly Dictionary<string, IPropertyMap> _properties;
+
+        protected EntityMap()
         {
             _properties = new Dictionary<string, IPropertyMap>();
         }
@@ -21,11 +21,9 @@ namespace Nemo.Configuration.Mapping
         {
             IPropertyMap map;
             var key = selector.ToString();
-            if (!_properties.TryGetValue(key, out map))
-            {
-                map = new PropertyMap<T, U>(selector);
-                _properties[key] = map;
-            }
+            if (_properties.TryGetValue(key, out map)) return (PropertyMap<T, U>)map;
+            map = new PropertyMap<T, U>(selector);
+            _properties[key] = map;
             return (PropertyMap<T, U>)map;
         }
 

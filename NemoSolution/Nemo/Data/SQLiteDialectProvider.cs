@@ -8,38 +8,37 @@ using Nemo.Reflection;
 
 namespace Nemo.Data
 {
-    public class SQLiteDialectProvider : DialectProvider
+    public class SqliteDialectProvider : DialectProvider
     {
-        public readonly static SQLiteDialectProvider Instance = new SQLiteDialectProvider();
+        public readonly static SqliteDialectProvider Instance = new SqliteDialectProvider();
 
-        protected SQLiteDialectProvider()
-            : base()
+        protected SqliteDialectProvider()
         {
-            this.AutoIncrementComputation = "last_insert_rowid()";
-            this.BigIntDefinition = "INTEGER";
-            this.BlobDefition = "BLOB";
-            this.ByteDefinition = "INTEGER";
-            this.ClobDefition = "BLOB";
-            this.DoubleDefinition = "REAL";
-            this.SingleDefinition = "REAL";
-            this.GuidDefinition = "TEXT";
-            this.StringDefinition = "TEXT";
-            this.AnsiStringDefinition = "TEXT";
-            this.DateDefinition = "DATETIME";
-            this.DateTimeDefinition = "DATETIME";
-            this.TimeDefinition = "DATETIME";
-            this.TemporaryTableCreation = "CREATE TEMP TABLE IF NOT EXISTS {0} ({1});";
-            this.UseOrderedParameters = false;
-            this.VariableDeclaration = "CREATE TEMP TABLE IF NOT EXISTS __VARS (name TEXT, value TEXT)";
-            this.VariableAssignment = "INSERT INTO __VARS (name, value) VALUES ('{0}{1}', '{2}');";
-            this.VariableEvaluation = "(SELECT value FROM __VARS WHERE name = '{0}')";
-            this.VariablePrefix = "";
-            this.ParameterPrefix = "@";
-            this.StringConcatenationOperator = "||";
-            this.SubstringFunction = "SUBSTR";
-            this.IdentifierEscapeStartCharacter = "\"";
-            this.IdentifierEscapeEndCharacter = "\"";
-            this.SupportsTemporaryTables = true;
+            AutoIncrementComputation = "last_insert_rowid()";
+            BigIntDefinition = "INTEGER";
+            BlobDefition = "BLOB";
+            ByteDefinition = "INTEGER";
+            ClobDefition = "BLOB";
+            DoubleDefinition = "REAL";
+            SingleDefinition = "REAL";
+            GuidDefinition = "TEXT";
+            StringDefinition = "TEXT";
+            AnsiStringDefinition = "TEXT";
+            DateDefinition = "DATETIME";
+            DateTimeDefinition = "DATETIME";
+            TimeDefinition = "DATETIME";
+            TemporaryTableCreation = "CREATE TEMP TABLE IF NOT EXISTS {0} ({1});";
+            UseOrderedParameters = false;
+            VariableDeclaration = "CREATE TEMP TABLE IF NOT EXISTS __VARS (name TEXT, value TEXT)";
+            VariableAssignment = "INSERT INTO __VARS (name, value) VALUES ('{0}{1}', '{2}');";
+            VariableEvaluation = "(SELECT value FROM __VARS WHERE name = '{0}')";
+            VariablePrefix = "";
+            ParameterPrefix = "@";
+            StringConcatenationOperator = "||";
+            SubstringFunction = "SUBSTR";
+            IdentifierEscapeStartCharacter = "\"";
+            IdentifierEscapeEndCharacter = "\"";
+            SupportsTemporaryTables = true;
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)
@@ -49,7 +48,7 @@ namespace Nemo.Data
 
         public override string CreateTemporaryTable(string tableName, Dictionary<string, DbType> coulmns)
         {
-            var definition = coulmns.Select(d => string.Format("{2}{0}{3} {1}", d.Key, GetColumnType(d.Value), this.IdentifierEscapeStartCharacter, this.IdentifierEscapeEndCharacter)).ToDelimitedString(",");
+            var definition = coulmns.Select(d => string.Format("{2}{0}{3} {1}", d.Key, GetColumnType(d.Value), IdentifierEscapeStartCharacter, IdentifierEscapeEndCharacter)).ToDelimitedString(",");
             return string.Format(TemporaryTableCreation, tableName, definition);
         }
 

@@ -184,15 +184,13 @@ namespace Nemo.UnitOfWork
         private static void SetGeneratedPropertyValues(List<IDataEntity> dataEntitys, DataTable generatedValues)
         {
             var map = generatedValues.AsEnumerable().ToDictionary(r => r.Field<int>("StatementId"), r => Tuple.Create(r.Field<object>("GeneratedId"), r.Field<string>("ParameterName"), r.Field<string>("PropertyName")));
-            Tuple<object, string, string> value;
 
-            for (int i = 0; i < dataEntitys.Count; i++)
+            for (var i = 0; i < dataEntitys.Count; i++)
             {
-                if (map.TryGetValue(i, out value))
-                {
-                    dataEntitys[i].Property(value.Item3, value.Item1);
-                    dataEntitys[i].Cascade(value.Item3, value.Item1);
-                }
+                Tuple<object, string, string> value;
+                if (!map.TryGetValue(i, out value)) continue;
+                dataEntitys[i].Property(value.Item3, value.Item1);
+                dataEntitys[i].Cascade(value.Item3, value.Item1);
             }
         }
 
@@ -205,8 +203,7 @@ namespace Nemo.UnitOfWork
             if (currentObject == null && oldObject == null)
                 throw new ArgumentNullException("currentObject and oldObject cannot be null at the same time");
 
-            var rootNode = new ChangeNode();
-            rootNode.Value = currentObject;
+            var rootNode = new ChangeNode { Value = currentObject };
             if (parentNode != null)
             {
                 rootNode.Parent = parentNode;
@@ -336,15 +333,9 @@ namespace Nemo.UnitOfWork
                     {
                         rootNode.Nodes.RemoveAll(n => n.ObjectState == ObjectState.Dirty);
 
-                        var insertNode = new ChangeNode();
-                        insertNode.Parent = rootNode;
-                        insertNode.Value = currentObject;
-                        insertNode.ObjectState = ObjectState.New;
+                        var insertNode = new ChangeNode { Parent = rootNode, Value = currentObject, ObjectState = ObjectState.New };
 
-                        var deleteNode = new ChangeNode();
-                        deleteNode.Parent = rootNode;
-                        deleteNode.Value = oldObject;
-                        deleteNode.ObjectState = ObjectState.Deleted;
+                        var deleteNode = new ChangeNode { Parent = rootNode, Value = oldObject, ObjectState = ObjectState.Deleted };
 
                         rootNode.ObjectState = ObjectState.DirtyPrimaryKey;
 
@@ -388,12 +379,12 @@ namespace Nemo.UnitOfWork
                 return changeList;
             }
 
-            Dictionary<string, IDataEntity> objectMapCurrent = new Dictionary<string, IDataEntity>();
-            Dictionary<string, IDataEntity> objectMapOld = new Dictionary<string, IDataEntity>();
+            var objectMapCurrent = new Dictionary<string, IDataEntity>();
+            var objectMapOld = new Dictionary<string, IDataEntity>();
 
             if (currentList != null)
             {
-                for (int i = 0; i < currentList.Count; i++)
+                for (var i = 0; i < currentList.Count; i++)
                 {
                     objectMapCurrent.Add(((IDataEntity)currentList[i]).ComputeHash(), (IDataEntity)currentList[i]);
                 }
@@ -401,7 +392,7 @@ namespace Nemo.UnitOfWork
 
             if (oldList != null)
             {
-                for (int i = 0; i < oldList.Count; i++)
+                for (var i = 0; i < oldList.Count; i++)
                 {
                     objectMapOld.Add(((IDataEntity)oldList[i]).ComputeHash(), (IDataEntity)oldList[i]);
                 }
@@ -415,11 +406,7 @@ namespace Nemo.UnitOfWork
             {
                 var changes = CompareObjects(pair.Value, objectMapOld[pair.Key], null);
 
-                var changeNode = new ChangeNode();
-                changeNode.PropertyName = propertyName;
-                changeNode.Value = pair.Value;
-                changeNode.Parent = parentNode;
-                changeNode.Index = changeList.Count;
+                var changeNode = new ChangeNode { PropertyName = propertyName, Value = pair.Value, Parent = parentNode, Index = changeList.Count };
 
                 if (changes.Count > 0)
                 {
@@ -435,12 +422,7 @@ namespace Nemo.UnitOfWork
             {
                 var changes = CompareObjects(pair.Value, null, null);
 
-                var changeNode = new ChangeNode();
-                changeNode.ObjectState = ObjectState.New;
-                changeNode.PropertyName = propertyName;
-                changeNode.Value = pair.Value;
-                changeNode.Parent = parentNode;
-                changeNode.Index = changeList.Count;
+                var changeNode = new ChangeNode { ObjectState = ObjectState.New, PropertyName = propertyName, Value = pair.Value, Parent = parentNode, Index = changeList.Count };
 
                 if (changes.Count > 0)
                 {
@@ -455,12 +437,7 @@ namespace Nemo.UnitOfWork
             {
                 var changes = CompareObjects(null, pair.Value, null);
 
-                var changeNode = new ChangeNode();
-                changeNode.ObjectState = ObjectState.Deleted;
-                changeNode.PropertyName = propertyName;
-                changeNode.Value = pair.Value;
-                changeNode.Parent = parentNode;
-                changeNode.Index = changeList.Count;
+                var changeNode = new ChangeNode { ObjectState = ObjectState.Deleted, PropertyName = propertyName, Value = pair.Value, Parent = parentNode, Index = changeList.Count };
 
                 if (changes.Count > 0)
                 {
@@ -545,15 +522,15 @@ namespace Nemo.UnitOfWork
             var newNodes = GetChanges(rootNode, ObjectState.New);
             var tableCreated = false;
 
-            var autoGenParameterNames = new Dictionary<object, string>();
             var tempTableName = dialect.GetTemporaryTableName("ID");
             var allParameters = new List<Param>();
 
             foreach (var newNode in newNodes.Where(n => n.IsObject))
             {
-                if (newNode.Value is IDataEntity)
+                var item = newNode.Value as IDataEntity;
+                if (item != null)
                 {
-                    dataEntitys.Add((IDataEntity)newNode.Value);
+                    dataEntitys.Add(item);
                 }
                 else
                 {

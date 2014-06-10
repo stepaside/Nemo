@@ -10,7 +10,7 @@ namespace Nemo.Collections
 {
     public static class Dictionary
     {
-        private static ConcurrentDictionary<Tuple<Type, Type>, Type> _dictionaryTypes = new ConcurrentDictionary<Tuple<Type, Type>, Type>();
+        private static readonly ConcurrentDictionary<Tuple<Type, Type>, Type> _dictionaryTypes = new ConcurrentDictionary<Tuple<Type, Type>, Type>();
 
         public static IDictionary Create(Type keyType, Type valueType)
         {

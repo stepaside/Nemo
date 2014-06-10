@@ -9,7 +9,7 @@ namespace Nemo.Id
     {
         private int _seed;
         private readonly int _origSeed;
-        private bool _throwWhenOutOfNumbers = false;
+        private readonly bool _throwWhenOutOfNumbers;
 
         public UniqueNegativeNumberGenerator() 
         { 
@@ -24,7 +24,7 @@ namespace Nemo.Id
 
         public object Generate()
         {
-            int n = _seed;  
+            var n = _seed;  
             do 
             {    
                 n ^= (n << 13);

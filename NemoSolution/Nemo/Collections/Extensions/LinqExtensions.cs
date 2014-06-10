@@ -90,9 +90,9 @@ namespace Nemo.Collections.Extensions
             return new LazyEnumerable<T>(enumerableFactory);
         }
 
-        private class LazyEnumerable<T> : IEnumerable<T>, IEnumerable
+        private class LazyEnumerable<T> : IEnumerable<T>
         {
-            private Lazy<IEnumerable<T>> _lazyEnumerable;
+            private readonly Lazy<IEnumerable<T>> _lazyEnumerable;
 
             public LazyEnumerable(Func<IEnumerable<T>> enumerableFactory)
             {
@@ -106,7 +106,7 @@ namespace Nemo.Collections.Extensions
 
             IEnumerator IEnumerable.GetEnumerator()
             {
-                return this.GetEnumerator();
+                return GetEnumerator();
             }
         }
         
@@ -140,7 +140,7 @@ namespace Nemo.Collections.Extensions
         {
             source.ThrowIfNull("source");
             action.ThrowIfNull("action");
-            foreach (T element in source)
+            foreach (var element in source)
             {
                 action(element);
             }
@@ -152,22 +152,13 @@ namespace Nemo.Collections.Extensions
             action.ThrowIfNull("action");
 
             var index = 0;
-            foreach (T element in source)
+            foreach (var element in source)
             {
                 action(index, element);
                 index++;
             }
         }
-
-        public static IEnumerable<T> Iterate<T>(this IEnumerable<T> source)
-        {
-            source.ThrowIfNull("source");
-            foreach (var item in source)
-            {
-                yield return item;
-            }
-        }
-
+        
         public static IEnumerable<T> Do<T>(this IEnumerable<T> source, Action<T> action)
         {
             source.ThrowIfNull("source");
@@ -210,10 +201,7 @@ namespace Nemo.Collections.Extensions
             {
                 return ((Stream<T>)source).ToList();
             }
-            else
-            {
-                return Enumerable.ToList(source);
-            }
+            return source.ToList();
         }
 
         #endregion
@@ -255,12 +243,12 @@ namespace Nemo.Collections.Extensions
 
         public static IEnumerable<T> Union<T>(this IEnumerable<T> source, T value)
         {
-            return Enumerable.Union(source, value.Return());
+            return source.Union(value.Return());
         }
 
         public static IEnumerable<T> Union<T>(this IEnumerable<T> source, T value, IEqualityComparer<T> comparer)
         {
-            return Enumerable.Union(source, value.Return(), comparer);
+            return source.Union(value.Return(), comparer);
         }
 
         #endregion
@@ -283,12 +271,12 @@ namespace Nemo.Collections.Extensions
 
         public static IEnumerable<T> Except<T>(this IEnumerable<T> source, T value)
         {
-            return Enumerable.Except(source, value.Return(), EqualityComparer<T>.Default);
+            return source.Except(value.Return(), EqualityComparer<T>.Default);
         }
 
         public static IEnumerable<T> Except<T>(this IEnumerable<T> source, T value, IEqualityComparer<T> comparer)
         {
-            return Enumerable.Except(source, value.Return(), comparer);
+            return source.Except(value.Return(), comparer);
         }
 
         #endregion
@@ -326,7 +314,7 @@ namespace Nemo.Collections.Extensions
             source.ThrowIfNull("source");
             splitter.ThrowIfNull("splitter");
 
-            var items = source.Select(i => splitter(i));
+            var items = source.Select(splitter);
             return Tuple.Create(items.Select(i => i.Item1), items.Select(i => i.Item2));
         }
 
@@ -344,7 +332,7 @@ namespace Nemo.Collections.Extensions
 
         public static IEnumerable<T> Repeat<T>(this T value, int count)
         {
-            return LinqExtensions.Repeat<T>(value).Take(count);
+            return value.Repeat().Take(count);
         }
 
         public static IEnumerable<T> Repeat<T>(this IEnumerable<T> source)
@@ -362,7 +350,7 @@ namespace Nemo.Collections.Extensions
         public static IEnumerable<T> Repeat<T>(this IEnumerable<T> source, int count)
         {
             count.ThrowIfNonPositive("count");
-            return LinqExtensions.Repeat(source).Take(count);
+            return source.Repeat().Take(count);
         }
 
         #endregion
@@ -377,7 +365,7 @@ namespace Nemo.Collections.Extensions
 
         public static IEnumerable<T> Merge<T>(params IEnumerable<T>[] sources)
         {
-            return ((IEnumerable<IEnumerable<T>>)sources).Merge();
+            return sources.Merge();
         }
 
         public static IEnumerable<T> Merge<T>(this IEnumerable<IOrderedEnumerable<T>> sources)
@@ -399,7 +387,7 @@ namespace Nemo.Collections.Extensions
                 // Create heap
                 var heap = new BinaryHeap<Tuple<int, T>>(items.Length, new ComparisonComparer<Tuple<int, T>>(comparison));
                 // Populate heap
-                for (int i = 0; i < items.Length; i++)
+                for (var i = 0; i < items.Length; i++)
                 {
                     if (items[i].MoveNext())
                     {
@@ -432,7 +420,6 @@ namespace Nemo.Collections.Extensions
                     yield return items[0].Current;
                 }
             }
-            yield break;
         }
 
         public static IEnumerable<T> Merge<T>(this IOrderedEnumerable<T> first, IOrderedEnumerable<T> second)
@@ -444,7 +431,7 @@ namespace Nemo.Collections.Extensions
         {
             second.ThrowIfNull("comparer");
 
-            var comparison = new Comparison<T>((a, b) => comparer.Compare(a, b));
+            var comparison = new Comparison<T>(comparer.Compare);
             return Merge(first, second, comparison);
         }
 
@@ -678,7 +665,7 @@ namespace Nemo.Collections.Extensions
                 yield return items.Take(count);
             }
         }
-        
+
         public static Tuple<IList<T>, IList<T>> Partition<T>(this IEnumerable<T> source, Func<T, bool> predicate, bool parallel = false)
         {
             source.ThrowIfNull("source");
@@ -688,7 +675,7 @@ namespace Nemo.Collections.Extensions
             {
                 var trueList = new List<T>();
                 var falseList = new List<T>();
-                var partitionLock = new object(); 
+                var partitionLock = new object();
 
                 var items = source is IList<T> ? (IList<T>)source : (IList<T>)source.ToList();
                 Parallel.For(0, items.Count,
@@ -716,18 +703,11 @@ namespace Nemo.Collections.Extensions
 
                 return Tuple.Create((IList<T>)trueList, (IList<T>)falseList);
             }
-            else
-            {
-                var stream = source.AsStream();
-                if (stream != null)
-                {
-                    return Tuple.Create((IList<T>)stream.Where(s => predicate(s)).ToList(), (IList<T>)stream.Where(s => !predicate(s)).ToList());
-                }
-                else
-                {
-                    return Tuple.Create((IList<T>)new T[0], (IList<T>)new T[0]);
-                }
-            }
+
+            var stream = source.AsStream();
+            return stream != null
+                ? Tuple.Create((IList<T>)stream.Where(predicate).ToList(), (IList<T>)stream.Where(s => !predicate(s)).ToList())
+                : Tuple.Create((IList<T>)new T[0], (IList<T>)new T[0]);
         }
 
         #endregion
@@ -986,7 +966,7 @@ namespace Nemo.Collections.Extensions
 
         public static IEnumerable<TSource> Delay<TSource>(this IEnumerable<TSource> source, int delay)
         {
-            return LinqExtensions.Defer(() => { Thread.Sleep(delay); return source; });
+            return Defer(() => { Thread.Sleep(delay); return source; });
         }
 
         #endregion

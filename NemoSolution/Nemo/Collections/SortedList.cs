@@ -14,9 +14,10 @@ namespace Nemo.Collections
 
     public class SortedList<T> : IList<T>, IList, ISortedList
     {
-        private List<T> _list;
-        private IComparer<T> _comparer;
+        private readonly List<T> _list;
+        private readonly IComparer<T> _comparer;
         private readonly bool _distinct;
+        private readonly object _syncRoot = new object();
 
         public SortedList(bool distinct = false) : this(Comparer<T>.Default, distinct) { }
 
@@ -113,20 +114,19 @@ namespace Nemo.Collections
                 index = ~index;
             }
 
-            if (!_distinct || notFound)
+            if (_distinct && !notFound) return;
+            
+            _list.Insert(index, item);
+            if (ItemAdded != null)
             {
-                _list.Insert(index, item);
-                if (ItemAdded != null)
-                {
-                    ItemAdded(this, new SortedListEventArguments { Item = item });
-                }
+                ItemAdded(this, new SortedListEventArguments { Item = item });
             }
         }
 
         public void Add(T item)
         {
             int index;
-            this.Add(item, out index);
+            Add(item, out index);
         }
 
         public void Clear()
@@ -163,16 +163,15 @@ namespace Nemo.Collections
         public bool Remove(T item)
         {
             var index = _list.BinarySearch(item, _comparer);
-            if (index > -1)
+            
+            if (index <= -1) return false;
+
+            _list.RemoveAt(index);
+            if (ItemRemoved != null)
             {
-                _list.RemoveAt(index);
-                if (ItemRemoved != null)
-                {
-                    ItemRemoved(this, new SortedListEventArguments { Item = item });
-                }
-                return true;
+                ItemRemoved(this, new SortedListEventArguments { Item = item });
             }
-            return false;
+            return true;
         }
 
         #endregion
@@ -188,9 +187,9 @@ namespace Nemo.Collections
 
         #region IEnumerable Members
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator()
         {
-            return this.GetEnumerator();
+            return GetEnumerator();
         }
 
         #endregion
@@ -200,23 +199,23 @@ namespace Nemo.Collections
         public int Add(object value)
         {
             int index;
-            this.Add((T)value, out index);
+            Add((T)value, out index);
             return index;
         }
 
         public bool Contains(object value)
         {
-            return this.Contains((T)value);
+            return Contains((T)value);
         }
 
         public int IndexOf(object value)
         {
-            return this.IndexOf((T)value);
+            return IndexOf((T)value);
         }
 
         public void Insert(int index, object value)
         {
-            this.Insert(index, (T)value);
+            Insert(index, (T)value);
         }
 
         public bool IsFixedSize
@@ -229,7 +228,7 @@ namespace Nemo.Collections
 
         public void Remove(object value)
         {
-            this.Remove((T)value);
+            Remove((T)value);
         }
 
         object IList.this[int index]
@@ -248,9 +247,9 @@ namespace Nemo.Collections
 
         #region ICollection Members
 
-        public void CopyTo(System.Array array, int index)
+        public void CopyTo(Array array, int index)
         {
-            this.CopyTo((T[])array, index);
+            CopyTo((T[])array, index);
         }
 
         public bool IsSynchronized
@@ -265,7 +264,7 @@ namespace Nemo.Collections
         {
             get
             {
-                return null;
+                return _syncRoot;
             }
         }
 

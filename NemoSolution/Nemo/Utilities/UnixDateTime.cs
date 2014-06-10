@@ -12,7 +12,7 @@ namespace Nemo.Utilities
 
         public static long GetTicks()
         {
-            return (DateTime.UtcNow - UnixDateTime.Epoch).Ticks;
+            return (DateTime.UtcNow - Epoch).Ticks;
         }
     }
 }

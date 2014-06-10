@@ -49,7 +49,7 @@ namespace Nemo.Extensions
 
         public static bool TryParse(this string source, Type structType, out object result)
         {
-            bool success = false;
+            var success = false;
             if (structType != null)
             {
                 var typeCode = Type.GetTypeCode(structType);

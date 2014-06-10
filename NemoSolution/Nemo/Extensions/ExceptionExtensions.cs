@@ -55,13 +55,15 @@ namespace Nemo.Extensions
 
         public static IEnumerable<Exception> Traverse(this Exception exception)
         {
-            yield return exception;
-            if (exception.InnerException != null)
+            while (true)
             {
-                foreach (var innerException in Traverse(exception.InnerException))
+                yield return exception;
+                if (exception.InnerException != null)
                 {
-                    yield return innerException;
+                    exception = exception.InnerException;
+                    continue;
                 }
+                break;
             }
         }
 

@@ -17,7 +17,7 @@ namespace Nemo.Collections.Extensions
             int len = end - start;
 
             // Return new array.
-            T[] res = new T[len];
+            var res = new T[len];
             Buffer.BlockCopy(source, start, res, 0, len);
             return res;
         }

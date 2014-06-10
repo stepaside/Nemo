@@ -40,7 +40,7 @@ namespace Nemo.Data
 
             if (connectionName == null)
             {
-                var attr = Reflector.GetAttribute<ConnectionAttribute>(objectType, true, false);
+                var attr = Reflector.GetAttribute<ConnectionAttribute>(objectType, true);
                 if (attr != null)
                 {
                     connectionName = attr.Name;
@@ -62,7 +62,16 @@ namespace Nemo.Data
 
         internal static string GetProviderInvariantNameByConnectionString(string connectionString)
         {
-            for (int i = 0; i < ConfigurationManager.ConnectionStrings.Count; i++)
+            if (connectionString == null) return null;
+
+            var pos1 = connectionString.IndexOf("provider=", StringComparison.OrdinalIgnoreCase);
+            if (pos1 > -1)
+            {
+                var pos2 = connectionString.IndexOf(";", pos1, StringComparison.Ordinal);
+                return pos2 > -1 ? connectionString.Substring(pos1 + 9, pos2 - pos1 - 9) : connectionString.Substring(pos1 + 9);
+            }
+
+            for (var i = 0; i < ConfigurationManager.ConnectionStrings.Count; i++)
             {
                 var config = ConfigurationManager.ConnectionStrings[i];
                 if (string.Equals(config.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
@@ -70,6 +79,7 @@ namespace Nemo.Data
                     return config.ProviderName;
                 }
             }
+            
             return null;
         }
 
@@ -97,11 +107,7 @@ namespace Nemo.Data
         internal static DbDataAdapter CreateDataAdapter(DbConnection connection)
         {
             var providerName = GetProviderInvariantNameByConnectionString(connection.ConnectionString);
-            if (providerName != null)
-            {
-                return DbProviderFactories.GetFactory(providerName).CreateDataAdapter();
-            }
-            return null;
+            return providerName != null ? DbProviderFactories.GetFactory(providerName).CreateDataAdapter() : null;
         }
     }
 }

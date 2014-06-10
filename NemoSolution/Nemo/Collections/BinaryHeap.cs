@@ -13,10 +13,10 @@ namespace Nemo.Collections
     public class BinaryHeap<T> : ICollection<T>
     {
         // Constants
-        private const int DEFAULT_SIZE = 8;
+        private const int DefaultSize = 8;
         // Fields
-        private List<T> _data;
-        private IComparer<T> _comparer;
+        private readonly List<T> _data;
+        private readonly IComparer<T> _comparer;
 
         #region Properties
         
@@ -44,7 +44,7 @@ namespace Nemo.Collections
         /// Creates a new binary heap.
         /// </summary>
         public BinaryHeap()
-            : this(DEFAULT_SIZE, null)
+            : this(DefaultSize, null)
         { }
 
         public BinaryHeap(int capacity)
@@ -52,7 +52,7 @@ namespace Nemo.Collections
         { }
 
         public BinaryHeap(IComparer<T> comparer)
-            : this(DEFAULT_SIZE, comparer)
+            : this(DefaultSize, comparer)
         { }
         
         public BinaryHeap(int capacity, IComparer<T> comparer)
@@ -66,7 +66,7 @@ namespace Nemo.Collections
         { }
 
         public BinaryHeap(IEnumerable<T> data, IComparer<T> comparer)
-            : this(DEFAULT_SIZE, comparer)
+            : this(DefaultSize, comparer)
         {
             _data.AddRange(data);
             BuildHeap();
@@ -111,7 +111,7 @@ namespace Nemo.Collections
         public void Add(T item)
         {
             _data.Add(item);
-            UpHeap(this.Count - 1);
+            UpHeap(Count - 1);
         }
 
         /// <summary>
@@ -120,14 +120,14 @@ namespace Nemo.Collections
         /// <returns>The next value in the heap.</returns>
         public T Remove()
         {
-            if (this.Count == 0)
+            if (Count == 0)
             {
                 throw new InvalidOperationException("Cannot remove item, heap is empty.");
             }
             T v = _data[0];
-            _data[0] = _data[this.Count - 1];
-            _data.RemoveAt(this.Count - 1);
-            if (this.Count > 0)
+            _data[0] = _data[Count - 1];
+            _data.RemoveAt(Count - 1);
+            if (Count > 0)
             {
                 DownHeap(0);
             }
@@ -137,9 +137,9 @@ namespace Nemo.Collections
         //helper function that performs up-heap bubbling
         private void UpHeap(int index)
         {
-            int p = index;
-            T item = _data[p];
-            int par = Parent(p);
+            var p = index;
+            var item = _data[p];
+            var par = Parent(p);
             while (par > -1 && _comparer.Compare(item, _data[par]) < 0)
             {
                 _data[p] = _data[par]; //Swap nodes
@@ -152,16 +152,18 @@ namespace Nemo.Collections
         //helper function that performs down-heap bubbling
         private void DownHeap(int index)
         {
-            int n;
-            int p = index;
-            T item = _data[p];
+            var p = index;
+            var item = _data[p];
             while (true)
             {
-                int ch1 = Child1(p);
-                if (ch1 >= this.Count)
+                var ch1 = Child1(p);
+                if (ch1 >= Count)
+                {
                     break;
-                int ch2 = Child2(p);
-                if (ch2 >= this.Count)
+                }
+                var ch2 = Child2(p);
+                int n;
+                if (ch2 >= Count)
                 {
                     n = ch1;
                 }
@@ -184,7 +186,7 @@ namespace Nemo.Collections
 
         private void BuildHeap()
         {
-            for (int i = this.Count / 2; i > -1; i--)
+            for (var i = Count / 2; i > -1; i--)
             {
                 DownHeap(i);
             }
@@ -214,7 +216,7 @@ namespace Nemo.Collections
         /// <returns>A BinaryHeap.</returns>
         public BinaryHeap<T> Copy()
         {
-            return new BinaryHeap<T>(_data, this.Count, _comparer);
+            return new BinaryHeap<T>(_data, Count, _comparer);
         }
 
         /// <summary>
@@ -223,7 +225,7 @@ namespace Nemo.Collections
         /// <returns>An IEnumerator of type T.</returns>
         public IEnumerator<T> GetEnumerator()
         {
-            for (int i = 0; i < this.Count; i++)
+            for (var i = 0; i < Count; i++)
             {
                 yield return _data[i];
             }

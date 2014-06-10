@@ -33,7 +33,7 @@ namespace Nemo.Utilities
             var stream = new MemoryStream(BitConverter.GetBytes(originalSize).Concat(buffer).ToArray());
 
             // Encrypt the compressed memory stream into the encrypted memory stream.
-            MemoryStream encrypted = new MemoryStream();
+            var encrypted = new MemoryStream();
             using (var cryptor = new CryptoStream(encrypted, encryptor, CryptoStreamMode.Write))
             {
                 // Write the stream to the encrypted memory stream.
@@ -63,7 +63,7 @@ namespace Nemo.Utilities
             decryptor.ThrowIfNull("decryptor");
 
             // Create the array that holds the result.
-            byte[] decrypted = new byte[buffer.Length];
+            var decrypted = new byte[buffer.Length];
             // Create the crypto stream that is used for decrypt. The first argument holds the input as memory stream.
             using (var cryptor = new CryptoStream(new MemoryStream(buffer), decryptor, CryptoStreamMode.Read))
             {
@@ -87,11 +87,10 @@ namespace Nemo.Utilities
 
         public static string ToHex(byte[] bytes)
         {
-            char[] c = new char[bytes.Length * 2];
-            int b;
-            for (int i = 0; i < bytes.Length; i++)
+            var c = new char[bytes.Length * 2];
+            for (var i = 0; i < bytes.Length; i++)
             {
-                b = bytes[i] >> 4;
+                var b = bytes[i] >> 4;
                 c[i * 2] = (char)(55 + b + (((b - 10) >> 31) & -7));
                 b = bytes[i] & 0xF;
                 c[i * 2 + 1] = (char)(55 + b + (((b - 10) >> 31) & -7));
@@ -111,14 +110,14 @@ namespace Nemo.Utilities
         /// <summary>
         /// Reads all bytes in the given zip stream and returns them.
         /// </summary>
-        /// <param name="gzip">The zip stream that is processed.</param>
+        /// <param name="zip"></param>
         /// <returns></returns>
         private static byte[] ReadAllBytes(GZipStream zip)
         {
             zip.ThrowIfNull("zip");
 
-            int buffersize = 100;
-            byte[] buffer = new byte[buffersize];
+            const int buffersize = 100;
+            var buffer = new byte[buffersize];
             int offset = 0, read = 0, size = 0;
             do
             {
@@ -127,7 +126,7 @@ namespace Nemo.Utilities
                 // and use that as new buffer.
                 if (buffer.Length < size + buffersize)
                 {
-                    byte[] tmp = new byte[buffer.Length * 2];
+                    var tmp = new byte[buffer.Length * 2];
                     Array.Copy(buffer, tmp, buffer.Length);
                     buffer = tmp;
                 }
@@ -141,7 +140,7 @@ namespace Nemo.Utilities
             } while (read == buffersize); // Terminate if we read less then the buffer size.
 
             // Copy only that amount of data to the result that has actually been read!
-            byte[] result = new byte[size];
+            var result = new byte[size];
             Array.Copy(buffer, result, size);
             return result;
         }

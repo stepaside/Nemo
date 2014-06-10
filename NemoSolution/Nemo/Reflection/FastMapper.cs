@@ -17,7 +17,7 @@ namespace Nemo.Reflection
             InstanceMapper(source, target);
         }
 
-        private static Nemo.Reflection.Mapper.PropertyMapper InstanceMapper;
+        private static Mapper.PropertyMapper InstanceMapper;
     }
 
     internal class FastExactMapper<T1, T2>
@@ -32,6 +32,6 @@ namespace Nemo.Reflection
             InstanceMapper(source, target);
         }
 
-        private static Nemo.Reflection.Mapper.PropertyMapper InstanceMapper;
+        private static Mapper.PropertyMapper InstanceMapper;
     }
 }

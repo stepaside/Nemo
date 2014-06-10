@@ -11,7 +11,7 @@ namespace Nemo.Configuration.Mapping
 {
     internal static class MappingFactory
     {
-        private static Lazy<Dictionary<Type, IEntityMap>> _types = new Lazy<Dictionary<Type, IEntityMap>>(MappingFactory.Scan, true);
+        private static readonly Lazy<Dictionary<Type, IEntityMap>> _types = new Lazy<Dictionary<Type, IEntityMap>>(Scan, true);
 
         private static Dictionary<Type, IEntityMap> Scan()
         {
@@ -51,11 +51,7 @@ namespace Nemo.Configuration.Mapping
             where T : class, IDataEntity
         {
             IEntityMap map;
-            if (_types.Value.TryGetValue(typeof(T), out map))
-            {
-                return map;
-            }
-            return null;
+            return _types.Value.TryGetValue(typeof(T), out map) ? map : null;
         }
 
         internal static IEntityMap GetEntityMap(Type type)

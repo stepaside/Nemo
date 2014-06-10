@@ -20,10 +20,10 @@ namespace Nemo.Configuration
         private ChangeTrackingMode _defaultChangeTrackingMode = ParseChangeTrackingModeConfig();
         private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
 
-        private bool _generateDeleteSql = false;
-        private bool _generateInsertSql = false;
-        private bool _generateUpdateSql = false;
-        private IAuditLogProvider _auditLogProvider = null;
+        private bool _generateDeleteSql;
+        private bool _generateInsertSql;
+        private bool _generateUpdateSql;
+        private IAuditLogProvider _auditLogProvider;
         private IExecutionContext _executionContext = DefaultExecutionContext.Current;
 
         private DefaultConfiguration() { }
@@ -243,27 +243,27 @@ namespace Nemo.Configuration
 
         private static L1CacheRepresentation ParseExecutionContextCacheConfig()
         {
-            return Config.AppSettings<L1CacheRepresentation>("DefaultExecutionContextCacheType", L1CacheRepresentation.LazyList);
+            return Config.AppSettings("DefaultExecutionContextCacheType", L1CacheRepresentation.LazyList);
         }
 
         private static OperationNamingConvention ParseOperationNamingConventionConfig()
         {
-            return Config.AppSettings<OperationNamingConvention>("OperationNamingConvention", OperationNamingConvention.PrefixTypeName_Operation);
+            return Config.AppSettings("OperationNamingConvention", OperationNamingConvention.PrefixTypeName_Operation);
         }
 
         private static FetchMode ParseFetchModeConfig()
         {
-            return Config.AppSettings<FetchMode>("DefaultFetchMode", FetchMode.Eager);
+            return Config.AppSettings("DefaultFetchMode", FetchMode.Eager);
         }
 
         private static MaterializationMode ParseMaterializationModeConfig()
         {
-            return Config.AppSettings<MaterializationMode>("DefaultMaterializationMode", MaterializationMode.Partial);
+            return Config.AppSettings("DefaultMaterializationMode", MaterializationMode.Partial);
         }
 
         private static ChangeTrackingMode ParseChangeTrackingModeConfig()
         {
-            return Config.AppSettings<ChangeTrackingMode>("DefaultChangeTrackingMode", ChangeTrackingMode.Automatic);
+            return Config.AppSettings("DefaultChangeTrackingMode", ChangeTrackingMode.Automatic);
         }
     }
 }

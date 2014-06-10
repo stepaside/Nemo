@@ -7,6 +7,7 @@ using Nemo.Extensions;
 namespace Nemo.Collections.Comparers
 {
     public class ProjectionComparer<TSource, TKey> : IComparer<TSource>
+        where TSource : class
     {
         private readonly Func<TSource, TKey> _projection;
         private readonly IComparer<TKey> _comparer;
@@ -25,7 +26,7 @@ namespace Nemo.Collections.Comparers
         public int Compare(TSource x, TSource y)
         {
             // Don't want to project from nullity
-            if (x == null && y == null)
+            if (x ==null && y == null)
             {
                 return 0;
             }
@@ -33,11 +34,7 @@ namespace Nemo.Collections.Comparers
             {
                 return -1;
             }
-            if (y == null)
-            {
-                return 1;
-            }
-            return _comparer.Compare(_projection(x), _projection(y));
+            return y == null ? 1 : _comparer.Compare(_projection(x), _projection(y));
         }
     }
 }

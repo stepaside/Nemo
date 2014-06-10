@@ -1,24 +1,20 @@
-﻿using System;
+﻿using Nemo.Attributes;
+using Nemo.Audit;
+using Nemo.Configuration;
+using Nemo.Id;
+using Nemo.Reflection;
+using Nemo.Security.Cryptography;
+using Nemo.Serialization;
+using Nemo.UnitOfWork;
+using Nemo.Validation;
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
-using Nemo.Attributes;
-using Nemo.Reflection;
-using Nemo.Serialization;
-using System.Transactions;
-using Nemo.Data;
-using System.Data.Common;
 using System.Text;
-using Nemo.Id;
-using Nemo.Audit;
-using Nemo.UnitOfWork;
-using Nemo.Validation;
-using Nemo.Security.Cryptography;
-using Nemo.Configuration;
 
 namespace Nemo.Extensions
 {
@@ -33,6 +29,7 @@ namespace Nemo.Extensions
         /// Property method returns a value of a property.
         /// </summary>
         /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TResult"></typeparam>
         /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <returns></returns>
@@ -43,10 +40,7 @@ namespace Nemo.Extensions
             {
                 return (TResult)Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
             }
-            else
-            {
-                return (TResult)Reflector.Property.Get<T>(dataEntity, propertyName);
-            }
+            return (TResult)Reflector.Property.Get<T>(dataEntity, propertyName);
         }
 
         /// <summary>
@@ -137,7 +131,7 @@ namespace Nemo.Extensions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="dataEntity"></param>
-        public static void Populate<T>(this T dataEntity)
+        public static void Load<T>(this T dataEntity)
             where T : class, IDataEntity
         {
             dataEntity.ThrowIfNull("dataEntity");
@@ -173,7 +167,6 @@ namespace Nemo.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="dataEntity"></param>
         /// <param name="additionalParameters"></param>
-        /// <param name="errorMessage"></param>
         /// <returns></returns>
         public static bool Insert<T>(this T dataEntity, params Param[] additionalParameters)
             where T : class, IDataEntity
@@ -218,10 +211,14 @@ namespace Nemo.Extensions
             var response = ObjectFactory.Insert<T>(parameters);
             var success = response != null && response.RecordsAffected > 0;
 
-            if (!success) return success;
+            if (!success)
+            {
+                return false;
+            }
+
             if (identityProperty != null)
             {
-                object identityValue = parameters.Single(p => p.Name == identityProperty.Name).Value;
+                var identityValue = parameters.Single(p => p.Name == identityProperty.Name).Value;
                 if (identityValue != null && !Convert.IsDBNull(identityValue))
                 {
                     Reflector.Property.Set(dataEntity, identityProperty.Name, identityValue);
@@ -238,16 +235,16 @@ namespace Nemo.Extensions
                 entity.ObjectState = ObjectState.Clean;
             }
 
-            if (dataEntity is IAuditable)
+            if (dataEntity is IAuditableDataEntity)
             {
                 var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
                 if (logProvider != null)
                 {
-                    logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationInsert, default(T), dataEntity));
+                    logProvider.Write(new AuditLog<T>(ObjectFactory.OperationInsert, default(T), dataEntity));
                 }
             }
 
-            return success;
+            return true;
         }
 
         /// <summary>
@@ -255,7 +252,7 @@ namespace Nemo.Extensions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="dataEntity"></param>
-        /// <param name="parameters"></param>
+        /// <param name="additionalParameters"></param>
         /// <returns></returns>
         public static bool Update<T>(this T dataEntity, params Param[] additionalParameters)
             where T : class, IDataEntity
@@ -270,7 +267,6 @@ namespace Nemo.Extensions
                 throw new ValidationException(errors);
             }
 
-            var errorMessage = string.Empty;
             var supportsChangeTracking = dataEntity is ITrackableDataEntity;
             if (supportsChangeTracking && ((ITrackableDataEntity)dataEntity).IsReadOnly())
             {
@@ -295,28 +291,30 @@ namespace Nemo.Extensions
             var response = ObjectFactory.Update<T>(parameters);
             var success = response != null && response.RecordsAffected > 0;
 
-            if (success)
+            if (!success)
             {
-                Identity.Get<T>().Set(dataEntity);
+                return false;
+            }
 
-                SetOutputParameterValues<T>(dataEntity, outputProperties, propertyMap, parameters);
+            Identity.Get<T>().Set(dataEntity);
 
-                if (supportsChangeTracking)
+            SetOutputParameterValues(dataEntity, outputProperties, propertyMap, parameters);
+
+            if (supportsChangeTracking)
+            {
+                ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Clean;
+            }
+
+            if (dataEntity is IAuditableDataEntity)
+            {
+                var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+                if (logProvider != null)
                 {
-                    ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Clean;
-                }
-
-                if (dataEntity is IAuditable)
-                {
-                    var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
-                    if (logProvider != null)
-                    {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationUpdate, (dataEntity.Old() ?? dataEntity), dataEntity));
-                    }
+                    logProvider.Write(new AuditLog<T>(ObjectFactory.OperationUpdate, (dataEntity.Old() ?? dataEntity), dataEntity));
                 }
             }
 
-            return success;
+            return true;
         }
 
         /// <summary>
@@ -339,27 +337,29 @@ namespace Nemo.Extensions
             var response = ObjectFactory.Delete<T>(parameters);
             var success = response != null && response.RecordsAffected > 0;
 
-            if (success)
+            if (!success)
             {
-                Identity.Get<T>().Remove(dataEntity);
+                return false;
+            }
 
-                var entity = dataEntity as ITrackableDataEntity;
-                if (entity != null)
-                {
-                    entity.ObjectState = ObjectState.Deleted;
-                }
+            Identity.Get<T>().Remove(dataEntity);
 
-                if (dataEntity is IAuditable)
+            var entity = dataEntity as ITrackableDataEntity;
+            if (entity != null)
+            {
+                entity.ObjectState = ObjectState.Deleted;
+            }
+
+            if (dataEntity is IAuditableDataEntity)
+            {
+                var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+                if (logProvider != null)
                 {
-                    var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
-                    if (logProvider != null)
-                    {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationDelete, dataEntity, default(T)));
-                    }
+                    logProvider.Write(new AuditLog<T>(ObjectFactory.OperationDelete, dataEntity, default(T)));
                 }
             }
 
-            return success;
+            return true;
         }
 
         /// <summary>
@@ -382,27 +382,29 @@ namespace Nemo.Extensions
             var response = ObjectFactory.Destroy<T>(parameters);
             var success = response != null && response.RecordsAffected > 0;
 
-            if (success)
+            if (!success)
             {
-                Identity.Get<T>().Remove(dataEntity);
+                return false;
+            }
 
-                var entity = dataEntity as ITrackableDataEntity;
-                if (entity != null)
-                {
-                    entity.ObjectState = ObjectState.Deleted;
-                }
+            Identity.Get<T>().Remove(dataEntity);
 
-                if (dataEntity is IAuditable)
+            var entity = dataEntity as ITrackableDataEntity;
+            if (entity != null)
+            {
+                entity.ObjectState = ObjectState.Deleted;
+            }
+
+            if (dataEntity is IAuditableDataEntity)
+            {
+                var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+                if (logProvider != null)
                 {
-                    var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
-                    if (logProvider != null)
-                    {
-                        logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationDestroy, dataEntity, default(T)));
-                    }
+                    logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationDestroy, dataEntity, default(T)));
                 }
             }
 
-            return success;
+            return false;
         }
 
         #region ITrackableDataEntity Methods
@@ -425,27 +427,26 @@ namespace Nemo.Extensions
         }
 
         public static bool IsNew<T>(this T dataEntity)
-          where T : class, IDataEntity
+            where T : class, IDataEntity
         {
-            if (dataEntity is ITrackableDataEntity)
+            var entity = dataEntity as ITrackableDataEntity;
+            if (entity != null)
             {
-                return ((ITrackableDataEntity)dataEntity).ObjectState == ObjectState.New;
+                return entity.ObjectState == ObjectState.New;
             }
-            else
-            {
-                var primaryKey = dataEntity.GetPrimaryKey();
-                return primaryKey.Values.Sum(v => v == null || v == v.GetType().GetDefault() ? 1 : 0) == primaryKey.Values.Count;
-            }
+            var primaryKey = dataEntity.GetPrimaryKey();
+            return primaryKey.Values.Sum(v => v == null || v == v.GetType().GetDefault() ? 1 : 0) == primaryKey.Values.Count;
         }
 
         public static bool IsReadOnly<T>(this T dataEntity)
            where T : class, IDataEntity
         {
-            if (dataEntity is ITrackableDataEntity)
+            var entity = dataEntity as ITrackableDataEntity;
+            if (entity != null)
             {
-                return ((ITrackableDataEntity)dataEntity).ObjectState == ObjectState.ReadOnly;
+                return entity.ObjectState == ObjectState.ReadOnly;
             }
-            return Reflector.GetAttribute<ReadOnlyAttribute>(dataEntity.GetType(), false) != null;
+            return Reflector.GetAttribute<ReadOnlyAttribute>(dataEntity.GetType()) != null;
         }
 
         public static bool IsDirty<T>(this T dataEntity)
@@ -531,7 +532,7 @@ namespace Nemo.Extensions
             // Set output parameter values
             foreach (var outputProperty in outputProperties)
             {
-                string outputPropertyName = null;
+                string outputPropertyName;
                 if (propertyMap[outputProperty] != null && !string.IsNullOrEmpty(propertyMap[outputProperty].ParameterName))
                 {
                     outputPropertyName = propertyMap[outputProperty].ParameterName;
@@ -544,7 +545,7 @@ namespace Nemo.Extensions
                 object outputPropertyValue;
                 if (parameterMap.TryGetValue(outputPropertyName, out outputPropertyValue) && !Convert.IsDBNull(outputPropertyValue))
                 {
-                    Reflector.Property.Set<T>(dataEntity, outputProperty.Name, outputPropertyValue);
+                    Reflector.Property.Set(dataEntity, outputProperty.Name, outputPropertyValue);
                 }
             }
         }
@@ -666,7 +667,7 @@ namespace Nemo.Extensions
             where T : class, IDataEntity
         {
             var data = instance.Serialize(SerializationMode.SerializeAll);
-            var value = ObjectSerializer.Deserialize<T>(data);
+            var value = data.Deserialize<T>();
             return value;
         }
 
@@ -675,13 +676,12 @@ namespace Nemo.Extensions
         /// NOTE: The object must be serializable.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="instance"></param>
         /// <returns></returns>
         public static IEnumerable<T> Clone<T>(this IEnumerable<T> collection)
             where T : class, IDataEntity
         {
             var data = collection.Serialize(SerializationMode.SerializeAll);
-            var value = ObjectSerializer.Deserialize<T>(data);
+            var value = data.Deserialize<T>();
             return value;
         }
 

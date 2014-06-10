@@ -115,10 +115,10 @@ namespace Nemo.Serialization
         public static T Deserialize<T>(this byte[] data)
             where T : class, IDataEntity
         {
-            var result = default(T);
+            T result;
             using (var reader = SerializationReader.CreateReader(data))
             {
-                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.DataEntity, default(T) is IConvertible);
+                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.DataEntity, typeof(IConvertible).IsAssignableFrom(typeof(T)));
             }
             return result;
         }

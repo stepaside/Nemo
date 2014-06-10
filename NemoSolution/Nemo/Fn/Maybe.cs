@@ -34,14 +34,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            if (this.HasValue)
-            {
-                return this.Value.ToString();
-            }
-            else
-            {
-                return string.Format("{0}::Empty", base.ToString());
-            }
+            return HasValue ? Value.ToString() : string.Format("{0}::Empty", base.ToString());
         }
     }
 }

@@ -14,7 +14,7 @@ namespace Nemo.Reflection
 {
     public sealed class Adapter
     {
-        private static ConcurrentDictionary<Tuple<Type, Type, string>, Type> _types = new ConcurrentDictionary<Tuple<Type, Type, string>, Type>();
+        private static readonly ConcurrentDictionary<Tuple<Type, Type, string>, Type> _types = new ConcurrentDictionary<Tuple<Type, Type, string>, Type>();
 
         public static T Bind<T>(object value)
             where T : class
@@ -125,9 +125,9 @@ namespace Nemo.Reflection
             }
             if (fullIndexer)
             {
-                suffix += String.Concat(suffix, "_All");
+                suffix = String.Concat(suffix, "_All");
             }
-            var key = Tuple.Create(interfaceType, interfaceType, "Wrap");
+            var key = Tuple.Create(interfaceType, interfaceType, suffix);
             var type = _types.GetOrAdd(key, n =>
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
@@ -220,9 +220,9 @@ namespace Nemo.Reflection
             return type;
         }
 
-        private static void DefineMethod(MethodInfo method, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type objectType)
+        private static void DefineMethod(MethodInfo method, TypeBuilder typeBuilder, FieldInfo field, Type objectType)
         {
-            MethodAttributes attributes = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Virtual;
+            const MethodAttributes attributes = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Virtual;
             var parameterTypes = method.GetParameters().Select(x => x.ParameterType).ToArray();
 
             // create the new method.
@@ -244,7 +244,7 @@ namespace Nemo.Reflection
 
                 // get the property.
                 il.Emit(OpCodes.Ldstr, method.Name);
-                il.EmitCall(OpCodes.Callvirt, typeof(Type).GetMethod("GetMethod", new Type[] { typeof(string) }), null);
+                il.EmitCall(OpCodes.Callvirt, typeof(Type).GetMethod("GetMethod", new[] { typeof(string) }), null);
 
                 // load the arguments for the next method call.
                 il.Emit(OpCodes.Ldarg_0);
@@ -261,7 +261,7 @@ namespace Nemo.Reflection
                     }
                 }
 
-                il.EmitCall(OpCodes.Callvirt, typeof(MethodInfo).GetMethod("Invoke", new Type[] { typeof(object), typeof(object[]) }), null);
+                il.EmitCall(OpCodes.Callvirt, typeof(MethodInfo).GetMethod("Invoke", new[] { typeof(object), typeof(object[]) }), null);
 
                 // cast or unbox if required.
                 il.EmitCastToReference(method.ReturnType);
@@ -284,7 +284,7 @@ namespace Nemo.Reflection
             il.Emit(OpCodes.Ret);
         }
 
-        private static void DefineProperties(Type objectType, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type interfaceType, DynamicProxyType proxyType, bool ignoreMappings)
+        private static void DefineProperties(Type objectType, TypeBuilder typeBuilder, FieldInfo field, Type interfaceType, DynamicProxyType proxyType, bool ignoreMappings)
         {
             var entityMap = MappingFactory.GetEntityMap(interfaceType);
 
@@ -327,13 +327,13 @@ namespace Nemo.Reflection
             }
         }
 
-        private static void DefineReadOnlyProperty(string propertyName, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field)
+        private static void DefineReadOnlyProperty(string propertyName, TypeBuilder typeBuilder, FieldInfo field)
         {
             // create the new property.
-            var propertyBuilder = typeBuilder.DefineProperty(propertyName, System.Reflection.PropertyAttributes.HasDefault, field.FieldType, null);
+            var propertyBuilder = typeBuilder.DefineProperty(propertyName, PropertyAttributes.HasDefault, field.FieldType, null);
 
             // The property "set" and property "get" methods require a special set of attributes.
-            var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig;
+            const MethodAttributes getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig;
 
             // create the getter if we can read.
             // create the get method for the property.
@@ -351,16 +351,16 @@ namespace Nemo.Reflection
             propertyBuilder.SetGetMethod(getMethod);
         }
 
-        private static void DefineDefaultProperty(PropertyInfo property, System.Reflection.Emit.TypeBuilder typeBuilder)
+        private static void DefineDefaultProperty(PropertyInfo property, TypeBuilder typeBuilder)
         {
             // create the new property.
-            var propertyBuilder = typeBuilder.DefineProperty(property.Name, System.Reflection.PropertyAttributes.HasDefault, property.PropertyType, null);
+            var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.HasDefault, property.PropertyType, null);
 
             // The property "set" and property "get" methods require a special set of attributes.
             //var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig | MethodAttributes.Virtual;
-            var getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
+            const MethodAttributes getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
 
-            string fieldName = "_" + property.Name;
+            var fieldName = "_" + property.Name;
             var currentField = typeBuilder.DefineField(fieldName, property.PropertyType, FieldAttributes.Private);
 
             // create the getter if we can read.
@@ -371,7 +371,7 @@ namespace Nemo.Reflection
                 var getMethod = typeBuilder.DefineMethod(getMethodName, getSetAttr, property.PropertyType, Type.EmptyTypes);
 
                 // get the IL generator to generate the required IL.
-                ILGenerator il = getMethod.GetILGenerator();
+                var il = getMethod.GetILGenerator();
 
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, currentField);
@@ -386,10 +386,10 @@ namespace Nemo.Reflection
             {
                 // create the set method of the property.
                 var setMethodName = "set_" + property.Name;
-                var setMethod = typeBuilder.DefineMethod(setMethodName, getSetAttr, null, new Type[] { property.PropertyType });
+                var setMethod = typeBuilder.DefineMethod(setMethodName, getSetAttr, null, new[] { property.PropertyType });
 
                 // get the IL generator to generate some IL.
-                ILGenerator il = setMethod.GetILGenerator();
+                var il = setMethod.GetILGenerator();
 
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
@@ -401,20 +401,20 @@ namespace Nemo.Reflection
             }
         }
 
-        private static void DefineIndexerProperty(PropertyInfo property, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type objectType, bool ignoreMappings, IEntityMap entityMap)
+        private static void DefineIndexerProperty(PropertyInfo property, TypeBuilder typeBuilder, FieldInfo field, Type objectType, bool ignoreMappings, IEntityMap entityMap)
         {
             // create the new property.
-            var propertyBuilder = typeBuilder.DefineProperty(property.Name, System.Reflection.PropertyAttributes.HasDefault, property.PropertyType, null);
+            var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.HasDefault, property.PropertyType, null);
 
             // The property "set" and property "get" methods require a special set of attributes.
             //var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig | MethodAttributes.Virtual;
-            var getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
+            const MethodAttributes getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
             var columnName = MappingFactory.GetPropertyOrColumnName(property, ignoreMappings, entityMap, true);
 
             // create the getter if we can read.
             if (property.CanRead)
             {
-                var getItemMethod = objectType.GetMethod("get_Item", new Type[] { typeof(string) });
+                var getItemMethod = objectType.GetMethod("get_Item", new[] { typeof(string) });
 
                 var typeConverter = TypeConverterAttribute.GetTypeConverter(getItemMethod.ReturnType, property);
 
@@ -455,13 +455,13 @@ namespace Nemo.Reflection
             // create the setter if we can read.
             if (property.CanWrite)
             {
-                var setItemMethod = objectType.GetMethod("set_Item", new Type[] { typeof(string), typeof(object) });
+                var setItemMethod = objectType.GetMethod("set_Item", new[] { typeof(string), typeof(object) });
 
                 var typeConverter = TypeConverterAttribute.GetTypeConverter(setItemMethod.GetParameters()[1].ParameterType, property);
 
                 // create the set method of the property.
                 var setMethodName = "set_" + property.Name;
-                var setMethod = typeBuilder.DefineMethod(setMethodName, getSetAttr, null, new Type[] { property.PropertyType });
+                var setMethod = typeBuilder.DefineMethod(setMethodName, getSetAttr, null, new[] { property.PropertyType });
 
                 // get the IL generator to generate some IL.
                 ILGenerator il = setMethod.GetILGenerator();
@@ -496,7 +496,7 @@ namespace Nemo.Reflection
             }
         }
 
-        private static void DefineGuardedProperty(PropertyInfo property, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type objectType, bool ignoreMappings, IEntityMap entityMap)
+        private static void DefineGuardedProperty(PropertyInfo property, TypeBuilder typeBuilder, FieldInfo field, Type objectType, bool ignoreMappings, IEntityMap entityMap)
         {
             // create the new property.
             var propertyBuilder = typeBuilder.DefineProperty(property.Name, System.Reflection.PropertyAttributes.HasDefault, property.PropertyType, null);
@@ -589,14 +589,14 @@ namespace Nemo.Reflection
             }
         }
 
-        private static void DefineProperty(PropertyInfo property, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field, Type objectType, PropertyInfo objectProperty)
+        private static void DefineProperty(PropertyInfo property, TypeBuilder typeBuilder, FieldInfo field, Type objectType, PropertyInfo objectProperty)
         {
             // create the new property.
-            var propertyBuilder = typeBuilder.DefineProperty(property.Name, System.Reflection.PropertyAttributes.HasDefault, property.PropertyType, null);
+            var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.HasDefault, property.PropertyType, null);
 
             // The property "set" and property "get" methods require a special set of attributes.
             //var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig | MethodAttributes.Virtual;
-            var getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
+            const MethodAttributes getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
 
             // create the getter if we can read.
             if (property.CanRead)
@@ -621,13 +621,13 @@ namespace Nemo.Reflection
 
                     // get the property.
                     il.Emit(OpCodes.Ldstr, objectProperty.Name);
-                    il.EmitCall(OpCodes.Callvirt, typeof(Type).GetMethod("GetProperty", new Type[] { typeof(string) }), null);
+                    il.EmitCall(OpCodes.Callvirt, typeof(Type).GetMethod("GetProperty", new[] { typeof(string) }), null);
 
                     // load the arguments for the next method call.
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldfld, field);
                     il.Emit(OpCodes.Ldnull);
-                    il.EmitCall(OpCodes.Callvirt, typeof(PropertyInfo).GetMethod("GetValue", new Type[] { typeof(object), typeof(object[]) }), null);
+                    il.EmitCall(OpCodes.Callvirt, typeof(PropertyInfo).GetMethod("GetValue", new[] { typeof(object), typeof(object[]) }), null);
 
                     // cast or unbox if required.
                     il.EmitCastToReference(property.PropertyType);
@@ -650,7 +650,7 @@ namespace Nemo.Reflection
             {
                 // create the set method of the property.
                 var setMethodName = "set_" + property.Name;
-                var setMethod = typeBuilder.DefineMethod(setMethodName, getSetAttr, null, new Type[] { property.PropertyType });
+                var setMethod = typeBuilder.DefineMethod(setMethodName, getSetAttr, null, new[] { property.PropertyType });
 
                 // get the IL generator to generate some IL.
                 ILGenerator il = setMethod.GetILGenerator();
@@ -668,7 +668,7 @@ namespace Nemo.Reflection
 
                     // get the property.
                     il.Emit(OpCodes.Ldstr, objectProperty.Name);
-                    il.EmitCall(OpCodes.Callvirt, typeof(Type).GetMethod("GetProperty", new Type[] { typeof(string) }), null);
+                    il.EmitCall(OpCodes.Callvirt, typeof(Type).GetMethod("GetProperty", new[] { typeof(string) }), null);
 
                     // load the various arguments and items on the stack.
                     il.Emit(OpCodes.Ldarg_0);
@@ -679,7 +679,7 @@ namespace Nemo.Reflection
                     il.Emit(OpCodes.Ldnull);
 
                     // set the value for the property.
-                    il.EmitCall(OpCodes.Callvirt, typeof(PropertyInfo).GetMethod("SetValue", new Type[] { typeof(object), typeof(object), typeof(object[]) }), null);
+                    il.EmitCall(OpCodes.Callvirt, typeof(PropertyInfo).GetMethod("SetValue", new[] { typeof(object), typeof(object), typeof(object[]) }), null);
 
                     // check if we need to unbox or cast.
                     il.EmitCastToReference(property.PropertyType);
@@ -731,12 +731,12 @@ namespace Nemo.Reflection
             return result;
         }
 
-        private static ConstructorInfo DefineConstructor(Type objectType, System.Reflection.Emit.TypeBuilder typeBuilder, FieldBuilder field)
+        private static void DefineConstructor(Type objectType, TypeBuilder typeBuilder, FieldInfo field)
         {
-            ConstructorBuilder constructor = typeBuilder.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, CallingConventions.Standard, new Type[] { objectType });
+            var constructor = typeBuilder.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig, CallingConventions.Standard, new[] { objectType });
 
             // create the constructor.
-            ILGenerator constructorIL = constructor.GetILGenerator();
+            var constructorIL = constructor.GetILGenerator();
             // call the base constructor. in this case of object.
             constructorIL.Emit(OpCodes.Ldarg_0);
             constructorIL.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes));
@@ -746,8 +746,6 @@ namespace Nemo.Reflection
             constructorIL.Emit(OpCodes.Ldarg_1);
             constructorIL.Emit(OpCodes.Stfld, field);
             constructorIL.Emit(OpCodes.Ret);
-
-            return constructor;
         }
     }
 }

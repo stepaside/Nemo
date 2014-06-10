@@ -32,18 +32,11 @@ namespace Nemo.Extensions
 
         public static byte[] ToByteArray(this string value, Encoding encoding = null)
         {
-            if (encoding == null)
-            {
-                return Encoding.UTF8.GetBytes(value);
-            }
-            else
-            {
-                return encoding.GetBytes(value);
-            }
+            return encoding == null ? Encoding.UTF8.GetBytes(value) : encoding.GetBytes(value);
         }
 
-        private static Regex _lowerUpperLowerMatcher = new Regex("(?<lower>[a-z])(?<upper_lower>[A-Z][a-z]?)", RegexOptions.Compiled);
-        private static Regex _underscoreMatcher = new Regex("(?<first_char>(?<=^)\\w)|(?<underscore>_)(?<char>\\w)", RegexOptions.Compiled);
+        private static readonly Regex _lowerUpperLowerMatcher = new Regex("(?<lower>[a-z])(?<upper_lower>[A-Z][a-z]?)", RegexOptions.Compiled);
+        private static readonly Regex _underscoreMatcher = new Regex("(?<first_char>(?<=^)\\w)|(?<underscore>_)(?<char>\\w)", RegexOptions.Compiled);
 
         public static string ToCamelCase(this string value)
         {
@@ -60,7 +53,7 @@ namespace Nemo.Extensions
             return _lowerUpperLowerMatcher.Replace(value, m => m.Groups["lower"].Value + '_' + m.Groups["upper_lower"].Value).ToLower();
         }
 
-        private static Dictionary<char, int> _phoneMap = new Dictionary<char, int>
+        private static readonly Dictionary<char, int> _phoneMap = new Dictionary<char, int>
         {
             {'a',2},{'b',2},{'c',2},{'d',3},{'e',3},{'f',3},{'g',4},{'h',4},{'i',4},{'j',5},{'k',5},{'l',5},{'m',6},
             {'n',6},{'o',6},{'p',7},{'q',7},{'r',7},{'s',7},{'t',8},{'u',8},{'v',8},{'w',9},{'x',9},{'y',9},{'z',9}
@@ -78,7 +71,7 @@ namespace Nemo.Extensions
             {
                 end = source.Length + end;
             }
-            int len = end - start;               // Calculate length
+            var len = end - start;               // Calculate length
             return source.Substring(start, len); // Return Substring of length
         }
 

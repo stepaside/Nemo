@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Nemo.Collections.Extensions;
@@ -13,7 +14,7 @@ namespace Nemo.Fn
     public class Stream<T> : IEnumerable<T>
     {
         private readonly T _head;
-        private Func<Stream<T>> _tail;
+        private readonly Func<Stream<T>> _tail;
         private Stream<T> _realized;
         private List<T> _list;
 
@@ -68,7 +69,7 @@ namespace Nemo.Fn
         {
             yield return _head;
 
-            var t = this.Tail;
+            var t = Tail;
             if (t != null)
             {
                 foreach (var x in t)
@@ -79,20 +80,16 @@ namespace Nemo.Fn
 
         public List<T> ToList()
         {
-            if (_list == null)
-            {
-                _list = Enumerable.ToList(this);
-            }
-            return _list;
+            return _list ?? (_list = Enumerable.ToList(this));
         }
 
         #endregion
 
         #region IEnumerable Members
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator()
         {
-            return (System.Collections.IEnumerator)GetEnumerator();
+            return GetEnumerator();
         }
 
         #endregion
@@ -107,24 +104,26 @@ namespace Nemo.Fn
         public T ElementAt(int index)
         {
             index.ThrowIfNegative("index");
-            Stream<T> stream = this;
+            var stream = this;
             while (--index >= 0)
             {
                 stream = stream.Tail;
                 if (stream == null)
+                {
                     throw new ArgumentOutOfRangeException("index", "`index` is larger than the collection size.");
+                }
             }
             return stream.Head;
         }
 
         public T First()
         {
-            return this.Head;
+            return Head;
         }
 
         public T FirstOrDefault()
         {
-            return this.Head;
+            return Head;
         }
 
         public long LongCount()
@@ -141,8 +140,8 @@ namespace Nemo.Fn
 
         public Stream<T> Reverse()
         {
-            var newHead = new Stream<T>(this.Head);
-            var tail = this.Tail;
+            var newHead = new Stream<T>(Head);
+            var tail = Tail;
             while (tail != null)
             {
                 newHead = new Stream<T>(tail.Head, () => newHead);

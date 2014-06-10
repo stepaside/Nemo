@@ -11,6 +11,6 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalImplement<T>();
         }
-        internal static Nemo.Reflection.Activator.ObjectActivator Instance;
+        internal static Activator.ObjectActivator Instance;
     }
 }

@@ -26,20 +26,20 @@ namespace Nemo.Serialization
 {
     public class SerializationReader : IDisposable
     {
-        private int _objectTypeHash;
+        private readonly int _objectTypeHash;
         private readonly SerializationMode _mode;
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
         private byte? _objectByte;
-        private Stream _stream;
-        private Encoding _encoding;
-        private static ConcurrentDictionary<string, Type> _types = new ConcurrentDictionary<string, Type>();
+        private readonly Stream _stream;
+        private readonly Encoding _encoding;
+        private static readonly ConcurrentDictionary<string, Type> _types = new ConcurrentDictionary<string, Type>();
         
         public delegate object[] ObjectDeserializer(SerializationReader reader, int count);
-        private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializers = new ConcurrentDictionary<Type, ObjectDeserializer>();
-        private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializersNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
-        private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllProperties = new ConcurrentDictionary<Type, ObjectDeserializer>();
-        private static ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectDeserializer> _deserializers = new ConcurrentDictionary<Type, ObjectDeserializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectDeserializer> _deserializersNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllProperties = new ConcurrentDictionary<Type, ObjectDeserializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
 
         private SerializationReader(Stream stream, Encoding encoding)
         {
@@ -537,13 +537,13 @@ namespace Nemo.Serialization
                     return new BinaryFormatter().Deserialize(_stream);
                 case ObjectTypeCode.ObjectList:
                     {
-                        var objectList = (IList)Reflection.Activator.New(objectType);
+                        var objectList = (IList)objectType.New();
                         ReadList(objectList, objectType.GetGenericArguments()[0]);
                         return objectList;
                     }
                 case ObjectTypeCode.ObjectMap:
                     {
-                        var objectMap = (IDictionary)Reflection.Activator.New(objectType);
+                        var objectMap = (IDictionary)objectType.New();
                         var genericArgs = objectType.GetGenericArguments();
                         ReadDictionary(objectMap, genericArgs[0], genericArgs[1]);
                         return objectMap;
@@ -556,10 +556,7 @@ namespace Nemo.Serialization
                         {
                             return dataEntitys[0];
                         }
-                        else
-                        {
-                            return null;
-                        }
+                        return null;
                     }
                 case ObjectTypeCode.DataEntityList:
                     {
@@ -568,28 +565,29 @@ namespace Nemo.Serialization
                         var listAspectType = (ListAspectType)ReadByte();
                         DistinctAttribute distinctAttribute = null;
                         SortedAttribute sortedAttribute = null;
-                        Type comparerType = null;
                         if (listAspectType != ListAspectType.None)
                         {
-                            comparerType = GetType(ReadString());
-                            if (listAspectType == ListAspectType.Distinct)
+                            var comparerType = GetType(ReadString());
+                            switch (listAspectType)
                             {
-                                distinctAttribute = new DistinctAttribute { EqualityComparerType = comparerType };
-                            }
-                            else if (listAspectType == ListAspectType.Sorted || listAspectType == (ListAspectType.Sorted | ListAspectType.Distinct))
-                            {
-                                sortedAttribute = new SortedAttribute { ComparerType = comparerType };
-                                if (listAspectType != ListAspectType.Sorted)
-                                {
-                                    distinctAttribute = new DistinctAttribute();
-                                } 
+                                case ListAspectType.Distinct:
+                                    distinctAttribute = new DistinctAttribute { EqualityComparerType = comparerType };
+                                    break;
+                                case (ListAspectType.Sorted | ListAspectType.Distinct):
+                                case ListAspectType.Sorted:
+                                    sortedAttribute = new SortedAttribute { ComparerType = comparerType };
+                                    if (listAspectType != ListAspectType.Sorted)
+                                    {
+                                        distinctAttribute = new DistinctAttribute();
+                                    }
+                                    break;
                             }
                         }
 
                         var list = List.Create(objectType, distinctAttribute, sortedAttribute);
                         var deserializer = CreateDelegate(objectType);
                         var dataEntitys = deserializer(this, itemCount);
-                        for (int i = 0; i < dataEntitys.Length; i++ )
+                        for (var i = 0; i < dataEntitys.Length; i++ )
                         {
                             list.Add(dataEntitys[i]);
                         }
@@ -690,25 +688,11 @@ namespace Nemo.Serialization
             ObjectDeserializer deserializer;
             if (!_serializeAll)
             {
-                if (_includePropertyNames)
-                {
-                    deserializer = _deserializers.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
-                }
-                else
-                {
-                    deserializer = _deserializersNoHeader.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
-                }
+                deserializer = _includePropertyNames ? _deserializers.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists)) : _deserializersNoHeader.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
             }
             else
             {
-                if (_includePropertyNames)
-                {
-                    deserializer = _deserializersWithAllProperties.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
-                }
-                else
-                {
-                    deserializer = _deserializersWithAllPropertiesNoHeader.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
-                }
+                deserializer = _includePropertyNames ? _deserializersWithAllProperties.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists)) : _deserializersWithAllPropertiesNoHeader.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
             }
             if (exists && _includePropertyNames)
             {
@@ -723,9 +707,9 @@ namespace Nemo.Serialization
             var propertyNames = new List<string>();
             if (_includePropertyNames)
             {
-                for (int i = 0; i < propertyCount; i++)
+                for (var i = 0; i < propertyCount; i++)
                 {
-                    propertyNames.Add(this.ReadString());
+                    propertyNames.Add(ReadString());
                 }
             }
             exists = false;
@@ -743,11 +727,7 @@ namespace Nemo.Serialization
             var interfaceType = objectType;
             if (Reflector.IsEmitted(objectType))
             {
-                interfaceType = Reflector.ExtractInterface(objectType);
-                if (interfaceType == null)
-                {
-                    interfaceType = objectType;
-                }
+                interfaceType = Reflector.ExtractInterface(objectType) ?? objectType;
             }
 
             var properties = Reflector.GetAllProperties(interfaceType);
@@ -796,14 +776,7 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Ldtoken, propertyType);
                 il.Emit(OpCodes.Call, getTypeFromHandle);
                 il.Emit(OpCodes.Ldc_I4, (int)Reflector.GetObjectTypeCode(propertyType));
-                if (typeof(IConvertible).IsAssignableFrom(propertyType))
-                {
-                    il.Emit(OpCodes.Ldc_I4_1);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldc_I4_0);
-                }
+                il.Emit(typeof(IConvertible).IsAssignableFrom(propertyType) ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
                 il.Emit(OpCodes.Callvirt, readObject);
                 il.EmitCastToReference(property.PropertyType);
                 il.EmitCall(OpCodes.Callvirt, property.GetSetMethod(), null);

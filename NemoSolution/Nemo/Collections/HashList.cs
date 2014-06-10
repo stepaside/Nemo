@@ -12,9 +12,10 @@ namespace Nemo.Collections
 
     public class HashList<T> : IList<T>, IList, ISet<T>, ISet
     {
-        private HashSet<T> _set;
+        private readonly HashSet<T> _set;
         private List<T> _list;
-        private IEqualityComparer<T> _comparer;
+        private readonly IEqualityComparer<T> _comparer;
+        private readonly object _syncRoot = new object();
 
         public HashList() : this(EqualityComparer<T>.Default) { }
 
@@ -51,11 +52,9 @@ namespace Nemo.Collections
 
         public void Insert(int index, T item)
         {
-            if (!_set.Contains(item))
-            {
-                _list.Insert(index, item);
-                _set.Add(item);
-            }
+            if (_set.Contains(item)) return;
+            _list.Insert(index, item);
+            _set.Add(item);
         }
 
         public void RemoveAt(int index)
@@ -75,16 +74,14 @@ namespace Nemo.Collections
             }
             set
             {
-                if (!_set.Contains(value))
+                if (_set.Contains(value)) return;
+                if (index > -1 && index < _list.Count)
                 {
-                    if (index > -1 && index < _list.Count)
-                    {
-                        _set.Remove(_list[index]);
-                    }
-
-                    _list[index] = value;
-                    _set.Add(value);
+                    _set.Remove(_list[index]);
                 }
+
+                _list[index] = value;
+                _set.Add(value);
             }
         }
 
@@ -94,11 +91,9 @@ namespace Nemo.Collections
 
         public void Add(T item)
         {
-            if (!_set.Contains(item))
-            {
-                _list.Add(item);
-                _set.Add(item);
-            }
+            if (_set.Contains(item)) return;
+            _list.Add(item);
+            _set.Add(item);
         }
 
         public void Clear()
@@ -136,12 +131,9 @@ namespace Nemo.Collections
         public bool Remove(T item)
         {
             var index = _list.FindIndex(i => _set.Contains(i));
-            if (index > -1 && _set.Remove(item))
-            {
-                _list.RemoveAt(index);
-                return true;
-            }
-            return false;
+            if (index <= -1 || !_set.Remove(item)) return false;
+            _list.RemoveAt(index);
+            return true;
         }
 
         #endregion
@@ -157,9 +149,9 @@ namespace Nemo.Collections
 
         #region IEnumerable Members
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator()
         {
-            return this.GetEnumerator();
+            return GetEnumerator();
         }
 
         #endregion
@@ -168,31 +160,28 @@ namespace Nemo.Collections
 
         public int Add(object value)
         {
-            var oldCount = this.Count;
-            this.Add((T)value);
-            if (oldCount == this.Count)
+            var oldCount = Count;
+            Add((T)value);
+            if (oldCount == Count)
             {
                 return -1;
             }
-            else
-            {
-                return this.Count - 1;
-            }
+            return Count - 1;
         }
 
         public bool Contains(object value)
         {
-            return this.Contains((T)value);
+            return Contains((T)value);
         }
 
         public int IndexOf(object value)
         {
-            return this.IndexOf((T)value);
+            return IndexOf((T)value);
         }
 
         public void Insert(int index, object value)
         {
-            this.Insert(index, (T)value);
+            Insert(index, (T)value);
         }
 
         public bool IsFixedSize
@@ -205,7 +194,7 @@ namespace Nemo.Collections
 
         public void Remove(object value)
         {
-            this.Remove((T)value);
+            Remove((T)value);
         }
 
         object IList.this[int index]
@@ -226,7 +215,7 @@ namespace Nemo.Collections
 
         public void CopyTo(System.Array array, int index)
         {
-            this.CopyTo((T[])array, index);
+            CopyTo((T[])array, index);
         }
 
         public bool IsSynchronized
@@ -241,7 +230,7 @@ namespace Nemo.Collections
         {
             get
             {
-                return null;
+                return _syncRoot;
             }
         }
 
@@ -251,7 +240,7 @@ namespace Nemo.Collections
 
         bool ISet<T>.Add(T item)
         {
-            return this.Add((object)item) > -1;
+            return Add((object)item) > -1;
         }
 
         void ISet<T>.ExceptWith(IEnumerable<T> other)

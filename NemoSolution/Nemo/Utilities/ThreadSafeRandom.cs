@@ -7,9 +7,9 @@ namespace Nemo.Utilities
 {
     public sealed class ThreadSafeRandom : Random
     {
-        private object _lock = new object();
+        private readonly object _lock = new object();
 
-        public ThreadSafeRandom() : base() { }
+        public ThreadSafeRandom() { }
         public ThreadSafeRandom(int seed) : base(seed) { }
 
         public override int Next()

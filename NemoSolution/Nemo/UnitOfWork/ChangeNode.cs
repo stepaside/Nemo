@@ -8,10 +8,10 @@ namespace Nemo.UnitOfWork
 {
     internal class ChangeNode
     {
-        private List<ChangeNode> _nodes = new List<ChangeNode>();
-        private ObjectState? _objectState = null;
-        private List<string> _listProperties = new List<string>();
-        private List<string> _objectProperties = new List<string>();
+        private readonly List<ChangeNode> _nodes = new List<ChangeNode>();
+        private ObjectState? _objectState;
+        private readonly List<string> _listProperties = new List<string>();
+        private readonly List<string> _objectProperties = new List<string>();
 
         internal Type Type
         {
@@ -49,7 +49,7 @@ namespace Nemo.UnitOfWork
             {
                 if (!_objectState.HasValue)
                 {
-                    Dictionary<ObjectState, int> stateCounts = new Dictionary<ObjectState, int>();
+                    var stateCounts = new Dictionary<ObjectState, int>();
                     foreach (var node in _nodes)
                     {
                         if (!stateCounts.ContainsKey(node.ObjectState))

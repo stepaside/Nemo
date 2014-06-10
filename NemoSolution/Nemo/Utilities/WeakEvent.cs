@@ -20,9 +20,9 @@ namespace Nemo.Utilities
     {
         private delegate void OpenEventHandler(T @this, object sender, E e);
 
-        private WeakReference _targetRef;
-        private OpenEventHandler _openHandler;
-        private EventHandler<E> _handler;
+        private readonly WeakReference _targetRef;
+        private readonly OpenEventHandler _openHandler;
+        private readonly EventHandler<E> _handler;
         private UnregisterCallback<E> _unregister;
 
         public WeakEventHandler(EventHandler<E> eventHandler, UnregisterCallback<E> unregister)

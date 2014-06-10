@@ -11,18 +11,18 @@ namespace Nemo.Reflection
         {
             public delegate object FastInvoker(object target, object[] paramters);
 
-            private static ConcurrentDictionary<RuntimeMethodHandle, FastInvoker> _invokers = new ConcurrentDictionary<RuntimeMethodHandle, FastInvoker>();
+            private static readonly ConcurrentDictionary<RuntimeMethodHandle, FastInvoker> _invokers = new ConcurrentDictionary<RuntimeMethodHandle, FastInvoker>();
 
             public static FastInvoker CreateDelegate(RuntimeMethodHandle methodHandle)
             {
-                FastInvoker invoker = _invokers.GetOrAdd(methodHandle, m => GenerateDelegate(m));
+                FastInvoker invoker = _invokers.GetOrAdd(methodHandle, GenerateDelegate);
                 return invoker;
             }
 
             private static FastInvoker GenerateDelegate(RuntimeMethodHandle methodHandle)
             {
                 var methodInfo = (MethodInfo)MethodInfo.GetMethodFromHandle(methodHandle);
-                var dynamicMethod = new DynamicMethod(string.Empty, typeof(object), new Type[] { typeof(object), typeof(object[]) }, methodInfo.DeclaringType.Module);
+                var dynamicMethod = new DynamicMethod(string.Empty, typeof(object), new[] { typeof(object), typeof(object[]) }, methodInfo.DeclaringType.Module);
                 var il = dynamicMethod.GetILGenerator();            
                 var ps = methodInfo.GetParameters();
                 var paramTypes = new Type[ps.Length];
@@ -39,12 +39,12 @@ namespace Nemo.Reflection
                 }
 
                 var locals = new LocalBuilder[paramTypes.Length];
-                for (int i = 0; i < paramTypes.Length; i++)
+                for (var i = 0; i < paramTypes.Length; i++)
                 {
                     locals[i] = il.DeclareLocal(paramTypes[i], true);
                 }
 
-                for (int i = 0; i < paramTypes.Length; i++)
+                for (var i = 0; i < paramTypes.Length; i++)
                 {
                     il.Emit(OpCodes.Ldarg_1);
                     il.EmitFastInt(i);
@@ -58,26 +58,12 @@ namespace Nemo.Reflection
                     il.Emit(OpCodes.Ldarg_0);
                 }
 
-                for (int i = 0; i < paramTypes.Length; i++)
+                for (var i = 0; i < paramTypes.Length; i++)
                 {
-                    if (ps[i].ParameterType.IsByRef)
-                    {
-                        il.Emit(OpCodes.Ldloca_S, locals[i]);
-                    }
-                    else
-                    {
-                        il.Emit(OpCodes.Ldloc, locals[i]);
-                    }
+                    il.Emit(ps[i].ParameterType.IsByRef ? OpCodes.Ldloca_S : OpCodes.Ldloc, locals[i]);
                 }
 
-                if (methodInfo.IsStatic)
-                {
-                    il.EmitCall(OpCodes.Call, methodInfo, null);
-                }
-                else
-                {
-                    il.EmitCall(OpCodes.Callvirt, methodInfo, null);
-                }
+                il.EmitCall(methodInfo.IsStatic ? OpCodes.Call : OpCodes.Callvirt, methodInfo, null);
 
                 if (methodInfo.ReturnType == typeof(void))
                 {

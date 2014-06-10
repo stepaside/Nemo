@@ -11,7 +11,7 @@ namespace Nemo.Collections
         where TResult : class
     {
         private IList<TSource> _items;
-        private Func<TSource, TResult> _mapper;
+        private readonly Func<TSource, TResult> _mapper;
         private List<Tuple<bool, TResult>> _map;
 
         public MapList(IEnumerable<TSource> items, Func<TSource, TResult> mapper)
@@ -20,7 +20,7 @@ namespace Nemo.Collections
             InitializeItems(items.ToList());
         }
 
-        private Tuple<bool, TResult> NewMapEntry(TResult item)
+        private static Tuple<bool, TResult> NewMapEntry(TResult item)
         {
             return Tuple.Create(item != null, item);
         }
@@ -28,7 +28,7 @@ namespace Nemo.Collections
         private void InitializeMap()
         {
             _map = new List<Tuple<bool, TResult>>(_items.Count);
-            _map.AddRange(LinqExtensions.Repeat(NewMapEntry(null), _items.Count));
+            _map.AddRange(NewMapEntry(null).Repeat(_items.Count));
         }
 
         protected void InitializeItems(IList<TSource> items)
@@ -39,7 +39,7 @@ namespace Nemo.Collections
 
         private class MapListEnumerator : IEnumerator<TResult>
         {
-            private MapList<TSource, TResult> _items;
+            private readonly MapList<TSource, TResult> _items;
             private int _index;
             private TResult _item;
 
@@ -68,9 +68,9 @@ namespace Nemo.Collections
 
             #region IEnumerator Members
 
-            object System.Collections.IEnumerator.Current
+            object IEnumerator.Current
             {
-                get { return this.Current; }
+                get { return Current; }
             }
 
             public bool MoveNext()
@@ -80,11 +80,8 @@ namespace Nemo.Collections
                 {
                     return false;
                 }
-                else
-                {
-                    // Set current box to next item in collection.
-                    _item = _items[_index];
-                }
+                // Set current box to next item in collection.
+                _item = _items[_index];
                 return true;
 
             }
@@ -130,7 +127,7 @@ namespace Nemo.Collections
         public int IndexOf(TResult item)
         {
             var index = 0;
-            var iter = this.GetEnumerator();
+            var iter = GetEnumerator();
             while (iter.MoveNext())
             {
                 if (iter.Current == item)
@@ -148,7 +145,7 @@ namespace Nemo.Collections
 
         public void Add(TResult item)
         {
-            this.Insert(_items.Count, item);
+            Insert(_items.Count, item);
         }
 
         public void Clear()
@@ -164,13 +161,10 @@ namespace Nemo.Collections
 
         public bool Remove(TResult item)
         {
-            var index = this.IndexOf(item);
-            if (index > -1)
-            {
-                this.RemoveAt(index);
-                return true;
-            }
-            return false;
+            var index = IndexOf(item);
+            if (index <= -1) return false;
+            RemoveAt(index);
+            return true;
         }
 
         public int Count
@@ -183,12 +177,12 @@ namespace Nemo.Collections
 
         public bool Contains(TResult item)
         {
-            return this.IndexOf(item) > -1;
+            return IndexOf(item) > -1;
         }
 
         public void CopyTo(TResult[] array, int index)
         {
-            this.GetEnumerator().AsEnumerable().CopyTo(array, index);
+            GetEnumerator().AsEnumerable().CopyTo(array, index);
         }
 
         #endregion
@@ -204,9 +198,9 @@ namespace Nemo.Collections
 
         #region IEnumerable Members
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator()
         {
-            return this.GetEnumerator();
+            return GetEnumerator();
         }
 
         #endregion
@@ -215,23 +209,23 @@ namespace Nemo.Collections
 
         int IList.Add(object value)
         {
-            this.Add((TResult)value);
-            return this.Count - 1;
+            Add((TResult)value);
+            return Count - 1;
         }
 
         bool IList.Contains(object value)
         {
-            return this.Contains((TResult)value);
+            return Contains((TResult)value);
         }
 
         int IList.IndexOf(object value)
         {
-            return this.IndexOf((TResult)value);
+            return IndexOf((TResult)value);
         }
 
         void IList.Insert(int index, object value)
         {
-            this.Insert(index, (TResult)value);
+            Insert(index, (TResult)value);
         }
 
         bool IList.IsFixedSize
@@ -244,7 +238,7 @@ namespace Nemo.Collections
 
         void IList.Remove(object value)
         {
-            this.Remove((TResult)value);
+            Remove((TResult)value);
         }
 
         object IList.this[int index]
@@ -265,7 +259,7 @@ namespace Nemo.Collections
 
         void ICollection.CopyTo(Array array, int index)
         {
-            this.CopyTo((TResult[])array, index);
+            CopyTo((TResult[])array, index);
         }
 
         bool ICollection.IsSynchronized

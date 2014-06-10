@@ -19,13 +19,15 @@ namespace Nemo.Security.Cryptography
         {
             var length = data.Length;
             if (length == 0)
+            {
                 return 0;
-            uint h = seed ^ (uint)length;
+            }
+            var h = seed ^ (uint)length;
             var remainingBytes = length & 3; // mod 4
             var numberOfLoops = length >> 2; // div 4
             fixed (byte* firstByte = &(data[0]))
             {
-                uint* realData = (uint*)firstByte;
+                var realData = (uint*)firstByte;
                 while (numberOfLoops != 0)
                 {
                     var k = *realData;
@@ -52,8 +54,6 @@ namespace Nemo.Security.Cryptography
                     case 1:
                         h ^= *((byte*)realData);
                         h *= m;
-                        break;
-                    default:
                         break;
                 }
             }

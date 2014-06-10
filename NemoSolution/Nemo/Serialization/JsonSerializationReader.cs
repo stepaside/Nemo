@@ -52,14 +52,7 @@ namespace Nemo.Serialization
                 else if (reflectedType.IsDataEntityList)
                 {
                     elementType = reflectedType.ElementType;
-                    if (!reflectedType.IsInterface)
-                    {
-                        listResult = (IList)Nemo.Reflection.Activator.New(objectType);
-                    }
-                    else
-                    {
-                        listResult = List.Create(elementType);
-                    }
+                    listResult = !reflectedType.IsInterface ? objectType.New() : List.Create(elementType);
                     result = ObjectFactory.Create(elementType);
                     listRoot = current;
                 }
@@ -95,24 +88,32 @@ namespace Nemo.Serialization
                     switch (current.Type)
                     {
                         case JsonType.Boolean:
+                        {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
                                 ((IDataEntity)result).Property(property.PropertyName, current.Value.As<bool>());
                             }
-                            if (result is IList)
+                            var list = result as IList;
+                            if (list != null)
                             {
-                                ((IList)result).Add(current.Value.As<bool>());
-                            }
-                            else if (result is IDictionary)
-                            {
-                                ((IDictionary)result).Add(current.Name, current.Value.As<bool>());
+                                list.Add(current.Value.As<bool>());
                             }
                             else
                             {
-                                result = current.Value.As<bool>();
+                                var map = result as IDictionary;
+                                if (map != null)
+                                {
+                                    map.Add(current.Name, current.Value.As<bool>());
+                                }
+                                else
+                                {
+                                    result = current.Value.As<bool>();
+                                }
                             }
                             break;
+                        }
                         case JsonType.Decimal:
+                        {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
                                 var value = current.Value.As<decimal>();
@@ -142,52 +143,75 @@ namespace Nemo.Serialization
                                     switch (typeCode)
                                     {
                                         case TypeCode.Double:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((double)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (double)value);
+                                                list.Add((double)value);
                                             }
                                             else
                                             {
-                                                result = (double)value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (double)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (double)value;
+                                                }
                                             }
                                             break;
+                                        }
                                         case TypeCode.Single:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((float)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (float)value);
+                                                list.Add((float)value);
                                             }
                                             else
                                             {
-                                                result = (float)value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (float)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (float)value;
+                                                }
                                             }
                                             break;
+                                        }
                                         case TypeCode.Decimal:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add(value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, value);
+                                                list.Add(value);
                                             }
                                             else
                                             {
-                                                result = value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, value);
+                                                }
+                                                else
+                                                {
+                                                    result = value;
+                                                }
                                             }
                                             break;
+                                        }
                                     }
                                 }
                             }
                             break;
+                        }
                         case JsonType.Integer:
+                        {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
                                 var value = current.Value.As<long>();
@@ -232,122 +256,180 @@ namespace Nemo.Serialization
                                     switch (typeCode)
                                     {
                                         case TypeCode.Byte:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((byte)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (byte)value);
+                                                list.Add((byte)value);
                                             }
                                             else
                                             {
-                                                result = (byte)value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (byte)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (byte)value;
+                                                }
                                             }
                                             break;
+                                        }
                                         case TypeCode.SByte:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((sbyte)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (sbyte)value);
+                                                list.Add((sbyte)value);
                                             }
                                             else
                                             {
-                                                result = (sbyte)value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (sbyte)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (sbyte)value;
+                                                }
                                             }
                                             break;
+                                        }
                                         case TypeCode.Int16:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((short)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (short)value);
+                                                list.Add((short)value);
                                             }
                                             else
                                             {
-                                                result = (short)value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (short)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (short)value;
+                                                }
                                             }
                                             break;
+                                        }
                                         case TypeCode.Int32:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((int)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (int)value);
+                                                list.Add((int)value);
                                             }
                                             else
                                             {
-                                                result = (int)value;
-                                            } 
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (int)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (int)value;
+                                                }
+                                            }
                                             break;
+                                        }
                                         case TypeCode.Int64:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add(value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, value);
+                                                list.Add(value);
                                             }
                                             else
                                             {
-                                                result = value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, value);
+                                                }
+                                                else
+                                                {
+                                                    result = value;
+                                                }
                                             }
                                             break;
+                                        }
                                         case TypeCode.UInt16:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((ushort)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (ushort)value);
+                                                list.Add((ushort)value);
                                             }
                                             else
                                             {
-                                                result = (ushort)value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (ushort)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (ushort)value;
+                                                }
                                             }
                                             break;
+                                        }
                                         case TypeCode.UInt32:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((uint)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (uint)value);
+                                                list.Add((uint)value);
                                             }
                                             else
                                             {
-                                                result = (uint)value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (uint)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (uint)value;
+                                                }
                                             }
                                             break;
+                                        }
                                         case TypeCode.UInt64:
-                                            if (result is IList)
+                                        {
+                                            var list = result as IList;
+                                            if (list != null)
                                             {
-                                                ((IList)result).Add((ulong)value);
-                                            }
-                                            else if (result is IDictionary)
-                                            {
-                                                ((IDictionary)result).Add(current.Name, (ulong)value);
+                                                list.Add((ulong)value);
                                             }
                                             else
                                             {
-                                                result = (ulong)value;
+                                                var map = result as IDictionary;
+                                                if (map != null)
+                                                {
+                                                    map.Add(current.Name, (ulong)value);
+                                                }
+                                                else
+                                                {
+                                                    result = (ulong)value;
+                                                }
                                             }
                                             break;
+                                        }
                                     }
                                 }
                             }
                             break;
+                        }
                         case JsonType.String:
+                        {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
                                 var value = current.Value.As<string>();
@@ -398,17 +480,22 @@ namespace Nemo.Serialization
                                 var type = elementType ?? objectType;
                                 if (type == typeof(string))
                                 {
-                                    if (result is IList)
+                                    var list = result as IList;
+                                    if (list != null)
                                     {
-                                        ((IList)result).Add(value);
-                                    }
-                                    else if (result is IDictionary)
-                                    {
-                                        ((IDictionary)result).Add(current.Name, value);
+                                        list.Add(value);
                                     }
                                     else
                                     {
-                                        result = value;
+                                        var map = result as IDictionary;
+                                        if (map != null)
+                                        {
+                                            map.Add(current.Name, value);
+                                        }
+                                        else
+                                        {
+                                            result = value;
+                                        }
                                     }
                                 }
                                 else if (type == typeof(DateTime))
@@ -416,17 +503,22 @@ namespace Nemo.Serialization
                                     DateTime date;
                                     if (DateTime.TryParse(value, out date))
                                     {
-                                        if (result is IList)
+                                        var list = result as IList;
+                                        if (list != null)
                                         {
-                                            ((IList)result).Add(date);
-                                        }
-                                        else if (result is IDictionary)
-                                        {
-                                            ((IDictionary)result).Add(current.Name, date);
+                                            list.Add(date);
                                         }
                                         else
                                         {
-                                            result = date;
+                                            var map = result as IDictionary;
+                                            if (map != null)
+                                            {
+                                                map.Add(current.Name, date);
+                                            }
+                                            else
+                                            {
+                                                result = date;
+                                            }
                                         }
                                     }
                                 }
@@ -435,17 +527,22 @@ namespace Nemo.Serialization
                                     TimeSpan time;
                                     if (TimeSpan.TryParse(value, out time))
                                     {
-                                        if (result is IList)
+                                        var list = result as IList;
+                                        if (list != null)
                                         {
-                                            ((IList)result).Add(time);
-                                        }
-                                        else if (result is IDictionary)
-                                        {
-                                            ((IDictionary)result).Add(current.Name, time);
+                                            list.Add(time);
                                         }
                                         else
                                         {
-                                            result = time;
+                                            var map = result as IDictionary;
+                                            if (map != null)
+                                            {
+                                                map.Add(current.Name, time);
+                                            }
+                                            else
+                                            {
+                                                result = time;
+                                            }
                                         }
                                     }
                                 }
@@ -454,17 +551,22 @@ namespace Nemo.Serialization
                                     DateTimeOffset date;
                                     if (DateTimeOffset.TryParse(value, out date))
                                     {
-                                        if (result is IList)
+                                        var list = result as IList;
+                                        if (list != null)
                                         {
-                                            ((IList)result).Add(date);
-                                        }
-                                        else if (result is IDictionary)
-                                        {
-                                            ((IDictionary)result).Add(current.Name, date);
+                                            list.Add(date);
                                         }
                                         else
                                         {
-                                            result = date;
+                                            var map = result as IDictionary;
+                                            if (map != null)
+                                            {
+                                                map.Add(current.Name, date);
+                                            }
+                                            else
+                                            {
+                                                result = date;
+                                            }
                                         }
                                     }
                                 }
@@ -473,93 +575,109 @@ namespace Nemo.Serialization
                                     Guid guid;
                                     if (Guid.TryParse(value, out guid))
                                     {
-                                        if (result is IList)
+                                        var list = result as IList;
+                                        if (list != null)
                                         {
-                                            ((IList)result).Add(guid);
-                                        }
-                                        else if (result is IDictionary)
-                                        {
-                                            ((IDictionary)result).Add(current.Name, guid);
+                                            list.Add(guid);
                                         }
                                         else
                                         {
-                                            result = guid;
+                                            var map = result as IDictionary;
+                                            if (map != null)
+                                            {
+                                                map.Add(current.Name, guid);
+                                            }
+                                            else
+                                            {
+                                                result = guid;
+                                            }
                                         }
                                     }
                                 }
                                 else if (type == typeof(char) && !string.IsNullOrEmpty(value))
                                 {
-                                    if (result is IList)
+                                    var list = result as IList;
+                                    if (list != null)
                                     {
-                                        ((IList)result).Add(value[0]);
-                                    }
-                                    else if (result is IDictionary)
-                                    {
-                                        ((IDictionary)result).Add(current.Name, value[0]);
+                                        list.Add(value[0]);
                                     }
                                     else
                                     {
-                                        result = value[0];
-                                    }
-                                }
-                            }
-                            break;
-                        case JsonType.Object:
-                            {
-                                var propertyType = property.PropertyType;
-                                var item = ReadObject(current, propertyType);
-                               
-                                if (root.Type == JsonType.Object)
-                                {
-                                    ((IDataEntity)result).Property(property.PropertyName, item);
-                                }
-                                else if (root.Type == JsonType.Array)
-                                {
-                                    ((IList)result).Add(item);
-                                }
-                            }
-                            break;
-                        case JsonType.Array:
-                            {
-                                if (root.Type == JsonType.Object)
-                                {
-                                    if (property != null)
-                                    {
-                                        IList list;
-                                        if (!property.IsListInterface)
+                                        var map = result as IDictionary;
+                                        if (map != null)
                                         {
-                                            list = (IList)Nemo.Reflection.Activator.New(property.PropertyType);
+                                            map.Add(current.Name, value[0]);
                                         }
                                         else
                                         {
-                                            list = List.Create(property.ElementType, property.Distinct, property.Sorted);
+                                            result = value[0];
                                         }
-                                        var child = current.FirstChild;
-                                        while (child != null)
-                                        {
-                                            var item = (IDataEntity)ReadObject(child, property.ElementType);
-                                            list.Add(item);
-                                            child = child.NexSibling;
-                                        }
-                                        ((IDataEntity)result).Property(property.PropertyName, list);
                                     }
-                                    else if (result is IDictionary)
+                                }
+                            }
+                            break;
+                        }
+                        case JsonType.Object:
+                        {
+                            var propertyType = property.PropertyType;
+                            var item = ReadObject(current, propertyType);
+
+                            switch (root.Type)
+                            {
+                                case JsonType.Object:
+                                    ((IDataEntity)result).Property(property.PropertyName, item);
+                                    break;
+                                case JsonType.Array:
+                                    ((IList)result).Add(item);
+                                    break;
+                            }
+                            break;
+                        }
+                        case JsonType.Array:
+                        {
+                            if (root.Type == JsonType.Object)
+                            {
+                                if (property != null)
+                                {
+                                    IList list;
+                                    if (!property.IsListInterface)
+                                    {
+                                        list = (IList)property.PropertyType.New();
+                                    }
+                                    else
+                                    {
+                                        list = List.Create(property.ElementType, property.Distinct, property.Sorted);
+                                    }
+                                    var child = current.FirstChild;
+                                    while (child != null)
+                                    {
+                                        var item = (IDataEntity)ReadObject(child, property.ElementType);
+                                        list.Add(item);
+                                        child = child.NexSibling;
+                                    }
+                                    ((IDataEntity)result).Property(property.PropertyName, list);
+                                }
+                                else
+                                {
+                                    var map = result as IDictionary;
+                                    if (map != null)
                                     {
                                         var listType = Reflector.GetReflectedType(elementType);
                                         if (elementType.IsArray)
                                         {
                                             var list = (IList)ReadObject(current, typeof(List<>).MakeGenericType(listType.ElementType));
-                                            ((IDictionary)result).Add(current.Name, List.CreateArray(listType.ElementType, list));
+                                            map.Add(current.Name, List.CreateArray(listType.ElementType, list));
                                         }
                                         else
                                         {
                                             var list = (IList)ReadObject(current, elementType);
-                                            ((IDictionary)result).Add(current.Name, list);
+                                            map.Add(current.Name, list);
                                         }
                                     }
                                 }
-                                break;
                             }
+                            break;
+                        }
                     }
                 }
 

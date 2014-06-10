@@ -34,7 +34,9 @@ namespace Nemo.Fn
         public K As<K>()
         {
             if (!Is<K>())
+            {
                 throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+            }
             return (K)((ITypeUnion)this).GetObject();
         }
 
@@ -53,7 +55,7 @@ namespace Nemo.Fn
         {
             get
             {
-                return new Type[] { typeof(T1) };
+                return new[] { typeof(T1) };
             }
         }
         
@@ -71,7 +73,7 @@ namespace Nemo.Fn
 
         public static bool operator ==(TypeUnion<T1> t1, TypeUnion<T1> t2)
         {
-            return object.ReferenceEquals(t1, t2) || (object.Equals(t1, null) && t1.Equals(t2));
+            return ReferenceEquals(t1, t2) || (Equals(t1, null) && t1.Equals(t2));
         }
 
         public static bool operator !=(TypeUnion<T1> t1, TypeUnion<T1> t2)
@@ -81,7 +83,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", this.GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
         }
 
         #endregion
@@ -112,7 +114,9 @@ namespace Nemo.Fn
         public K As<K>()
         {
             if (!Is<K>())
+            {
                 throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+            }
             return (K)((ITypeUnion)this).GetObject();
         }
 
@@ -122,10 +126,7 @@ namespace Nemo.Fn
             {
                 return _state.Item1.Value;
             }
-            else
-            {
-                return _state.Item2.Value;
-            }
+            return _state.Item2.Value;
         }
 
         public Type UnionType
@@ -138,7 +139,7 @@ namespace Nemo.Fn
         {
             get
             {
-                return new Type[] { typeof(T1), typeof(T2) };
+                return new[] { typeof(T1), typeof(T2) };
             }
         }
 
@@ -156,7 +157,7 @@ namespace Nemo.Fn
 
         public static bool operator ==(TypeUnion<T1, T2> t1, TypeUnion<T1, T2> t2)
         {
-            return object.ReferenceEquals(t1, t2) || (!object.Equals(t1, null) && t1.Equals(t2));
+            return ReferenceEquals(t1, t2) || (!Equals(t1, null) && t1.Equals(t2));
         }
 
         public static bool operator !=(TypeUnion<T1, T2> t1, TypeUnion<T1, T2> t2)
@@ -166,7 +167,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", this.GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
         }
 
         #endregion
@@ -203,7 +204,9 @@ namespace Nemo.Fn
         public K As<K>()
         {
             if (!Is<K>())
+            {
                 throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+            }
             return (K)((ITypeUnion)this).GetObject();
         }
 
@@ -213,14 +216,11 @@ namespace Nemo.Fn
             {
                 return _state.Item1.Value;
             }
-            else if (_state.Item2.HasValue)
+            if (_state.Item2.HasValue)
             {
                 return _state.Item2.Value;
             }
-            else
-            {
-                return _state.Item3.Value;
-            }
+            return _state.Item3.Value;
         }
 
         public Type UnionType
@@ -233,7 +233,7 @@ namespace Nemo.Fn
         {
             get
             {
-                return new Type[] { typeof(T1), typeof(T2), typeof(T3) };
+                return new[] { typeof(T1), typeof(T2), typeof(T3) };
             }
         }
         
@@ -251,7 +251,7 @@ namespace Nemo.Fn
 
         public static bool operator ==(TypeUnion<T1, T2, T3> t1, TypeUnion<T1, T2, T3> t2)
         {
-            return object.ReferenceEquals(t1, t2) || (object.Equals(t1, null) && t1.Equals(t2));
+            return ReferenceEquals(t1, t2) || (Equals(t1, null) && t1.Equals(t2));
         }
 
         public static bool operator !=(TypeUnion<T1, T2, T3> t1, TypeUnion<T1, T2, T3> t2)
@@ -261,7 +261,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", this.GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
         }
 
         #endregion
@@ -304,7 +304,9 @@ namespace Nemo.Fn
         public K As<K>()
         {
             if (!Is<K>())
+            {
                 throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+            }
             return (K)((ITypeUnion)this).GetObject();
         }
 
@@ -314,18 +316,15 @@ namespace Nemo.Fn
             {
                 return _state.Item1.Value;
             }
-            else if (_state.Item2.HasValue)
+            if (_state.Item2.HasValue)
             {
                 return _state.Item2.Value;
             }
-            else if (_state.Item3.HasValue)
+            if (_state.Item3.HasValue)
             {
                 return _state.Item3.Value;
             }
-            else
-            {
-                return _state.Item4.Value;
-            }
+            return _state.Item4.Value;
         }
 
         public Type UnionType
@@ -338,7 +337,7 @@ namespace Nemo.Fn
         {
             get
             {
-                return new Type[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4) };
+                return new[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4) };
             }
         }
 
@@ -356,7 +355,7 @@ namespace Nemo.Fn
 
         public static bool operator ==(TypeUnion<T1, T2, T3, T4> t1, TypeUnion<T1, T2, T3, T4> t2)
         {
-            return object.ReferenceEquals(t1, t2) || (object.Equals(t1, null) && t1.Equals(t2));
+            return ReferenceEquals(t1, t2) || (Equals(t1, null) && t1.Equals(t2));
         }
         public static bool operator !=(TypeUnion<T1, T2, T3, T4> t1, TypeUnion<T1, T2, T3, T4> t2)
         {
@@ -365,7 +364,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", this.GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
         }
 
         #endregion
@@ -414,7 +413,9 @@ namespace Nemo.Fn
         public K As<K>()
         {
             if (!Is<K>())
+            {
                 throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+            }
             return (K)((ITypeUnion)this).GetObject();
         }
 
@@ -424,22 +425,19 @@ namespace Nemo.Fn
             {
                 return _state.Item1.Value;
             }
-            else if (_state.Item2.HasValue)
+            if (_state.Item2.HasValue)
             {
                 return _state.Item2.Value;
             }
-            else if (_state.Item3.HasValue)
+            if (_state.Item3.HasValue)
             {
                 return _state.Item3.Value;
             }
-            else if (_state.Item4.HasValue)
+            if (_state.Item4.HasValue)
             {
                 return _state.Item4.Value;
             }
-            else
-            {
-                return _state.Item5.Value;
-            }
+            return _state.Item5.Value;
         }
 
         public Type UnionType
@@ -452,7 +450,7 @@ namespace Nemo.Fn
         {
             get
             {
-                return new Type[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5) };
+                return new[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5) };
             }
         }
 
@@ -470,7 +468,7 @@ namespace Nemo.Fn
        
         public static bool operator ==(TypeUnion<T1, T2, T3, T4, T5> t1, TypeUnion<T1, T2, T3, T4, T5> t2)
         {
-            return object.ReferenceEquals(t1, t2) || (object.Equals(t1, null) && t1.Equals(t2));
+            return ReferenceEquals(t1, t2) || (Equals(t1, null) && t1.Equals(t2));
         }
         public static bool operator !=(TypeUnion<T1, T2, T3, T4, T5> t1, TypeUnion<T1, T2, T3, T4, T5> t2)
         {
@@ -479,7 +477,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", this.GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
         }
 
         #endregion
@@ -487,7 +485,7 @@ namespace Nemo.Fn
 
     public static class TypeUnion
     {
-        private static ConcurrentDictionary<TypeArray, Type> _types = new ConcurrentDictionary<TypeArray, Type>();
+        private static readonly ConcurrentDictionary<TypeArray, Type> _types = new ConcurrentDictionary<TypeArray, Type>();
 
         public static ITypeUnion Create(IList<Type> types, object value)
         {
@@ -495,25 +493,23 @@ namespace Nemo.Fn
             if (types != null && value != null)
             {
                 Type genericType = null;
-                if (types.Count == 1)
+                switch (types.Count)
                 {
-                    genericType = typeof(TypeUnion<>);
-                }
-                else if (types.Count == 2)
-                {
-                    genericType = typeof(TypeUnion<,>);
-                }
-                else if (types.Count == 3)
-                {
-                    genericType = typeof(TypeUnion<,,>);
-                }
-                else if (types.Count == 4)
-                {
-                    genericType = typeof(TypeUnion<,,,>);
-                }
-                else if (types.Count == 5)
-                {
-                    genericType = typeof(TypeUnion<,,,,>);
+                    case 1:
+                        genericType = typeof(TypeUnion<>);
+                        break;
+                    case 2:
+                        genericType = typeof(TypeUnion<,>);
+                        break;
+                    case 3:
+                        genericType = typeof(TypeUnion<,,>);
+                        break;
+                    case 4:
+                        genericType = typeof(TypeUnion<,,,>);
+                        break;
+                    case 5:
+                        genericType = typeof(TypeUnion<,,,,>);
+                        break;
                 }
 
                 if (genericType != null)

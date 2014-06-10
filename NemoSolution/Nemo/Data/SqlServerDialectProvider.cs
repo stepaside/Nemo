@@ -13,32 +13,31 @@ namespace Nemo.Data
         public static SqlServerDialectProvider Instance = new SqlServerDialectProvider();
 
         protected SqlServerDialectProvider()
-            : base()
         {
-            this.AutoIncrementComputation = "SCOPE_IDENTITY()";
-            this.BigIntDefinition = "BIGINT";
-            this.BlobDefition = "VARBINARY(MAX)";
-            this.ByteDefinition = "TINYINT";
-            this.ClobDefition = "VARCHAR(MAX)";
-            this.DoubleDefinition = "FLOAT";
-            this.SingleDefinition = "REAL";
-            this.GuidDefinition = "UNIQUEIDENTIFIER";
-            this.StringDefinition = "NVARCHAR(4000)";
-            this.AnsiStringDefinition = "VARCHAR(8000)";
-            this.DateDefinition = "DATE";
-            this.DateTimeDefinition = "DATETIME";
-            this.TimeDefinition = "TIME";
-            this.TemporaryTableCreation = "CREATE TABLE {0} ({1});";
-            this.UseOrderedParameters = false;
-            this.VariableDeclaration = "DECLARE {0}{1} {2};";
-            this.VariableAssignment = "SET {0}{1} = {2};";
-            this.VariablePrefix = "@";
-            this.ParameterPrefix = "@";
-            this.StringConcatenationOperator = "+";
-            this.SubstringFunction = "SUBSTRING";
-            this.IdentifierEscapeStartCharacter = "[";
-            this.IdentifierEscapeEndCharacter = "]";
-            this.SupportsTemporaryTables = true;
+            AutoIncrementComputation = "SCOPE_IDENTITY()";
+            BigIntDefinition = "BIGINT";
+            BlobDefition = "VARBINARY(MAX)";
+            ByteDefinition = "TINYINT";
+            ClobDefition = "VARCHAR(MAX)";
+            DoubleDefinition = "FLOAT";
+            SingleDefinition = "REAL";
+            GuidDefinition = "UNIQUEIDENTIFIER";
+            StringDefinition = "NVARCHAR(4000)";
+            AnsiStringDefinition = "VARCHAR(8000)";
+            DateDefinition = "DATE";
+            DateTimeDefinition = "DATETIME";
+            TimeDefinition = "TIME";
+            TemporaryTableCreation = "CREATE TABLE {0} ({1});";
+            UseOrderedParameters = false;
+            VariableDeclaration = "DECLARE {0}{1} {2};";
+            VariableAssignment = "SET {0}{1} = {2};";
+            VariablePrefix = "@";
+            ParameterPrefix = "@";
+            StringConcatenationOperator = "+";
+            SubstringFunction = "SUBSTRING";
+            IdentifierEscapeStartCharacter = "[";
+            IdentifierEscapeEndCharacter = "]";
+            SupportsTemporaryTables = true;
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)
@@ -48,7 +47,7 @@ namespace Nemo.Data
 
         public override string CreateTemporaryTable(string tableName, Dictionary<string, DbType> coulmns)
         {
-            var definition = coulmns.Select(d => string.Format("{2}{0}{3} {1}", d.Key, GetColumnType(d.Value), this.IdentifierEscapeStartCharacter, this.IdentifierEscapeEndCharacter)).ToDelimitedString(",");
+            var definition = coulmns.Select(d => string.Format("{2}{0}{3} {1}", d.Key, GetColumnType(d.Value), IdentifierEscapeStartCharacter, IdentifierEscapeEndCharacter)).ToDelimitedString(",");
             return string.Format(TemporaryTableCreation, GetTemporaryTableName(tableName), definition);
         }
 

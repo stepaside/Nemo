@@ -28,17 +28,17 @@ namespace Nemo.Serialization
     {
         public delegate void ObjectSerializer(SerializationWriter writer, IList values, int count);
 
-        private static ConcurrentDictionary<Type, ObjectSerializer> _serializers = new ConcurrentDictionary<Type, ObjectSerializer>();
-        private static ConcurrentDictionary<Type, ObjectSerializer> _serializersNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
-        private static ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllProperties = new ConcurrentDictionary<Type, ObjectSerializer>();
-        private static ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectSerializer> _serializers = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectSerializer> _serializersNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllProperties = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
 
         private readonly SerializationMode _mode;
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
         private bool _objectTypeWritten;
-        private Stream _stream;
-        private Encoding _encoding;
+        private readonly Stream _stream;
+        private readonly Encoding _encoding;
 
         private SerializationWriter(Stream stream, SerializationMode mode, Encoding encoding)
         {
@@ -91,15 +91,13 @@ namespace Nemo.Serialization
 
         public byte[] GetBytes()
         {
-            if (_stream is MemoryStream)
+            var stream = _stream as MemoryStream;
+            if (stream != null)
             {
-                var data = ((MemoryStream)_stream).ToArray();
+                var data = stream.ToArray();
                 return data;
             }
-            else
-            {
-                return new byte[0];
-            }
+            return new byte[0];
         }
 
         public void Write(byte value)
@@ -311,7 +309,7 @@ namespace Nemo.Serialization
             else
             {
                 Write((uint)items.Count + 1);
-                for (int i = 0; i < items.Count; i++)
+                for (var i = 0; i < items.Count; i++)
                 {
                     WriteObject(items[i]);
                 }
@@ -369,9 +367,10 @@ namespace Nemo.Serialization
 
         public void WriteListAspectType(IList value)
         {
-            if (value is ISortedList)
+            var sortedList = value as ISortedList;
+            if (sortedList != null)
             {
-                if (((ISortedList)value).Distinct)
+                if (sortedList.Distinct)
                 {
                     Write((byte)(ListAspectType.Sorted | ListAspectType.Distinct));
                 }
@@ -379,16 +378,20 @@ namespace Nemo.Serialization
                 {
                     Write((byte)ListAspectType.Sorted);
                 }
-                Write(((ISortedList)value).Comparer.FullName);
-            }
-            else if (value is ISet)
-            {
-                Write((byte)ListAspectType.Distinct);
-                Write(((ISet)value).Comparer.FullName);
+                Write(sortedList.Comparer.FullName);
             }
             else
             {
-                Write((byte)ListAspectType.None);
+                var set = value as ISet;
+                if (set != null)
+                {
+                    Write((byte)ListAspectType.Distinct);
+                    Write(set.Comparer.FullName);
+                }
+                else
+                {
+                    Write((byte)ListAspectType.None);
+                }
             }
         }
 
@@ -565,26 +568,9 @@ namespace Nemo.Serialization
             //return _serializers.GetOrAdd(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, k => GenerateDelegate(k, objectType));
             if (!_serializeAll)
             {
-                if (_includePropertyNames)
-                {
-                    return _serializers.GetOrAdd(objectType, t => GenerateDelegate(t));
-                }
-                else
-                {
-                    return _serializersNoHeader.GetOrAdd(objectType, t => GenerateDelegate(t));
-                }
+                return _includePropertyNames ? _serializers.GetOrAdd(objectType, GenerateDelegate) : _serializersNoHeader.GetOrAdd(objectType, GenerateDelegate);
             }
-            else
-            {
-                if (_includePropertyNames)
-                {
-                    return _serializersWithAllProperties.GetOrAdd(objectType, t => GenerateDelegate(t));
-                }
-                else
-                {
-                    return _serializersWithAllPropertiesNoHeader.GetOrAdd(objectType, t => GenerateDelegate(t));
-                }
-            }
+            return _includePropertyNames ? _serializersWithAllProperties.GetOrAdd(objectType, GenerateDelegate) : _serializersWithAllPropertiesNoHeader.GetOrAdd(objectType, GenerateDelegate);
         }
 
         private ObjectSerializer GenerateDelegate(Type objectType)
@@ -592,21 +578,19 @@ namespace Nemo.Serialization
             var method = new DynamicMethod("Serialize_" + objectType.Name, null, new[] { typeof(SerializationWriter), typeof(IList), typeof(int) }, typeof(SerializationWriter).Module);
             var il = method.GetILGenerator();
 
-            var writeObjectType = this.GetType().GetMethod("WriteObjectType");
-            var writeListAspectType = this.GetType().GetMethod("WriteListAspectType");                        
-            var writeObject = this.GetType().GetMethod("WriteObject", new[] { typeof(object), typeof(ObjectTypeCode) });
-            var writeLength = this.GetType().GetMethod("Write", new[] { typeof(uint) });
-            var writeName = this.GetType().GetMethod("Write", new[] { typeof(string) });
+            var writeObjectType = GetType().GetMethod("WriteObjectType");
+            var writeListAspectType = GetType().GetMethod("WriteListAspectType");                        
+            var writeObject = GetType().GetMethod("WriteObject", new[] { typeof(object), typeof(ObjectTypeCode) });
+            var writeLength = GetType().GetMethod("Write", new[] { typeof(uint) });
+            var writeName = GetType().GetMethod("Write", new[] { typeof(string) });
             var getItem = typeof(IList).GetMethod("get_Item");
 
-            Type containerType = null;
             Type elementType = null;
-            Type interfaceType = null;
-            var isEmitted = false;
+            Type interfaceType;
+            bool isEmitted;
 
             if (Reflector.IsList(objectType))
             {
-                containerType = objectType;
                 elementType = Reflector.ExtractCollectionElementType(objectType);
                 interfaceType = elementType;
                 isEmitted = Reflector.IsEmitted(elementType);
@@ -619,25 +603,11 @@ namespace Nemo.Serialization
 
             if (isEmitted)
             {
-                if (elementType != null)
-                {
-                    interfaceType = Reflector.ExtractInterface(elementType);
-                }
-                else
-                {
-                    interfaceType = Reflector.ExtractInterface(objectType);
-                }
+                interfaceType = Reflector.ExtractInterface(elementType ?? objectType);
 
                 if (interfaceType == null)
                 {
-                    if (elementType != null)
-                    {
-                        interfaceType = elementType;
-                    }
-                    else
-                    {
-                        interfaceType = objectType;
-                    }
+                    interfaceType = elementType ?? objectType;
                 }
             }
 

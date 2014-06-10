@@ -24,21 +24,21 @@ namespace Nemo.Security.Cryptography
 
         public static uint Compute(byte[] data)
         {
-            int len = data.Length;
+            var len = data.Length;
             a = b = 0x9e3779b9;
             c = 0;
-            int i = 0;
+            var i = 0;
             while (i + 12 <= len)
             {
-                a += (uint)data[i++] |
+                a += data[i++] |
                     ((uint)data[i++] << 8) |
                     ((uint)data[i++] << 16) |
                     ((uint)data[i++] << 24);
-                b += (uint)data[i++] |
+                b += data[i++] |
                     ((uint)data[i++] << 8) |
                     ((uint)data[i++] << 16) |
                     ((uint)data[i++] << 24);
-                c += (uint)data[i++] |
+                c += data[i++] |
                     ((uint)data[i++] << 8) |
                     ((uint)data[i++] << 16) |
                     ((uint)data[i++] << 24);
@@ -54,7 +54,7 @@ namespace Nemo.Security.Cryptography
             if (i < len)
                 a += (uint)data[i++] << 24;
             if (i < len)
-                b += (uint)data[i++];
+                b += data[i++];
             if (i < len)
                 b += (uint)data[i++] << 8;
             if (i < len)

@@ -8,7 +8,7 @@ namespace Nemo.Collections
 {
     internal class TypeArray : IEqualityComparer<IList<Type>>
     {
-        public IList<Type> _types;
+        private readonly IList<Type> _types;
 
         public TypeArray(IList<Type> types)
         {

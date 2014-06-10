@@ -17,7 +17,7 @@ namespace Nemo.Reflection
             IndexerMapper(source, target);
         }
 
-        private static Nemo.Reflection.Mapper.PropertyMapper IndexerMapper;
+        private static Mapper.PropertyMapper IndexerMapper;
     }
 
     internal class FastExactIndexerMapper<T1, T2>
@@ -32,6 +32,6 @@ namespace Nemo.Reflection
             IndexerMapper(source, target);
         }
 
-        private static Nemo.Reflection.Mapper.PropertyMapper IndexerMapper;
+        private static Mapper.PropertyMapper IndexerMapper;
     }
 }

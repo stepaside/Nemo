@@ -8,7 +8,7 @@ namespace Nemo.UnitOfWork
 {
     internal class ObjectScopeItem
     {
-        private IDataEntity _item;
+        private readonly IDataEntity _item;
 
         public ObjectScopeItem(IDataEntity items)
         {
@@ -23,7 +23,7 @@ namespace Nemo.UnitOfWork
         internal static T Deserialize<T>(byte[] data)
             where T : class, IDataEntity
         {
-            return ObjectSerializer.Deserialize<T>(data);
+            return data.Deserialize<T>();
         }
     }
 }

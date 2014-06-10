@@ -22,8 +22,8 @@ namespace Nemo
      */
     public class ThreadedPrincipal : IPrincipal
     {
-        IPrincipal _principal;
-        IDictionary<string, object> _items;
+        private readonly IPrincipal _principal;
+        private readonly IDictionary<string, object> _items;
 
         public ThreadedPrincipal(IPrincipal principal)
         {

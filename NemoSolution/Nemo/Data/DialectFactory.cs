@@ -10,10 +10,10 @@ namespace Nemo.Data
 {
     public static class DialectFactory
     {
-        public const string PROVIDER_INVARIANT_SQL = "System.Data.SqlClient";
-        public const string PROVIDER_INVARIANT_MYSQL = "MySql.Data.MySqlClient";
-        public const string PROVIDER_INVARIANT_SQLITE = "System.Data.SQLite";
-        public const string PROVIDER_INVARIANT_ORACLE = "Oracle.DataAccess.Client";
+        public const string ProviderInvariantSql = "System.Data.SqlClient";
+        public const string ProviderInvariantMysql = "MySql.Data.MySqlClient";
+        public const string ProviderInvariantSqlite = "System.Data.SQLite";
+        public const string ProviderInvariantOracle = "Oracle.DataAccess.Client";
 
         public static DialectProvider GetProvider(string connectionName)
         {
@@ -29,7 +29,7 @@ namespace Nemo.Data
                 providerName = DbFactory.GetProviderInvariantNameByConnectionString(connection.ConnectionString);
             }
 
-            var isSqlServer = string.Equals(providerName, PROVIDER_INVARIANT_SQL, StringComparison.OrdinalIgnoreCase);
+            //var isSqlServer = string.Equals(providerName, ProviderInvariantSql, StringComparison.OrdinalIgnoreCase);
 
             if (connection.State != ConnectionState.Open)
             {
@@ -38,23 +38,16 @@ namespace Nemo.Data
 
             switch (providerName)
             {
-                case PROVIDER_INVARIANT_SQL:
-                    {
-                        var isLegacy = new Version(connection.ServerVersion).Major <= 8;
-                        if (isLegacy)
-                        {
-                            return SqlServerLegacyDialectProvider.Instance;
-                        }
-                        else
-                        {
-                            return SqlServerDialectProvider.Instance;
-                        }
-                    }
-                case PROVIDER_INVARIANT_MYSQL:
+                case ProviderInvariantSql:
+                {
+                    var isLegacy = new Version(connection.ServerVersion).Major <= 8;
+                    return isLegacy ? SqlServerLegacyDialectProvider.Instance : SqlServerDialectProvider.Instance;
+                }
+                case ProviderInvariantMysql:
                     return MySqlDialectProvider.Instance;
-                case PROVIDER_INVARIANT_SQLITE:
-                    return SQLiteDialectProvider.Instance;
-                case PROVIDER_INVARIANT_ORACLE:
+                case ProviderInvariantSqlite:
+                    return SqliteDialectProvider.Instance;
+                case ProviderInvariantOracle:
                     return OracleDialectProvider.Instance;
                 default:
                     throw new NotSupportedException();

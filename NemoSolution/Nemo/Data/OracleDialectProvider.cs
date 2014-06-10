@@ -13,34 +13,33 @@ namespace Nemo.Data
         public readonly static OracleDialectProvider Instance = new OracleDialectProvider();
 
         protected OracleDialectProvider()
-            : base()
         {
-            this.AutoIncrementSequenceNameSuffix = "id_sequence";
-            this.BigIntDefinition = "NUMBER(38)";
-            this.SmallIntDefinition = "NUMBER(38)";
-            this.BooleanDefinition = "NUMBER(1)";
-            this.BlobDefition = "LONG RAW";
-            this.ByteDefinition = "UNSIGNED INTEGER";
-            this.ClobDefition = "CLOB";
-            this.DoubleDefinition = "FLOAT(126)";
-            this.SingleDefinition = "FLOAT(63)";
-            this.GuidDefinition = "RAW(16)";
-            this.StringDefinition = "NVARCHAR2(4000)";
-            this.AnsiStringDefinition = "VARCHAR2(4000)";
-            this.DateDefinition = "DATE";
-            this.DateTimeDefinition = "TIMESTAMP";
-            this.TimeDefinition = "TIMESTAMP";
-            this.TemporaryTableCreation = "CREATE GLOBAL TEMPORARY TABLE {0} ({1}) ON COMMIT DELETE ROWS;";
-            this.UseOrderedParameters = false;
-            this.VariableDeclaration = "DECLARE {0}{1} {2};";
-            this.VariableAssignment = "{0}{1} := {2};";
-            this.VariablePrefix = "";
-            this.ParameterPrefix = ":";
-            this.StringConcatenationOperator = "||";
-            this.SubstringFunction = "SUBSTR";
-            this.IdentifierEscapeStartCharacter = "\"";
-            this.IdentifierEscapeEndCharacter = "\"";
-            this.SupportsTemporaryTables = true;
+            AutoIncrementSequenceNameSuffix = "id_sequence";
+            BigIntDefinition = "NUMBER(38)";
+            SmallIntDefinition = "NUMBER(38)";
+            BooleanDefinition = "NUMBER(1)";
+            BlobDefition = "LONG RAW";
+            ByteDefinition = "UNSIGNED INTEGER";
+            ClobDefition = "CLOB";
+            DoubleDefinition = "FLOAT(126)";
+            SingleDefinition = "FLOAT(63)";
+            GuidDefinition = "RAW(16)";
+            StringDefinition = "NVARCHAR2(4000)";
+            AnsiStringDefinition = "VARCHAR2(4000)";
+            DateDefinition = "DATE";
+            DateTimeDefinition = "TIMESTAMP";
+            TimeDefinition = "TIMESTAMP";
+            TemporaryTableCreation = "CREATE GLOBAL TEMPORARY TABLE {0} ({1}) ON COMMIT DELETE ROWS;";
+            UseOrderedParameters = false;
+            VariableDeclaration = "DECLARE {0}{1} {2};";
+            VariableAssignment = "{0}{1} := {2};";
+            VariablePrefix = "";
+            ParameterPrefix = ":";
+            StringConcatenationOperator = "||";
+            SubstringFunction = "SUBSTR";
+            IdentifierEscapeStartCharacter = "\"";
+            IdentifierEscapeEndCharacter = "\"";
+            SupportsTemporaryTables = true;
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)
@@ -50,7 +49,7 @@ namespace Nemo.Data
 
         public override string CreateTemporaryTable(string tableName, Dictionary<string, DbType> coulmns)
         {
-            var definition = coulmns.Select(d => string.Format("{2}{0}{3} {1}", d.Key, GetColumnType(d.Value), this.IdentifierEscapeStartCharacter, this.IdentifierEscapeEndCharacter)).ToDelimitedString(",");
+            var definition = coulmns.Select(d => string.Format("{2}{0}{3} {1}", d.Key, GetColumnType(d.Value), IdentifierEscapeStartCharacter, IdentifierEscapeEndCharacter)).ToDelimitedString(",");
             return string.Format(TemporaryTableCreation, tableName, definition);
         }
 

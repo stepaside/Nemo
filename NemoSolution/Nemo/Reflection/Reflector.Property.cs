@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Collections.Concurrent;
@@ -10,8 +9,8 @@ namespace Nemo.Reflection
     {
         public static class Property
         {
-            private static ConcurrentDictionary<Tuple<Type, string>, GenericGetter> _getters = new ConcurrentDictionary<Tuple<Type, string>, GenericGetter>();
-            private static ConcurrentDictionary<Tuple<Type, string>, GenericSetter> _setters = new ConcurrentDictionary<Tuple<Type, string>, GenericSetter>();
+            private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericGetter> _getters = new ConcurrentDictionary<Tuple<Type, string>, GenericGetter>();
+            private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericSetter> _setters = new ConcurrentDictionary<Tuple<Type, string>, GenericSetter>();
             
             #region Property Getters
 
@@ -30,7 +29,7 @@ namespace Nemo.Reflection
                 if (target != null)
                 {
                     var propertyKey = Tuple.Create(targetType, propertyName);
-                    var getMethod = _getters.GetOrAdd(propertyKey, key => GenerateGetter(key));
+                    var getMethod = _getters.GetOrAdd(propertyKey, GenerateGetter);
                     return getMethod(target);
                 }
                 return null;
@@ -38,7 +37,7 @@ namespace Nemo.Reflection
 
             private static GenericGetter GenerateGetter(Tuple<Type, string> key)
             {
-                return CreateGetMethod(Reflector.GetProperty(key.Item1, key.Item2), key.Item1);
+                return CreateGetMethod(GetProperty(key.Item1, key.Item2), key.Item1);
             }
 
             #endregion
@@ -60,14 +59,14 @@ namespace Nemo.Reflection
                 if (target != null)
                 {
                     var propertyKey = Tuple.Create(targetType, propertyName);
-                    var setMethod = _setters.GetOrAdd(propertyKey, key => GenerateSetter(key));
+                    var setMethod = _setters.GetOrAdd(propertyKey, GenerateSetter);
                     setMethod(target, value);
                 }
             }
 
             private static GenericSetter GenerateSetter(Tuple<Type, string> key)
             {
-                return CreateSetMethod(Reflector.GetProperty(key.Item1, key.Item2), key.Item1);
+                return CreateSetMethod(GetProperty(key.Item1, key.Item2), key.Item1);
             }
 
             #endregion
@@ -81,6 +80,7 @@ namespace Nemo.Reflection
             /// Creates a dynamic setter for the property
             /// </summary>
             /// <param name="propertyInfo"></param>
+            /// <param name="targetType"></param>
             private static GenericSetter CreateSetMethod(PropertyInfo propertyInfo, Type targetType)
             {
                 var setMethod = propertyInfo.GetSetMethod();

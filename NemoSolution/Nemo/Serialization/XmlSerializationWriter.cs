@@ -1,6 +1,5 @@
 ﻿using Nemo.Attributes;
 using Nemo.Collections.Extensions;
-using Nemo.Fn;
 using Nemo.Reflection;
 using Nemo.Utilities;
 using System;
@@ -11,8 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Security;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 
@@ -22,11 +19,11 @@ namespace Nemo.Serialization
     {
         internal delegate void XmlObjectSerializer(object value, TextWriter output, bool addSchemaDeclaration);
 
-        private static ConcurrentDictionary<string, XmlObjectSerializer> _serializers = new ConcurrentDictionary<string, XmlObjectSerializer>();
+        private static readonly ConcurrentDictionary<string, XmlObjectSerializer> _serializers = new ConcurrentDictionary<string, XmlObjectSerializer>();
 
         public static void WriteStartElement(string name, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
         {
-            output.Write(string.Format("<{0}", name));
+            output.Write("<{0}", name);
             if (addSchemaDeclaration)
             {
                 output.Write(" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\"");
@@ -97,7 +94,7 @@ namespace Nemo.Serialization
                 name = Reflector.SimpleClrToXmlType(items[0].GetType());
             }
 
-            for (int i = 0; i < items.Count; i++)
+            for (var i = 0; i < items.Count; i++)
             {
                 if (isSimpleList)
                 {
@@ -180,30 +177,34 @@ namespace Nemo.Serialization
                                 var serializer = CreateDelegate(objectType);
                                 serializer(value, output, addSchemaDeclaration);
                             }
-                            else if (value is IList)
+                            else
                             {
-                                WriteStartElement(name, output, false, null);
-                                var items = ((IList)value).Cast<object>().ToArray();
-                                if (items.Length > 0 && items[0] is IDataEntity)
+                                var list = value as IList;
+                                if (list != null)
                                 {
-                                    var elementType = items[0].GetType();
-                                    var serializer = CreateDelegate(elementType);
-                                    foreach (var item in items)
+                                    WriteStartElement(name, output, false, null);
+                                    var items = list.Cast<object>().ToArray();
+                                    if (items.Length > 0 && items[0] is IDataEntity)
                                     {
-                                        serializer(item, output, false);
+                                        var elementType = items[0].GetType();
+                                        var serializer = CreateDelegate(elementType);
+                                        foreach (var item in items)
+                                        {
+                                            serializer(item, output, false);
+                                        }
                                     }
+                                    else
+                                    {
+                                        WriteList(list, true, output);
+                                    }
+                                    WriteEndElement(name, output);
                                 }
                                 else
                                 {
-                                    WriteList((IList)value, true, output);
+                                    WriteStartElement(name, output, false, null);
+                                    new XmlSerializer(objectType).Serialize(output, value);
+                                    WriteEndElement(name, output);
                                 }
-                                WriteEndElement(name, output);
-                            }
-                            else
-                            {
-                                WriteStartElement(name, output, false, null);
-                                new XmlSerializer(objectType).Serialize(output, value);
-                                WriteEndElement(name, output);
                             }
                             break;
                     }
@@ -293,11 +294,7 @@ namespace Nemo.Serialization
             var interfaceType = objectType;
             if (Reflector.IsEmitted(objectType))
             {
-                interfaceType = Reflector.ExtractInterface(objectType);
-                if (interfaceType == null)
-                {
-                    interfaceType = objectType;
-                }
+                interfaceType = Reflector.ExtractInterface(objectType) ?? objectType;
             }
 
             var properties = Reflector.GetPropertyMap(interfaceType).Where(p => p.Key.CanRead && p.Key.CanWrite && p.Key.Name != "Indexer" && !p.Key.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any())
@@ -331,14 +328,7 @@ namespace Nemo.Serialization
             il.Emit(OpCodes.Ldstr, elementName);
             il.Emit(OpCodes.Ldarg_1);
             il.Emit(OpCodes.Ldarg_2);
-            if (properties.Item1.Any())
-            {
-                il.Emit(OpCodes.Ldloc_0);
-            }
-            else
-            {
-                il.Emit(OpCodes.Ldnull);
-            }
+            il.Emit(properties.Item1.Any() ? OpCodes.Ldloc_0 : OpCodes.Ldnull);
             il.Emit(OpCodes.Call, writeStart);
 
             foreach (var property in properties.Item2)
@@ -351,14 +341,7 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Ldstr, Xml.GetElementName(property.Key, property.Value.IsSimpleList));
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldc_I4_0);
-                if (properties.Item1.Any())
-                {
-                    il.Emit(OpCodes.Ldloc_0);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldnull);
-                }
+                il.Emit(properties.Item1.Any() ? OpCodes.Ldloc_0 : OpCodes.Ldnull);
                 il.Emit(OpCodes.Ldtoken, property.Value.PropertyType);
                 il.Emit(OpCodes.Call, getTypeFromHandle);
                 il.Emit(OpCodes.Call, writeObject);

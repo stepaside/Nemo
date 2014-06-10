@@ -93,14 +93,13 @@
     <Compile Include="Data\OracleDialectProvider.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />
-    <Compile Include="Data\SQLiteDialectProvider.cs" />
+    <Compile Include="Data\SqliteDialectProvider.cs" />
     <Compile Include="Fn\Extensions\FunctionExtensions.cs" />
     <Compile Include="Fn\Maybe.cs" />
     <Compile Include="Fn\MaybeExtensions.cs" />
     <Compile Include="Fn\Stream.cs" />
     <Compile Include="Fn\StreamExtensions.cs" />
-    <Compile Include="Audit\IAuditable.cs" />
-    <Compile Include="Fn\Tuple.cs">
+    <Compile Include="Fn\Utilities\Tuple.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Fn\TypeUnion.cs">
@@ -125,10 +124,8 @@
     <Compile Include="Reflection\ReflectedType.cs" />
     <Compile Include="Security\Cryptography\Hash.cs" />
     <Compile Include="Security\Cryptography\Jenkins96Hash.cs" />
-    <Compile Include="Security\Cryptography\JenkinsOneAtATimeHash.cs" />
     <Compile Include="Security\Cryptography\MurmurHash2.cs" />
     <Compile Include="Security\Cryptography\SBoxHash.cs" />
-    <Compile Include="Security\Cryptography\SuperFastHash.cs" />
     <Compile Include="Serialization\SerializationReader.cs" />
     <Compile Include="Serialization\JsonSerializationReader.cs" />
     <Compile Include="Serialization\JsonSerializationWriter.cs" />

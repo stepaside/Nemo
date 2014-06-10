@@ -17,7 +17,7 @@ namespace Nemo.Reflection
             return (T)InstanceBuilder();
         }
 
-        private static Nemo.Reflection.Activator.ObjectActivator InstanceBuilder;
+        private static Activator.ObjectActivator InstanceBuilder;
     }
 
     internal class FastActivator<T1, T2>
@@ -32,7 +32,7 @@ namespace Nemo.Reflection
             return (T1)InstanceBuilder(p);
         }
 
-        private static Nemo.Reflection.Activator.ObjectActivator InstanceBuilder;
+        private static Activator.ObjectActivator InstanceBuilder;
     }
 
     internal class FastActivator<T1, T2, T3>
@@ -47,6 +47,6 @@ namespace Nemo.Reflection
             return (T1)InstanceBuilder(p1, p2);
         }
 
-        private static Nemo.Reflection.Activator.ObjectActivator InstanceBuilder;
+        private static Activator.ObjectActivator InstanceBuilder;
     }
 }

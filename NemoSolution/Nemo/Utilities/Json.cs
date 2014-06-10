@@ -46,7 +46,7 @@ namespace Nemo.Utilities
 
     public class JsonParserException : Exception
     {
-        public JsonParserException() : base() { }
+        public JsonParserException() { }
         public JsonParserException(string message) : base(message) { }
         public JsonParserException(int charPosition, string message) : base(message) 
         {
@@ -89,8 +89,8 @@ namespace Nemo.Utilities
 
         internal static int HexToInteger(string source, out uint output)
         {
-            uint result = 0;
-            int i = 0;
+            var result = 0u;
+            var i = 0;
             for (; i < source.Length; i++)
             {
                 int digit;
@@ -119,18 +119,19 @@ namespace Nemo.Utilities
 
         internal static int TextToInteger(string source, out long output)
         {
-            long sign = 1;
-            int i = 0;
+            var sign = 1L;
+            var i = 0;
             if (source.Length > 0)
             {
-                if (source[0] == '-')
+                switch (source[0])
                 {
-                    sign = -1;
-                    i++;
-                }
-                else if (source[0] == '+')
-                {
-                    i++;
+                    case '-':
+                        sign = -1;
+                        i++;
+                        break;
+                    case '+':
+                        i++;
+                        break;
                 }
             }
 
@@ -147,18 +148,19 @@ namespace Nemo.Utilities
         internal static int TextToDecimal(string source, out decimal output)
         {
             // sign
-            decimal sign = 1m;
-            int i = 0;
+            var sign = 1m;
+            var i = 0;
             if (source.Length > 0)
             {
-                if (source[0] == '-')
+                switch (source[0])
                 {
-                    sign = -1;
-                    i++;
-                }
-                else if (source[0] == '+')
-                {
-                    i++;
+                    case '-':
+                        sign = -1;
+                        i++;
+                        break;
+                    case '+':
+                        i++;
+                        break;
                 }
             }
 
@@ -174,7 +176,7 @@ namespace Nemo.Utilities
             {
                 i++;
 
-                decimal inv_base = 0.1m;
+                var inv_base = 0.1m;
                 for (; i < source.Length && Char.IsDigit(source[i]); i++)
                 {
                     result += (source[i] - '0') * inv_base;
@@ -186,20 +188,21 @@ namespace Nemo.Utilities
             result *= sign;
 
             // exponent
-            bool exponent_negative = false;
-            int exponent = 0;
+            var exponent_negative = false;
+            var exponent = 0;
             if (i < source.Length && (source[i] == 'e' || source[i] == 'E'))
             {
                 i++;
 
-                if (source[i] == '-')
+                switch (source[i])
                 {
-                    exponent_negative = true;
-                    i++;
-                }
-                else if (source[i] == '+')
-                {
-                    i++;
+                    case '-':
+                        exponent_negative = true;
+                        i++;
+                        break;
+                    case '+':
+                        i++;
+                        break;
                 }
 
                 for (; i < source.Length && Char.IsDigit(source[i]); i++)
@@ -210,7 +213,7 @@ namespace Nemo.Utilities
 
             if (exponent > 0)
             {
-                decimal power_of_ten = 10;
+                var power_of_ten = 10m;
                 for (; exponent > 1; exponent--)
                 {
                     power_of_ten *= 10;
@@ -239,10 +242,10 @@ namespace Nemo.Utilities
             JsonValue top = null;
             string name = null;
 
-            int escaped_newlines = 0;
+            var escaped_newlines = 0;
 
             char[] jsonArray = null;
-            int i = 0;
+            var i = 0;
             for (; i < json.Length; i++)
             {
                 var ch = json[i];
@@ -259,10 +262,9 @@ namespace Nemo.Utilities
                     case '[':
                         {
                             // create new value
-                            var value = new JsonValue();
+                            var value = new JsonValue { Name = name };
 
                             // name
-                            value.Name = name;
                             name = null;
 
                             // type
@@ -317,16 +319,16 @@ namespace Nemo.Utilities
                             i++;
                             ch = json[i];
 
-                            int first = i;
-                            int last = i;
-                            char ch_last = ch;
+                            var first = i;
+                            var last = i;
+                            var ch_last = ch;
                             while (i < json.Length)
                             {
                                 if (ch < '\x20')
                                 {
                                     throw new JsonParserException(first, "Control characters not allowed in strings");
                                 }
-                                else if (ch == '\\')
+                                if (ch == '\\')
                                 {
                                     switch (json[i + 1])
                                     {
@@ -356,39 +358,39 @@ namespace Nemo.Utilities
                                             ch_last = '\t';
                                             break;
                                         case 'u':
+                                        {
+                                            if (jsonArray == null)
                                             {
-                                                if (jsonArray == null)
-                                                {
-                                                    jsonArray = json.ToCharArray();
-                                                }
-
-                                                uint codepoint;
-                                                if (HexToInteger(json.Substring(i + 2, 4), out codepoint) != 4)
-                                                {
-                                                    throw new JsonParserException(i, "Bad unicode codepoint");
-                                                }
-
-                                                if (codepoint <= 0x7F)
-                                                {
-                                                    ch_last = (char)codepoint;
-                                                }
-                                                else if (codepoint <= 0x7FF)
-                                                {
-                                                    last++;
-                                                    jsonArray[last] = (char)(0xC0 | (codepoint >> 6));
-                                                    last++;
-                                                    jsonArray[last] = (char)(0x80 | (codepoint & 0x3F));
-                                                }
-                                                else if (codepoint <= 0xFFFF)
-                                                {
-                                                    last++;
-                                                    jsonArray[last] = (char)(0xE0 | (codepoint >> 12));
-                                                    last++;
-                                                    jsonArray[last] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-                                                    last++;
-                                                    jsonArray[last] = (char)(0x80 | (codepoint & 0x3F));
-                                                }
+                                                jsonArray = json.ToCharArray();
                                             }
+
+                                            uint codepoint;
+                                            if (HexToInteger(json.Substring(i + 2, 4), out codepoint) != 4)
+                                            {
+                                                throw new JsonParserException(i, "Bad unicode codepoint");
+                                            }
+
+                                            if (codepoint <= 0x7F)
+                                            {
+                                                ch_last = (char)codepoint;
+                                            }
+                                            else if (codepoint <= 0x7FF)
+                                            {
+                                                last++;
+                                                jsonArray[last] = (char)(0xC0 | (codepoint >> 6));
+                                                last++;
+                                                jsonArray[last] = (char)(0x80 | (codepoint & 0x3F));
+                                            }
+                                            else if (codepoint <= 0xFFFF)
+                                            {
+                                                last++;
+                                                jsonArray[last] = (char)(0xE0 | (codepoint >> 12));
+                                                last++;
+                                                jsonArray[last] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+                                                last++;
+                                                jsonArray[last] = (char)(0x80 | (codepoint & 0x3F));
+                                            }
+                                        }
                                             i += 4;
                                             break;
                                         default:
@@ -418,9 +420,8 @@ namespace Nemo.Utilities
                             else
                             {
                                 // new string value
-                                var value = new JsonValue();
+                                var value = new JsonValue { Name = name };
 
-                                value.Name = name;
                                 name = null;
 
                                 value.Type = JsonType.String;
@@ -450,9 +451,8 @@ namespace Nemo.Utilities
                             CheckTop(top, i);
 
                             // new null/bool value
-                            JsonValue value = new JsonValue();
+                            var value = new JsonValue { Name = name };
 
-                            value.Name = name;
                             name = null;
 
                             // null
@@ -499,9 +499,8 @@ namespace Nemo.Utilities
                             CheckTop(top, i);
 
                             // new number value
-                            var value = new JsonValue();
+                            var value = new JsonValue { Name = name };
 
-                            value.Name = name;
                             name = null;
 
                             value.Type = JsonType.Integer;
@@ -538,10 +537,7 @@ namespace Nemo.Utilities
                                 {
                                     throw new JsonParserException(first, "Bad decimal number");
                                 }
-                                else
-                                {
-                                    value.Value = new TypeUnion<string, long, decimal, bool>(d);
-                                }
+                                value.Value = new TypeUnion<string, long, decimal, bool>(d);
                                 i--;
                             }
 

@@ -8,7 +8,7 @@ namespace Nemo.Configuration
 {
     public class ConfigurationFactory
     {
-        private static Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(() => DefaultConfiguration.New(), true);
+        private static Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(DefaultConfiguration.New, true);
 
         public static IConfiguration Configuration
         {
@@ -20,16 +20,14 @@ namespace Nemo.Configuration
         
         public static IConfiguration Configure(Func<IConfiguration> config = null)
         {
-            if (!_configuration.IsValueCreated)
+            if (_configuration.IsValueCreated) return null;
+            
+            MappingFactory.Initialize();
+            if (config != null)
             {
-                MappingFactory.Initialize();
-                if (config != null)
-                {
-                    _configuration = new Lazy<IConfiguration>(config, true);
-                }
-                return _configuration.Value;
+                _configuration = new Lazy<IConfiguration>(config, true);
             }
-            return null;
+            return _configuration.Value;
         }
     }
 }

@@ -1,17 +1,16 @@
-﻿using System;
+﻿using Nemo.Collections.Extensions;
+using Nemo.Security.Cryptography;
+using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using Nemo.Collections.Extensions;
-using Nemo.Utilities;
-using Nemo.Security.Cryptography;
 
 namespace Nemo.Reflection
 {
     public static class Activator
     {
-        private static ConcurrentDictionary<uint, ObjectActivator> _activatorCache = new ConcurrentDictionary<uint, ObjectActivator>();
+        private static readonly ConcurrentDictionary<uint, ObjectActivator> _activatorCache = new ConcurrentDictionary<uint, ObjectActivator>();
 
         public delegate object ObjectActivator(params object[] args);
 
@@ -28,7 +27,7 @@ namespace Nemo.Reflection
             type.Prepend(types)
                 .Select(t => BitConverter.GetBytes(t.GetHashCode()))
                 .Run((i, b) => Buffer.BlockCopy(b, 0, data, i * sizeof(int), b.Length));
-            var key = JenkinsOneAtATimeHash.Compute(data);
+            var key = Jenkins96Hash.Compute(data);
             return _activatorCache.GetOrAdd(key, (Func<uint, ObjectActivator>)(k => GenerateDelegate(type, types)));
         }
 
@@ -39,34 +38,30 @@ namespace Nemo.Reflection
             ConstructorInfo ctor = null;
             ParameterInfo[] paramsInfo = null;
 
-            for (int i = 0; i < ctors.Length; i++)
+            foreach (var c in ctors)
             {
-                var c = ctors[i];
                 var p = c.GetParameters();
-                if (p.Length == types.Length)
+                
+                if (p.Length != types.Length) continue;
+
+                if (p.Length == 0)
                 {
-                    if (p.Length == 0)
-                    {
-                        ctor = c;
-                        paramsInfo = p;
-                        break;
-                    }
-                    else
-                    {
-                        var count = p.Select(a => a.ParameterType).Zip(types, (t1, t2) => t1 == t2 || t1.IsAssignableFrom(t2) || t2.IsAssignableFrom(t1) ? 1 : 0).Sum();
-                        if (count == types.Length)
-                        {
-                            ctor = c;
-                            paramsInfo = p;
-                            break;
-                        }
-                    }
+                    ctor = c;
+                    paramsInfo = p;
+                    break;
                 }
+                var count = p.Select(a => a.ParameterType).Zip(types, (t1, t2) => t1 == t2 || t1.IsAssignableFrom(t2) || t2.IsAssignableFrom(t1) ? 1 : 0).Sum();
+                
+                if (count != types.Length) continue;
+
+                ctor = c;
+                paramsInfo = p;
+                break;
             }
 
             var method = new DynamicMethod("CreateInstance", type, new[] { typeof(object[]) }, true); // skip visibility is on to allow instantiation of anonyopus type wrappers
             var il = method.GetILGenerator();
-            for (int i = 0; i < paramsInfo.Length; i++)
+            for (var i = 0; i < paramsInfo.Length; i++)
             {
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldc_I4, i);

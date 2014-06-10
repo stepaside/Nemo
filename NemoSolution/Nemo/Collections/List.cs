@@ -11,10 +11,10 @@ namespace Nemo.Collections
 {
     public static class List
     {
-        private static ConcurrentDictionary<Type, Type> _listTypes = new ConcurrentDictionary<Type, Type>();
-        private static ConcurrentDictionary<Type, Type> _distinctListTypes = new ConcurrentDictionary<Type, Type>();
-        private static ConcurrentDictionary<Type, Type> _distinctSortedListTypes = new ConcurrentDictionary<Type, Type>();
-        private static ConcurrentDictionary<Type, Type> _sortedListTypes = new ConcurrentDictionary<Type, Type>();
+        private static readonly ConcurrentDictionary<Type, Type> _listTypes = new ConcurrentDictionary<Type, Type>();
+        private static readonly ConcurrentDictionary<Type, Type> _distinctListTypes = new ConcurrentDictionary<Type, Type>();
+        private static readonly ConcurrentDictionary<Type, Type> _distinctSortedListTypes = new ConcurrentDictionary<Type, Type>();
+        private static readonly ConcurrentDictionary<Type, Type> _sortedListTypes = new ConcurrentDictionary<Type, Type>();
 
         public static IList Create(Type elementType, DistinctAttribute distinctAttribute, SortedAttribute sortedAttribute)
         {
@@ -38,7 +38,7 @@ namespace Nemo.Collections
         public static IList Create(Type elementType)
         {
             var listType = _listTypes.GetOrAdd(elementType, t => typeof(List<>).MakeGenericType(t));
-            return (IList)Nemo.Reflection.Activator.New(listType);
+            return (IList)listType.New();
         }
 
         public static Array CreateArray(Type elementType, IList list)

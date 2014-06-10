@@ -7,6 +7,7 @@ using Nemo.Extensions;
 namespace Nemo.Collections.Comparers
 {
     public class ProjectionEqualityComparer<TSource, TKey> : IEqualityComparer<TSource>
+        where TSource : class
     {
         private readonly Func<TSource, TKey> _projection;
         private readonly IEqualityComparer<TKey> _comparer;

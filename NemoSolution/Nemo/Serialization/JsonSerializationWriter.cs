@@ -19,7 +19,7 @@ namespace Nemo.Serialization
     {
         internal delegate void JsonObjectSerializer(object values, TextWriter output, bool compact);
 
-        private static ConcurrentDictionary<string, JsonObjectSerializer> _serializers = new ConcurrentDictionary<string, JsonObjectSerializer>();
+        private static readonly ConcurrentDictionary<string, JsonObjectSerializer> _serializers = new ConcurrentDictionary<string, JsonObjectSerializer>();
 
         public static void Write(string value, TextWriter output)
         {
@@ -171,55 +171,49 @@ namespace Nemo.Serialization
                                     Write(",", output);
                                 }
                             }
-                            else if (value is IDictionary)
+                            else
                             {
-                                if (name != null)
+                                var map = value as IDictionary;
+                                if (map != null)
                                 {
-                                    Write(string.Format("\"{0}\":{", name), output);
-                                }
-                                else
-                                {
-                                    Write("{", output);
-                                }
-                                WriteDictionary((IDictionary)value, output);
-                                Write("}", output);
-                                if (hasMore)
-                                {
-                                    Write(",", output);
-                                }
-                            }
-                            else if (value is IList)
-                            {
-                                if (name != null)
-                                {
-                                    Write(string.Format("\"{0}\":[", name), output);
-                                }
-                                else
-                                {
-                                    Write("[", output);
-                                }
-                                var items = ((IList)value).Cast<object>().ToArray();
-                                if (items.Length > 0 && items[0] is IDataEntity)
-                                {
-                                    var elementType = items[0].GetType();
-                                    var serializer = CreateDelegate(elementType);
-                                    for (int i = 0; i < items.Length; i++)
+                                    Write(name != null ? string.Format("\"{0}\":{", name) : "{", output);
+                                    WriteDictionary(map, output);
+                                    Write("}", output);
+                                    if (hasMore)
                                     {
-                                        serializer(items[i], output, compact);
-                                        if (i < items.Length - 1)
-                                        {
-                                            Write(",", output);
-                                        }
+                                        Write(",", output);
                                     }
                                 }
                                 else
                                 {
-                                    WriteList((IList)value, output);
-                                }
-                                Write("]", output);
-                                if (hasMore)
-                                {
-                                    Write(",", output);
+                                    var list = value as IList;
+                                    if (list != null)
+                                    {
+                                        Write(name != null ? string.Format("\"{0}\":[", name) : "[", output);
+                                        var items = list.Cast<object>().ToArray();
+                                        if (items.Length > 0 && items[0] is IDataEntity)
+                                        {
+                                            var elementType = items[0].GetType();
+                                            var serializer = CreateDelegate(elementType);
+                                            for (var i = 0; i < items.Length; i++)
+                                            {
+                                                serializer(items[i], output, compact);
+                                                if (i < items.Length - 1)
+                                                {
+                                                    Write(",", output);
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            WriteList(list, output);
+                                        }
+                                        Write("]", output);
+                                        if (hasMore)
+                                        {
+                                            Write(",", output);
+                                        }
+                                    }
                                 }
                             }
                             break;
@@ -285,11 +279,7 @@ namespace Nemo.Serialization
             var interfaceType = objectType;
             if (Reflector.IsEmitted(objectType))
             {
-                interfaceType = Reflector.ExtractInterface(objectType);
-                if (interfaceType == null)
-                {
-                    interfaceType = objectType;
-                }
+                interfaceType = Reflector.ExtractInterface(objectType) ?? objectType;
             }
 
             var properties = Reflector.GetPropertyMap(interfaceType).Where(p => p.Key.CanRead && p.Key.CanWrite && p.Key.Name != "Indexer" && !p.Key.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any()).ToArray();
@@ -309,14 +299,7 @@ namespace Nemo.Serialization
                 il.BoxIfNeeded(property.Key.PropertyType);
                 il.Emit(OpCodes.Ldstr, property.Key.Name);
                 il.Emit(OpCodes.Ldarg_1);
-                if (++index == properties.Length)
-                {
-                    il.Emit(OpCodes.Ldc_I4_0);
-                }
-                else
-                {
-                    il.Emit(OpCodes.Ldc_I4_1);
-                }
+                il.Emit(++index == properties.Length ? OpCodes.Ldc_I4_0 : OpCodes.Ldc_I4_1);
                 il.Emit(OpCodes.Ldarg_2);
                 il.Emit(OpCodes.Call, writeObject);
             }

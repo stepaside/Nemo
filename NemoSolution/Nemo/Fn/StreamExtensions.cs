@@ -23,7 +23,7 @@ namespace Nemo.Fn
         {
             if (iterator.MoveNext())
             {
-                return new Stream<T>(iterator.Current, () => iterator.AsStream());
+                return new Stream<T>(iterator.Current, iterator.AsStream);
             }
             else
             {
@@ -66,11 +66,7 @@ namespace Nemo.Fn
 
         public static T FoldLeft<U, T>(this Stream<U> st1, Func<T, U, T> folder, T init)
         {
-            if (st1 == null)
-            {
-                return init;
-            }
-            return st1.Tail.FoldLeft(folder, folder(init, st1.Head));
+            return st1 == null ? init : st1.Tail.FoldLeft(folder, folder(init, st1.Head));
         }
 
         public static Stream<T> Map<U, T>(this Stream<U> st1, Func<U, T> mapper)
@@ -88,14 +84,7 @@ namespace Nemo.Fn
             {
                 return null;
             }
-            if (filter(st1.Head))
-            {
-                return new Stream<T>(st1.Head, () => st1.Tail.Filter(filter));
-            }
-            else
-            {
-                return st1.Tail.Filter(filter);
-            }
+            return filter(st1.Head) ? new Stream<T>(st1.Head, () => st1.Tail.Filter(filter)) : st1.Tail.Filter(filter);
         }
 
         public static Stream<T> Merge<T>(this Stream<T> st1, Stream<T> st2) where T : IComparable<T>
@@ -104,24 +93,21 @@ namespace Nemo.Fn
             {
                 return st2;
             }
-            else if (st2 == null)
+            if (st2 == null)
             {
                 return st1;
             }
 
-            int result = st1.Head.CompareTo(st2.Head);
+            var result = st1.Head.CompareTo(st2.Head);
             if (result < 0)
             {
                 return new Stream<T>(st1.Head, () => Merge(st1.Tail, st2));
             }
-            else if (result > 0)
+            if (result > 0)
             {
                 return new Stream<T>(st2.Head, () => Merge(st1, st2.Tail));
             }
-            else
-            {
-                return new Stream<T>(st1.Head, () => Merge(st1.Tail, st2.Tail));
-            }
+            return new Stream<T>(st1.Head, () => Merge(st1.Tail, st2.Tail));
         }
     }
 }

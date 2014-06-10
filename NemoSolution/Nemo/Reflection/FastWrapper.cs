@@ -11,7 +11,7 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), false, false);
         }
-        internal static Nemo.Reflection.Activator.ObjectActivator Instance;
+        internal static Activator.ObjectActivator Instance;
     }
 
     internal class FastComplexWrapper<T>
@@ -20,7 +20,7 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), false, true);
         }
-        internal static Nemo.Reflection.Activator.ObjectActivator Instance;
+        internal static Activator.ObjectActivator Instance;
     }
 
     internal class FastExactWrapper<T>
@@ -29,7 +29,7 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), true, false);
         }
-        internal static Nemo.Reflection.Activator.ObjectActivator Instance;
+        internal static Activator.ObjectActivator Instance;
     }
 
     internal class FastExactComplexWrapper<T>
@@ -38,6 +38,6 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), true, true);
         }
-        internal static Nemo.Reflection.Activator.ObjectActivator Instance;
+        internal static Activator.ObjectActivator Instance;
     }
 }

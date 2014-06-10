@@ -17,18 +17,14 @@ namespace Nemo.Fn
         /// <returns></returns>
         public static Maybe<T> ToMaybe<T>(this T? value) where T : struct
         {
-            if (value.HasValue)
-            {
-                return new Maybe<T>(value.Value);
-            }
-            return Maybe<T>.Empty;
+            return value.HasValue ? new Maybe<T>(value.Value) : Maybe<T>.Empty;
         }
 
         public static Maybe<T> ToMaybe<T>(this T value)
         {
             if (!(value is ValueType))
             {
-                if (object.ReferenceEquals(value, null))
+                if (ReferenceEquals(value, null))
                 {
                     return Maybe<T>.Empty;
                 }

@@ -11,6 +11,10 @@ namespace Nemo
     {
     }
 
+    public interface IAuditableDataEntity : IDataEntity
+    {
+    }
+
     public enum ObjectState { Clean, New, Dirty, Deleted, ReadOnly, DirtyPrimaryKey }
 
     public interface ITrackableDataEntity : IDataEntity
