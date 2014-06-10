@@ -914,7 +914,8 @@ namespace Nemo.Reflection
         {
             static TypeCache()
             {
-                Type = new ReflectedType(typeof(T)) { XmlElementName = Xml.GetElementNameFromType(typeof(T)) };
+                Type = new ReflectedType(typeof(T));
+                Type.XmlElementName = Xml.GetElementNameFromType(typeof(T));
             }
 
             public readonly static ReflectedType Type;

@@ -123,47 +123,28 @@ namespace Nemo.Utilities
 
         internal delegate string GetElementDelegate(Type objectType);
 
-        private static ConcurrentDictionary<Type, RuntimeMethodHandle> _getElementNameMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getElementNameMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
 
         internal static string GetElementNameFromType<T>()
         {
             var attr = Reflector.GetAttribute<T, XmlRootAttribute>();
-            if (attr == null || string.IsNullOrEmpty(attr.ElementName))
+            if (attr != null && !string.IsNullOrEmpty(attr.ElementName)) return attr.ElementName;
+            var objectType = Reflector.TypeCache<T>.Type;
+            var name = objectType.TypeName;
+            if (objectType.IsSimpleType) return Reflector.SimpleClrToXmlType(typeof(T));
+            if (objectType.IsGenericType)
             {
-                var objectType = Reflector.TypeCache<T>.Type;
-                var name = objectType.TypeName;
-                if (!objectType.IsSimpleType)
-                {
-                    if (objectType.IsGenericType)
-                    {
-                        var pos = name.IndexOf('`');
-                        return name.Substring(0, pos).TrimStart('I');
-                    }
-                    else if (objectType.IsInterface)
-                    {
-                        return name.TrimStart('I');
-                    }
-                    else
-                    {
-                        return name;
-                    }
-                }
-                else
-                {
-                    return Reflector.SimpleClrToXmlType(typeof(T));
-                }
+                var pos = name.IndexOf('`');
+                return name.Substring(0, pos).TrimStart('I');
             }
-            else
-            {
-                return attr.ElementName;
-            }
+            return objectType.IsInterface ? name.TrimStart('I') : name;
         }
 
         internal static string GetElementNameFromType(Type objectType)
         {
             var handle = _getElementNameMethods.GetOrAdd(objectType, type =>
             {
-                var method = typeof(Xml).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(m => m.Name == "GetElementNameFromType" && m.IsGenericMethod).First();
+                var method = typeof(Xml).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "GetElementNameFromType" && m.IsGenericMethod);
                 var genericMethod = method.MakeGenericMethod(objectType);
                 return genericMethod.MethodHandle;
             });

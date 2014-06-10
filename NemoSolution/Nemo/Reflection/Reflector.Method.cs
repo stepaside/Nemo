@@ -15,18 +15,18 @@ namespace Nemo.Reflection
 
             public static FastInvoker CreateDelegate(RuntimeMethodHandle methodHandle)
             {
-                FastInvoker invoker = _invokers.GetOrAdd(methodHandle, GenerateDelegate);
+                var invoker = _invokers.GetOrAdd(methodHandle, GenerateDelegate);
                 return invoker;
             }
 
             private static FastInvoker GenerateDelegate(RuntimeMethodHandle methodHandle)
             {
-                var methodInfo = (MethodInfo)MethodInfo.GetMethodFromHandle(methodHandle);
+                var methodInfo = (MethodInfo)MethodBase.GetMethodFromHandle(methodHandle);
                 var dynamicMethod = new DynamicMethod(string.Empty, typeof(object), new[] { typeof(object), typeof(object[]) }, methodInfo.DeclaringType.Module);
                 var il = dynamicMethod.GetILGenerator();            
                 var ps = methodInfo.GetParameters();
                 var paramTypes = new Type[ps.Length];
-                for (int i = 0; i < paramTypes.Length; i++)
+                for (var i = 0; i < paramTypes.Length; i++)
                 {
                     if (ps[i].ParameterType.IsByRef)
                     {
