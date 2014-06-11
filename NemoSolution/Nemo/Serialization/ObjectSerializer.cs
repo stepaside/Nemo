@@ -71,15 +71,15 @@ namespace Nemo.Serialization
         #region Serialize Methods
 
         public static byte[] Serialize<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             return Serialize(dataEntity, ConfigurationFactory.Configuration.DefaultSerializationMode);
         }
 
         internal static byte[] Serialize<T>(this T dataEntity, SerializationMode mode)
-            where T : class, IDataEntity
+            where T : class
         {
-            byte[] buffer = null;
+            byte[] buffer;
 
             using (var writer = SerializationWriter.CreateWriter(mode))
             {
@@ -91,21 +91,15 @@ namespace Nemo.Serialization
         }
 
         public static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> dataEntityCollection)
-            where T : class, IDataEntity
+            where T : class
         {
             return Serialize(dataEntityCollection, ConfigurationFactory.Configuration.DefaultSerializationMode);
         }
 
         internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> dataEntityCollection, SerializationMode mode)
-            where T : class, IDataEntity
+            where T : class
         {
-            foreach (T dataEntity in dataEntityCollection)
-            {
-                if (dataEntity != null)
-                {
-                    yield return dataEntity.Serialize(mode);
-                }
-            }
+            return dataEntityCollection.Where(e => e != null).Select(e => e.Serialize(mode));
         }
 
         #endregion
@@ -113,7 +107,7 @@ namespace Nemo.Serialization
         #region Deserialize Methods
 
         public static T Deserialize<T>(this byte[] data)
-            where T : class, IDataEntity
+            where T : class
         {
             T result;
             using (var reader = SerializationReader.CreateReader(data))
@@ -124,13 +118,13 @@ namespace Nemo.Serialization
         }
 
         public static IEnumerable<T> Deserialize<T>(this IEnumerable<byte[]> dataCollection)
-            where T : class, IDataEntity
+            where T : class
         {
             return dataCollection.Where(data => data != null).Select(Deserialize<T>);
         }
 
         internal static bool CheckType<T>(byte[] data)
-            where T : class, IDataEntity
+            where T : class
         {
             var objectTypeHash = SerializationReader.GetObjectTypeHash(data);
             var type = Reflector.TypeCache<T>.Type;

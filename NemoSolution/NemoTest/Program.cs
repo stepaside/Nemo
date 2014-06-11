@@ -486,13 +486,13 @@ namespace NemoTest
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Select<ICustomer>(predicate, connection: connection).FirstOrDefault();
+            var result = ObjectFactory.Select(predicate, connection: connection).FirstOrDefault();
 
             var timer = new HiPerfTimer(true);
             timer.Start();
             for (int i = 0; i < count; i++)
             {
-                result = ObjectFactory.Select<ICustomer>(predicate, connection: connection).FirstOrDefault();
+                result = ObjectFactory.Select(predicate, connection: connection).FirstOrDefault();
             }
             timer.Stop();
             connection.Close();
@@ -579,14 +579,16 @@ namespace NemoTest
             // Warm-up
             using (var context = new EFContext(ObjectFactory.DefaultConnectionName))
             {
+                context.Configuration.AutoDetectChangesEnabled = false;
+
                 if (linq)
                 {
-                    var customer = context.Customers/*.AsNoTracking()*/.Where(c => c.Id == "ALFKI").FirstOrDefault();
+                    var customer = context.Customers.AsNoTracking().FirstOrDefault(c => c.Id == "ALFKI");
                 }
                 else
                 {
                     var parameters = new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } };
-                    var customer = context.Customers.SqlQuery(sql, parameters)/*.AsNoTracking()*/.FirstOrDefault();
+                    var customer = context.Customers.SqlQuery(sql, parameters).AsNoTracking().FirstOrDefault();
                 }
             }
 
@@ -599,7 +601,7 @@ namespace NemoTest
 
                     for (int i = 0; i < count; i++)
                     {
-                        var customer = context.Customers/*.AsNoTracking()*/.Where(c => c.Id == "ALFKI").FirstOrDefault();
+                        var customer = context.Customers.AsNoTracking().FirstOrDefault(c => c.Id == "ALFKI");
                     }
                     timer.Stop();
                 }
@@ -612,7 +614,7 @@ namespace NemoTest
                     for (int i = 0; i < count; i++)
                     {
                         var parameters = new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } };
-                        var customer = context.Customers.SqlQuery(sql, parameters)/*.AsNoTracking()*/.FirstOrDefault();
+                        var customer = context.Customers.SqlQuery(sql, parameters).AsNoTracking().FirstOrDefault();
                     }
                     timer.Stop();
                 }

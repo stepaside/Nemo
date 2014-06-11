@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace Nemo.Configuration.Mapping
 {
     public class PropertyMap<T, U> : IPropertyMap
-                   where T : class, IDataEntity
+        where T : class
     {
         private readonly ReflectedProperty _property;
         private readonly Expression<Func<T, U>> _selector;
@@ -31,10 +31,7 @@ namespace Nemo.Configuration.Mapping
 
         public PropertyMap<T, U> Not
         {
-            get
-            {
-                return new PropertyMap<T, U>(_selector, true);
-            }
+            get { return new PropertyMap<T, U>(_selector, true); }
         }
 
         public PropertyMap<T, U> PrimaryKey(int position = 0)
@@ -62,7 +59,7 @@ namespace Nemo.Configuration.Mapping
         }
 
         public PropertyMap<T, U> References<V>(int position = 0)
-            where V : class, IDataEntity
+            where V : class
         {
             _property.Parent = typeof(V);
             _property.RefPosition = position;
@@ -156,10 +153,7 @@ namespace Nemo.Configuration.Mapping
 
         ReflectedProperty IPropertyMap.Property
         {
-            get
-            {
-                return _property;
-            }
+            get { return _property; }
         }
     }
 }

@@ -21,7 +21,7 @@ namespace Nemo.UnitOfWork
         }
 
         internal static T Deserialize<T>(byte[] data)
-            where T : class, IDataEntity
+            where T : class
         {
             return data.Deserialize<T>();
         }

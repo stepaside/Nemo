@@ -48,7 +48,7 @@ namespace Nemo.Configuration.Mapping
         }
 
         internal static IEntityMap GetEntityMap<T>()
-            where T : class, IDataEntity
+            where T : class
         {
             IEntityMap map;
             return _types.Value.TryGetValue(typeof(T), out map) ? map : null;

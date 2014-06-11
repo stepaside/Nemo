@@ -74,7 +74,7 @@ namespace Nemo.Data
         }
         
         internal static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, DialectProvider dialect)
-            where T : class, IDataEntity
+            where T : class
         {
             var map = Reflector.GetPropertyMap<T>();
             var selection = map.Values.Where(p => p.IsSelectable && p.IsSimpleType).Select(p => dialect.IdentifierEscapeStartCharacter + p.MappedColumnName + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");

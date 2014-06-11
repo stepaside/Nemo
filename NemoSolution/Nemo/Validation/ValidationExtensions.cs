@@ -18,7 +18,7 @@ namespace Nemo.Validation
         /// Returns a dictionary of properties and error messages
         /// </returns>
         public static ValidationResult Validate<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             // Get properties and build a property map
             var properties = Reflector.GetAllProperties<T>();
@@ -44,20 +44,21 @@ namespace Nemo.Validation
             return attributeName.EndsWith("Attribute") ? attributeName.Substring(0, attributeName.Length - 9) : attributeName;
         }
 
-        private static bool IsValid(IDataEntity dataEntity, string propertyName, Type propertyType, ValidationAttribute attribute)
+        private static bool IsValid(object dataEntity, string propertyName, Type propertyType, ValidationAttribute attribute)
         {
-            object value = null;
-            if (attribute is CompareAttribute)
+            object value;
+            var compareAttribute = attribute as CompareAttribute;
+            if (compareAttribute != null)
             {
-                value = new object[] { dataEntity.Property(propertyName), dataEntity.Property(((CompareAttribute)attribute).PropertyName) };
+                value = new[] { dataEntity.Property(propertyName), dataEntity.Property(compareAttribute.PropertyName) };
             }
             else if (attribute is CustomAttribute)
             {
-                value = new object[] { new CustomValidatorContext(dataEntity, propertyName, attribute), dataEntity.Property(propertyName) };
+                value = new[] { new CustomValidatorContext(dataEntity, propertyName, attribute), dataEntity.Property(propertyName) };
             }
             else if (attribute is XmlSchemaAttribute && !string.IsNullOrEmpty(((XmlSchemaAttribute)attribute).SchemaProperty))
             {
-                value = new object[] { dataEntity.Property(propertyName), dataEntity.Property(((XmlSchemaAttribute)attribute).SchemaProperty) };
+                value = new[] { dataEntity.Property(propertyName), dataEntity.Property(((XmlSchemaAttribute)attribute).SchemaProperty) };
             }
             else
             {
@@ -71,17 +72,18 @@ namespace Nemo.Validation
 
         internal static void SetErrorMessage(this ValidationAttribute attribute)
         {
-            if (attribute is IResourceKeyProvider)
+            var provider = attribute as IResourceKeyProvider;
+            
+            if (provider == null) return;
+            
+            var resourceKeyProvider = provider;
+            
+            if (string.IsNullOrEmpty(resourceKeyProvider.ResourceKey)) return;
+            
+            var errorMessage = string.Empty;
+            if (!string.IsNullOrEmpty(errorMessage) && attribute.ErrorMessage == null)
             {
-                var resourceKeyProvider = (IResourceKeyProvider)attribute;
-                if (!string.IsNullOrEmpty(resourceKeyProvider.ResourceKey))
-                {
-                    var errorMessage = string.Empty;
-                    if (!string.IsNullOrEmpty(errorMessage) && attribute.ErrorMessage == null)
-                    {
-                        attribute.ErrorMessage = errorMessage;
-                    }
-                }
+                attribute.ErrorMessage = errorMessage;
             }
         }
     }

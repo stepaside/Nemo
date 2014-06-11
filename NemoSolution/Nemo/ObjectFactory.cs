@@ -42,13 +42,13 @@ namespace Nemo
         private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle?> _createMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle?>();
 
         public static T Create<T>()
-            where T : class, IDataEntity
+            where T : class
         {
             return Create<T>(typeof(T).IsInterface);
         }
         
         public static T Create<T>(bool isInterface)
-            where T : class, IDataEntity
+            where T : class
         {
             var value = isInterface ? Adapter.Implement<T>() : FastActivator<T>.New();
 
@@ -126,11 +126,11 @@ namespace Nemo
             if (genericMapMethodHandle == null) return null;
 
             var mapDelegate = Reflector.Method.CreateDelegate(genericMapMethodHandle.Value);
-            return mapDelegate(null, new object[] { source, isInterface, ignoreMappings });
+            return mapDelegate(null, new[] { source, isInterface, ignoreMappings });
         }
 
         internal static TResult Map<TSource, TResult>(TSource source, bool isInterface, bool ignoreMappings = false)
-            where TResult : class, IDataEntity
+            where TResult : class
             where TSource : class
         {
             var target = Create<TResult>(isInterface);
@@ -138,14 +138,14 @@ namespace Nemo
         }
 
         public static TResult Map<TSource, TResult>(TSource source, bool ignoreMappings = false)
-            where TResult : class, IDataEntity
+            where TResult : class
             where TSource : class
         {
             return Map<TSource, TResult>(source, typeof(TResult).IsInterface, ignoreMappings);
         }
 
         public static TResult Map<TSource, TResult>(TSource source, TResult target, bool ignoreMappings = false)
-            where TResult : class, IDataEntity
+            where TResult : class
             where TSource : class
         {
             var indexer = source is IDictionary<string, object> || (source is IDataRecord) || source is DataRow;
@@ -188,9 +188,10 @@ namespace Nemo
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="source"></param>
+        /// <param name="ignoreMappings"></param>
         /// <returns></returns>
         public static T Map<T>(object source, bool ignoreMappings = false)
-            where T : class, IDataEntity
+            where T : class
         {
             return (T)Map(source, typeof(T), ignoreMappings);
         }
@@ -199,19 +200,19 @@ namespace Nemo
 
         #region Bind Methods
 
-        private static ConcurrentDictionary<Type, RuntimeMethodHandle?> _bindMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle?>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle?> _bindMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle?>();
 
         /// <summary>
         /// Binds interface implementation to the existing object type.
         /// </summary>
         /// <typeparam name="TSource"></typeparam>
         /// <typeparam name="TResult"></typeparam>
-        /// <param name="instance"></param>
         /// <returns></returns>
         public static TResult Bind<TSource, TResult>(TSource source)
-            where TResult : class, IDataEntity
+            where TResult : class
             where TSource : class
         {
+            if (source == null) throw new ArgumentNullException("source");
             var target = Adapter.Bind<TResult>(source);
             return target;
         }
@@ -221,38 +222,32 @@ namespace Nemo
         /// This method uses reflection to invoke generic implementation.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="instance"></param>
+        /// <param name="source"></param>
         /// <returns></returns>
         public static T Bind<T>(object source)
-            where T : class, IDataEntity
+            where T : class
         {
-            if (source != null)
-            {
-                Type instanceType = source.GetType();
-                if (Reflector.IsAnonymousType(instanceType))
-                {
-                    return Adapter.Bind<T>(source);
-                }
-                else
-                {
-                    var genericBindMethod = _bindMethods.GetOrAdd(instanceType, type =>
-                    {
-                        var bindMethod = typeof(ObjectFactory).GetMethods().FirstOrDefault(m => m.Name == "Bind" && m.GetGenericArguments().Length == 2);
-                        if (bindMethod != null)
-                        {
-                            return bindMethod.MakeGenericMethod(type, typeof(T)).MethodHandle;
-                        }
-                        return null;
-                    });
+            if (source == null) return null;
 
-                    if (genericBindMethod != null)
-                    {
-                        var bindDelegate = Reflector.Method.CreateDelegate(genericBindMethod.Value);
-                        return (T)bindDelegate(null, new object[] { source });
-                    }
-                }
+            var instanceType = source.GetType();
+            if (Reflector.IsAnonymousType(instanceType))
+            {
+                return Adapter.Bind<T>(source);
             }
-            return null;
+            var genericBindMethod = _bindMethods.GetOrAdd(instanceType, type =>
+            {
+                var bindMethod = typeof(ObjectFactory).GetMethods().FirstOrDefault(m => m.Name == "Bind" && m.GetGenericArguments().Length == 2);
+                if (bindMethod != null)
+                {
+                    return bindMethod.MakeGenericMethod(type, typeof(T)).MethodHandle;
+                }
+                return null;
+            });
+
+            if (genericBindMethod == null) return null;
+
+            var bindDelegate = Reflector.Method.CreateDelegate(genericBindMethod.Value);
+            return (T)bindDelegate(null, new[] { source });
         }
 
         #endregion
@@ -264,32 +259,20 @@ namespace Nemo
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="map"></param>
+        /// <param name="ignoreMappings"></param>
+        /// <param name="includeAllProperties"></param>
         /// <returns></returns>
         public static T Wrap<T>(IDictionary<string, object> map, bool ignoreMappings = false, bool includeAllProperties = false)
-             where T : class, IDataEntity
+             where T : class
         {
             ObjectActivator activator;
             if (ignoreMappings)
             {
-                if (includeAllProperties)
-                {
-                    activator = FastExactComplexWrapper<T>.Instance;
-                }
-                else
-                {
-                    activator = FastExactWrapper<T>.Instance;
-                }
+                activator = includeAllProperties ? FastExactComplexWrapper<T>.Instance : FastExactWrapper<T>.Instance;
             }
             else
             {
-                if (includeAllProperties)
-                {
-                    activator = FastComplexWrapper<T>.Instance;
-                }
-                else
-                {
-                    activator = FastWrapper<T>.Instance;
-                }
+                activator = includeAllProperties ? FastComplexWrapper<T>.Instance : FastWrapper<T>.Instance;
             }
             return (T)activator(map);
         }
@@ -304,7 +287,7 @@ namespace Nemo
         #region Count Methods
 
         public static int Count<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
-            where T : class, IDataEntity
+            where T : class
         {
             string providerName = null;
             if (connection == null)
@@ -325,7 +308,7 @@ namespace Nemo
         #region Select Methods
 
         public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null)
-            where T : class, IDataEntity
+            where T : class
         {
             string providerName = null;
             if (connection == null)
@@ -361,7 +344,7 @@ namespace Nemo
         }
 
         private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null, bool? cached = null)
-            where TResult : class, IDataEntity
+            where TResult : class
         {
             Log.CaptureBegin(() => string.Format("RetrieveImplemenation: {0}::{1}", typeof(TResult).FullName, operation));
             IEnumerable<TResult> result;
@@ -450,7 +433,7 @@ namespace Nemo
         }
 
         private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, MaterializationMode mode, string schema)
-            where T : class, IDataEntity
+            where T : class
         {
             if (operationType == OperationType.Guess)
             {
@@ -478,11 +461,11 @@ namespace Nemo
         /// </summary>
         /// <returns></returns>
         public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
-            where T1 : class, IDataEntity
-            where T2 : class, IDataEntity
-            where T3 : class, IDataEntity
-            where T4 : class, IDataEntity
-            where TResult : class, IDataEntity
+            where T1 : class
+            where T2 : class
+            where T3 : class
+            where T4 : class
+            where TResult : class
         {
             var fakeType = typeof(Fake);
             var realTypes = new List<Type> { typeof(TResult) };
@@ -559,34 +542,34 @@ namespace Nemo
         }
 
         public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
-            where T1 : class, IDataEntity
-            where T2 : class, IDataEntity
-            where T3 : class, IDataEntity
-            where TResult : class, IDataEntity
+            where T1 : class
+            where T2 : class
+            where T3 : class
+            where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
             return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
         }
 
         public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
-            where T1 : class, IDataEntity
-            where T2 : class, IDataEntity
-            where TResult : class, IDataEntity
+            where T1 : class
+            where T2 : class
+            where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
             return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
         }
 
         public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
-            where T1 : class, IDataEntity
-            where TResult : class, IDataEntity
+            where T1 : class
+            where TResult : class
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
             return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
         }
 
         public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
-            where T : class, IDataEntity
+            where T : class
         {
             var returnType = OperationReturnType.SingleResult;
 
@@ -617,20 +600,20 @@ namespace Nemo
             return RetrieveImplemenation<T>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached);
         }
 
-        internal class Fake : IDataEntity { }
+        internal class Fake { }
 
         #endregion
 
         #region Insert/Update/Delete/Execute Methods
 
         public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class, IDataEntity
+            where T : class
         {
             return Insert<T>(parameters.ExtractParameters(typeof(T), OperationInsert), connectionName, captureException, schema);
         }
 
         public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class, IDataEntity
+            where T : class
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
             if (ConfigurationFactory.Configuration.GenerateInsertSql)
@@ -649,13 +632,13 @@ namespace Nemo
         }
 
         public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class, IDataEntity
+            where T : class
         {
             return Update<T>(parameters.ExtractParameters(typeof(T), OperationUpdate), connectionName, captureException, schema);
         }
 
         public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class, IDataEntity
+            where T : class
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
             if (ConfigurationFactory.Configuration.GenerateUpdateSql)
@@ -683,13 +666,13 @@ namespace Nemo
         }
 
         public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class, IDataEntity
+            where T : class
         {
             return Delete<T>(parameters.ExtractParameters(typeof(T), OperationDelete), connectionName, captureException);
         }
 
         public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class, IDataEntity
+            where T : class
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
             if (ConfigurationFactory.Configuration.GenerateDeleteSql)
@@ -724,13 +707,13 @@ namespace Nemo
         }
 
         public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class, IDataEntity
+            where T : class
         {
             return Destroy<T>(parameters.ExtractParameters(typeof(T), OperationDestroy), connectionName, captureException, schema);
         }
 
         public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class, IDataEntity
+            where T : class
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException, SchemaName = schema };
             if (ConfigurationFactory.Configuration.GenerateDeleteSql)
@@ -941,7 +924,7 @@ namespace Nemo
         }
 
         public static OperationResponse Execute<T>(OperationRequest request)
-            where T : class, IDataEntity
+            where T : class
         {
             if (request.Types == null)
             {
@@ -951,20 +934,14 @@ namespace Nemo
             var operationType = request.OperationType;
             if (operationType == OperationType.Guess)
             {
-                operationType = request.Operation.Any(c => Char.IsWhiteSpace(c)) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = request.Operation.Any(Char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = ObjectFactory.GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName);
-            
-            OperationResponse response;
-            if (request.Connection != null)
-            {
-                response = Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
-            }
-            else
-            {
-                response = Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
-            }
+            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName);
+
+            var response = request.Connection != null 
+                ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName) 
+                : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
             return response;
         }
 
@@ -973,7 +950,7 @@ namespace Nemo
         #region Transform/Convert Methods
 
         private static IEnumerable<T> Transform<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode)
-            where T : class, IDataEntity
+            where T : class
         {
             object value = response.Value;
             if (value == null)
@@ -1032,20 +1009,20 @@ namespace Nemo
         }
 
         private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, MaterializationMode mode, bool isInterface)
-             where T : class, IDataEntity
+             where T : class
         {
             string tableName = GetTableName(typeof(T));
             return dataSet.Tables.Count != 0 ? ConvertDataTable<T>(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], mode, isInterface) : Enumerable.Empty<T>();
         }
 
         private static IEnumerable<T> ConvertDataTable<T>(DataTable table, MaterializationMode mode, bool isInterface)
-             where T : class, IDataEntity
+             where T : class
         {
             return ConvertDataTable<T>(table.AsEnumerable(), mode, isInterface);
         }
 
         private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, MaterializationMode mode, bool isInterface)
-             where T : class, IDataEntity
+             where T : class
         {
             return table.Select(row => ConvertDataRow<T>(row, mode, isInterface));
         }
@@ -1056,7 +1033,7 @@ namespace Nemo
         }
 
         private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface)
-             where T : class, IDataEntity
+             where T : class
         {
             var value = mode == MaterializationMode.Exact || !isInterface ? Map<DataRow, T>(row, isInterface) : Wrap<T>(GetSerializableDataRow(row));
             var entity = value as ITrackableDataEntity;
@@ -1117,7 +1094,7 @@ namespace Nemo
                             IList list;
                             if (!p.Value.IsListInterface)
                             {
-                                list = (IList)Nemo.Reflection.Activator.New(p.Key.PropertyType);
+                                list = (IList)p.Key.PropertyType.New();
                             }
                             else
                             {
@@ -1138,7 +1115,7 @@ namespace Nemo
         }
         
         private static IEnumerable<T> ConvertDataReader<T>(IDataReader reader, Func<object[], T> map, IList<Type> types, MaterializationMode mode, bool isInterface)
-            where T : class, IDataEntity
+            where T : class
         {
             try
             {
@@ -1155,7 +1132,7 @@ namespace Nemo
                         {
                             var args = new object[types.Count];
                             args[0] = item;
-                            for (int i = 1; i < types.Count; i++)
+                            for (var i = 1; i < types.Count; i++)
                             {
                                 var identity = CreateIdentity(types[i], reader);
                                 object reference;
@@ -1184,7 +1161,7 @@ namespace Nemo
                     else
                     {
                         var bag = new Dictionary<string, object>();
-                        for (int index = 0; index < count; index++)
+                        for (var index = 0; index < count; index++)
                         {
                             bag.Add(reader.GetName(index), reader[index]);
                         }
@@ -1194,9 +1171,8 @@ namespace Nemo
                         {
                             var args = new object[types.Count];
                             args[0] = item;
-                            for (int i = 1; i < types.Count; i++)
+                            for (var i = 1; i < types.Count; i++)
                             {
-
                                 var identity = CreateIdentity(types[i], reader);
                                 object reference;
                                 if (!references.TryGetValue(identity, out reference))
@@ -1224,9 +1200,8 @@ namespace Nemo
                 }
 
                 // Flush accumulating item
-                if (isAccumulator && map != null)
+                if (isAccumulator)
                 {
-                    var args = new object[types.Count];
                     var mappedItem = map(new object[types.Count]);
                     if (mappedItem != null)
                     {
@@ -1243,13 +1218,13 @@ namespace Nemo
             }
         }
 
-        private static Tuple<Type, string> CreateIdentity(Type objectType, IDataReader reader)
+        private static Tuple<Type, string> CreateIdentity(Type objectType, IDataRecord record)
         {
             var nameMap = Reflector.GetPropertyNameMap(objectType);
             var identity = Tuple.Create(objectType, string.Join(",", nameMap.Values.Where(p => p.IsPrimaryKey)
                                                                                 .Select(p => p.MappedColumnName ?? p.PropertyName)
                                                                                 .OrderBy(_ => _)
-                                                                                .Select(n => Convert.ToString(reader.GetValue(reader.GetOrdinal(n))))));
+                                                                                .Select(n => Convert.ToString(record.GetValue(record.GetOrdinal(n))))));
             return identity;
         }
 
@@ -1265,7 +1240,7 @@ namespace Nemo
                     {
                         if (!isInterface || mode == MaterializationMode.Exact)
                         {
-                            var item = Map((object)reader, types[resultIndex], isInterface: isInterface);
+                            var item = Map(reader, types[resultIndex], isInterface: isInterface);
                             yield return TypeUnion.Create(types, item);
                         }
                         else
@@ -1311,11 +1286,6 @@ namespace Nemo
         #endregion
 
         #region Helper Methods
-
-        private static bool IsValidType(Assembly assembly, string typeName)
-        {
-            return assembly.GetTypes().FirstOrDefault(t => t.Name == typeName) != null;
-        }
 
         private static void InferRelations(DataSet set, Type objectType, string tableName = null)
         {
@@ -1415,7 +1385,7 @@ namespace Nemo
         }
 
         internal static string GetTableName<T>()
-            where T : class, IDataEntity
+            where T : class
         {
             string tableName = null;
             
@@ -1480,7 +1450,7 @@ namespace Nemo
             return tableName;
         }
 
-        internal static string[] GetPrimaryKeyProperties(Type interfaceType)
+        public static string[] GetPrimaryKeyProperties(Type interfaceType)
         {
             var propertyMap = Reflector.GetPropertyMap(interfaceType);
             return propertyMap.Values.Where(p => p.CanRead && p.IsPrimaryKey).Select(p => p.PropertyName).ToArray();

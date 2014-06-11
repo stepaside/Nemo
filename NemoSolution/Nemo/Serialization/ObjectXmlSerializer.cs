@@ -28,14 +28,14 @@ namespace Nemo.Serialization
         /// <param name="dataEntity"></param>
         /// <returns></returns>
         private static void ToXml<T>(this T dataEntity, string documentElement, TextWriter output, bool addSchemaDeclaration)
-            where T : class, IDataEntity
+            where T : class
         {
             var documentElementName = documentElement ?? Xml.GetElementNameFromType<T>();
             XmlSerializationWriter.WriteObject(dataEntity, documentElementName, output, addSchemaDeclaration);
         }
 
         private static string ToXml<T>(this T dataEntity, string documentElement, bool addSchemaDeclaration)
-            where T : class, IDataEntity
+            where T : class
         {
             var output = new StringBuilder(1024);
             using (var writer = new StringWriter(output))
@@ -46,19 +46,19 @@ namespace Nemo.Serialization
         }
 
         public static string ToXml<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             return dataEntity.ToXml(null, true);
         }
 
         public static void ToXml<T>(this T dataEntity, TextWriter writer)
-            where T : class, IDataEntity
+            where T : class
         {
             dataEntity.ToXml(null, writer, true);
         }
 
         public static string ToXml<T>(this IEnumerable<T> dataEntitys)
-           where T : class, IDataEntity
+           where T : class
         {
             var output = new StringBuilder(1024);
             using (var writer = new StringWriter(output))
@@ -69,7 +69,7 @@ namespace Nemo.Serialization
         }
 
         public static void ToXml<T>(this IEnumerable<T> dataEntitys, TextWriter writer)
-            where T : class, IDataEntity
+            where T : class
         {
             var documentElementName = string.Empty;
             var addSchemaDeclaration = true;
@@ -81,7 +81,7 @@ namespace Nemo.Serialization
                     documentElementName = Xml.GetElementNameFromType<T>();
                     if (!string.IsNullOrEmpty(documentElementName))
                     {
-                        writer.Write(string.Format("<ArrayOf{0} xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">", documentElementName));
+                        writer.Write("<ArrayOf{0} xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">", documentElementName);
                         addSchemaDeclaration = false;
                     }
                 }
@@ -90,18 +90,18 @@ namespace Nemo.Serialization
 
             if (!string.IsNullOrEmpty(documentElementName))
             {
-                writer.Write(string.Format("</ArrayOf{0}>", documentElementName));
+                writer.Write("</ArrayOf{0}>", documentElementName);
             }
         }
 
         public static IEnumerable<T> FromXml<T>(this string xml)
-            where T : class, IDataEntity
+            where T : class
         {
             return FromXml<T>(new StringReader(xml));
         }
 
         public static IEnumerable<T> FromXml<T>(this Stream stream)
-            where T : class, IDataEntity
+            where T : class
         {
             using (var reader = new StreamReader(stream))
             {
@@ -110,7 +110,7 @@ namespace Nemo.Serialization
         }
 
         public static IEnumerable<T> FromXml<T>(this TextReader textReader)
-           where T : class, IDataEntity
+           where T : class
         {
             using (var reader = XmlReader.Create(textReader))
             {
@@ -119,7 +119,7 @@ namespace Nemo.Serialization
         }
 
         public static IEnumerable<T> FromXml<T>(this XmlReader reader)
-            where T : class, IDataEntity
+            where T : class
         {
             bool isArray;
             var result = XmlSerializationReader.ReadObject(reader, typeof(T), out isArray);
@@ -127,10 +127,7 @@ namespace Nemo.Serialization
             {
                 return ((IList)result).Cast<T>();
             }
-            else
-            {
-                return ((T)result).Return();
-            }
+            return ((T)result).Return();
         }
     }
 }

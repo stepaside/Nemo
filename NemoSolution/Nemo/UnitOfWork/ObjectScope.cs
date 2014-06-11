@@ -19,9 +19,9 @@ namespace Nemo.UnitOfWork
     public class ObjectScope : IDisposable
     {
         private const string ScopeNameStore = "__ObjectScope";
-        internal IDataEntity Item = null;
+        internal object Item = null;
         internal byte[] ItemSnapshot = null;
-        internal IDataEntity OriginalItem = null;
+        internal object OriginalItem = null;
         internal readonly Type ItemType = null;
         private bool? _hasException = null;
 
@@ -47,18 +47,18 @@ namespace Nemo.UnitOfWork
             }
         }
 
-        static byte[] CreateSnapshot(IDataEntity item)
+        static byte[] CreateSnapshot(object item)
         {
             return item.Serialize(SerializationMode.SerializeAll);
         }
 
         public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default)
-            where T : class, IDataEntity
+            where T : class
         {
             return new ObjectScope(item, autoCommit, mode, typeof(T));
         }
 
-        private ObjectScope(IDataEntity item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null)
+        private ObjectScope(object item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null)
         {
             if (item == null && type == null)
             {
@@ -127,19 +127,19 @@ namespace Nemo.UnitOfWork
         }
 
         internal bool UpdateOuterSnapshot<T>(T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             return UpdateSnapshot(dataEntity, 1);
         }
 
         internal bool UpdateCurrentSnapshot<T>(T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             return UpdateSnapshot(dataEntity, 0);
         }
 
         private bool UpdateSnapshot<T>(T dataEntity, int index)
-            where T : class, IDataEntity
+            where T : class
         {
             var outerScope = Scopes.ElementAtOrDefault(index);
             if (outerScope != null)

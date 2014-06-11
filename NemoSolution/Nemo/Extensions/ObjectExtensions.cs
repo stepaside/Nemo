@@ -34,27 +34,48 @@ namespace Nemo.Extensions
         /// <param name="propertyName"></param>
         /// <returns></returns>
         public static TResult Property<T, TResult>(this T dataEntity, string propertyName)
-            where T : class, IDataEntity
+            where T : class
         {
+            if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
+            {
+                var type = Reflector.ExtractInterface(dataEntity.GetType());
+                return (TResult)Reflector.Property.Get(type, dataEntity, propertyName);
+            }
+            
             if (Reflector.IsMarkerInterface<T>())
             {
                 return (TResult)Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
             }
-            return (TResult)Reflector.Property.Get<T>(dataEntity, propertyName);
+            
+            return (TResult)Reflector.Property.Get(dataEntity, propertyName);
         }
 
         /// <summary>
         /// Property method returns a value of a property.
         /// </summary>
         /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TResult"></typeparam>
         /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
         public static TResult PropertyOrDefault<T, TResult>(this T dataEntity, string propertyName, TResult defaultValue)
-            where T : class, IDataEntity
+            where T : class
         {
-            var result = Reflector.IsMarkerInterface<T>() ? Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName) : Reflector.Property.Get(dataEntity, propertyName);
+            object result;
+            if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
+            {
+                var type = Reflector.ExtractInterface(dataEntity.GetType());
+                result = Reflector.Property.Get(type, dataEntity, propertyName);
+            }
+            else if (Reflector.IsMarkerInterface<T>())
+            {
+                result = Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
+            }
+            else
+            {
+                result = Reflector.Property.Get(dataEntity, propertyName);
+            }
             return result != null ? (TResult)result : defaultValue;
         }
 
@@ -65,7 +86,7 @@ namespace Nemo.Extensions
         /// <param name="propertyName"></param>
         /// <returns></returns>
         public static object Property<T>(this T dataEntity, string propertyName)
-            where T : class, IDataEntity
+            where T : class
         {
             return dataEntity.Property<T, object>(propertyName);
         }
@@ -77,9 +98,14 @@ namespace Nemo.Extensions
         /// <param name="propertyName"></param>
         /// <param name="propertyValue"></param>
         public static void Property<T>(this T dataEntity, string propertyName, object propertyValue)
-            where T : class, IDataEntity
+            where T : class
         {
-            if (Reflector.IsMarkerInterface<T>())
+            if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
+            {
+                var type = Reflector.ExtractInterface(dataEntity.GetType());
+                Reflector.Property.Set(type, dataEntity, propertyName, propertyValue);
+            }
+            else if (Reflector.IsMarkerInterface<T>())
             {
                 Reflector.Property.Set(dataEntity.GetType(), dataEntity, propertyName, propertyValue);
             }
@@ -95,7 +121,7 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         public static bool PropertyExists<T>(this T dataEntity, string propertyName)
-            where T : class, IDataEntity
+            where T : class
         {
             object value;
             return dataEntity.PropertyTryGet(propertyName, out value);
@@ -109,7 +135,7 @@ namespace Nemo.Extensions
         /// <param name="value"></param>
         /// <returns></returns>
         public static bool PropertyTryGet<T>(this T dataEntity, string propertyName, out object value)
-            where T : class, IDataEntity
+            where T : class
         {
             var exists = false;
             value = null;
@@ -132,7 +158,7 @@ namespace Nemo.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="dataEntity"></param>
         public static void Load<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             dataEntity.ThrowIfNull("dataEntity");
             dataEntity.CheckReadOnly();
@@ -169,7 +195,7 @@ namespace Nemo.Extensions
         /// <param name="additionalParameters"></param>
         /// <returns></returns>
         public static bool Insert<T>(this T dataEntity, params Param[] additionalParameters)
-            where T : class, IDataEntity
+            where T : class
         {
             dataEntity.ThrowIfNull("dataEntity");
             dataEntity.CheckReadOnly();
@@ -235,13 +261,12 @@ namespace Nemo.Extensions
                 entity.ObjectState = ObjectState.Clean;
             }
 
-            if (dataEntity is IAuditableDataEntity)
+            if (!(dataEntity is IAuditableDataEntity)) return true;
+
+            var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+            if (logProvider != null)
             {
-                var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
-                if (logProvider != null)
-                {
-                    logProvider.Write(new AuditLog<T>(ObjectFactory.OperationInsert, default(T), dataEntity));
-                }
+                logProvider.Write(new AuditLog<T>(ObjectFactory.OperationInsert, default(T), dataEntity));
             }
 
             return true;
@@ -255,7 +280,7 @@ namespace Nemo.Extensions
         /// <param name="additionalParameters"></param>
         /// <returns></returns>
         public static bool Update<T>(this T dataEntity, params Param[] additionalParameters)
-            where T : class, IDataEntity
+            where T : class
         {
             dataEntity.ThrowIfNull("dataEntity");
             dataEntity.CheckReadOnly();
@@ -305,13 +330,12 @@ namespace Nemo.Extensions
                 ((ITrackableDataEntity)dataEntity).ObjectState = ObjectState.Clean;
             }
 
-            if (dataEntity is IAuditableDataEntity)
+            if (!(dataEntity is IAuditableDataEntity)) return true;
+            
+            var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+            if (logProvider != null)
             {
-                var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
-                if (logProvider != null)
-                {
-                    logProvider.Write(new AuditLog<T>(ObjectFactory.OperationUpdate, (dataEntity.Old() ?? dataEntity), dataEntity));
-                }
+                logProvider.Write(new AuditLog<T>(ObjectFactory.OperationUpdate, (dataEntity.Old() ?? dataEntity), dataEntity));
             }
 
             return true;
@@ -324,7 +348,7 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <returns></returns>
         public static bool Delete<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             dataEntity.ThrowIfNull("dataEntity");
             dataEntity.CheckReadOnly();
@@ -350,13 +374,12 @@ namespace Nemo.Extensions
                 entity.ObjectState = ObjectState.Deleted;
             }
 
-            if (dataEntity is IAuditableDataEntity)
+            if (!(dataEntity is IAuditableDataEntity)) return true;
+            
+            var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+            if (logProvider != null)
             {
-                var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
-                if (logProvider != null)
-                {
-                    logProvider.Write(new AuditLog<T>(ObjectFactory.OperationDelete, dataEntity, default(T)));
-                }
+                logProvider.Write(new AuditLog<T>(ObjectFactory.OperationDelete, dataEntity, default(T)));
             }
 
             return true;
@@ -369,7 +392,7 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <returns></returns>
         public static bool Destroy<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             dataEntity.ThrowIfNull("dataEntity");
             dataEntity.CheckReadOnly();
@@ -395,13 +418,12 @@ namespace Nemo.Extensions
                 entity.ObjectState = ObjectState.Deleted;
             }
 
-            if (dataEntity is IAuditableDataEntity)
+            if (!(dataEntity is IAuditableDataEntity)) return false;
+            
+            var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+            if (logProvider != null)
             {
-                var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
-                if (logProvider != null)
-                {
-                    logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationDestroy, dataEntity, default(T)));
-                }
+                logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationDestroy, dataEntity, default(T)));
             }
 
             return false;
@@ -410,7 +432,7 @@ namespace Nemo.Extensions
         #region ITrackableDataEntity Methods
 
         public static bool Save<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             var result = false;
             
@@ -427,7 +449,7 @@ namespace Nemo.Extensions
         }
 
         public static bool IsNew<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             var entity = dataEntity as ITrackableDataEntity;
             if (entity != null)
@@ -439,7 +461,7 @@ namespace Nemo.Extensions
         }
 
         public static bool IsReadOnly<T>(this T dataEntity)
-           where T : class, IDataEntity
+           where T : class
         {
             var entity = dataEntity as ITrackableDataEntity;
             if (entity != null)
@@ -450,15 +472,25 @@ namespace Nemo.Extensions
         }
 
         public static bool IsDirty<T>(this T dataEntity)
-           where T : class, ITrackableDataEntity
+           where T : class
         {
-            return dataEntity.ObjectState == ObjectState.Dirty;
+            var entity = dataEntity as ITrackableDataEntity;
+            if (entity != null)
+            {
+                return entity.ObjectState == ObjectState.Dirty;
+            }
+            return false;
         }
 
         public static bool IsDeleted<T>(this T dataEntity)
-           where T : class, ITrackableDataEntity
+           where T : class
         {
-            return dataEntity.ObjectState == ObjectState.Deleted;
+            var entity = dataEntity as ITrackableDataEntity;
+            if (entity != null)
+            {
+                return entity.ObjectState == ObjectState.Deleted;
+            }
+            return false;
         }
 
         #endregion
@@ -566,11 +598,15 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <returns></returns>
         public static IDictionary<string, object> GetPrimaryKey<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             // Get properties and build a property map
             var interfaceType = typeof(T);
-            if (Reflector.IsMarkerInterface<T>())
+            if (interfaceType == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
+            {
+                interfaceType = Reflector.ExtractInterface(dataEntity.GetType());
+            }
+            else if (Reflector.IsMarkerInterface<T>())
             {
                 interfaceType = dataEntity.GetType();
             }
@@ -589,7 +625,7 @@ namespace Nemo.Extensions
         }
 
         public static void GenerateKey<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             var propertyMap = Reflector.GetPropertyMap<T>();
             var generatorKeys = propertyMap.Where(p => p.Value != null && p.Value.Generator != null).Select(p => Tuple.Create(typeof(T), p.Key, p.Value.Generator));
@@ -602,10 +638,19 @@ namespace Nemo.Extensions
         }
 
         public static string ComputeHash<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             var hash = Jenkins96Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", dataEntity.GetPrimaryKey().Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
-            return typeof(T).FullName + "/" + hash;
+            var type = typeof(T);
+            if (type == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
+            {
+                type = Reflector.ExtractInterface(dataEntity.GetType());
+            }
+            else if (Reflector.IsMarkerInterface<T>())
+            {
+                type = dataEntity.GetType();
+            }
+            return type.FullName + "/" + hash;
         }
 
         #endregion
@@ -613,37 +658,25 @@ namespace Nemo.Extensions
         #region ReadOnly Methods
 
         public static T AsReadOnly<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
-            if (dataEntity == null)
-            {
-                return null;
-            }
-            return Adapter.Guard(dataEntity);
+            return dataEntity == null ? null : Adapter.Guard(dataEntity);
         }
 
         public static List<T> AsReadOnly<T>(this List<T> dataEntitys)
-            where T : class, IDataEntity
+            where T : class
         {
-            if (dataEntitys == null)
-            {
-                return null;
-            }
-            return dataEntitys.Select(b => b.AsReadOnly()).ToList();
+            return dataEntitys == null ? null : dataEntitys.Select(b => b.AsReadOnly()).ToList();
         }
 
         public static IList<T> AsReadOnly<T>(this IList<T> dataEntitys)
-            where T : class, IDataEntity
+            where T : class
         {
-            if (dataEntitys == null)
-            {
-                return null;
-            }
-            return dataEntitys.Select(b => b.AsReadOnly()).ToArray();
+            return dataEntitys == null ? null : dataEntitys.Select(b => b.AsReadOnly()).ToArray();
         }
 
         internal static void CheckReadOnly<T>(this T dataEntity)
-            where T : class, IDataEntity
+            where T : class
         {
             // Read-only objects can't participate in CRUD
             if (dataEntity.IsReadOnly())
@@ -664,7 +697,7 @@ namespace Nemo.Extensions
         /// <param name="instance"></param>
         /// <returns></returns>
         public static T Clone<T>(this T instance)
-            where T : class, IDataEntity
+            where T : class
         {
             var data = instance.Serialize(SerializationMode.SerializeAll);
             var value = data.Deserialize<T>();
@@ -678,7 +711,7 @@ namespace Nemo.Extensions
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
         public static IEnumerable<T> Clone<T>(this IEnumerable<T> collection)
-            where T : class, IDataEntity
+            where T : class
         {
             var data = collection.Serialize(SerializationMode.SerializeAll);
             var value = data.Deserialize<T>();

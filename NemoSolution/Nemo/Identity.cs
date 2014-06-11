@@ -10,7 +10,7 @@ namespace Nemo
     internal static class Identity
     {
         internal static IdentityMap<T> Get<T>()
-            where T : class, IDataEntity
+            where T : class
         {
             IdentityMap<T> identityMap;
             var identityMapKey = typeof(T).FullName + "/IdentityMap";
