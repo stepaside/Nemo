@@ -375,7 +375,7 @@ namespace Nemo
                 
                 Log.CaptureEnd();
 
-                if (result != null)
+                if (result != null && result.Any())
                 {
                     Log.Capture(() => string.Format("Found in L1 cache: {0}", queryKey));
                     
