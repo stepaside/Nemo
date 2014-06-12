@@ -359,7 +359,7 @@ namespace Nemo
 
             if (cached.Value)
             {
-                queryKey = GetQueryKey<TResult>(operation, parameters, returnType);
+                queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
                 Log.CaptureBegin(() => string.Format("Retrieving from L1 cache: {0}", queryKey));
 
