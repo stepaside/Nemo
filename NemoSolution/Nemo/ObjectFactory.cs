@@ -295,10 +295,6 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
             var sql = SqlBuilder.GetSelectCountStatement<T>(predicate, DialectFactory.GetProvider(connection, providerName));
             return RetrieveScalar<int>(sql, connection: connection);
         }
@@ -316,14 +312,10 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
             var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName));
             return RetrieveImplemenation<T>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, cached: cached);
         }
-        
+
         #endregion
 
         #region Retrieve Methods
@@ -375,7 +367,7 @@ namespace Nemo
                 
                 Log.CaptureEnd();
 
-                if (result != null && result.Any())
+                if (result != null)
                 {
                     Log.Capture(() => string.Format("Found in L1 cache: {0}", queryKey));
                     
@@ -387,15 +379,11 @@ namespace Nemo
                     Log.CaptureEnd();
                     return result;
                 }
-                else
-                {
-                    Log.Capture(() => string.Format("Not found in L1 cache: {0}", queryKey));
-                }
+                Log.Capture(() => string.Format("Not found in L1 cache: {0}", queryKey));
             }
 
             result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema);
             
-            // Cache in the local context if the 2nd level cache is distributed
             if (queryKey != null)
             {
                 Log.CaptureBegin(() => string.Format("Saving to L1 cache: {0}", queryKey));
@@ -406,19 +394,15 @@ namespace Nemo
                     {
                         result = result.ToList();
                     }
-                    else if (result.Any())
-                    {
-                        result = result.AsStream();
-                    }
                     else
                     {
-                        result = new List<TResult>();
+                        result = result.AsStream();
                     }
                 }
 
                 if (identityMap != null)
                 {
-                    identityMap.AddIndex(queryKey, result);
+                    result = identityMap.AddIndex(queryKey, result);
                 }
                 else if (result is IMultiResult)
                 {
@@ -446,7 +430,7 @@ namespace Nemo
                 ? Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema) 
                 : Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
 
-            var result = Transform(response, map, types, cached, mode);
+            var result = Translate(response, map, types, cached, mode);
             return result;
         }
 
@@ -842,7 +826,7 @@ namespace Nemo
                         closeConnection = false;
                         //if (closeConnection)
                         //{
-                        //    behavior |= CommandBehavior.CloseConnection;
+                        behavior |= CommandBehavior.CloseConnection;
                         //}
                         response.Value = command.ExecuteReader(behavior);
                         break;
@@ -947,12 +931,18 @@ namespace Nemo
 
         #endregion
 
-        #region Transform/Convert Methods
+        #region Translate Methods
 
-        private static IEnumerable<T> Transform<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode)
+        public static IEnumerable<T> Translate<T>(OperationResponse response)
             where T : class
         {
-            object value = response.Value;
+            return Translate<T>(response, null, null, ConfigurationFactory.Configuration.DefaultL1CacheRepresentation != L1CacheRepresentation.None, ConfigurationFactory.Configuration.DefaultMaterializationMode);
+        }
+
+        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode)
+            where T : class
+        {
+            var value = response != null ? response.Value : null;
             if (value == null)
             {
                 return Enumerable.Empty<T>();
@@ -968,7 +958,7 @@ namespace Nemo
                     var multiResultItems = ConvertDataReaderMultiResult(reader, types, mode, isInterface);
                     return (IEnumerable<T>)MultiResult.Create(types, multiResultItems, cached);
                 }
-                return ConvertDataReader<T>(reader, map, types, mode, isInterface);
+                return ConvertDataReader(reader, map, types, mode, isInterface);
             }
 
             var dataSet = value as DataSet;
