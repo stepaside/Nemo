@@ -423,10 +423,22 @@ namespace Nemo.Extensions
             var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
             if (logProvider != null)
             {
-                logProvider.Write<T>(new AuditLog<T>(ObjectFactory.OperationDestroy, dataEntity, default(T)));
+                logProvider.Write(new AuditLog<T>(ObjectFactory.OperationDestroy, dataEntity, default(T)));
             }
 
             return false;
+        }
+
+        public static void Attach<T>(this T dataEntity)
+            where T : class
+        {
+            Identity.Get<T>().Set(dataEntity);
+        }
+
+        public static void Detach<T>(this T dataEntity)
+            where T : class
+        {
+            Identity.Get<T>().Remove(dataEntity);
         }
 
         #region ITrackableDataEntity Methods
