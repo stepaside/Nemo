@@ -591,7 +591,7 @@ namespace Nemo.Serialization
 
             if (Reflector.IsList(objectType))
             {
-                elementType = Reflector.ExtractCollectionElementType(objectType);
+                elementType = Reflector.GetElementType(objectType);
                 interfaceType = elementType;
                 isEmitted = Reflector.IsEmitted(elementType);
             }
@@ -603,7 +603,7 @@ namespace Nemo.Serialization
 
             if (isEmitted)
             {
-                interfaceType = Reflector.ExtractInterface(elementType ?? objectType);
+                interfaceType = Reflector.GetInterface(elementType ?? objectType);
 
                 if (interfaceType == null)
                 {

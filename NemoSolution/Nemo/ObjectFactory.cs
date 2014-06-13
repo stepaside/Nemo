@@ -303,7 +303,7 @@ namespace Nemo
 
         #region Select Methods
 
-        public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null)
+        public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
             where T : class
         {
             string providerName = null;
@@ -312,7 +312,7 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName));
+            var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
             return RetrieveImplemenation<T>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, cached: cached);
         }
 
@@ -511,7 +511,7 @@ namespace Nemo
                 var list = parameters as ParamList;
                 if (list != null)
                 {
-                    parameterList = list.ExtractParameters(typeof(TResult), operation);
+                    parameterList = list.GetParameters(typeof(TResult), operation);
                 }
                 else
                 {
@@ -570,7 +570,7 @@ namespace Nemo
                 var list = parameters as ParamList;
                 if (list != null)
                 {
-                    parameterList = list.ExtractParameters(typeof(T), operation);
+                    parameterList = list.GetParameters(typeof(T), operation);
                 }
                 else
                 {
@@ -593,7 +593,7 @@ namespace Nemo
         public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class
         {
-            return Insert<T>(parameters.ExtractParameters(typeof(T), OperationInsert), connectionName, captureException, schema);
+            return Insert<T>(parameters.GetParameters(typeof(T), OperationInsert), connectionName, captureException, schema);
         }
 
         public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
@@ -618,7 +618,7 @@ namespace Nemo
         public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class
         {
-            return Update<T>(parameters.ExtractParameters(typeof(T), OperationUpdate), connectionName, captureException, schema);
+            return Update<T>(parameters.GetParameters(typeof(T), OperationUpdate), connectionName, captureException, schema);
         }
 
         public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
@@ -652,7 +652,7 @@ namespace Nemo
         public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class
         {
-            return Delete<T>(parameters.ExtractParameters(typeof(T), OperationDelete), connectionName, captureException);
+            return Delete<T>(parameters.GetParameters(typeof(T), OperationDelete), connectionName, captureException);
         }
 
         public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
@@ -693,7 +693,7 @@ namespace Nemo
         public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
             where T : class
         {
-            return Destroy<T>(parameters.ExtractParameters(typeof(T), OperationDestroy), connectionName, captureException, schema);
+            return Destroy<T>(parameters.GetParameters(typeof(T), OperationDestroy), connectionName, captureException, schema);
         }
 
         public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
@@ -1289,7 +1289,7 @@ namespace Nemo
             var references = propertyMap.Where(p => p.Value.IsDataEntity || p.Value.IsDataEntityList).Select(p => p.Value);
             foreach (var reference in references)
             {
-                var elementType = reference.IsDataEntityList ? Reflector.ExtractGenericCollectionElementType(reference.PropertyType) : reference.PropertyType;
+                var elementType = reference.IsDataEntityList ? Reflector.GetElementType(reference.PropertyType) : reference.PropertyType;
 
                 var referencedPropertyMap = Reflector.GetPropertyMap(elementType);
                 var referencedProperties = referencedPropertyMap.Where(p => p.Value != null && p.Value.Parent == objectType).OrderBy(p => p.Value.RefPosition).Select(p => p.Value).ToList();
@@ -1317,60 +1317,53 @@ namespace Nemo
 
         internal static string GetOperationText(Type objectType, string operation, OperationType operationType, string schema)
         {
-            if (operationType == OperationType.StoredProcedure)
+            if (operationType != OperationType.StoredProcedure) return operation;
+
+            var namingConvention = ConfigurationFactory.Configuration.OperationNamingConvention;
+            var typeName = objectType.Name;
+            if (objectType.IsInterface && typeName[0] == 'I')
             {
-                var namingConvention = ConfigurationFactory.Configuration.OperationNamingConvention;
-                var typeName = objectType.Name;
-                if (objectType.IsInterface && typeName[0] == 'I')
-                {
-                    typeName = typeName.Substring(1);
-                }
-
-                var procName = ConfigurationFactory.Configuration.OperationPrefix + typeName + "_" + operation;
-                if (namingConvention == OperationNamingConvention.PrefixTypeNameOperation)
-                {
-                    procName = ConfigurationFactory.Configuration.OperationPrefix + typeName + operation;
-                }
-                else if (namingConvention == OperationNamingConvention.TypeName_Operation)
-                {
-                    procName = typeName + "_" + operation;
-                }
-                else if (namingConvention == OperationNamingConvention.TypeNameOperation)
-                {
-                    procName = typeName + operation;
-                }
-                else if (namingConvention == OperationNamingConvention.PrefixOperation_TypeName)
-                {
-                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation + "_" + typeName;
-                }
-                else if (namingConvention == OperationNamingConvention.PrefixOperationTypeName)
-                {
-                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation + typeName;
-                }
-                else if (namingConvention == OperationNamingConvention.Operation_TypeName)
-                {
-                    procName = operation + "_" + typeName;
-                }
-                else if (namingConvention == OperationNamingConvention.OperationTypeName)
-                {
-                    procName = operation + typeName;
-                }
-                else if (namingConvention == OperationNamingConvention.PrefixOperation)
-                {
-                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation;
-                }
-                else if (namingConvention == OperationNamingConvention.Operation)
-                {
-                    procName = operation;
-                }
-
-                if (!string.IsNullOrEmpty(schema))
-                {
-                    procName = schema + "." + procName;
-                }
-
-                operation = procName;
+                typeName = typeName.Substring(1);
             }
+
+            var procName = ConfigurationFactory.Configuration.OperationPrefix + typeName + "_" + operation;
+            switch (namingConvention)
+            {
+                case OperationNamingConvention.PrefixTypeNameOperation:
+                    procName = ConfigurationFactory.Configuration.OperationPrefix + typeName + operation;
+                    break;
+                case OperationNamingConvention.TypeName_Operation:
+                    procName = typeName + "_" + operation;
+                    break;
+                case OperationNamingConvention.TypeNameOperation:
+                    procName = typeName + operation;
+                    break;
+                case OperationNamingConvention.PrefixOperation_TypeName:
+                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation + "_" + typeName;
+                    break;
+                case OperationNamingConvention.PrefixOperationTypeName:
+                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation + typeName;
+                    break;
+                case OperationNamingConvention.Operation_TypeName:
+                    procName = operation + "_" + typeName;
+                    break;
+                case OperationNamingConvention.OperationTypeName:
+                    procName = operation + typeName;
+                    break;
+                case OperationNamingConvention.PrefixOperation:
+                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation;
+                    break;
+                case OperationNamingConvention.Operation:
+                    procName = operation;
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(schema))
+            {
+                procName = schema + "." + procName;
+            }
+
+            operation = procName;
             return operation;
         }
 
@@ -1411,7 +1404,7 @@ namespace Nemo
             string tableName = null;
             if (Reflector.IsEmitted(objectType))
             {
-                objectType = Reflector.ExtractInterface(objectType);
+                objectType = Reflector.GetInterface(objectType);
             }
 
             var map = MappingFactory.GetEntityMap(objectType);

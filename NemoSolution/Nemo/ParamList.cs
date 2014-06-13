@@ -7,10 +7,10 @@ namespace Nemo
 {
     public class ParamList : List<Expression<Func<object, object>>>
     {
-        internal Param[] ExtractParameters(Type objectType, string operation)
+        internal Param[] GetParameters(Type objectType, string operation)
         {
-            var result = new Param[this.Count];
-            for (int i = 0; i < this.Count; ++i)
+            var result = new Param[Count];
+            for (var i = 0; i < Count; ++i)
             {
                 var expression = this[i];
                 var parameterName = expression.Parameters[0].Name;

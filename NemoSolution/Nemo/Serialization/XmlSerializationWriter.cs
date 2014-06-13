@@ -294,7 +294,7 @@ namespace Nemo.Serialization
             var interfaceType = objectType;
             if (Reflector.IsEmitted(objectType))
             {
-                interfaceType = Reflector.ExtractInterface(objectType) ?? objectType;
+                interfaceType = Reflector.GetInterface(objectType) ?? objectType;
             }
 
             var properties = Reflector.GetPropertyMap(interfaceType).Where(p => p.Key.CanRead && p.Key.CanWrite && p.Key.Name != "Indexer" && !p.Key.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any())

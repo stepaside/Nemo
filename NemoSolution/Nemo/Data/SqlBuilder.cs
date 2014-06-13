@@ -3,7 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
+using System.Text;
 using Nemo.Attributes;
+using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Reflection;
 using Nemo.Configuration.Mapping;
@@ -25,7 +28,7 @@ namespace Nemo.Data
         private const string SqlSoftDeleteFormat = "UPDATE {0} SET {1} = 1 WHERE {2}";
         private const string SqlDeleteFormat = "DELETE {0} WHERE {1}";
         private const string SqlSetFormat = "{2}{0}{3} = {1}";
-
+        
         public const string DefaultSoftDeleteColumn = "__deleted";
         public const string DefaultTimestampColumn = "__timestamp";
 
@@ -36,7 +39,7 @@ namespace Nemo.Data
             string tableName = null;
             if (Reflector.IsEmitted(objectType))
             {
-                objectType = Reflector.ExtractInterface(objectType);
+                objectType = Reflector.GetInterface(objectType);
             }
 
             var map = MappingFactory.GetEntityMap(objectType);
@@ -72,8 +75,8 @@ namespace Nemo.Data
 
             return tableName;
         }
-        
-        internal static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, DialectProvider dialect)
+
+        internal static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, DialectProvider dialect, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
             where T : class
         {
             var map = Reflector.GetPropertyMap<T>();
@@ -90,28 +93,87 @@ namespace Nemo.Data
 
             if (page > 0 && pageSize > 0)
             {
-                if (dialect is SqlServerDialectProvider)
-                {
-                    if (dialect is SqlServerLegacyDialectProvider)
+                    if (dialect is SqlServerDialectProvider)
                     {
-                        var primaryKeyAscending = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " ASC").ToDelimitedString(",");
-                        var primaryKeyDescending = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " DESC").ToDelimitedString(",");
-                        sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, primaryKeyAscending, primaryKeyDescending, whereClause, pageSize, page * pageSize);
+                        if (dialect is SqlServerLegacyDialectProvider)
+                        {
+                            if (orderBy.Length == 0)
+                            {
+
+                                var primaryKeyAscending = map.Keys.Where(p => map[p].IsPrimaryKey)
+                                    .Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " ASC")
+                                    .ToDelimitedString(",");
+                                var primaryKeyDescending = map.Keys.Where(p => map[p].IsPrimaryKey)
+                                    .Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " DESC")
+                                    .ToDelimitedString(",");
+                                sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, primaryKeyAscending, primaryKeyDescending, whereClause, pageSize, page*pageSize);
+                            }
+                            else
+                            {
+                                var sort = new StringBuilder();
+                                var sortReverse = new StringBuilder();
+                                foreach (var o in orderBy)
+                                {
+                                    var column = dialect.IdentifierEscapeStartCharacter + map[((PropertyInfo)((MemberExpression)o.Item1.Body).Member)].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                                    sort.AppendFormat("{0} {1}, ", column, o.Item2 == SortingOrder.Ascending ? "ASC" : "DESC");
+                                    sortReverse.AppendFormat("{0} {1}, ", column, o.Item2 == SortingOrder.Ascending ? "DESC" : "ASC");
+                                }
+                                sort.Length -= 2;
+                                sortReverse.Length -= 2;
+                                sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, sort, sortReverse, whereClause, pageSize, page*pageSize);
+                            }
+                        }
+                        else
+                        {
+                            if (orderBy.Length == 0)
+                            {
+                                var primaryKey = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");
+                                sql = string.Format(SqlSelectPagingFormatMssql, tableName, selection, primaryKey, whereClause, (page - 1)*pageSize, page*pageSize);
+                            }
+                            else
+                            {
+                                var sort = new StringBuilder();
+                                foreach (var o in orderBy)
+                                {
+                                    var column = dialect.IdentifierEscapeStartCharacter + map[((PropertyInfo)((MemberExpression)o.Item1.Body).Member)].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                                    sort.AppendFormat("{0} {1}, ", column, o.Item2 == SortingOrder.Ascending ? "ASC" : "DESC");
+                                }
+                                sort.Length -= 2;
+                                sql = string.Format(SqlSelectPagingFormatMssql, tableName, selection, sort, whereClause, (page - 1) * pageSize, page * pageSize);
+                            }
+                        }
                     }
                     else
                     {
-                        var primaryKey = map.Keys.Where(p => map[p].IsPrimaryKey).Select(p => dialect.IdentifierEscapeStartCharacter + map[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");
-                        sql = string.Format(SqlSelectPagingFormatMssql, tableName, selection, primaryKey, whereClause, (page - 1) * pageSize, page * pageSize);
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, pageSize, (page - 1)*pageSize);
+                        if (orderBy.Length > 0)
+                        {
+                            var sort = new StringBuilder(" ORDER BY ");
+                            foreach (var o in orderBy)
+                            {
+                                var column = dialect.IdentifierEscapeStartCharacter + map[((PropertyInfo)((MemberExpression)o.Item1.Body).Member)].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                                sort.AppendFormat("{0} {1}, ", column, o.Item2 == SortingOrder.Ascending ? "ASC" : "DESC");
+                            }
+                            sort.Length -= 2;
+                            sql += sort;
+                        }
                     }
-                }
-                else
-                {
-                    sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, pageSize, (page - 1) * pageSize);
-                }
             }
             else
             {
                 sql = string.Format(SqlSelectFormat, tableName, selection) + whereClause;
+                if (orderBy.Length > 0)
+                {
+                    var sort = new StringBuilder(" ORDER BY ");
+                    foreach (var o in orderBy)
+                    {
+                        var column = dialect.IdentifierEscapeStartCharacter + map[((PropertyInfo)((MemberExpression)o.Item1.Body).Member)].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                        sort.AppendFormat("{0} {1}, ", column, o.Item2 == SortingOrder.Ascending ? "ASC" : "DESC");
+                    }
+                    sort.Length -= 2;
+                    sql += sort;
+                }
+
             }
             return sql;
         }

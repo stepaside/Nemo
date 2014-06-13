@@ -67,7 +67,7 @@ namespace Nemo.Utilities
                 var elementType = reflectedType.ElementType;
                 if (Reflector.IsEmitted(elementType))
                 {
-                    elementType = Reflector.ExtractInterface(elementType);
+                    elementType = Reflector.GetInterface(elementType);
                 }
 
                 schemaXml.AppendFormat("<xs:element minOccurs=\"0\" maxOccurs=\"unbounded\" name=\"{0}\" nillable=\"true\" type=\"{1}\" />", GetElementNameFromType(elementType), Reflector.ClrToXmlType(elementType));

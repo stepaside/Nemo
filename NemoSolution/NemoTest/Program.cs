@@ -6,6 +6,7 @@ using Nemo.Configuration;
 using Nemo.Configuration.Mapping;
 using Nemo.Extensions;
 using Nemo.Fn;
+using Nemo.Linq;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Utilities;
@@ -41,7 +42,7 @@ namespace NemoTest
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
-
+            
             // Create an instance
             var created = ObjectFactory.Create<ICustomer>();
             var created_new = ObjectFactory.Create<Customer>();
@@ -67,6 +68,8 @@ namespace NemoTest
             //var selected_customers_10_repeat = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
             var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
             var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
+
+            new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
 
             var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 

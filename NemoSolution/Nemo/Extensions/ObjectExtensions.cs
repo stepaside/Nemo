@@ -38,7 +38,7 @@ namespace Nemo.Extensions
         {
             if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
             {
-                var type = Reflector.ExtractInterface(dataEntity.GetType());
+                var type = Reflector.GetInterface(dataEntity.GetType());
                 return (TResult)Reflector.Property.Get(type, dataEntity, propertyName);
             }
             
@@ -65,7 +65,7 @@ namespace Nemo.Extensions
             object result;
             if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
             {
-                var type = Reflector.ExtractInterface(dataEntity.GetType());
+                var type = Reflector.GetInterface(dataEntity.GetType());
                 result = Reflector.Property.Get(type, dataEntity, propertyName);
             }
             else if (Reflector.IsMarkerInterface<T>())
@@ -102,7 +102,7 @@ namespace Nemo.Extensions
         {
             if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
             {
-                var type = Reflector.ExtractInterface(dataEntity.GetType());
+                var type = Reflector.GetInterface(dataEntity.GetType());
                 Reflector.Property.Set(type, dataEntity, propertyName, propertyValue);
             }
             else if (Reflector.IsMarkerInterface<T>())
@@ -604,7 +604,7 @@ namespace Nemo.Extensions
             var interfaceType = typeof(T);
             if (interfaceType == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
             {
-                interfaceType = Reflector.ExtractInterface(dataEntity.GetType());
+                interfaceType = Reflector.GetInterface(dataEntity.GetType());
             }
             else if (Reflector.IsMarkerInterface<T>())
             {
@@ -644,7 +644,7 @@ namespace Nemo.Extensions
             var type = typeof(T);
             if (type == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
             {
-                type = Reflector.ExtractInterface(dataEntity.GetType());
+                type = Reflector.GetInterface(dataEntity.GetType());
             }
             else if (Reflector.IsMarkerInterface<T>())
             {

@@ -35,7 +35,7 @@ namespace Nemo.Reflection
                 IsList = !IsBinary && Reflector.IsList(property.PropertyType);
                 if (IsList)
                 {
-                    ElementType = Reflector.ExtractCollectionElementType(property.PropertyType);
+                    ElementType = Reflector.GetElementType(property.PropertyType);
                     IsListInterface = property.PropertyType.GetGenericTypeDefinition() == typeof(IList<>);
                 }
             }

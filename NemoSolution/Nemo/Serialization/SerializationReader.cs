@@ -727,7 +727,7 @@ namespace Nemo.Serialization
             var interfaceType = objectType;
             if (Reflector.IsEmitted(objectType))
             {
-                interfaceType = Reflector.ExtractInterface(objectType) ?? objectType;
+                interfaceType = Reflector.GetInterface(objectType) ?? objectType;
             }
 
             var properties = Reflector.GetAllProperties(interfaceType);

@@ -9,7 +9,7 @@ namespace Nemo.Reflection
         {
             TypeName = type.Name;
             FullTypeName = type.FullName;
-            var interfaceType = Reflector.ExtractInterface(type);
+            var interfaceType = Reflector.GetInterface(type);
             if (interfaceType != null)
             {
                 InterfaceTypeName = interfaceType.FullName;

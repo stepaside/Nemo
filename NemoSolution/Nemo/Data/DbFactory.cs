@@ -20,7 +20,7 @@ namespace Nemo.Data
             string connectionName = null;
             if (Reflector.IsEmitted(objectType))
             {
-                objectType = Reflector.ExtractInterface(objectType);
+                objectType = Reflector.GetInterface(objectType);
             }
 
             var map = MappingFactory.GetEntityMap(objectType);
