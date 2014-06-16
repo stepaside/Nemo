@@ -17,6 +17,8 @@ namespace Nemo.Collections
 
     [Serializable]
     public class MultiResult<T1, T2> : IMultiResult, IEnumerable<T1>
+        where T1 : class
+        where T2 : class
     {
         private readonly IEnumerable<ITypeUnion> _source;
         private IEnumerator<ITypeUnion> _iter;
@@ -28,7 +30,7 @@ namespace Nemo.Collections
             _cached = cached;
             if (cached)
             {
-                if (ConfigurationFactory.Configuration.DefaultL1CacheRepresentation == L1CacheRepresentation.List)
+                if (ConfigurationFactory.Get<T1>().DefaultL1CacheRepresentation == L1CacheRepresentation.List)
                 {
                     _source = source.ToList();
                 }
@@ -100,6 +102,9 @@ namespace Nemo.Collections
 
     [Serializable]
     public class MultiResult<T1, T2, T3> : MultiResult<T1, T2>, IMultiResult
+        where T1 : class
+        where T2 : class
+        where T3 : class
     {
         public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
             : base(source, cached)
@@ -113,6 +118,10 @@ namespace Nemo.Collections
 
     [Serializable]
     public class MultiResult<T1, T2, T3, T4> : MultiResult<T1, T2, T3>
+        where T1 : class
+        where T2 : class
+        where T3 : class
+        where T4 : class
     {
         public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
             : base(source, cached)
@@ -126,6 +135,11 @@ namespace Nemo.Collections
 
     [Serializable]
     public class MultiResult<T1, T2, T3, T4, T5> : MultiResult<T1, T2, T3, T4>
+        where T1 : class
+        where T2 : class
+        where T3 : class
+        where T4 : class
+        where T5 : class
     {
         public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
             : base(source, cached)

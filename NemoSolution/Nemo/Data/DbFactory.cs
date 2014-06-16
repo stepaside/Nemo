@@ -47,7 +47,7 @@ namespace Nemo.Data
                 }
             }
 
-            return connectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName;
+            return connectionName ?? ConfigurationFactory.Get(objectType).DefaultConnectionName;
         }
 
         internal static string GetProviderInvariantName(string connectionName, Type objectType = null)

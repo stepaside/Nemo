@@ -73,7 +73,7 @@ namespace Nemo.Serialization
         public static byte[] Serialize<T>(this T dataEntity)
             where T : class
         {
-            return Serialize(dataEntity, ConfigurationFactory.Configuration.DefaultSerializationMode);
+            return Serialize(dataEntity, ConfigurationFactory.Get<T>().DefaultSerializationMode);
         }
 
         internal static byte[] Serialize<T>(this T dataEntity, SerializationMode mode)
@@ -93,7 +93,7 @@ namespace Nemo.Serialization
         public static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> dataEntityCollection)
             where T : class
         {
-            return Serialize(dataEntityCollection, ConfigurationFactory.Configuration.DefaultSerializationMode);
+            return Serialize(dataEntityCollection, ConfigurationFactory.Get<T>().DefaultSerializationMode);
         }
 
         internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> dataEntityCollection, SerializationMode mode)

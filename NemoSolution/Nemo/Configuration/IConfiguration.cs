@@ -36,5 +36,7 @@ namespace Nemo.Configuration
         IConfiguration SetGenerateUpdateSql(bool value);
         IConfiguration SetAuditLogProvider(IAuditLogProvider value);
         IConfiguration SetExecutionContext(IExecutionContext value);
+
+        IConfiguration Merge(IConfiguration configuration);
     }
 }

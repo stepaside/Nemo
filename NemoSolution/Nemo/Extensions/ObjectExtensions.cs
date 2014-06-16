@@ -263,7 +263,7 @@ namespace Nemo.Extensions
 
             if (!(dataEntity is IAuditableDataEntity)) return true;
 
-            var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+            var logProvider = ConfigurationFactory.Get<T>().AuditLogProvider;
             if (logProvider != null)
             {
                 logProvider.Write(new AuditLog<T>(ObjectFactory.OperationInsert, default(T), dataEntity));
@@ -331,8 +331,8 @@ namespace Nemo.Extensions
             }
 
             if (!(dataEntity is IAuditableDataEntity)) return true;
-            
-            var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+
+            var logProvider = ConfigurationFactory.Get<T>().AuditLogProvider;
             if (logProvider != null)
             {
                 logProvider.Write(new AuditLog<T>(ObjectFactory.OperationUpdate, (dataEntity.Old() ?? dataEntity), dataEntity));
@@ -375,8 +375,8 @@ namespace Nemo.Extensions
             }
 
             if (!(dataEntity is IAuditableDataEntity)) return true;
-            
-            var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+
+            var logProvider = ConfigurationFactory.Get<T>().AuditLogProvider;
             if (logProvider != null)
             {
                 logProvider.Write(new AuditLog<T>(ObjectFactory.OperationDelete, dataEntity, default(T)));
@@ -419,8 +419,8 @@ namespace Nemo.Extensions
             }
 
             if (!(dataEntity is IAuditableDataEntity)) return false;
-            
-            var logProvider = ConfigurationFactory.Configuration.AuditLogProvider;
+
+            var logProvider = ConfigurationFactory.Get<T>().AuditLogProvider;
             if (logProvider != null)
             {
                 logProvider.Write(new AuditLog<T>(ObjectFactory.OperationDestroy, dataEntity, default(T)));

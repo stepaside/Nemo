@@ -29,11 +29,11 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                var scopes = ConfigurationFactory.Configuration.ExecutionContext.Get(ScopeNameStore);
+                var scopes = ConfigurationFactory.Default.ExecutionContext.Get(ScopeNameStore);
                 if (scopes == null)
                 {
                     scopes = new Stack<ObjectScope>();
-                    ConfigurationFactory.Configuration.ExecutionContext.Set(ScopeNameStore, scopes);
+                    ConfigurationFactory.Default.ExecutionContext.Set(ScopeNameStore, scopes);
                 }
                 return (Stack<ObjectScope>)scopes;
             }
@@ -73,7 +73,7 @@ namespace Nemo.UnitOfWork
             AutoCommit = autoCommit;
             IsNew = item == null;
             ItemType = type;
-            ChangeTracking = mode != ChangeTrackingMode.Default ? mode : ConfigurationFactory.Configuration.DefaultChangeTrackingMode;
+            ChangeTracking = mode != ChangeTrackingMode.Default ? mode : ConfigurationFactory.Get(type).DefaultChangeTrackingMode;
             if (!IsNew)
             {
                 if (type == null)

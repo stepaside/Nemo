@@ -12,16 +12,17 @@ namespace Nemo
         internal static IdentityMap<T> Get<T>()
             where T : class
         {
+            var executionContext = ConfigurationFactory.Get<T>().ExecutionContext;
             IdentityMap<T> identityMap;
             var identityMapKey = typeof(T).FullName + "/IdentityMap";
-            if (!ConfigurationFactory.Configuration.ExecutionContext.Exists(identityMapKey))
+            if (!executionContext.Exists(identityMapKey))
             {
                 identityMap = new IdentityMap<T>();
-                ConfigurationFactory.Configuration.ExecutionContext.Set(identityMapKey, identityMap);
+                executionContext.Set(identityMapKey, identityMap);
             }
             else
             {
-                identityMap = (IdentityMap<T>)ConfigurationFactory.Configuration.ExecutionContext.Get(identityMapKey);
+                identityMap = (IdentityMap<T>)executionContext.Get(identityMapKey);
             }
             return identityMap;
         }

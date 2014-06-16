@@ -83,18 +83,6 @@ namespace Nemo
 
         #endregion
 
-        #region Configuration Methods
-
-        public static string DefaultConnectionName
-        {
-            get
-            {
-                return ConfigurationFactory.Configuration.DefaultConnectionName;
-            }
-        }
-
-        #endregion
-
         #region Map Methods
 
         private static readonly ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?> _mapMethods = new ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?>();
@@ -335,7 +323,7 @@ namespace Nemo
             return ((T)value).ToMaybe();
         }
 
-        private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null, bool? cached = null)
+        private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
             Log.CaptureBegin(() => string.Format("RetrieveImplemenation: {0}::{1}", typeof(TResult).FullName, operation));
@@ -343,21 +331,27 @@ namespace Nemo
             
             string queryKey = null;
             IdentityMap<TResult> identityMap = null;
-
+            
             if (!cached.HasValue)
             {
-                cached = ConfigurationFactory.Configuration.DefaultL1CacheRepresentation != L1CacheRepresentation.None;
+                config = ConfigurationFactory.Get<TResult>();
+                cached = config.DefaultL1CacheRepresentation != L1CacheRepresentation.None;
             }
 
             if (cached.Value)
             {
+                if (config == null)
+                {
+                    config = ConfigurationFactory.Get<TResult>();
+                }
+
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
                 Log.CaptureBegin(() => string.Format("Retrieving from L1 cache: {0}", queryKey));
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
-                    result = ConfigurationFactory.Configuration.ExecutionContext.Get(queryKey) as IEnumerable<TResult>;
+                    result = config.ExecutionContext.Get(queryKey) as IEnumerable<TResult>;
                 }
                 else
                 {
@@ -382,7 +376,7 @@ namespace Nemo
                 Log.Capture(() => string.Format("Not found in L1 cache: {0}", queryKey));
             }
 
-            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema);
+            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema, config);
             
             if (queryKey != null)
             {
@@ -390,7 +384,7 @@ namespace Nemo
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
-                    if (ConfigurationFactory.Configuration.DefaultL1CacheRepresentation == L1CacheRepresentation.List)
+                    if (config.DefaultL1CacheRepresentation == L1CacheRepresentation.List)
                     {
                         result = result.ToList();
                     }
@@ -406,7 +400,7 @@ namespace Nemo
                 }
                 else if (result is IMultiResult)
                 {
-                    ConfigurationFactory.Configuration.ExecutionContext.Set(queryKey, result);
+                    config.ExecutionContext.Set(queryKey, result);
                 }
 
                 Log.CaptureEnd();
@@ -416,7 +410,7 @@ namespace Nemo
             return result;
         }
 
-        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, MaterializationMode mode, string schema)
+        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, MaterializationMode mode, string schema, IConfiguration config)
             where T : class
         {
             if (operationType == OperationType.Guess)
@@ -424,7 +418,7 @@ namespace Nemo
                 operationType = operation.Any(Char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(typeof(T), operation, operationType, schema);
+            var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
             var response = connection != null 
                 ? Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema) 
@@ -470,10 +464,24 @@ namespace Nemo
                 realTypes.Add(typeof(T4));
             }
 
-            var returnType = OperationReturnType.SingleResult;
+            IConfiguration config = null;
 
-            if (mode == FetchMode.Default) mode = ConfigurationFactory.Configuration.DefaultFetchMode;
-            if (materialization == MaterializationMode.Default) materialization = ConfigurationFactory.Configuration.DefaultMaterializationMode;
+            if (mode == FetchMode.Default)
+            {
+                config = ConfigurationFactory.Get<TResult>();
+                mode = config.DefaultFetchMode;
+            }
+
+            if (materialization == MaterializationMode.Default)
+            {
+                if (config == null)
+                {
+                    config = ConfigurationFactory.Get<TResult>();
+                }
+                materialization = config.DefaultMaterializationMode;
+            }
+
+            var returnType = OperationReturnType.SingleResult;
 
             Func<object[], TResult> func = null;
             if (map == null && realTypes.Count > 1)
@@ -522,7 +530,7 @@ namespace Nemo
                     }
                 }
             }
-            return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema, cached);
+            return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema, cached, config);
         }
 
         public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
@@ -557,11 +565,25 @@ namespace Nemo
         {
             var returnType = OperationReturnType.SingleResult;
 
-            if (mode == FetchMode.Default) mode = ConfigurationFactory.Configuration.DefaultFetchMode;
+            IConfiguration config = null;
+
+            if (mode == FetchMode.Default)
+            {
+                config = ConfigurationFactory.Get<T>();
+                mode = config.DefaultFetchMode;
+            }
+
+            if (materialization == MaterializationMode.Default)
+            {
+                if (config == null)
+                {
+                    config = ConfigurationFactory.Get<T>();
+                }
+                materialization = config.DefaultMaterializationMode;
+            }
+
             if (mode == FetchMode.Eager) returnType = OperationReturnType.DataTable;
-
-            if (materialization == MaterializationMode.Default) materialization = ConfigurationFactory.Configuration.DefaultMaterializationMode;
-
+            
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
             IList<Param> parameterList = null;
@@ -581,7 +603,7 @@ namespace Nemo
                     }
                 }
             }
-            return RetrieveImplemenation<T>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached);
+            return RetrieveImplemenation<T>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached, config);
         }
 
         internal class Fake { }
@@ -600,9 +622,10 @@ namespace Nemo
             where T : class
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
-            if (ConfigurationFactory.Configuration.GenerateInsertSql)
+            var config = ConfigurationFactory.Get<T>();
+            if (config.GenerateInsertSql)
             {
-                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -625,7 +648,8 @@ namespace Nemo
             where T : class
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
-            if (ConfigurationFactory.Configuration.GenerateUpdateSql)
+            var config = ConfigurationFactory.Get<T>();
+            if (config.GenerateUpdateSql)
             {
                 var partition = parameters.Partition(p => p.IsPrimaryKey);
                 // if p.IsPrimaryKey is not set then
@@ -636,7 +660,7 @@ namespace Nemo
                     var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).Select(p => p.ParameterName ?? p.PropertyName).ToHashSet();
                     partition = parameters.Partition(p => pimaryKeySet.Contains(p.Name));
                 }
-                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -659,7 +683,8 @@ namespace Nemo
             where T : class
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
-            if (ConfigurationFactory.Configuration.GenerateDeleteSql)
+            var config = ConfigurationFactory.Get<T>();
+            if (config.GenerateDeleteSql)
             {
                 string softDeleteColumn = null; 
                 var map = MappingFactory.GetEntityMap<T>();
@@ -677,7 +702,7 @@ namespace Nemo
                     }
                 }
                 
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName), softDeleteColumn);
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName), softDeleteColumn);
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -700,9 +725,10 @@ namespace Nemo
             where T : class
         {
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException, SchemaName = schema };
-            if (ConfigurationFactory.Configuration.GenerateDeleteSql)
+            var config = ConfigurationFactory.Get<T>();
+            if (config.GenerateDeleteSql)
             {
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? ConfigurationFactory.Configuration.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -921,7 +947,7 @@ namespace Nemo
                 operationType = request.Operation.Any(Char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName);
+            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, ConfigurationFactory.Get<T>());
 
             var response = request.Connection != null 
                 ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName) 
@@ -936,7 +962,8 @@ namespace Nemo
         public static IEnumerable<T> Translate<T>(OperationResponse response)
             where T : class
         {
-            return Translate<T>(response, null, null, ConfigurationFactory.Configuration.DefaultL1CacheRepresentation != L1CacheRepresentation.None, ConfigurationFactory.Configuration.DefaultMaterializationMode);
+            var config = ConfigurationFactory.Get<T>();
+            return Translate<T>(response, null, null, config.DefaultL1CacheRepresentation != L1CacheRepresentation.None, config.DefaultMaterializationMode);
         }
 
         private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode)
@@ -1315,22 +1342,22 @@ namespace Nemo
             return new TransactionScope(TransactionScopeOption.Required, options);
         }
 
-        internal static string GetOperationText(Type objectType, string operation, OperationType operationType, string schema)
+        internal static string GetOperationText(Type objectType, string operation, OperationType operationType, string schema, IConfiguration config)
         {
             if (operationType != OperationType.StoredProcedure) return operation;
 
-            var namingConvention = ConfigurationFactory.Configuration.OperationNamingConvention;
+            var namingConvention = config.OperationNamingConvention;
             var typeName = objectType.Name;
             if (objectType.IsInterface && typeName[0] == 'I')
             {
                 typeName = typeName.Substring(1);
             }
-
-            var procName = ConfigurationFactory.Configuration.OperationPrefix + typeName + "_" + operation;
+            
+            var procName = config.OperationPrefix + typeName + "_" + operation;
             switch (namingConvention)
             {
                 case OperationNamingConvention.PrefixTypeNameOperation:
-                    procName = ConfigurationFactory.Configuration.OperationPrefix + typeName + operation;
+                    procName = config.OperationPrefix + typeName + operation;
                     break;
                 case OperationNamingConvention.TypeName_Operation:
                     procName = typeName + "_" + operation;
@@ -1339,10 +1366,10 @@ namespace Nemo
                     procName = typeName + operation;
                     break;
                 case OperationNamingConvention.PrefixOperation_TypeName:
-                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation + "_" + typeName;
+                    procName = config.OperationPrefix + operation + "_" + typeName;
                     break;
                 case OperationNamingConvention.PrefixOperationTypeName:
-                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation + typeName;
+                    procName = config.OperationPrefix + operation + typeName;
                     break;
                 case OperationNamingConvention.Operation_TypeName:
                     procName = operation + "_" + typeName;
@@ -1351,7 +1378,7 @@ namespace Nemo
                     procName = operation + typeName;
                     break;
                 case OperationNamingConvention.PrefixOperation:
-                    procName = ConfigurationFactory.Configuration.OperationPrefix + operation;
+                    procName = config.OperationPrefix + operation;
                     break;
                 case OperationNamingConvention.Operation:
                     procName = operation;

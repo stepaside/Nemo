@@ -265,5 +265,25 @@ namespace Nemo.Configuration
         {
             return Config.AppSettings("DefaultChangeTrackingMode", ChangeTrackingMode.Automatic);
         }
+
+        public IConfiguration Merge(IConfiguration configuration)
+        {
+            var mergedConfig = new DefaultConfiguration();
+            mergedConfig.SetAuditLogProvider(AuditLogProvider ?? configuration.AuditLogProvider);
+            mergedConfig.SetDefaultChangeTrackingMode(DefaultChangeTrackingMode != ChangeTrackingMode.Default ? DefaultChangeTrackingMode : configuration.DefaultChangeTrackingMode);
+            mergedConfig.SetDefaultConnectionName(DefaultConnectionName ?? configuration.DefaultConnectionName);
+            mergedConfig.SetDefaultFetchMode(DefaultFetchMode != FetchMode.Default ? DefaultFetchMode : configuration.DefaultFetchMode);
+            mergedConfig.SetDefaultL1CacheRepresentation(DefaultL1CacheRepresentation != configuration.DefaultL1CacheRepresentation ? configuration.DefaultL1CacheRepresentation : DefaultL1CacheRepresentation);
+            mergedConfig.SetDefaultMaterializationMode(DefaultMaterializationMode != MaterializationMode.Default ? DefaultMaterializationMode : configuration.DefaultMaterializationMode);
+            mergedConfig.SetDefaultSerializationMode(DefaultSerializationMode != configuration.DefaultSerializationMode ? configuration.DefaultSerializationMode : DefaultSerializationMode);
+            mergedConfig.SetExecutionContext(ExecutionContext ?? configuration.ExecutionContext);
+            mergedConfig.SetGenerateDeleteSql(GenerateDeleteSql || configuration.GenerateDeleteSql);
+            mergedConfig.SetGenerateInsertSql(GenerateInsertSql || configuration.GenerateInsertSql);
+            mergedConfig.SetGenerateUpdateSql(GenerateUpdateSql || configuration.GenerateUpdateSql);
+            mergedConfig.SetLogging(Logging || configuration.Logging);
+            mergedConfig.SetOperationNamingConvention(OperationNamingConvention != OperationNamingConvention.Default ? OperationNamingConvention : configuration.OperationNamingConvention);
+            mergedConfig.SetOperationPrefix(OperationPrefix ?? configuration.OperationPrefix);
+            return mergedConfig;
+        }
     }
 }

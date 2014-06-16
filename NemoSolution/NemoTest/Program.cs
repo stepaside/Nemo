@@ -173,7 +173,7 @@ namespace NemoTest
             //}
 
             // Passing open connection into the method
-            using (var test_connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName)))
+            using (var test_connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.Get<ICustomer>().DefaultConnectionName)))
             {
                 test_connection.Open();
                 var retrieve_customer_sql_wth_open_connection = ObjectFactory.Retrieve<ICustomer>(connection: test_connection, sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
@@ -389,7 +389,7 @@ namespace NemoTest
 
         private static void RunNative(int count)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
 
             connection.Open();
@@ -429,7 +429,7 @@ namespace NemoTest
 
         private static void RunExecute(int count)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
 
             connection.Open();
 
@@ -460,7 +460,7 @@ namespace NemoTest
 
         private static void RunRetrieve(int count, bool cached)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
             var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
 
@@ -483,7 +483,7 @@ namespace NemoTest
 
         private static void RunSelect(int count, bool buffered = false)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
 
             connection.Open();
@@ -505,7 +505,7 @@ namespace NemoTest
 
         private static void RunDapper(int count, bool buffered)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
                 
             connection.Open();
@@ -532,7 +532,7 @@ namespace NemoTest
 
         private static void RunNativeWithMapper(int count)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ObjectFactory.DefaultConnectionName));
+            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
 
             connection.Open();
@@ -580,7 +580,7 @@ namespace NemoTest
         {
             var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
             // Warm-up
-            using (var context = new EFContext(ObjectFactory.DefaultConnectionName))
+            using (var context = new EFContext(ConfigurationFactory.DefaultConnectionName))
             {
                 context.Configuration.AutoDetectChangesEnabled = false;
 
@@ -598,7 +598,7 @@ namespace NemoTest
             var timer = new HiPerfTimer(true);
             if (linq)
             {
-                using (var context = new EFContext(ObjectFactory.DefaultConnectionName))
+                using (var context = new EFContext(ConfigurationFactory.DefaultConnectionName))
                 {
                     timer.Start();
 
@@ -611,7 +611,7 @@ namespace NemoTest
             }
             else
             {
-                using (var context = new EFContext(ObjectFactory.DefaultConnectionName))
+                using (var context = new EFContext(ConfigurationFactory.DefaultConnectionName))
                 {
                     timer.Start();
                     for (int i = 0; i < count; i++)
