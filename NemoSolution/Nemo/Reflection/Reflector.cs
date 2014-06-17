@@ -294,7 +294,7 @@ namespace Nemo.Reflection
             return interfaces.Keys;
         }
 
-        private static Dictionary<Type, List<Type>> CacheInterfaces<T>()
+        private static Dictionary<Type, List<Type>> PrepareInterfaces<T>()
         {
             var interfaceTypes = GetInterfacesImplementation(typeof(T));
             var interfaceMap = new Dictionary<Type, List<Type>>();
@@ -357,7 +357,7 @@ namespace Nemo.Reflection
             return PropertyCache<T>.Positions;
         }
 
-        private static Dictionary<string, Tuple<PropertyInfo, int>> CacheProperties<T>()
+        private static Dictionary<string, Tuple<PropertyInfo, int>> PrepareAllProperties<T>()
         {
             var typeList = new HashSet<Type>();
             foreach (var interfaceType in GetInterfaces<T>(/*objectType*/))
@@ -381,7 +381,7 @@ namespace Nemo.Reflection
             return map;
         }
 
-        internal static IDictionary<PropertyInfo, ReflectedProperty> GetPropertyMap(Type objectType)
+        public static IDictionary<PropertyInfo, ReflectedProperty> GetPropertyMap(Type objectType)
         {
             //var type = !objectType.IsInterface ? Reflector.GetInterface(objectType) : objectType;
             var methodHandle = _getPropertyMapCache.GetOrAdd(objectType, t => _getPropertyMapMethod.MakeGenericMethod(t).MethodHandle);
@@ -389,31 +389,31 @@ namespace Nemo.Reflection
             return (IDictionary<PropertyInfo, ReflectedProperty>)func(null, new object[] { });
         }
 
-        internal static IDictionary<PropertyInfo, ReflectedProperty> GetPropertyMap<T>()
+        public static IDictionary<PropertyInfo, ReflectedProperty> GetPropertyMap<T>()
         {
             return PropertyCache<T>.Map;
         }
 
-        internal static IDictionary<string, ReflectedProperty> GetPropertyNameMap(Type objectType)
+        public static IDictionary<string, ReflectedProperty> GetPropertyNameMap(Type objectType)
         {
             var methodHandle = _getPropertyNameMapCache.GetOrAdd(objectType, t => _getPropertyNameMapMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (IDictionary<string, ReflectedProperty>)func(null, new object[] { });
         }
 
-        internal static IDictionary<string, ReflectedProperty> GetPropertyNameMap<T>()
+        public static IDictionary<string, ReflectedProperty> GetPropertyNameMap<T>()
         {
             return PropertyCache<T>.NameMap;
         }
 
-        internal static ReflectedType GetReflectedType(Type objectType)
+        public static ReflectedType GetReflectedType(Type objectType)
         {
             var methodHandle = _getReflectedTypeCache.GetOrAdd(objectType, t => _getReflectedTypeMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (ReflectedType)func(null, new object[] { });
         }
 
-        internal static ReflectedType GetReflectedType<T>()
+        public static ReflectedType GetReflectedType<T>()
         {
             return TypeCache<T>.Type;
         }
@@ -483,12 +483,9 @@ namespace Nemo.Reflection
         public static T GetAttribute<T>(Type objectType, bool assemblyLevel = false, bool inherit = false)
             where T : Attribute
         {
-            T attribute = null;
-            if (objectType != null && !objectType.IsValueType)
-            {
-                object[] attributes = assemblyLevel ? objectType.Assembly.GetCustomAttributes(typeof(T), inherit) : objectType.GetCustomAttributes(typeof(T), inherit);
-                attribute = attributes.Cast<T>().FirstOrDefault();
-            }
+            if (objectType == null || objectType.IsValueType) return null;
+            var attributes = assemblyLevel ? objectType.Assembly.GetCustomAttributes(typeof(T), inherit) : objectType.GetCustomAttributes(typeof(T), inherit);
+            var attribute = attributes.Cast<T>().FirstOrDefault();
             return attribute;
         }
 
@@ -868,7 +865,7 @@ namespace Nemo.Reflection
         {
             static InterfaceCache()
             {
-                Interfaces = CacheInterfaces<T>();
+                Interfaces = PrepareInterfaces<T>();
             }
             public static readonly Dictionary<Type, List<Type>> Interfaces;
         }
@@ -877,7 +874,7 @@ namespace Nemo.Reflection
         {
             static PropertyCache()
             {
-                var cachedProperties = CacheProperties<T>();
+                var cachedProperties = PrepareAllProperties<T>();
                 Properties = new ReadOnlyDictionary<string, PropertyInfo>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item1));
                 Positions = new ReadOnlyDictionary<string, int>(cachedProperties.ToDictionary(p => p.Key, p => p.Value.Item2));
 

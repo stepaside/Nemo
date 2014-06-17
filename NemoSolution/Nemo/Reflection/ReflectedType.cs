@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace Nemo.Reflection
 {
-    internal class ReflectedType
+    public class ReflectedType
     {
-        internal ReflectedType(Type type)
+        public ReflectedType(Type type)
         {
             TypeName = type.Name;
             FullTypeName = type.FullName;
