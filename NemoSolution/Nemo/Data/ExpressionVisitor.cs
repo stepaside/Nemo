@@ -19,17 +19,17 @@ namespace Nemo.Data
 {
     internal static class ExpressionVisitor
     {
-        internal static string Visit<T>(Expression exp, DialectProvider dialect)
+        internal static string Visit<T>(Expression exp, DialectProvider dialect, string alias)
         {
             if (exp == null) return string.Empty;
             switch (exp.NodeType)
             {
                 case ExpressionType.Lambda:
-                    return VisitLambda<T>(exp as LambdaExpression, dialect);
+                    return VisitLambda<T>(exp as LambdaExpression, dialect, alias);
                 case ExpressionType.MemberAccess:
-                    return VisitMemberAccess<T>(exp as MemberExpression, dialect);
+                    return VisitMemberAccess<T>(exp as MemberExpression, dialect, alias);
                 case ExpressionType.Constant:
-                    return VisitConstant(exp as ConstantExpression, dialect);
+                    return VisitConstant(exp as ConstantExpression, dialect, alias);
                 case ExpressionType.Add:
                 case ExpressionType.AddChecked:
                 case ExpressionType.Subtract:
@@ -53,7 +53,7 @@ namespace Nemo.Data
                 case ExpressionType.RightShift:
                 case ExpressionType.LeftShift:
                 case ExpressionType.ExclusiveOr:
-                    return "(" + VisitBinary<T>(exp as BinaryExpression, dialect) + ")";
+                    return "(" + VisitBinary<T>(exp as BinaryExpression, dialect, alias) + ")";
                 case ExpressionType.Negate:
                 case ExpressionType.NegateChecked:
                 case ExpressionType.Not:
@@ -62,68 +62,68 @@ namespace Nemo.Data
                 case ExpressionType.ArrayLength:
                 case ExpressionType.Quote:
                 case ExpressionType.TypeAs:
-                    return VisitUnary<T>(exp as UnaryExpression, dialect);
+                    return VisitUnary<T>(exp as UnaryExpression, dialect, alias);
                 case ExpressionType.Parameter:
-                    return VisitParameter(exp as ParameterExpression, dialect);
+                    return VisitParameter(exp as ParameterExpression, dialect, alias);
                 case ExpressionType.Call:
-                    return VisitMethodCall<T>(exp as MethodCallExpression, dialect);
+                    return VisitMethodCall<T>(exp as MethodCallExpression, dialect, alias);
                 case ExpressionType.New:
-                    return VisitNew<T>(exp as NewExpression, dialect);
+                    return VisitNew<T>(exp as NewExpression, dialect, alias);
                 case ExpressionType.NewArrayInit:
                 case ExpressionType.NewArrayBounds:
-                    return VisitNewArray<T>(exp as NewArrayExpression, dialect);
+                    return VisitNewArray<T>(exp as NewArrayExpression, dialect, alias);
                 default:
                     return exp.ToString();
             }
         }
 
-        private static string VisitLambda<T>(LambdaExpression lambda, DialectProvider dialect)
+        private static string VisitLambda<T>(LambdaExpression lambda, DialectProvider dialect, string alias)
         {
             if (lambda.Body.NodeType == ExpressionType.MemberAccess)
             {
-                MemberExpression m = lambda.Body as MemberExpression;
+                var m = lambda.Body as MemberExpression;
 
                 if (m.Expression != null)
                 {
-                    string r = VisitMemberAccess<T>(m, dialect);
+                    string r = VisitMemberAccess<T>(m, dialect, alias);
                     return string.Format("{0}={1}", r, GetQuotedTrueValue());
                 }
 
             }
-            return Visit<T>(lambda.Body, dialect);
+            return Visit<T>(lambda.Body, dialect, alias);
         }
 
-        private static string VisitBinary<T>(BinaryExpression b, DialectProvider dialect)
+        private static string VisitBinary<T>(BinaryExpression b, DialectProvider dialect, string alias)
         {
             string left, right;
             var operand = BindOperant(b.NodeType);
             if (operand == "AND" || operand == "OR")
             {
-                MemberExpression m = b.Left as MemberExpression;
+                var m = b.Left as MemberExpression;
                 if (m != null && m.Expression != null)
                 {
-                    string r = VisitMemberAccess<T>(m, dialect);
+                    string r = VisitMemberAccess<T>(m, dialect, alias);
                     left = string.Format("{0}={1}", r, GetQuotedTrueValue());
                 }
                 else
                 {
-                    left = Visit<T>(b.Left, dialect);
+                    left = Visit<T>(b.Left, dialect, alias);
                 }
                 m = b.Right as MemberExpression;
                 if (m != null && m.Expression != null)
                 {
-                    string r = VisitMemberAccess<T>(m, dialect);
+                    string r = VisitMemberAccess<T>(m, dialect, alias);
                     right = string.Format("{0}={1}", r, GetQuotedTrueValue());
                 }
                 else
                 {
-                    right = Visit<T>(b.Right, dialect);
+                    right = Visit<T>(b.Right, dialect, alias);
                 }
             }
             else
             {
-                left = Visit<T>(b.Left, dialect);
-                right = Visit<T>(b.Right, dialect);
+                left = Visit<T>(b.Left, dialect, alias);
+                right = Visit<T>(b.Right, dialect, alias);
             }
 
             if (operand == "=" && right == "null") operand = "is";
@@ -148,35 +148,37 @@ namespace Nemo.Data
             }
         }
 
-        private static string VisitMemberAccess<T>(MemberExpression m, DialectProvider dialect)
+        private static string VisitMemberAccess<T>(MemberExpression m, DialectProvider dialect, string alias)
         {
             Type elementType = null;
             if (m.Expression != null && m.Expression.Type == typeof(T))
             {
                 //return m.Member.Name;
-                return MapColumnAttribute.GetMappedColumnName((PropertyInfo)m.Member);
+                return (alias != null ? alias + "." : "") + dialect.IdentifierEscapeStartCharacter + MapColumnAttribute.GetMappedColumnName((PropertyInfo)m.Member) + dialect.IdentifierEscapeEndCharacter;
             }
-            else if (m.Expression != null && Reflector.IsDataEntityList(m.Expression.Type, out elementType) && m.Member.Name == "Count")
+
+            if (m.Expression != null && Reflector.IsDataEntityList(m.Expression.Type, out elementType) && m.Member.Name == "Count")
             {
                 var parentTable = ObjectFactory.GetTableName(typeof(T));
                 var childTable = ObjectFactory.GetTableName(elementType);
-                
+
                 var parentPropertyMap = Reflector.GetPropertyMap(typeof(T));
-                var whereClause = parentPropertyMap.Where(p => p.Value.IsPrimaryKey).Select(p => string.Format("{0}{3}{1}.{0}{2}{1} = {0}{4}{1}.{0}{2}{1}", dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter, p.Value.MappedColumnName, parentTable, childTable)).ToDelimitedString(" AND ");
+                var whereClause =
+                    parentPropertyMap.Where(p => p.Value.IsPrimaryKey)
+                        .Select(p => string.Format("{3}.{0}{2}{1} = {0}{4}{1}.{0}{2}{1}", dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter, p.Value.MappedColumnName, alias ?? (dialect.IdentifierEscapeStartCharacter + parentTable + dialect.IdentifierEscapeEndCharacter), childTable))
+                        .ToDelimitedString(" AND ");
 
                 return string.Format("(SELECT COUNT(*) FROM {0}{1}{2} WHERE {3})", dialect.IdentifierEscapeStartCharacter, childTable, dialect.IdentifierEscapeEndCharacter, whereClause);
             }
-            else
-            {
-                var member = Expression.Convert(m, typeof(object));
-                var lambda = Expression.Lambda<Func<object>>(member);
-                var getter = lambda.Compile();
-                object o = getter();
-                return GetQuotedValue(o, o.GetType());
-            }
+
+            var member = Expression.Convert(m, typeof(object));
+            var lambda = Expression.Lambda<Func<object>>(member);
+            var getter = lambda.Compile();
+            var o = getter();
+            return GetQuotedValue(o, o.GetType());
         }
 
-        private static string VisitNew<T>(NewExpression nex, DialectProvider dialect)
+        private static string VisitNew<T>(NewExpression nex, DialectProvider dialect, string alias)
         {
             // TODO : check !
             var member = Expression.Convert(nex, typeof(object));
@@ -184,59 +186,61 @@ namespace Nemo.Data
             try
             {
                 var getter = lambda.Compile();
-                object o = getter();
+                var o = getter();
                 return GetQuotedValue(o, o.GetType());
             }
             catch (System.InvalidOperationException)
             { // FieldName ?
-                List<Object> exprs = VisitExpressionList<T>(nex.Arguments, dialect);
-                StringBuilder r = new StringBuilder();
-                foreach (Object e in exprs)
+                var exprs = VisitExpressionList<T>(nex.Arguments, dialect, alias);
+                var r = new StringBuilder();
+                foreach (var e in exprs)
                 {
                     r.AppendFormat("{0}{1}", r.Length > 0 ? "," : "", e);
                 }
                 return r.ToString();
             }
-
         }
 
-        private static string VisitParameter(ParameterExpression p, DialectProvider dialect)
+        private static string VisitParameter(ParameterExpression p, DialectProvider dialect, string alias)
         {
             return p.Name;
         }
 
-        private static string VisitConstant(ConstantExpression c, DialectProvider dialect)
+        private static string VisitConstant(ConstantExpression c, DialectProvider dialect, string alias)
         {
             if (c.Value == null)
-                return "null";
-            else if (c.Value.GetType() == typeof(bool))
             {
-                object o = GetQuotedValue(c.Value, c.Value.GetType());
+                return "null";
+            }
+            if (c.Value is bool)
+            {
+                var o = GetQuotedValue(c.Value, c.Value.GetType());
                 return string.Format("({0}={1})", GetQuotedTrueValue(), o);
             }
-            else
-                return GetQuotedValue(c.Value, c.Value.GetType());
+            return GetQuotedValue(c.Value, c.Value.GetType());
         }
 
-        private static string VisitUnary<T>(UnaryExpression u, DialectProvider dialect)
+        private static string VisitUnary<T>(UnaryExpression u, DialectProvider dialect, string alias)
         {
             switch (u.NodeType)
             {
                 case ExpressionType.Not:
-                    string o = Visit<T>(u.Operand, dialect);
+                    var o = Visit<T>(u.Operand, dialect, alias);
                     return "NOT (" + o + ")";
                 default:
-                    return Visit<T>(u.Operand, dialect);
+                    return Visit<T>(u.Operand, dialect, alias);
             }
         }
 
-        private static string VisitMethodCall<T>(MethodCallExpression m, DialectProvider dialect)
+        private static string VisitMethodCall<T>(MethodCallExpression m, DialectProvider dialect, string alias)
         {
-            List<Object> args = VisitExpressionList<T>(m.Arguments, dialect);
+            var args = VisitExpressionList<T>(m.Arguments, dialect, alias);
 
-            Object r;
+            object r;
             if (m.Object != null)
-                r = Visit<T>(m.Object, dialect);
+            {
+                r = Visit<T>(m.Object, dialect, alias);
+            }
             else
             {
                 r = args[0];
@@ -282,7 +286,7 @@ namespace Nemo.Data
                 case "Concat":
                     if (dialect.StringConcatenationFunction != null)
                     {
-                        StringBuilder s = new StringBuilder();
+                        var s = new StringBuilder();
                         s.Append(dialect.StringConcatenationFunction);
                         s.Append("(");
                         for (var i = 0; i < args.Count; i++)
@@ -294,17 +298,17 @@ namespace Nemo.Data
                             }
                         }
                         s.Append(")");
-                        return string.Format("{0}{1}", r, s.ToString());
+                        return string.Format("{0}{1}", r, s);
 
                     }
                     else
                     {
-                        StringBuilder s = new StringBuilder();
+                        var s = new StringBuilder();
                         foreach (var e in args)
                         {
                             s.AppendFormat(" {0} {1}", dialect.StringConcatenationOperator, e);
                         }
-                        return string.Format("{0}{1}", r, s.ToString());
+                        return string.Format("{0}{1}", r, s);
                     }
                 case "In":
 
@@ -314,7 +318,7 @@ namespace Nemo.Data
 
                     var inArgs = getter() as object[];
 
-                    StringBuilder sIn = new StringBuilder();
+                    var sIn = new StringBuilder();
                     foreach (var e in inArgs)
                     {
                         if (e.GetType().ToString() != "System.Collections.Generic.List`1[System.Object]")
@@ -339,7 +343,7 @@ namespace Nemo.Data
                 case "ToString":
                     return r.ToString();
                 default:
-                    StringBuilder s2 = new StringBuilder();
+                    var s2 = new StringBuilder();
                     foreach (var e in args)
                     {
                         s2.AppendFormat(",{0}", GetQuotedValue(e, e.GetType()));
@@ -348,39 +352,37 @@ namespace Nemo.Data
             }
         }
 
-        private static List<Object> VisitExpressionList<T>(ReadOnlyCollection<Expression> original, DialectProvider dialect)
+        private static List<Object> VisitExpressionList<T>(ReadOnlyCollection<Expression> original, DialectProvider dialect, string alias)
         {
-            List<Object> list = new List<Object>();
+            var list = new List<Object>();
             for (int i = 0, n = original.Count; i < n; i++)
             {
-                if (original[i].NodeType == ExpressionType.NewArrayInit ||
-                                 original[i].NodeType == ExpressionType.NewArrayBounds)
+                if (original[i].NodeType == ExpressionType.NewArrayInit || original[i].NodeType == ExpressionType.NewArrayBounds)
                 {
-
-                    list.AddRange(VisitNewArrayFromExpressionList<T>(original[i] as NewArrayExpression, dialect));
+                    list.AddRange(VisitNewArrayFromExpressionList<T>(original[i] as NewArrayExpression, dialect, alias));
                 }
                 else
-                    list.Add(Visit<T>(original[i], dialect));
-
+                {
+                    list.Add(Visit<T>(original[i], dialect, alias));
+                }
             }
             return list;
         }
 
-        private static string VisitNewArray<T>(NewArrayExpression na, DialectProvider dialect)
+        private static string VisitNewArray<T>(NewArrayExpression na, DialectProvider dialect, string alias)
         {
-            List<Object> exprs = VisitExpressionList<T>(na.Expressions, dialect);
-            StringBuilder r = new StringBuilder();
-            foreach (Object e in exprs)
+            var exprs = VisitExpressionList<T>(na.Expressions, dialect, alias);
+            var r = new StringBuilder();
+            foreach (var e in exprs)
             {
                 r.Append(r.Length > 0 ? "," + e : e);
             }
-
             return r.ToString();
         }
 
-        private static List<Object> VisitNewArrayFromExpressionList<T>(NewArrayExpression na, DialectProvider dialect)
+        private static List<Object> VisitNewArrayFromExpressionList<T>(NewArrayExpression na, DialectProvider dialect, string alias)
         {
-            List<Object> exprs = VisitExpressionList<T>(na.Expressions, dialect);
+            var exprs = VisitExpressionList<T>(na.Expressions, dialect, alias);
             return exprs;
         }
 
@@ -424,23 +426,25 @@ namespace Nemo.Data
         private static string RemoveQuote(string exp)
         {
             if (exp.StartsWith("'"))
+            {
                 exp = exp.Remove(0, 1);
+            }
             if (exp.EndsWith("'"))
+            {
                 exp = exp.Remove(exp.Length - 1, 1);
+            }
             return exp;
         }
 
         private static string GetTrueExpression()
         {
-            object o = GetQuotedTrueValue();
+            var o = GetQuotedTrueValue();
             return string.Format("({0}={1})", o, o);
         }
 
         private static string GetFalseExpression()
         {
-            return string.Format("({0}={1})",
-            GetQuotedTrueValue(),
-            GetQuotedFalseValue());
+            return string.Format("({0}={1})", GetQuotedTrueValue(), GetQuotedFalseValue());
         }
 
         private static bool IsTrueExpression(string exp)
@@ -473,13 +477,19 @@ namespace Nemo.Data
             }
 
             if (fieldType == typeof(float))
+            {
                 return ((float)value).ToString(CultureInfo.InvariantCulture);
+            }
 
             if (fieldType == typeof(double))
+            {
                 return ((double)value).ToString(CultureInfo.InvariantCulture);
+            }
 
             if (fieldType == typeof(decimal))
+            {
                 return ((decimal)value).ToString(CultureInfo.InvariantCulture);
+            }
 
             return !Reflector.IsNumeric(fieldType) ? "'" + EscapeParam(value) + "'" : value.ToString();
         }

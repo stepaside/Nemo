@@ -69,7 +69,7 @@ namespace Nemo.Linq
                 orderByArray.SetValue(tupleType.New(new object[] { t.Item1, t.Item2 }), i);
             }
 
-            return typeof(ObjectFactory).GetMethod("Select")
+            return typeof(ObjectFactory).GetMethods().First(m => m.Name == "Select" && m.GetGenericArguments().Length == 1)
                 .MakeGenericMethod(type)
                 .Invoke(null, new object[] { criteria, null, null, limit > 0 ? offset/limit + 1 : 0, limit, null, orderByArray });
         }

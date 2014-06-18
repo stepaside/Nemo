@@ -283,7 +283,7 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            var sql = SqlBuilder.GetSelectCountStatement<T>(predicate, DialectFactory.GetProvider(connection, providerName));
+            var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName));
             return RetrieveScalar<int>(sql, connection: connection);
         }
 
@@ -302,6 +302,97 @@ namespace Nemo
             }
             var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
             return RetrieveImplemenation<T>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, cached: cached);
+        }
+
+        public static IEnumerable<T> Select<T, T1>(Expression<Func<T, T1, bool>> join, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            where T : class
+            where T1 : class
+        {
+            string providerName = null;
+            if (connection == null)
+            {
+                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
+                connection = DbFactory.CreateConnection(connectionName, typeof(T));
+            }
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+
+            var sql = new StringBuilder();
+            sql.Append(sqlRoot).Append("; ").Append(sqlJoin);
+
+            return RetrieveImplemenation<T>(sql.ToString(), OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: new[] { typeof(T), typeof(T1) }, cached: cached);
+        }
+
+        public static IEnumerable<T> Select<T, T1, T2>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, 
+            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            where T : class
+            where T1 : class
+            where T2 : class
+        {
+            string providerName = null;
+            if (connection == null)
+            {
+                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
+                connection = DbFactory.CreateConnection(connectionName, typeof(T));
+            }
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+
+            var sql = new StringBuilder();
+            sql.Append(sqlRoot).Append("; ").Append(sqlJoin1).Append("; ").Append(sqlJoin2);
+
+            return RetrieveImplemenation<T>(sql.ToString(), OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: new[] { typeof(T), typeof(T1), typeof(T2) }, cached: cached);
+        }
+
+        public static IEnumerable<T> Select<T, T1, T2, T3>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3,
+            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            where T : class
+            where T1 : class
+            where T2 : class
+            where T3 : class
+        {
+            string providerName = null;
+            if (connection == null)
+            {
+                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
+                connection = DbFactory.CreateConnection(connectionName, typeof(T));
+            }
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+
+            var sql = new StringBuilder();
+            sql.Append(sqlRoot).Append("; ").Append(sqlJoin1).Append("; ").Append(sqlJoin2).Append("; ").Append(sqlJoin3);
+
+            return RetrieveImplemenation<T>(sql.ToString(), OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) }, cached: cached);
+        }
+
+        public static IEnumerable<T> Select<T, T1, T2, T3, T4>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
+            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            where T : class
+            where T1 : class
+            where T2 : class
+            where T3 : class
+            where T4 : class
+        {
+            string providerName = null;
+            if (connection == null)
+            {
+                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
+                connection = DbFactory.CreateConnection(connectionName, typeof(T));
+            }
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+
+            var sql = new StringBuilder();
+            sql.Append(sqlRoot).Append("; ").Append(sqlJoin1).Append("; ").Append(sqlJoin2).Append("; ").Append(sqlJoin3).Append("; ").Append(sqlJoin4);
+
+            return RetrieveImplemenation<T>(sql.ToString(), OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) }, cached: cached);
         }
 
         #endregion
@@ -334,7 +425,11 @@ namespace Nemo
             
             if (!cached.HasValue)
             {
-                config = ConfigurationFactory.Get<TResult>();
+                if (config == null)
+                {
+                    config = ConfigurationFactory.Get<TResult>();
+                }
+
                 cached = config.DefaultL1CacheRepresentation != L1CacheRepresentation.None;
             }
 
@@ -848,12 +943,17 @@ namespace Nemo
                         {
                             behavior = CommandBehavior.SingleRow;
                         }
-                        // else MultiResult
+                        else
+                        {
+                            closeConnection = false;
+                        }
+
+                        if (closeConnection)
+                        {
+                            behavior |= CommandBehavior.CloseConnection;
+                        }
+
                         closeConnection = false;
-                        //if (closeConnection)
-                        //{
-                        behavior |= CommandBehavior.CloseConnection;
-                        //}
                         response.Value = command.ExecuteReader(behavior);
                         break;
                     case OperationReturnType.Scalar:

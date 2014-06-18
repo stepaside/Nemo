@@ -20,9 +20,9 @@ namespace Nemo.Reflection
     {
         #region Declarations
 
-        private static readonly MethodInfo _getReflectedTypeMethod = typeof(Reflector).GetMethod("GetReflectedType", BindingFlags.Static | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
-        private static readonly MethodInfo _getPropertyMapMethod = typeof(Reflector).GetMethod("GetPropertyMap", BindingFlags.Static | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
-        private static readonly MethodInfo _getPropertyNameMapMethod = typeof(Reflector).GetMethod("GetPropertyNameMap", BindingFlags.Static | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+        private static readonly MethodInfo _getReflectedTypeMethod = typeof(Reflector).GetMethod("GetReflectedType", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
+        private static readonly MethodInfo _getPropertyMapMethod = typeof(Reflector).GetMethod("GetPropertyMap", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
+        private static readonly MethodInfo _getPropertyNameMapMethod = typeof(Reflector).GetMethod("GetPropertyNameMap", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
         private static readonly MethodInfo _getAllPropertiesMethod = typeof(Reflector).GetMethod("GetAllProperties", Type.EmptyTypes);
         private static readonly MethodInfo _getAllPropertyPositionsMethod = typeof(Reflector).GetMethod("GetAllPropertyPositions", Type.EmptyTypes);
         private static readonly MethodInfo _getPropertyMethod = typeof(Reflector).GetMethod("GetProperty", new[] { typeof(string) });

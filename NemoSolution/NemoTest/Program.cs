@@ -73,6 +73,8 @@ namespace NemoTest
 
             var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 
+            var selected_customers_and_orders = ObjectFactory.Select<ICustomer, IOrder>((c, o) => c.Id == o.CustomerId, c => c.Orders.Count > 0);
+
             // Simple retrieve with dynamic parameters
             var retrieve_customer_dyn = ObjectFactory.Retrieve<Customer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
            
