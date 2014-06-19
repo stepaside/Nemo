@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -14,9 +15,9 @@ namespace Nemo.Linq
         private readonly NemoQueryProvider _provider;
         private readonly Expression _expression;
 
-        public NemoQueryable()
+        public NemoQueryable(DbConnection connection = null)
         {
-            _provider = new NemoQueryProvider();
+            _provider = new NemoQueryProvider(connection);
             _expression = Expression.Constant(this);
         }
 

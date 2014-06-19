@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using Nemo.Collections.Extensions;
@@ -10,7 +11,7 @@ namespace Nemo.Linq
     class NemoQueryContext
     {
         // Executes the expression tree that is passed to it. 
-        internal static object Execute(Expression expression)
+        internal static object Execute(Expression expression, DbConnection connection = null)
         {
             var args = new Dictionary<string, object>();
             var type = Prepare(expression, args);
@@ -71,7 +72,7 @@ namespace Nemo.Linq
 
             return typeof(ObjectFactory).GetMethods().First(m => m.Name == "Select" && m.GetGenericArguments().Length == 1)
                 .MakeGenericMethod(type)
-                .Invoke(null, new object[] { criteria, null, null, limit > 0 ? offset/limit + 1 : 0, limit, null, orderByArray });
+                .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset/limit + 1 : 0, limit, null, orderByArray });
         }
 
         private static Type Prepare(Expression expression, IDictionary<string, object> args)
