@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Nemo</id>
-    <version>2.1.0-beta9</version>
+    <version>2.1.0-beta10</version>
     <title>Nemo</title>
     <authors>Max Stepanskiy</authors>
     <owners>Stepaside, Inc.</owners>
@@ -16,6 +16,7 @@
       * Added very basic LINQ provider implementation
       * Added ORDER BY to Select method
       * Added Attach/Detach methods
+      * Added eager loading support to Select methods
     </releaseNotes>
     <dependencies>
       <dependency id="log4net" version="2.0.3" />
