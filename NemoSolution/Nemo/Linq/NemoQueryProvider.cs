@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+﻿using System.Collections;
+using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using Nemo.Reflection;
@@ -35,7 +36,12 @@ namespace Nemo.Linq
 
         public TResult Execute<TResult>(Expression expression)
         {
-            return (TResult)NemoQueryContext.Execute(expression, _connection);
+            var result = NemoQueryContext.Execute(expression, _connection);
+            if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
+            {
+                return (TResult)result;
+            }
+            return ((IEnumerable)result).OfType<TResult>().FirstOrDefault();
         }
 
         public object Execute(Expression expression)

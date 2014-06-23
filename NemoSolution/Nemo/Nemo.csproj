@@ -132,6 +132,7 @@
     <Compile Include="Security\Cryptography\Jenkins96Hash.cs" />
     <Compile Include="Security\Cryptography\MurmurHash2.cs" />
     <Compile Include="Security\Cryptography\SBoxHash.cs" />
+    <Compile Include="SelectOption.cs" />
     <Compile Include="Serialization\SerializationReader.cs" />
     <Compile Include="Serialization\JsonSerializationReader.cs" />
     <Compile Include="Serialization\JsonSerializationWriter.cs" />

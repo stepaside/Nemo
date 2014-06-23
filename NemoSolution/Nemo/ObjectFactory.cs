@@ -291,7 +291,7 @@ namespace Nemo
 
         #region Select Methods
 
-        public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+        public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
             where T : class
         {
             string providerName = null;
@@ -300,12 +300,22 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
-            return RetrieveImplemenation<T>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, cached: cached);
+            var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, selectOption != SelectOption.All, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var result = RetrieveImplemenation<T>(sql, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, cached: cached);
+
+            if (selectOption == SelectOption.First)
+            {
+                return new[] { result.First() };
+            }
+            if (selectOption == SelectOption.FirstOrDefault)
+            {
+                return new[] { result.FirstOrDefault() };
+            }
+            return result;
         }
 
         public static IEnumerable<T> Select<T, T1>(Expression<Func<T, T1, bool>> join, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0,
-            bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            bool? cached = null, SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
             where T : class
             where T1 : class
         {
@@ -315,15 +325,26 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, selectOption != SelectOption.All, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
 
-            return new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin }, new[] { typeof(T), typeof(T1) },
+            var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin }, new[] { typeof(T), typeof(T1) },
                 (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached));
+
+            if (selectOption == SelectOption.First)
+            {
+                return new[] { result.First() };
+            }
+            if (selectOption == SelectOption.FirstOrDefault)
+            {
+                return new[] { result.FirstOrDefault() };
+            }
+            return result;
         }
 
-        public static IEnumerable<T> Select<T, T1, T2>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, 
-            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+        public static IEnumerable<T> Select<T, T1, T2>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2,
+            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, 
+            SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -334,16 +355,27 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, selectOption != SelectOption.All, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
 
-            return new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2 }, new[] { typeof(T), typeof(T1), typeof(T2) },
+            var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2 }, new[] { typeof(T), typeof(T1), typeof(T2) },
                 (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached));
+
+            if (selectOption == SelectOption.First)
+            {
+                return new[] { result.First() };
+            }
+            if (selectOption == SelectOption.FirstOrDefault)
+            {
+                return new[] { result.FirstOrDefault() };
+            }
+            return result;
         }
 
         public static IEnumerable<T> Select<T, T1, T2, T3>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3,
-            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null,
+            SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -355,17 +387,28 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, selectOption != SelectOption.All, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
 
-            return new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) },
+            var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) },
                 (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached));
+
+            if (selectOption == SelectOption.First)
+            {
+                return new[] { result.First() };
+            }
+            if (selectOption == SelectOption.FirstOrDefault)
+            {
+                return new[] { result.FirstOrDefault() };
+            }
+            return result;
         }
 
         public static IEnumerable<T> Select<T, T1, T2, T3, T4>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
-            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null, 
+            SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -378,14 +421,24 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
-            var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, selectOption != SelectOption.All, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
+            var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, false, DialectFactory.GetProvider(connection, providerName), orderBy);
 
-            return new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3, sqlJoin4 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) },
+            var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3, sqlJoin4 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) },
               (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached));
+
+            if (selectOption == SelectOption.First)
+            {
+                return new[] { result.First() };
+            }
+            if (selectOption == SelectOption.FirstOrDefault)
+            {
+                return new[] { result.FirstOrDefault() };
+            }
+            return result;
         }
 
         public static IEnumerable<T> Union<T>(params IEnumerable<T>[] sources)

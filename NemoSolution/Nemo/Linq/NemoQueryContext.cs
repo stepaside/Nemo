@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using Nemo.Collections.Extensions;
 using Nemo.Reflection;
 
@@ -10,6 +11,8 @@ namespace Nemo.Linq
 {
     class NemoQueryContext
     {
+        private static readonly MethodInfo _selectMethod = typeof(ObjectFactory).GetMethods().First(m => m.Name == "Select" && m.GetGenericArguments().Length == 1);
+
         // Executes the expression tree that is passed to it. 
         internal static object Execute(Expression expression, DbConnection connection = null)
         {
@@ -19,9 +22,10 @@ namespace Nemo.Linq
             var funcType = typeof(Func<,>).MakeGenericType(type, typeof(object));
             var expressinoType = typeof(Expression<>).MakeGenericType(funcType);
             var tupleType = typeof(Tuple<,>).MakeGenericType(expressinoType, typeof(SortingOrder));
-            
-            var offset=0; 
-            var limit=0;
+
+            var offset = 0;
+            var limit = 0;
+            var selectOption = SelectOption.All;
             LambdaExpression criteria = null;
             var orderBy = new List<Tuple<LambdaExpression, SortingOrder>>();
 
@@ -37,6 +41,10 @@ namespace Nemo.Linq
                         break;
                     case "Where":
                         criteria = (LambdaExpression)pair.Value;
+                        break;
+                    case "First":
+                    case "FirstOrDefault":
+                        selectOption = pair.Key == "First" ? SelectOption.First : SelectOption.FirstOrDefault;
                         break;
                     default:
                         if (pair.Key.StartsWith("OrderBy."))
@@ -70,9 +78,8 @@ namespace Nemo.Linq
                 orderByArray.SetValue(tupleType.New(new object[] { t.Item1, t.Item2 }), i);
             }
 
-            return typeof(ObjectFactory).GetMethods().First(m => m.Name == "Select" && m.GetGenericArguments().Length == 1)
-                .MakeGenericMethod(type)
-                .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset/limit + 1 : 0, limit, null, orderByArray });
+            return _selectMethod.MakeGenericMethod(type)
+                .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset / limit + 1 : 0, limit, null, selectOption, orderByArray });
         }
 
         private static Type Prepare(Expression expression, IDictionary<string, object> args)
@@ -101,29 +108,36 @@ namespace Nemo.Linq
                 }
                 else
                 {
-                    var exp = methodCall.Arguments[1];
-                    var unaryExpression = exp as UnaryExpression;
-                    if (unaryExpression != null)
+                    var exp = methodCall.Arguments.ElementAtOrDefault(1);
+                    if (exp != null)
                     {
-                        var lambda = (LambdaExpression)unaryExpression.Operand;
-                        if (method.StartsWith("OrderBy") || method.StartsWith("ThenBy"))
+                        var unaryExpression = exp as UnaryExpression;
+                        if (unaryExpression != null)
                         {
-                            var count = args.Keys.Count(k => k == method);
-                            args[method + "." + count] = lambda;
+                            var lambda = (LambdaExpression)unaryExpression.Operand;
+                            if (method.StartsWith("OrderBy") || method.StartsWith("ThenBy"))
+                            {
+                                var count = args.Keys.Count(k => k == method);
+                                args[method + "." + count] = lambda;
+                            }
+                            else if (method != "First" && method != "FirstOrDefault")
+                            {
+                                args[method] = lambda;
+                            }
                         }
                         else
                         {
-                            args[method] = lambda;
+                            var constantExpression = exp as ConstantExpression;
+                            if (constantExpression != null)
+                            {
+                                var value = constantExpression.Value;
+                                args[method] = value;
+                            }
                         }
                     }
-                    else
+                    else if (method == "First" || method == "FirstOrDefault")
                     {
-                        var constantExpression = exp as ConstantExpression;
-                        if (constantExpression != null)
-                        {
-                            var value = constantExpression.Value;
-                            args[method] = value;
-                        }
+                        args[method] = null;
                     }
                     expression = methodCall.Arguments[0];
                     continue;
