@@ -1,10 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using Nemo.Fn;
 
 namespace Nemo.Audit
@@ -36,7 +31,7 @@ namespace Nemo.Audit
         {
             get
             {
-                var createdBy = ClaimsPrincipal.Current.ToMaybe().Select(m => m.Identity).Select(m => m.Name);
+                var createdBy = Thread.CurrentPrincipal.ToMaybe().Select(m => m.Identity).Select(m => m.Name);
                 return createdBy.HasValue ? createdBy.Value : null;
             }
         }
