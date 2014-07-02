@@ -12,6 +12,7 @@ Nemo
   * [Classes](https://github.com/stepaside/Nemo/wiki/Data-Transfer-Objects#wiki-class)  
   * [Interfaces](https://github.com/stepaside/Nemo/wiki/Data-Transfer-Objects#wiki-interface)
  7. With
+  * Rich [functionality](https://github.com/stepaside/Nemo/wiki/Data-Transfer-Objects#supported-operations)
   * L1 [cache support](https://github.com/stepaside/Nemo/wiki/Caching)
   * Fast serialization
      * Binary - very small footprint, one of the fastest and most compact binary serializers
@@ -19,7 +20,7 @@ Nemo
      * JSON - one of the fastest JSON serializers
   * [Unit of work](https://github.com/stepaside/Nemo/wiki/Unit-Of-Work) implementation
   * Immutable [read-only DTO's](https://github.com/stepaside/Nemo/wiki/Read-Only-DTO)
-  * Rich [configuration](https://github.com/stepaside/Nemo/wiki/Configuration) options
+  * Extensive [configuration](https://github.com/stepaside/Nemo/wiki/Configuration) options
   * Declarative validation
   * [Data type conversion](https://github.com/stepaside/Nemo/wiki/Data-Type-Conversion) options (handling enumerations, nullable types, DBNull values, type coercion)
   * [Key generation](https://github.com/stepaside/Nemo/wiki/Key-Generation) options
