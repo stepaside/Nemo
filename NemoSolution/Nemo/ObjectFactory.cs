@@ -523,7 +523,8 @@ namespace Nemo
             {
                 return default(T);
             }
-            return ((T)value).ToMaybe();
+				
+			return (T)Reflector.ChangeType(value, typeof(T));
         }
 
         private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)

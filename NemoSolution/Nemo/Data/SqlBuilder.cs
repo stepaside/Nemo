@@ -17,7 +17,7 @@ namespace Nemo.Data
     {
         private const string SqlSelectPagingFormatRowNumber = "SELECT {6} FROM (SELECT ROW_NUMBER() OVER (ORDER BY {2}) AS __row, {1} FROM {0}{3}) AS t WHERE __row > {4} AND __row <= {5}";
         private const string SqlSelectPagingFormatMssqlLegacy = "SELECT * FROM (SELECT TOP {5} * FROM (SELECT TOP {6} {1} FROM {0}{4} ORDER BY {2}) AS __t1 ORDER BY {3}) as __t2 ORDER BY {2}";
-        private const string SqlSelectPagingFormat = "SELECT {1} FROM {0}{2} LIMIT {3} OFFSET {4}";
+		private const string SqlSelectPagingFormat = "SELECT {1} FROM {0}{2}{3} LIMIT {4} OFFSET {5}";
         private const string SqlSelectFirstFormatMssql = "SELECT TOP 1 * FROM ({0}) __t";
         private const string SqlSelectFirstFormatOracle = "SELECT * FROM ({0}) __t WHERE rownum = 1";
         private const string SqlSelectFirstFormat = "SELECT * FROM ({0}) __t LIMIT 1";
@@ -230,8 +230,8 @@ namespace Nemo.Data
                 }
                 else
                 {
-                    sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, pageSize, (page - 1) * pageSize);
-                    if (orderBy.Length > 0)
+					var orderByClause = "";
+					if (orderBy.Length > 0)
                     {
                         var sort = new StringBuilder(" ORDER BY ");
                         foreach (var o in orderBy)
@@ -240,8 +240,9 @@ namespace Nemo.Data
                             sort.AppendFormat("{0} {1}, ", column, o.Item2 == SortingOrder.Ascending ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
-                        sql += sort;
+						orderByClause = sort.ToString();
                     }
+					sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, pageSize, (page - 1) * pageSize);
                 }
             }
             else
