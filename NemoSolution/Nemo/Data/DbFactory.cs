@@ -13,7 +13,7 @@ using System.Text;
 
 namespace Nemo.Data
 {
-    internal static class DbFactory
+    public static class DbFactory
     {
         private static string GetDefaultConnectionName(Type objectType)
         {
@@ -50,7 +50,7 @@ namespace Nemo.Data
             return connectionName ?? ConfigurationFactory.Get(objectType).DefaultConnectionName;
         }
 
-        internal static string GetProviderInvariantName(string connectionName, Type objectType = null)
+        internal static string GetProviderInvariantName(string connectionName, Type objectType)
         {
             if (connectionName.NullIfEmpty() == null && objectType != null)
             {
@@ -91,7 +91,7 @@ namespace Nemo.Data
             return connection;
         }
 
-        internal static DbConnection CreateConnection(string connectionName, Type objectType = null)
+        internal static DbConnection CreateConnection(string connectionName, Type objectType)
         {
             if (connectionName.NullIfEmpty() == null && objectType != null)
             {
@@ -102,6 +102,16 @@ namespace Nemo.Data
             var connection = factory.CreateConnection();
             connection.ConnectionString = config.ConnectionString;
             return connection;
+        }
+
+        public static DbConnection CreateConnection(string connectionStringOrName)
+        {
+            var providerName = GetProviderInvariantNameByConnectionString(connectionStringOrName);
+            if (providerName != null)
+            {
+                return CreateConnection(connectionStringOrName, providerName);
+            }
+            return CreateConnection(connectionStringOrName, (Type)null);
         }
 
         internal static DbDataAdapter CreateDataAdapter(DbConnection connection)

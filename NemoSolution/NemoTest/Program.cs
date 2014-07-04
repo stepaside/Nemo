@@ -4,6 +4,7 @@ using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
 using Nemo.Configuration.Mapping;
+using Nemo.Data;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Linq;
@@ -175,7 +176,7 @@ namespace NemoTest
             //}
 
             // Passing open connection into the method
-            using (var test_connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.Get<ICustomer>().DefaultConnectionName)))
+            using (var test_connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.Get<ICustomer>().DefaultConnectionName)))
             {
                 test_connection.Open();
                 var retrieve_customer_sql_wth_open_connection = ObjectFactory.Retrieve<ICustomer>(connection: test_connection, sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
@@ -391,7 +392,7 @@ namespace NemoTest
 
         private static void RunNative(int count)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
 
             connection.Open();
@@ -401,7 +402,10 @@ namespace NemoTest
             {
                 cmd.CommandText = sql;
                 cmd.CommandType = CommandType.Text;
-                cmd.Parameters.AddWithValue("CustomerId", "ALFKI");
+                var param = cmd.CreateParameter();
+                param.ParameterName = "CustomerId";
+                param.Value = "ALFKI";
+                cmd.Parameters.Add(param);
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read()) { }
@@ -416,7 +420,10 @@ namespace NemoTest
                 {
                     cmd.CommandText = sql;
                     cmd.CommandType = CommandType.Text;
-                    cmd.Parameters.AddWithValue("CustomerId", "ALFKI");
+                    var param = cmd.CreateParameter();
+                    param.ParameterName = "CustomerId";
+                    param.Value = "ALFKI";
+                    cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read()) { };
@@ -431,7 +438,7 @@ namespace NemoTest
 
         private static void RunExecute(int count)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
 
             connection.Open();
 
@@ -462,7 +469,7 @@ namespace NemoTest
 
         private static void RunRetrieve(int count, bool cached)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
             var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
 
@@ -473,7 +480,7 @@ namespace NemoTest
 
             var timer = new HiPerfTimer(true);
             timer.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 result = ObjectFactory.Retrieve<ICustomer>(connection: connection, sql: sql, parameters: parameters, cached: cached).FirstOrDefault();
             }
@@ -485,7 +492,7 @@ namespace NemoTest
 
         private static void RunSelect(int count, bool buffered = false)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
 
             connection.Open();
@@ -495,7 +502,7 @@ namespace NemoTest
 
             var timer = new HiPerfTimer(true);
             timer.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 result = ObjectFactory.Select(predicate, connection: connection).FirstOrDefault();
             }
@@ -507,7 +514,7 @@ namespace NemoTest
 
         private static void RunDapper(int count, bool buffered)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
                 
             connection.Open();
@@ -534,7 +541,7 @@ namespace NemoTest
 
         private static void RunNativeWithMapper(int count)
         {
-            var connection = new SqlConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
             var sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
 
             connection.Open();
@@ -544,7 +551,10 @@ namespace NemoTest
             {
                 cmd.CommandText = sql;
                 cmd.CommandType = CommandType.Text;
-                cmd.Parameters.AddWithValue("CustomerId", "ALFKI");
+                var param = cmd.CreateParameter();
+                param.ParameterName = "CustomerId";
+                param.Value = "ALFKI";
+                cmd.Parameters.Add(param);
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read()) 
@@ -556,13 +566,16 @@ namespace NemoTest
 
             var timer = new HiPerfTimer(true);
             timer.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 using (var cmd = connection.CreateCommand())
                 {
                     cmd.CommandText = sql;
                     cmd.CommandType = CommandType.Text;
-                    cmd.Parameters.AddWithValue("CustomerId", "ALFKI");
+                    var param = cmd.CreateParameter();
+                    param.ParameterName = "CustomerId";
+                    param.Value = "ALFKI";
+                    cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read()) 
@@ -580,7 +593,7 @@ namespace NemoTest
 
         private static void RunEF(int count, bool linq = false, bool noTracking = true)
         {
-            var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
+            var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @p0";
             // Warm-up
             using (var context = new EFContext(ConfigurationFactory.DefaultConnectionName))
             {
@@ -592,7 +605,7 @@ namespace NemoTest
                 }
                 else
                 {
-                    var parameters = new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } };
+                    var parameters = new object[] { "ALFKI" };
                     var customer = context.Customers.SqlQuery(sql, parameters).AsNoTracking().FirstOrDefault();
                 }
             }
@@ -604,7 +617,7 @@ namespace NemoTest
                 {
                     timer.Start();
 
-                    for (int i = 0; i < count; i++)
+                    for (var i = 0; i < count; i++)
                     {
                         var customer = context.Customers.AsNoTracking().FirstOrDefault(c => c.Id == "ALFKI");
                     }
@@ -616,9 +629,9 @@ namespace NemoTest
                 using (var context = new EFContext(ConfigurationFactory.DefaultConnectionName))
                 {
                     timer.Start();
-                    for (int i = 0; i < count; i++)
+                    for (var i = 0; i < count; i++)
                     {
-                        var parameters = new object[] { new SqlParameter { ParameterName = "CustomerID", Value = "ALFKI", DbType = DbType.StringFixedLength, Size = 5 } };
+                        var parameters = new object[] { "ALFKI" };
                         var customer = context.Customers.SqlQuery(sql, parameters).AsNoTracking().FirstOrDefault();
                     }
                     timer.Stop();

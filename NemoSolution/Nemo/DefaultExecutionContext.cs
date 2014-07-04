@@ -39,11 +39,11 @@ namespace Nemo
 
         public object Get(string name)
         {
-            var principal = Thread.CurrentPrincipal;
-            if (principal is ThreadedPrincipal)
+            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
+            if (principal != null)
             {
                 object value;
-                ((ThreadedPrincipal)principal).Items.TryGetValue(name, out value);
+                principal.Items.TryGetValue(name, out value);
                 return value;
             }
             else
@@ -56,24 +56,16 @@ namespace Nemo
 
         public bool TryGet(string name, out object value)
         {
-            value = null;
-            var principal = Thread.CurrentPrincipal;
-            if (principal is ThreadedPrincipal)
-            {
-                return ((ThreadedPrincipal)principal).Items.TryGetValue(name, out value);
-            }
-            else
-            {
-                return _callContext.TryGetValue(name, out value);
-            }
+            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
+            return principal != null ? principal.Items.TryGetValue(name, out value) : _callContext.TryGetValue(name, out value);
         }
 
         public void Set(string name, object value)
         {
-            var principal = Thread.CurrentPrincipal;
-            if (principal is ThreadedPrincipal)
+            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
+            if (principal != null)
             {
-                ((ThreadedPrincipal)principal).Items[name] = value;
+                principal.Items[name] = value;
             }
             else
             {
@@ -83,10 +75,10 @@ namespace Nemo
 
         public void Remove(string name)
         {
-            var principal = Thread.CurrentPrincipal;
-            if (principal is ThreadedPrincipal)
+            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
+            if (principal != null)
             {
-                ((ThreadedPrincipal)principal).Items.Remove(name);
+                principal.Items.Remove(name);
             }
             else
             {
@@ -103,10 +95,10 @@ namespace Nemo
 
         public void Clear()
         {
-            var principal = Thread.CurrentPrincipal;
-            if (principal is ThreadedPrincipal)
+            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
+            if (principal != null)
             {
-                ((ThreadedPrincipal)principal).Items.Clear();
+                principal.Items.Clear();
             }
             else
             {
@@ -118,15 +110,8 @@ namespace Nemo
         {
             get
             {
-                var principal = Thread.CurrentPrincipal;
-                if (principal is ThreadedPrincipal)
-                {
-                    return ((ThreadedPrincipal)principal).Items.Keys.ToArray();
-                }
-                else
-                {
-                    return _callContext.Keys.ToArray();
-                }
+                var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
+                return principal != null ? principal.Items.Keys.ToArray() : _callContext.Keys.ToArray();
             }
         }
     }
