@@ -64,22 +64,53 @@ namespace Nemo.Data
         {
             if (connectionString == null) return null;
 
-            var pos1 = connectionString.IndexOf("provider=", StringComparison.OrdinalIgnoreCase);
-            if (pos1 > -1)
-            {
-                var pos2 = connectionString.IndexOf(";", pos1, StringComparison.Ordinal);
-                return pos2 > -1 ? connectionString.Substring(pos1 + 9, pos2 - pos1 - 9) : connectionString.Substring(pos1 + 9);
-            }
+			var builder = new DbConnectionStringBuilder { ConnectionString = connectionString };
 
-            for (var i = 0; i < ConfigurationManager.ConnectionStrings.Count; i++)
-            {
-                var config = ConfigurationManager.ConnectionStrings[i];
-                if (string.Equals(config.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
-                {
-                    return config.ProviderName;
-                }
-            }
-            
+			object providerValue;
+			if (builder.TryGetValue("provider", out providerValue))
+			{
+				return providerValue.ToString();
+			}
+
+			var persistSecurityInfo = false;
+			object persistSecurityInfoValue;
+			if (builder.TryGetValue("persist security info", out persistSecurityInfoValue))
+			{
+				persistSecurityInfo = Convert.ToBoolean(persistSecurityInfoValue);
+			}
+
+            var lostPassword = !persistSecurityInfo && !builder.ContainsKey("pwd") && !builder.ContainsKey("password");
+
+            if (!lostPassword)
+			{
+				for (var i = 0; i < ConfigurationManager.ConnectionStrings.Count; i++)
+				{
+					var config = ConfigurationManager.ConnectionStrings [i];
+					if (string.Equals (config.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
+					{
+						return config.ProviderName;
+					}
+				}
+			} 
+			else
+			{
+				for (var i = 0; i < ConfigurationManager.ConnectionStrings.Count; i++)
+				{
+					var config = ConfigurationManager.ConnectionStrings[i];
+
+                    var otherBuilder = new DbConnectionStringBuilder { ConnectionString = config.ConnectionString };
+                    otherBuilder.Remove("pwd");
+                    otherBuilder.Remove("password");
+
+                    var equivalenCount = builder.Keys.Cast<string>().Join(otherBuilder.Keys.Cast<string>(), _ => _, _ => _, (k1, k2) => string.Equals(builder[k1].ToString(), otherBuilder[k2].ToString(), StringComparison.OrdinalIgnoreCase) ? 1 : 0, StringComparer.OrdinalIgnoreCase).Sum();
+
+                    if (equivalenCount == builder.Count)
+                    {
+                        return config.ProviderName;
+                    }
+				}
+			}
+           
             return null;
         }
 
