@@ -12,7 +12,7 @@ using Nemo.Reflection;
 
 namespace Nemo.Utilities
 {
-    internal static class Xml
+    public static class Xml
     {
         internal static IEnumerable<XmlSchema> InferXmlSchema(Type type)
         {
@@ -125,7 +125,7 @@ namespace Nemo.Utilities
 
         private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getElementNameMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
 
-        internal static string GetElementNameFromType<T>()
+        public static string GetElementNameFromType<T>()
         {
             var attr = Reflector.GetAttribute<T, XmlRootAttribute>();
             if (attr != null && !string.IsNullOrEmpty(attr.ElementName)) return attr.ElementName;
@@ -144,7 +144,7 @@ namespace Nemo.Utilities
         {
             var handle = _getElementNameMethods.GetOrAdd(objectType, type =>
             {
-                var method = typeof(Xml).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "GetElementNameFromType" && m.IsGenericMethod);
+                var method = typeof(Xml).GetMethods(BindingFlags.Public | BindingFlags.Static).First(m => m.Name == "GetElementNameFromType" && m.IsGenericMethod);
                 var genericMethod = method.MakeGenericMethod(objectType);
                 return genericMethod.MethodHandle;
             });
