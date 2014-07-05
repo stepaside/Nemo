@@ -18,14 +18,19 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C9B28604-E959-4D44-92C9-BE999C423DC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C9B28604-E959-4D44-92C9-BE999C423DC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C9B28604-E959-4D44-92C9-BE999C423DC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C9B28604-E959-4D44-92C9-BE999C423DC3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9B28604-E959-4D44-92C9-BE999C423DC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9B28604-E959-4D44-92C9-BE999C423DC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9B28604-E959-4D44-92C9-BE999C423DC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9B28604-E959-4D44-92C9-BE999C423DC3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = ..\NemoTest\NemoTest.csproj
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
