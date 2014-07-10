@@ -86,10 +86,10 @@ namespace Nemo.Data
 				for (var i = 0; i < ConfigurationManager.ConnectionStrings.Count; i++)
 				{
 					var config = ConfigurationManager.ConnectionStrings [i];
-					if (string.Equals (config.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
-					{
-						return config.ProviderName;
-					}
+				    if (string.Equals(config.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
+				    {
+				        return config.ProviderName;
+				    }
 				}
 			} 
 			else
@@ -102,7 +102,13 @@ namespace Nemo.Data
                     otherBuilder.Remove("pwd");
                     otherBuilder.Remove("password");
 
-                    var equivalenCount = builder.Keys.Cast<string>().Join(otherBuilder.Keys.Cast<string>(), _ => _, _ => _, (k1, k2) => string.Equals(builder[k1].ToString(), otherBuilder[k2].ToString(), StringComparison.OrdinalIgnoreCase) ? 1 : 0, StringComparer.OrdinalIgnoreCase).Sum();
+                    if (otherBuilder.Count != builder.Count) continue;
+
+				    var equivalenCount = builder.Cast<KeyValuePair<string, object>>().Select(p =>
+				    {
+				        object value;
+				        return otherBuilder.TryGetValue(p.Key, out value) && string.Equals(Convert.ToString(value), Convert.ToString(p.Value), StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+				    }).Sum();
 
                     if (equivalenCount == builder.Count)
                     {
