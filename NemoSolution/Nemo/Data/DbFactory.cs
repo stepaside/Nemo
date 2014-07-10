@@ -124,7 +124,10 @@ namespace Nemo.Data
         {
             var factory = DbProviderFactories.GetFactory(providerName);
             var connection = factory.CreateConnection();
-            connection.ConnectionString = connectionString;
+            if (connection != null)
+            {
+                connection.ConnectionString = connectionString;
+            }
             return connection;
         }
 
@@ -137,18 +140,17 @@ namespace Nemo.Data
             var config = ConfigurationManager.ConnectionStrings[connectionName];
             var factory = DbProviderFactories.GetFactory(config.ProviderName);
             var connection = factory.CreateConnection();
-            connection.ConnectionString = config.ConnectionString;
+            if (connection != null)
+            {
+                connection.ConnectionString = config.ConnectionString;
+            }
             return connection;
         }
 
         public static DbConnection CreateConnection(string connectionStringOrName)
         {
             var providerName = GetProviderInvariantNameByConnectionString(connectionStringOrName);
-            if (providerName != null)
-            {
-                return CreateConnection(connectionStringOrName, providerName);
-            }
-            return CreateConnection(connectionStringOrName, (Type)null);
+            return providerName != null ? CreateConnection(connectionStringOrName, providerName) : CreateConnection(connectionStringOrName, (Type)null);
         }
 
         internal static DbDataAdapter CreateDataAdapter(DbConnection connection)
