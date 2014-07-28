@@ -584,7 +584,7 @@ namespace Nemo
                 Log.Capture(() => string.Format("Not found in L1 cache: {0}", queryKey));
             }
 
-            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema, config);
+            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema, config, identityMap);
             
             if (queryKey != null)
             {
@@ -618,7 +618,7 @@ namespace Nemo
             return result;
         }
 
-        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, MaterializationMode mode, string schema, IConfiguration config)
+        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, MaterializationMode mode, string schema, IConfiguration config, IdentityMap<T> identityMap)
             where T : class
         {
             if (operationType == OperationType.Guess)
@@ -632,7 +632,7 @@ namespace Nemo
                 ? Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema) 
                 : Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
 
-            var result = Translate(response, map, types, cached, mode);
+            var result = Translate(response, map, types, cached, mode, identityMap);
             return result;
         }
 
@@ -1176,10 +1176,10 @@ namespace Nemo
             where T : class
         {
             var config = ConfigurationFactory.Get<T>();
-            return Translate<T>(response, null, null, config.DefaultL1CacheRepresentation != L1CacheRepresentation.None, config.DefaultMaterializationMode);
+            return Translate<T>(response, null, null, config.DefaultL1CacheRepresentation != L1CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
         }
 
-        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode)
+        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, IdentityMap<T> identityMap)
             where T : class
         {
             var value = response != null ? response.Value : null;
@@ -1204,19 +1204,19 @@ namespace Nemo
             var dataSet = value as DataSet;
             if (dataSet != null)
             {
-                return ConvertDataSet<T>(dataSet, mode, isInterface);
+                return ConvertDataSet(dataSet, mode, isInterface, identityMap);
             }
 
             var dataTable = value as DataTable;
             if (dataTable != null)
             {
-                return ConvertDataTable<T>(dataTable, mode, isInterface);
+                return ConvertDataTable(dataTable, mode, isInterface, identityMap);
             }
 
             var dataRow = value as DataRow;
             if (dataRow != null)
             {
-                return ConvertDataRow<T>(dataRow, mode, isInterface).Return();
+                return ConvertDataRow(dataRow, mode, isInterface, identityMap).Return();
             }
             
             if (value is T)
@@ -1238,31 +1238,31 @@ namespace Nemo
             return Bind<T>(value).Return();
         }
 
-        private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, MaterializationMode mode, bool isInterface)
+        private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
              where T : class
         {
             string tableName = GetTableName(typeof(T));
-            return dataSet.Tables.Count != 0 ? ConvertDataTable<T>(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], mode, isInterface) : Enumerable.Empty<T>();
+            return dataSet.Tables.Count != 0 ? ConvertDataTable(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], mode, isInterface, identityMap) : Enumerable.Empty<T>();
         }
 
-        private static IEnumerable<T> ConvertDataTable<T>(DataTable table, MaterializationMode mode, bool isInterface)
+        private static IEnumerable<T> ConvertDataTable<T>(DataTable table, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
              where T : class
         {
-            return ConvertDataTable<T>(table.AsEnumerable(), mode, isInterface);
+            return ConvertDataTable(table.AsEnumerable(), mode, isInterface, identityMap);
         }
 
-        private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, MaterializationMode mode, bool isInterface)
+        private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
              where T : class
         {
-            return table.Select(row => ConvertDataRow<T>(row, mode, isInterface));
+            return table.Select(row => ConvertDataRow(row, mode, isInterface, identityMap));
         }
 
-        private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, MaterializationMode mode, bool isInterface)
+        private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, MaterializationMode mode, bool isInterface, Action<object> identityMapAction)
         {
-            return table.Select(row => ConvertDataRow(row, targetType, mode, isInterface));
+            return table.Select(row => ConvertDataRow(row, targetType, mode, isInterface, identityMapAction));
         }
 
-        private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface)
+        private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
              where T : class
         {
             var value = mode == MaterializationMode.Exact || !isInterface ? Map<DataRow, T>(row, isInterface) : Wrap<T>(GetSerializableDataRow(row));
@@ -1272,12 +1272,14 @@ namespace Nemo
                 entity.ObjectState = ObjectState.Clean;
             }
 
-            LoadRelatedData(row, value, typeof(T), mode);
+            var identityMapAction = identityMap != null ? new Action<object>(item => identityMap.Set((T)item)) : null;
+
+            LoadRelatedData(row, value, typeof(T), mode, identityMapAction);
             
             return value;
         }
 
-        private static object ConvertDataRow(DataRow row, Type targetType, MaterializationMode mode, bool isInterface)
+        private static object ConvertDataRow(DataRow row, Type targetType, MaterializationMode mode, bool isInterface, Action<object> identityMapAction)
         {
             var value = mode == MaterializationMode.Exact || !isInterface ? Map((object)row, targetType, isInterface) : Wrap(GetSerializableDataRow(row), targetType);
             var entity = value as ITrackableDataEntity;
@@ -1286,12 +1288,12 @@ namespace Nemo
                 entity.ObjectState = ObjectState.Clean;
             }
 
-            LoadRelatedData(row, value, targetType, mode);
+            LoadRelatedData(row, value, targetType, mode, identityMapAction);
 
             return value;
         }
 
-        private static void LoadRelatedData(DataRow row, object value, Type targetType, MaterializationMode mode)
+        private static void LoadRelatedData(DataRow row, object value, Type targetType, MaterializationMode mode, Action<object> identityMapAction)
         {
             DataTable table = row.Table;
             if (table != null && table.ChildRelations.Count > 0)
@@ -1313,14 +1315,20 @@ namespace Nemo
                     object propertyValue = null;
                     if (p.Value.IsDataEntity)
                     {
-                        propertyValue = ConvertDataRow(childRows[0], p.Key.PropertyType, mode, p.Key.PropertyType.IsInterface);
+                        propertyValue = ConvertDataRow(childRows[0], p.Key.PropertyType, mode, p.Key.PropertyType.IsInterface, identityMapAction);
+                        
+                        // Write-through for identity map
+                        if (identityMapAction != null)
+                        {
+                            identityMapAction(propertyValue);
+                        }
                     }
                     else if (p.Value.IsDataEntityList)
                     {
                         var elementType = p.Value.ElementType;
                         if (elementType != null)
                         {
-                            var items = ConvertDataTable(childRows, elementType, mode, elementType.IsInterface);
+                            var items = ConvertDataTable(childRows, elementType, mode, elementType.IsInterface, identityMapAction);
                             IList list;
                             if (!p.Value.IsListInterface)
                             {
@@ -1336,6 +1344,14 @@ namespace Nemo
                                 list.Add(item);
                             }
 
+                            // Write-through for identity map
+                            if (identityMapAction != null)
+                            {
+                                foreach (var item in list)
+                                {
+                                    identityMapAction(item);
+                                }
+                            }
                             propertyValue = list;
                         }
                     }
