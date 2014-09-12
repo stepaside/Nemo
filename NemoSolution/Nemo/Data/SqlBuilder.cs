@@ -30,7 +30,7 @@ namespace Nemo.Data
         private const string SqlInsertFormat = "INSERT INTO {0} ({1}) VALUES ({2})";
         private const string SqlUpdateFormat = "UPDATE {0} SET {1} WHERE {2}";
         private const string SqlSoftDeleteFormat = "UPDATE {0} SET {1} = 1 WHERE {2}";
-        private const string SqlDeleteFormat = "DELETE {0} WHERE {1}";
+        private const string SqlDeleteFormat = "DELETE FROM {0} WHERE {1}";
         private const string SqlSetFormat = "{2}{0}{3} = {1}";
         
         public const string DefaultSoftDeleteColumn = "__deleted";
@@ -347,7 +347,7 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetDeleteStatement(Type objectType, Param[] primaryKey, DialectProvider dialect, string softDeleteColumn = null)
+        internal static string GetDeleteStatement(Type objectType, IList<Param> primaryKey, DialectProvider dialect, string softDeleteColumn = null)
         {
             var tableName = GetTableNameForSql(objectType, dialect);
             var where = primaryKey.Select(p => string.Format(SqlSetFormat, p.Source, dialect.ParameterPrefix + p.Name, dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter)).ToDelimitedString(" AND ");

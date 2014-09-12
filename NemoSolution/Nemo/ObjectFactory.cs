@@ -865,9 +865,20 @@ namespace Nemo
                 if (partition.Item1.Count == 0)
                 {
                     var propertyMap = Reflector.GetPropertyMap<T>();
-                    var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).Select(p => p.ParameterName ?? p.PropertyName).ToHashSet();
-                    partition = parameters.Partition(p => pimaryKeySet.Contains(p.Name));
+                    var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).ToDictionary(p => p.ParameterName ?? p.PropertyName, p => p.MappedColumnName);
+                    partition = parameters.Partition(p =>
+                    {
+                        string column;
+                        if (pimaryKeySet.TryGetValue(p.Name, out column))
+                        {
+                            p.Source = column;
+                            p.IsPrimaryKey = true;
+                            return true;
+                        }
+                        return false;
+                    });
                 }
+
                 request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
@@ -909,8 +920,28 @@ namespace Nemo
                         softDeleteColumn = attr.SoftDeleteColumn;
                     }
                 }
+
+                var partition = parameters.Partition(p => p.IsPrimaryKey);
+                // if p.IsPrimaryKey is not set then
+                // we need to infer it from reflected property 
+                if (partition.Item1.Count == 0)
+                {
+                    var propertyMap = Reflector.GetPropertyMap<T>();
+                    var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).ToDictionary(p => p.ParameterName ?? p.PropertyName, p => p.MappedColumnName);
+                    partition = parameters.Partition(p =>
+                    {
+                        string column;
+                        if (pimaryKeySet.TryGetValue(p.Name, out column))
+                        {
+                            p.Source = column;
+                            p.IsPrimaryKey = true;
+                            return true;
+                        }
+                        return false;
+                    });
+                }
                 
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName), softDeleteColumn);
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName), softDeleteColumn);
                 request.OperationType = OperationType.Sql;
             }
             else
