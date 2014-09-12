@@ -19,6 +19,6 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="Nemo.dll" target="lib\net40" />
+    <file src="bin\Release\Nemo.dll" target="lib\net40" />
   </files>
 </package>
