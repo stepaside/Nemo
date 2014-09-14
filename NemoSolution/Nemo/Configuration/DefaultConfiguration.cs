@@ -7,18 +7,18 @@ using System;
 
 namespace Nemo.Configuration
 {
-    public sealed class DefaultConfiguration : IConfiguration
+    internal sealed class DefaultConfiguration : IConfiguration
     {
-        private string _defaultConnectionName = Config.AppSettings("DefaultConnectionName", "DbConnection");
-        private string _operationPrefix = Config.AppSettings("OperationPrefix", string.Empty);
-        private bool _logging = Config.AppSettings("EnableLogging", false);
+        private string _defaultConnectionName;
+        private string _operationPrefix;
+        private bool? _logging;
 
-        private L1CacheRepresentation _defaultL1CacheRepresentation = ParseExecutionContextCacheConfig();
-        private OperationNamingConvention _operationNamingConvention = ParseOperationNamingConventionConfig();
-        private FetchMode _defaultFetchMode = ParseFetchModeConfig();
-        private MaterializationMode _defaultMaterializationMode = ParseMaterializationModeConfig();
-        private ChangeTrackingMode _defaultChangeTrackingMode = ParseChangeTrackingModeConfig();
-        private SerializationMode _defaultSerializationMode = SerializationMode.IncludePropertyNames;
+        private L1CacheRepresentation? _defaultL1CacheRepresentation;
+        private OperationNamingConvention? _operationNamingConvention;
+        private FetchMode? _defaultFetchMode;
+        private MaterializationMode? _defaultMaterializationMode;
+        private ChangeTrackingMode? _defaultChangeTrackingMode;
+        private SerializationMode? _defaultSerializationMode;
 
         private bool _generateDeleteSql;
         private bool _generateInsertSql;
@@ -26,78 +26,52 @@ namespace Nemo.Configuration
         private IAuditLogProvider _auditLogProvider;
         private IExecutionContext _executionContext = DefaultExecutionContext.Current;
 
-        private DefaultConfiguration() { }
-        
         public L1CacheRepresentation DefaultL1CacheRepresentation
         {
             get
             {
-                return _defaultL1CacheRepresentation;
+                return _defaultL1CacheRepresentation.HasValue ? _defaultL1CacheRepresentation.Value : ParseExecutionContextCacheConfig();
             }
         }
 
         public bool Logging
         {
-            get
-            {
-                return _logging;
-            }
+            get { return _logging.HasValue ? _logging.Value : Config.AppSettings("EnableLogging", false); }
         }
 
         public FetchMode DefaultFetchMode
         {
-            get
-            {
-                return _defaultFetchMode;
-            }
+            get { return _defaultFetchMode.HasValue ? _defaultFetchMode.Value : ParseFetchModeConfig(); }
         }
 
         public MaterializationMode DefaultMaterializationMode
         {
-            get
-            {
-                return _defaultMaterializationMode;
-            }
+            get { return _defaultMaterializationMode.HasValue ? _defaultMaterializationMode.Value : ParseMaterializationModeConfig(); }
         }
 
         public string DefaultConnectionName
         {
-            get
-            {
-                return _defaultConnectionName;
-            }
+            get { return _defaultConnectionName ?? Config.AppSettings("DefaultConnectionName", "DbConnection"); }
         }
 
         public string OperationPrefix
         {
-            get
-            {
-                return _operationPrefix;
-            }
+            get { return _operationPrefix ?? Config.AppSettings("OperationPrefix", string.Empty); }
         }
 
         public ChangeTrackingMode DefaultChangeTrackingMode
         {
-            get
-            {
-                return _defaultChangeTrackingMode;
-            }
+            get { return _defaultChangeTrackingMode.HasValue ? _defaultChangeTrackingMode.Value : ParseChangeTrackingModeConfig(); }
         }
 
         public OperationNamingConvention OperationNamingConvention
         {
-            get
-            {
-                return _operationNamingConvention;
-            }
+            get { return _operationNamingConvention.HasValue ? _operationNamingConvention.Value : ParseOperationNamingConventionConfig(); }
         }
 
         public SerializationMode DefaultSerializationMode
         {
-            get
-            {
-                return _defaultSerializationMode;
-            }
+            get { return _defaultSerializationMode.HasValue ? _defaultSerializationMode.Value : SerializationMode.IncludePropertyNames; }
         }
 
         public bool GenerateDeleteSql
@@ -139,18 +113,13 @@ namespace Nemo.Configuration
                 return _executionContext;
             }
         }
-       
-        public static IConfiguration New()
-        {
-            return new DefaultConfiguration();
-        }
 
         public IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value)
         {
             _defaultL1CacheRepresentation = value;
             return this;
         }
-        
+
         public IConfiguration SetLogging(bool value)
         {
             _logging = value;
@@ -204,7 +173,7 @@ namespace Nemo.Configuration
             }
             return this;
         }
-                
+
         public IConfiguration SetDefaultSerializationMode(SerializationMode value)
         {
             _defaultSerializationMode = value;
@@ -269,20 +238,35 @@ namespace Nemo.Configuration
         public IConfiguration Merge(IConfiguration configuration)
         {
             var mergedConfig = new DefaultConfiguration();
-            mergedConfig.SetAuditLogProvider(AuditLogProvider ?? configuration.AuditLogProvider);
-            mergedConfig.SetDefaultChangeTrackingMode(DefaultChangeTrackingMode != ChangeTrackingMode.Default ? DefaultChangeTrackingMode : configuration.DefaultChangeTrackingMode);
-            mergedConfig.SetDefaultConnectionName(DefaultConnectionName ?? configuration.DefaultConnectionName);
-            mergedConfig.SetDefaultFetchMode(DefaultFetchMode != FetchMode.Default ? DefaultFetchMode : configuration.DefaultFetchMode);
-            mergedConfig.SetDefaultL1CacheRepresentation(DefaultL1CacheRepresentation != configuration.DefaultL1CacheRepresentation ? configuration.DefaultL1CacheRepresentation : DefaultL1CacheRepresentation);
-            mergedConfig.SetDefaultMaterializationMode(DefaultMaterializationMode != MaterializationMode.Default ? DefaultMaterializationMode : configuration.DefaultMaterializationMode);
-            mergedConfig.SetDefaultSerializationMode(DefaultSerializationMode != configuration.DefaultSerializationMode ? configuration.DefaultSerializationMode : DefaultSerializationMode);
-            mergedConfig.SetExecutionContext(ExecutionContext ?? configuration.ExecutionContext);
+
+            mergedConfig.SetAuditLogProvider(_auditLogProvider ?? configuration.AuditLogProvider);
+
+            mergedConfig.SetDefaultChangeTrackingMode(_defaultChangeTrackingMode.HasValue ? _defaultChangeTrackingMode.Value : configuration.DefaultChangeTrackingMode);
+
+            mergedConfig.SetDefaultConnectionName(_defaultConnectionName ?? configuration.DefaultConnectionName);
+
+            mergedConfig.SetDefaultFetchMode(_defaultFetchMode.HasValue ? _defaultFetchMode.Value : configuration.DefaultFetchMode);
+
+            mergedConfig.SetDefaultL1CacheRepresentation(_defaultL1CacheRepresentation.HasValue ? _defaultL1CacheRepresentation.Value : configuration.DefaultL1CacheRepresentation);
+
+            mergedConfig.SetDefaultMaterializationMode(_defaultMaterializationMode.HasValue ? _defaultMaterializationMode.Value : configuration.DefaultMaterializationMode);
+
+            mergedConfig.SetDefaultSerializationMode(_defaultSerializationMode.HasValue ? _defaultSerializationMode.Value : configuration.DefaultSerializationMode);
+
+            mergedConfig.SetExecutionContext(_executionContext ?? configuration.ExecutionContext);
+
             mergedConfig.SetGenerateDeleteSql(GenerateDeleteSql || configuration.GenerateDeleteSql);
+
             mergedConfig.SetGenerateInsertSql(GenerateInsertSql || configuration.GenerateInsertSql);
+
             mergedConfig.SetGenerateUpdateSql(GenerateUpdateSql || configuration.GenerateUpdateSql);
+
             mergedConfig.SetLogging(Logging || configuration.Logging);
-            mergedConfig.SetOperationNamingConvention(OperationNamingConvention != OperationNamingConvention.Default ? OperationNamingConvention : configuration.OperationNamingConvention);
-            mergedConfig.SetOperationPrefix(OperationPrefix ?? configuration.OperationPrefix);
+
+            mergedConfig.SetOperationNamingConvention(_operationNamingConvention.HasValue ? _operationNamingConvention.Value : configuration.OperationNamingConvention);
+
+            mergedConfig.SetOperationPrefix(_operationPrefix ?? configuration.OperationPrefix);
+
             return mergedConfig;
         }
     }

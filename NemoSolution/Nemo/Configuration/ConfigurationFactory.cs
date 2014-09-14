@@ -9,7 +9,7 @@ namespace Nemo.Configuration
 {
     public class ConfigurationFactory
     {
-        private static Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(DefaultConfiguration.New, true);
+        private static Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(() => new DefaultConfiguration(), true);
 
         public static string DefaultConnectionName
         {
@@ -34,6 +34,12 @@ namespace Nemo.Configuration
                 _configuration = new Lazy<IConfiguration>(config, true);
             }
             return _configuration.Value;
+        }
+
+        public static IConfiguration CloneCurrentConfiguration()
+        {
+            var clone = new DefaultConfiguration();
+            return clone.Merge(_configuration.Value);
         }
 
         public static IConfiguration Get<T>()

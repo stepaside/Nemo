@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Nemo</id>
-    <version>2.1.3</version>
+    <version>2.1.4</version>
     <title>Nemo</title>
     <authors>Max Stepanskiy</authors>
     <owners>Stepaside, Inc.</owners>
@@ -14,6 +14,8 @@
     <releaseNotes>
       * Fixed update and delete sql generation
       * Updated provider name detection
+      * Fixed execution context to work in both web and windows environments (including async/await patterns)
+      * Provided a way to clone current configuration
     </releaseNotes>
     <dependencies>
       <dependency id="log4net" version="2.0.3" />

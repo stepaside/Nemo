@@ -11,9 +11,6 @@ namespace Nemo
 {
     public sealed class DefaultExecutionContext : IExecutionContext
     {
-        [ThreadStatic]
-        private readonly static Dictionary<string, object> _callContext = new Dictionary<string, object>();
-
         private readonly static Lazy<DefaultExecutionContext> _current = new Lazy<DefaultExecutionContext>(() => new DefaultExecutionContext(), true);
 
         public static DefaultExecutionContext Current
@@ -26,15 +23,8 @@ namespace Nemo
 
         public bool Exists(string name)
         {
-            var principal = Thread.CurrentPrincipal;
-            if (principal is ThreadedPrincipal)
-            {
-                return ((ThreadedPrincipal)principal).Items.ContainsKey(name);
-            }
-            else
-            {
-                return _callContext.ContainsKey(name);
-            }
+            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
+            return principal != null ? principal.Items.ContainsKey(name) : CallContext.LogicalGetData(name) != null;
         }
 
         public object Get(string name)
@@ -46,18 +36,18 @@ namespace Nemo
                 principal.Items.TryGetValue(name, out value);
                 return value;
             }
-            else
-            {
-                object value;
-                _callContext.TryGetValue(name, out value);
-                return value;
-            }
+            return CallContext.LogicalGetData(name);
         }
 
         public bool TryGet(string name, out object value)
         {
             var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-            return principal != null ? principal.Items.TryGetValue(name, out value) : _callContext.TryGetValue(name, out value);
+            if (principal != null)
+            {
+                return principal.Items.TryGetValue(name, out value);
+            }
+            value = CallContext.LogicalGetData(name);
+            return value != null;
         }
 
         public void Set(string name, object value)
@@ -69,7 +59,14 @@ namespace Nemo
             }
             else
             {
-                _callContext[name] = value;
+                var keys = CallContext.LogicalGetData("$$keys") as HashSet<string>;
+                if (keys == null)
+                {
+                    keys = new HashSet<string>();
+                    CallContext.LogicalSetData("$$keys", keys);
+                }
+                keys.Add(name);
+                CallContext.LogicalSetData(name, value);
             }
         }
 
@@ -82,7 +79,7 @@ namespace Nemo
             }
             else
             {
-                _callContext.Remove(name);
+                CallContext.FreeNamedDataSlot(name);
             }
         }
 
@@ -102,7 +99,13 @@ namespace Nemo
             }
             else
             {
-                _callContext.Clear();
+                var keys = CallContext.LogicalGetData("$$keys") as HashSet<string>;
+                if (keys == null) return;
+                foreach (var key in keys)
+                {
+                    CallContext.FreeNamedDataSlot(key);
+                }
+                keys.Clear();
             }
         }
 
@@ -111,7 +114,12 @@ namespace Nemo
             get
             {
                 var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-                return principal != null ? principal.Items.Keys.ToArray() : _callContext.Keys.ToArray();
+                if (principal != null)
+                {
+                    return principal.Items.Keys.ToArray();
+                }
+                var keys = CallContext.LogicalGetData("$$keys") as HashSet<string>;
+                return keys == null ? new string[] { } : keys.ToArray();
             }
         }
     }
