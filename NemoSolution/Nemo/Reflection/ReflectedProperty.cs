@@ -14,9 +14,9 @@ namespace Nemo.Reflection
         {
             PropertyName = property.Name;
             PropertyType = property.PropertyType;
-            IsPersistent = Maybe<bool>.Empty;
-            IsSelectable = Maybe<bool>.Empty;
-            IsSerializable = Maybe<bool>.Empty;
+            IsPersistent = true;
+            IsSelectable = true;
+            IsSerializable = true;
             IsBinary = property.PropertyType == typeof(byte[]);
             IsSimpleList = !IsBinary && Reflector.IsSimpleList(property.PropertyType);
             IsDataEntity = Reflector.IsDataEntity(property.PropertyType);
@@ -110,21 +110,6 @@ namespace Nemo.Reflection
                     }
                 }
             }
-
-            if (!IsPersistent.HasValue)
-            {
-                IsPersistent = true;
-            }
-
-            if (!IsSelectable.HasValue)
-            {
-                IsSelectable = true;
-            }
-
-            if (!IsSerializable.HasValue)
-            {
-                IsSerializable = true;
-            }
         }
 
         public bool IsSimpleList
@@ -157,13 +142,13 @@ namespace Nemo.Reflection
             private set;
         }
         
-        public Maybe<bool> IsPersistent
+        public bool IsPersistent
         {
             get;
             internal set;
         }
 
-        public Maybe<bool> IsSerializable
+        public bool IsSerializable
         {
             get;
             internal set;
@@ -193,7 +178,7 @@ namespace Nemo.Reflection
             internal set;
         }
 
-        public Maybe<bool> IsSelectable
+        public bool IsSelectable
         {
             get;
             internal set;

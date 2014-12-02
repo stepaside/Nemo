@@ -31,7 +31,11 @@ namespace Nemo.Configuration.Mapping
 
         public PropertyMap<T, U> Not
         {
-            get { return new PropertyMap<T, U>(_selector, true); }
+            get
+            {
+                _not = true;
+                return this;
+            }
         }
 
         public PropertyMap<T, U> PrimaryKey(int position = 0)
