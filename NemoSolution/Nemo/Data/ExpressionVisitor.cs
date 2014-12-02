@@ -153,8 +153,11 @@ namespace Nemo.Data
             Type elementType = null;
             if (m.Expression != null && m.Expression.Type == typeof(T))
             {
-                //return m.Member.Name;
-                return (alias != null ? alias + "." : "") + dialect.IdentifierEscapeStartCharacter + MapColumnAttribute.GetMappedColumnName((PropertyInfo)m.Member) + dialect.IdentifierEscapeEndCharacter;
+                var parentPropertyMap = Reflector.GetPropertyMap(typeof(T));
+                ReflectedProperty property;
+                parentPropertyMap.TryGetValue((PropertyInfo)m.Member, out property);
+                var columnName = property != null ? property.MappedColumnName : m.Member.Name;
+                return (alias != null ? alias + "." : "") + dialect.IdentifierEscapeStartCharacter + columnName + dialect.IdentifierEscapeEndCharacter;
             }
 
             if (m.Expression != null && Reflector.IsDataEntityList(m.Expression.Type, out elementType) && m.Member.Name == "Count")

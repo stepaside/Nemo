@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Nemo</id>
-    <version>2.1.5</version>
+    <version>2.1.6</version>
     <title>Nemo</title>
     <authors>Max Stepanskiy</authors>
     <owners>Stepaside, Inc.</owners>
@@ -17,6 +17,7 @@
       * Fixed execution context to work in both web and windows environments (including async/await patterns)
       * Provided a way to clone current configuration
       * Fixed Not operation in property map
+      * Provided a way for sql generation to use property maps
     </releaseNotes>
     <dependencies>
       <dependency id="log4net" version="2.0.3" />
