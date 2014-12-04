@@ -9,15 +9,14 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using Nemo.Extensions;
-using System.Reflection;
 using Nemo.Reflection;
-using Nemo.Attributes;
 
 namespace Nemo.Data
 {
-    internal static class ExpressionVisitor
+    internal static class PredicateVisitor
     {
         internal static string Visit<T>(Expression exp, DialectProvider dialect, string alias)
         {

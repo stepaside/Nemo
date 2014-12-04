@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Nemo</id>
-    <version>2.1.6</version>
+    <version>2.1.7</version>
     <title>Nemo</title>
     <authors>Max Stepanskiy</authors>
     <owners>Stepaside, Inc.</owners>
@@ -18,6 +18,7 @@
       * Provided a way to clone current configuration
       * Fixed Not operation in property map
       * Provided a way for sql generation to use property maps
+      * Fixed select generation
     </releaseNotes>
     <dependencies>
       <dependency id="log4net" version="2.0.3" />

@@ -8,8 +8,10 @@ using System.Text;
 using Nemo.Attributes;
 using Nemo.Collections.Extensions;
 using Nemo.Extensions;
+using Nemo.Linq.Expressions;
 using Nemo.Reflection;
 using Nemo.Configuration.Mapping;
+using ExpressionVisitor = Nemo.Data.PredicateVisitor;
 
 namespace Nemo.Data
 {
@@ -35,8 +37,6 @@ namespace Nemo.Data
         
         public const string DefaultSoftDeleteColumn = "__deleted";
         public const string DefaultTimestampColumn = "__timestamp";
-
-        private static readonly ConcurrentDictionary<Tuple<Type, string, Type>, string> _predicateCache = new ConcurrentDictionary<Tuple<Type, string, Type>, string>();
 
         internal static string GetTableNameForSql(Type objectType, DialectProvider dialect)
         {
@@ -169,7 +169,9 @@ namespace Nemo.Data
             var whereClause = string.Empty;
             if (predicate != null)
             {
-                var expression = _predicateCache.GetOrAdd(Tuple.Create(typeof(T), predicate.ToString(), dialect.GetType()), t => ExpressionVisitor.Visit<T>(predicate, dialect, aliasRoot));
+                var evaluated = Evaluator.PartialEval(predicate);
+                evaluated = LocalCollectionExpander.Rewrite(evaluated);
+                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot);
                 whereClause = string.Format(SqlWhereFormat, expression);
             }
 
@@ -319,7 +321,9 @@ namespace Nemo.Data
             var whereClause = string.Empty;
             if (predicate != null)
             {
-                var expression = _predicateCache.GetOrAdd(Tuple.Create(typeof(T), predicate.ToString(), dialect.GetType()), t => ExpressionVisitor.Visit<T>(predicate, dialect, aliasRoot));
+                var evaluated = Evaluator.PartialEval(predicate);
+                evaluated = LocalCollectionExpander.Rewrite(evaluated);
+                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot);
                 whereClause = string.Format(SqlWhereFormat, expression);
             }
 

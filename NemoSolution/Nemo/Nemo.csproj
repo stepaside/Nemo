@@ -97,6 +97,9 @@
     <Compile Include="IdentityMap.cs" />
     <Compile Include="IExecutionContext.cs" />
     <Compile Include="Identity.cs" />
+    <Compile Include="Linq\Expressions\Evaluator.cs" />
+    <Compile Include="Linq\Expressions\ExpressionVisitor.cs" />
+    <Compile Include="Linq\Expressions\LocalCollectionExpander.cs" />
     <Compile Include="Linq\NemoQueryable.cs">
       <SubType>Code</SubType>
     </Compile>
