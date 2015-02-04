@@ -1,35 +1,33 @@
 ﻿using Nemo.Attributes;
+using Nemo.Attributes.Converters;
 using Nemo.Id;
 using Nemo.Reflection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Nemo.Configuration.Mapping
 {
-    public class PropertyMap<T, U> : IPropertyMap
+    public class PropertyMap<T, TProperty> : IPropertyMap
         where T : class
     {
         private readonly ReflectedProperty _property;
-        private readonly Expression<Func<T, U>> _selector;
+        private readonly Expression<Func<T, TProperty>> _selector;
         private bool _not;
 
-        internal PropertyMap(Expression<Func<T, U>> selector, bool not = false)
+        internal PropertyMap(Expression<Func<T, TProperty>> selector, bool not = false)
         {
             _selector = selector;
             _not = not;
-
+            
             var property = (PropertyInfo)((MemberExpression)selector.Body).Member;
             _property = new ReflectedProperty(property, readAttributes: false);
         }
 
-        public PropertyMap<T, U> Not
+        public PropertyMap<T, TProperty> Not
         {
             get
             {
@@ -38,7 +36,7 @@ namespace Nemo.Configuration.Mapping
             }
         }
 
-        public PropertyMap<T, U> PrimaryKey(int position = 0)
+        public PropertyMap<T, TProperty> PrimaryKey(int position = 0)
         {
             _property.IsPrimaryKey = !_not;
             _property.KeyPosition = position;
@@ -46,7 +44,7 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T, U> Generated(Type generator = null)
+        public PropertyMap<T, TProperty> Generated(Type generator = null)
         {
             if (generator != null && typeof(IIdGenerator).IsAssignableFrom(generator))
             {
@@ -62,16 +60,16 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T, U> References<V>(int position = 0)
-            where V : class
+        public PropertyMap<T, TProperty> References<TParent>(int position = 0)
+            where TParent : class
         {
-            _property.Parent = typeof(V);
+            _property.Parent = typeof(TParent);
             _property.RefPosition = position;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T, U> Parameter(string name, ParameterDirection direction = ParameterDirection.Input)
+        public PropertyMap<T, TProperty> Parameter(string name, ParameterDirection direction = ParameterDirection.Input)
         {
             _property.ParameterName = name;
             _property.Direction = direction;
@@ -79,39 +77,39 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T, U> Persistent()
+        public PropertyMap<T, TProperty> Persistent()
         {
             _property.IsPersistent = !_not;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T, U> Selectable()
+        public PropertyMap<T, TProperty> Selectable()
         {
             _property.IsSelectable = !_not;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T, U> Serializable()
+        public PropertyMap<T, TProperty> Serializable()
         {
             _property.IsSerializable = !_not;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T, U> Sorted<V>()
-            where V : class, IComparer
+        public PropertyMap<T, TProperty> Sorted<TComparer>()
+            where TComparer : class, IComparer
         {
             if (_property.IsListInterface)
             {
-                _property.Sorted = new SortedAttribute { ComparerType = typeof(V) };
+                _property.Sorted = new SortedAttribute { ComparerType = typeof(TComparer) };
             }
             _not = false;
             return this;
         }
 
-        public PropertyMap<T, U> Sorted()
+        public PropertyMap<T, TProperty> Sorted()
         {
             if (_property.IsListInterface)
             {
@@ -121,17 +119,17 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T, U> Distinct<V>()
+        public PropertyMap<T, TProperty> Distinct<TEqualityComparer>()
         {
-            if (_property.IsListInterface && typeof(IEqualityComparer<>).MakeGenericType(_property.ElementType).IsAssignableFrom(typeof(V)))
+            if (_property.IsListInterface && typeof(IEqualityComparer<>).MakeGenericType(_property.ElementType).IsAssignableFrom(typeof(TEqualityComparer)))
             {
-                _property.Distinct = new DistinctAttribute { EqualityComparerType = typeof(V) };
+                _property.Distinct = new DistinctAttribute { EqualityComparerType = typeof(TEqualityComparer) };
             }
             _not = false;
             return this;
         }
 
-        public PropertyMap<T, U> Distinct()
+        public PropertyMap<T, TProperty> Distinct()
         {
             if (_property.IsListInterface)
             {
@@ -141,17 +139,24 @@ namespace Nemo.Configuration.Mapping
             return this;
         }
 
-        public PropertyMap<T, U> Column(string name)
+        public PropertyMap<T, TProperty> Column(string name)
         {
             _property.MappedColumnName = name;
             _not = false;
             return this;
         }
 
-        public PropertyMap<T, U> SourceProperty(string name)
+        public PropertyMap<T, TProperty> SourceProperty(string name)
         {
             _property.MappedPropertyName = name;
             _not = false;
+            return this;
+        }
+
+        public PropertyMap<T, TProperty> WithTransform<TConverter>()
+            where TConverter : class, ITypeConverter<object, TProperty>
+        {
+            _property.AddConverter(typeof(TConverter));
             return this;
         }
 

@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Reflection;
 using Nemo.Attributes;
+using Nemo.Attributes.Converters;
 using Nemo.Fn;
 
 namespace Nemo.Reflection
@@ -45,7 +46,9 @@ namespace Nemo.Reflection
             CanWrite = property.CanWrite;
             CanRead = property.CanRead;
             Position = position;
-            
+
+            Converter = null;
+
             if (readAttributes)
             {
                 if (IsListInterface)
@@ -56,6 +59,12 @@ namespace Nemo.Reflection
                 
                 MappedColumnName = MapColumnAttribute.GetMappedColumnName(property);
                 MappedPropertyName = MapPropertyAttribute.GetMappedPropertyName(property);
+
+                var typeConverter = TypeConverterAttribute.GetTypeConverter(property);
+                if (typeConverter != null)
+                {
+                    AddConverter(typeConverter.TypeConverterType);
+                }
                 
                 var items = property.GetCustomAttributes(true).OfType<PropertyAttribute>();
                 foreach (var item in items)
@@ -284,6 +293,13 @@ namespace Nemo.Reflection
         {
             get;
             set;
+        }
+
+        internal Type Converter { get; private set; }
+
+        internal void AddConverter(Type typeConverter)
+        {
+            Converter = Converter == null ? typeConverter : TypeConverterAttribute.ComposeConverters(Converter, typeConverter);
         }
     }
 }

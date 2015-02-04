@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Nemo.Attributes.Converters;
 using Nemo.Reflection;
 using System.Reflection;
 using Nemo.Attributes;
@@ -88,6 +89,25 @@ namespace Nemo.Configuration.Mapping
                 propertyOrColumnName = isColumn ? MapColumnAttribute.GetMappedColumnName(property) : MapPropertyAttribute.GetMappedPropertyName(property);
             }
             return propertyOrColumnName;
+        }
+
+        internal static Tuple<Type, Type> GetTypeConverter(Type fromType, PropertyInfo property, IEntityMap entityMap)
+        {
+            if (entityMap != null)
+            {
+                var propertyMap = entityMap.Properties.FirstOrDefault(p => p.Property.PropertyName == property.Name);
+                if (propertyMap != null)
+                {
+                    var typeConverter = propertyMap.Property.Converter;
+                    if (typeConverter != null)
+                    {
+                        TypeConverterAttribute.ValidateTypeConverterType(typeConverter, fromType, property.PropertyType);
+                        return Tuple.Create(typeConverter, TypeConverterAttribute.GetExpectedConverterInterfaceType(fromType, property.PropertyType));
+                    }
+                }
+            }
+
+            return TypeConverterAttribute.GetTypeConverter(fromType, property);
         }
     }
 }

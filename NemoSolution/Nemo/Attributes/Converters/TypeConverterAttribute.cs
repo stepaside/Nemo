@@ -64,12 +64,13 @@ namespace Nemo.Attributes.Converters
 			return expectedInterfaceType;
 		}
 
-		/// <summary>Validates that the type converter can work given from and to types.</summary>
-		/// <param name="fromType"></param>
-		/// <param name="toType"></param>
-		public void ValidateTypeConverterType(Type fromType, Type toType)
+	    /// <summary>Validates that the type converter can work given from and to types.</summary>
+	    /// <param name="converterType"></param>
+	    /// <param name="fromType"></param>
+	    /// <param name="toType"></param>
+	    internal static void ValidateTypeConverterType(Type converterType, Type fromType, Type toType)
 		{
-			if (TypeConverterType == null)
+            if (converterType == null)
 			{
 				if (fromType != toType && fromType.IsAssignableFrom(toType))
 				{
@@ -78,47 +79,39 @@ namespace Nemo.Attributes.Converters
 			}
 			else
 			{
-				Type expectedInterfaceType = GetExpectedConverterInterfaceType(fromType, toType);
-				Type[] converterIntefaces = TypeConverterType.GetInterfaces();
+				var expectedInterfaceType = GetExpectedConverterInterfaceType(fromType, toType);
+                var converterIntefaces = converterType.GetInterfaces();
 
-				if (TypeConverterType.IsAbstract)
+                if (converterType.IsAbstract)
 				{
-					throw new TypeConverterException(string.Format("Can't use {0} as a converter because it is abstract.", TypeConverterType.FullName));
+                    throw new TypeConverterException(string.Format("Can't use {0} as a converter because it is abstract.", converterType.FullName));
 				}
-				if (TypeConverterType.GetConstructor(Type.EmptyTypes) == null)
+                if (converterType.GetConstructor(Type.EmptyTypes) == null)
 				{
-					throw new TypeConverterException(string.Format("Can't use {0} as a converter because it doesn't have a default constructor.", TypeConverterType.FullName));
+                    throw new TypeConverterException(string.Format("Can't use {0} as a converter because it doesn't have a default constructor.", converterType.FullName));
 				}
-				if (Array.IndexOf<Type>(converterIntefaces, expectedInterfaceType) == -1)
+				if (Array.IndexOf(converterIntefaces, expectedInterfaceType) == -1)
 				{
-					throw new TypeConverterException(string.Format("Can't use {0} as a converter because it doesn't implement {1}.", TypeConverterType.FullName, expectedInterfaceType));
+                    throw new TypeConverterException(string.Format("Can't use {0} as a converter because it doesn't implement {1}.", converterType.FullName, expectedInterfaceType));
 				}
 			}
 		}
 
 		private static Type GetConverterInterfaceType(Type typeConverterType)
 		{
-			Type[] converterInterfaces = typeConverterType.GetInterfaces();
+			var converterInterfaces = typeConverterType.GetInterfaces();
 
-			foreach (Type interfaceType in converterInterfaces)
-			{
-				if (interfaceType.IsGenericType && interfaceType.GetGenericTypeDefinition() == typeof(ITypeConverter<,>))
-				{
-					return interfaceType;
-				}
-			}
-
-			return null;
+		    return converterInterfaces.FirstOrDefault(interfaceType => interfaceType.IsGenericType && interfaceType.GetGenericTypeDefinition() == typeof(ITypeConverter<,>));
 		}
 
 		/// <summary>Composes two converters and returns the resulting converter type.</summary>
 		/// <param name="typeConverterType1"></param>
 		/// <param name="typeConverterType2"></param>
 		/// <returns></returns>
-		private static Type ComposeConverters(Type typeConverterType1, Type typeConverterType2)
+		internal static Type ComposeConverters(Type typeConverterType1, Type typeConverterType2)
 		{
-			Type interfaceType1 = GetConverterInterfaceType(typeConverterType1);
-			Type interfaceType2 = GetConverterInterfaceType(typeConverterType2);
+			var interfaceType1 = GetConverterInterfaceType(typeConverterType1);
+			var interfaceType2 = GetConverterInterfaceType(typeConverterType2);
 
 			if (interfaceType1 == null)
 			{
@@ -133,11 +126,11 @@ namespace Nemo.Attributes.Converters
 				throw new TypeConverterException(string.Format("Can't compose the following two type converters:  {0} & {1}.", typeConverterType1.FullName, typeConverterType2.FullName));
 			}
 
-			Type from = interfaceType1.GetGenericArguments()[0];
-			Type intermediate = interfaceType1.GetGenericArguments()[1];
-			Type to = interfaceType2.GetGenericArguments()[1];
-			Type genericResult = typeof(CompositeConverter<,,,,>);
-			Type result = genericResult.MakeGenericType(typeConverterType1, typeConverterType2, from, intermediate, to);
+			var from = interfaceType1.GetGenericArguments()[0];
+			var intermediate = interfaceType1.GetGenericArguments()[1];
+			var to = interfaceType2.GetGenericArguments()[1];
+			var genericResult = typeof(CompositeConverter<,,,,>);
+			var result = genericResult.MakeGenericType(typeConverterType1, typeConverterType2, from, intermediate, to);
 
 			return result;
 		}
@@ -145,16 +138,16 @@ namespace Nemo.Attributes.Converters
         internal static Tuple<Type, Type> GetTypeConverter(Type indexerType, PropertyInfo property)
         {
             var propertyType = property.PropertyType;
-            var typeConverterAttribute = TypeConverterAttribute.GetTypeConverter(property);
+            var typeConverterAttribute = GetTypeConverter(property);
 
             Type typeConverterType = null;
             Type typeConverterInterfaceType = null;
 
             if (typeConverterAttribute != null && typeConverterAttribute.TypeConverterType != null)
             {
-                typeConverterAttribute.ValidateTypeConverterType(indexerType, propertyType);
+                ValidateTypeConverterType(typeConverterAttribute.TypeConverterType, indexerType, propertyType);
                 typeConverterType = typeConverterAttribute.TypeConverterType;
-                typeConverterInterfaceType = TypeConverterAttribute.GetExpectedConverterInterfaceType(indexerType, propertyType);
+                typeConverterInterfaceType = GetExpectedConverterInterfaceType(indexerType, propertyType);
             }
 
             return Tuple.Create(typeConverterType, typeConverterInterfaceType);

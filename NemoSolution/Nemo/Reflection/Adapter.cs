@@ -308,7 +308,7 @@ namespace Nemo.Reflection
                 {
                     DefineIndexerProperty(property, typeBuilder, field, objectType, ignoreMappings, entityMap);
                 }
-                else if (proxyType == DynamicProxyType.SimpleIndexer && IsWrappable(property))
+                else if (proxyType == DynamicProxyType.SimpleIndexer && IsWrappable(property, entityMap))
                 {
                     DefineIndexerProperty(property, typeBuilder, field, objectType, ignoreMappings, entityMap);
                 }
@@ -416,7 +416,7 @@ namespace Nemo.Reflection
             {
                 var getItemMethod = objectType.GetMethod("get_Item", new[] { typeof(string) });
 
-                var typeConverter = TypeConverterAttribute.GetTypeConverter(getItemMethod.ReturnType, property);
+                var typeConverter = MappingFactory.GetTypeConverter(getItemMethod.ReturnType, property, entityMap);
 
                 // create the get method for the property.
                 var getMethodName = "get_" + property.Name;
@@ -457,7 +457,7 @@ namespace Nemo.Reflection
             {
                 var setItemMethod = objectType.GetMethod("set_Item", new[] { typeof(string), typeof(object) });
 
-                var typeConverter = TypeConverterAttribute.GetTypeConverter(setItemMethod.GetParameters()[1].ParameterType, property);
+                var typeConverter = MappingFactory.GetTypeConverter(setItemMethod.GetParameters()[1].ParameterType, property, entityMap);
 
                 // create the set method of the property.
                 var setMethodName = "set_" + property.Name;
@@ -698,19 +698,31 @@ namespace Nemo.Reflection
             }
         }
 
-        private static bool IsWrappable(PropertyInfo property)
+        private static bool IsWrappable(PropertyInfo property, IEntityMap entityMap)
         {
             var propertyType = property.PropertyType;
             return Reflector.IsSimpleType(propertyType) 
-                || propertyType == typeof(byte[]) 
-                || (Reflector.IsSimpleList(propertyType) && HasListTypeConverter(property))
-                || (Reflector.IsXmlType(propertyType) && HasXmlTypeConverter(property));
+                || propertyType == typeof(byte[])
+                || (Reflector.IsSimpleList(propertyType) && HasListTypeConverter(property, entityMap))
+                || (Reflector.IsXmlType(propertyType) && HasXmlTypeConverter(property, entityMap));
         }
 
-        private static bool HasXmlTypeConverter(PropertyInfo property)
+        private static bool HasXmlTypeConverter(PropertyInfo property, IEntityMap entityMap)
         {
-            var customAttributes = property.GetCustomAttributes(typeof(TypeConverterAttribute), false).Cast<TypeConverterAttribute>();
             var result = false;
+            
+            if (entityMap != null)
+            {
+                var propertyMap = entityMap.Properties.FirstOrDefault(p => p.Property.PropertyName == property.Name);
+                if (propertyMap != null && propertyMap.Property.Converter != null)
+                {
+                    result = propertyMap.Property.Converter == typeof(XmlTypeConverter) || propertyMap.Property.Converter == typeof(XmlReaderTypeConverter);
+                }
+            }
+
+            if (result) return true;
+
+            var customAttributes = property.GetCustomAttributes(typeof(TypeConverterAttribute), false).Cast<TypeConverterAttribute>();
             foreach (var attribute in customAttributes)
             {
                 result = attribute.TypeConverterType == typeof(XmlTypeConverter) || attribute.TypeConverterType == typeof(XmlReaderTypeConverter);
@@ -719,10 +731,22 @@ namespace Nemo.Reflection
             return result;
         }
 
-        private static bool HasListTypeConverter(PropertyInfo property)
+        private static bool HasListTypeConverter(PropertyInfo property, IEntityMap entityMap)
         {
-            var customAttributes = property.GetCustomAttributes(typeof(TypeConverterAttribute), false).Cast<TypeConverterAttribute>();
             bool result = false;
+
+            if (entityMap != null)
+            {
+                var propertyMap = entityMap.Properties.FirstOrDefault(p => p.Property.PropertyName == property.Name);
+                if (propertyMap != null && propertyMap.Property.Converter != null)
+                {
+                    result = propertyMap.Property.Converter.GetGenericTypeDefinition() == typeof(ListConverter<>);
+                }
+            }
+
+            if (result) return true;
+
+            var customAttributes = property.GetCustomAttributes(typeof(TypeConverterAttribute), false).Cast<TypeConverterAttribute>();
             foreach (var attribute in customAttributes)
             {
                 result = attribute.TypeConverterType.IsGenericType && attribute.TypeConverterType.GetGenericTypeDefinition() == typeof(ListConverter<>);

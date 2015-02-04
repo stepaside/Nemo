@@ -65,7 +65,7 @@ namespace Nemo.Reflection
             var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && (t.Value.IsSimpleType || t.Value.IsBinary));
             foreach (var match in matches)
             {
-                var typeConverter = TypeConverterAttribute.GetTypeConverter(getItem.ReturnType, match.Key);
+                var typeConverter = MappingFactory.GetTypeConverter(getItem.ReturnType, match.Key, entityMap);
 
                 il.Emit(OpCodes.Ldarg_1);
                 if (typeConverter.Item1 != null)
