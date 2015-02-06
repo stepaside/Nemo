@@ -12,7 +12,7 @@ namespace Nemo.Linq.Expressions
     /// From https://github.com/SharpRepository/SharpRepository/blob/develop/SharpRepository.Repository/Caching/Hash/LocalCollectionExpander.cs
     /// </remarks>
     /// </summary>
-    internal class LocalCollectionExpander : System.Linq.Expressions.ExpressionVisitor
+    internal class LocalCollectionExpander : ExpressionVisitor
     {
         public static Expression Rewrite(Expression expression)
         {
@@ -53,11 +53,11 @@ namespace Nemo.Linq.Expressions
             return base.VisitMethodCall(node);
         }
 
-        ConstantExpression MakePrinter(ConstantExpression enumerable, Type elementType)
+        static ConstantExpression MakePrinter(ConstantExpression enumerable, Type elementType)
         {
             var value = (IEnumerable)enumerable.Value;
             var printerType = typeof(Printer<>).MakeGenericType(elementType);
-            var printer = System.Activator.CreateInstance(printerType, value);
+            var printer = Activator.CreateInstance(printerType, value);
 
             return Expression.Constant(printer);
         }

@@ -99,7 +99,6 @@
     <Compile Include="IExecutionContext.cs" />
     <Compile Include="Identity.cs" />
     <Compile Include="Linq\Expressions\Evaluator.cs" />
-    <Compile Include="Linq\Expressions\ExpressionVisitor.cs" />
     <Compile Include="Linq\Expressions\LocalCollectionExpander.cs" />
     <Compile Include="Linq\NemoQueryable.cs">
       <SubType>Code</SubType>
@@ -158,7 +157,7 @@
     <Compile Include="Extensions\CastExtensions.cs" />
     <Compile Include="OperationType.cs" />
     <Compile Include="Reflection\Adapter.cs" />
-    <Compile Include="Data\ExpressionVisitor.cs" />
+    <Compile Include="Data\PredicateVisitor.cs" />
     <Compile Include="Reflection\Mapper.cs" />
     <Compile Include="Reflection\Reflector.Method.cs" />
     <Compile Include="Reflection\Activator.cs" />
@@ -197,17 +196,14 @@
     <Compile Include="Attributes\MapPropertyAttribute.cs" />
     <Compile Include="Attributes\Converters\TypeConverterException.cs" />
     <Compile Include="Utilities\Bytes.cs" />
-    <Compile Include="Utilities\HiPerfTimer.cs" />
     <Compile Include="Utilities\Config.cs" />
     <Compile Include="Id\IIdGenerator.cs" />
     <Compile Include="Utilities\Http.cs" />
     <Compile Include="Utilities\Json.cs" />
     <Compile Include="Utilities\Log.cs" />
-    <Compile Include="Utilities\Numbers.cs" />
     <Compile Include="Utilities\StringStream.cs" />
-    <Compile Include="Utilities\ThreadSafeRandom.cs" />
+    <Compile Include="Utilities\RandomProvider.cs" />
     <Compile Include="Utilities\UnixDateTime.cs" />
-    <Compile Include="Utilities\WeakEvent.cs" />
     <Compile Include="Utilities\Xml.cs" />
     <Compile Include="Utilities\Xsd.cs" />
     <Compile Include="Reflection\Reflector.cs" />

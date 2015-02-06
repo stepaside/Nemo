@@ -1,4 +1,5 @@
-﻿using log4net;
+﻿using System.Diagnostics;
+using log4net;
 using log4net.Config;
 using Nemo.Configuration;
 using System;
@@ -10,13 +11,8 @@ namespace Nemo.Utilities
 {
     public static class Log
     {
-        public const string LogFile = "File";
-        public const string LogRollingFile = "RollingFile";
-        public const string LogEmail = "Email";
-        public const string LogDatabase = "Database";
-        public const string LogEventViewer = "EventViewer";
-
-        private const string LogContextName = "LogContext";
+        private const string LogContextName = "__LogContext";
+        private const string LoggerName = "Nemo";
 
         public static bool IsEnabled
         {
@@ -44,11 +40,11 @@ namespace Nemo.Utilities
             }
         }
 
-        public static void Capture(string loggerName, Func<string> computeMessage)
+        public static void Capture(Func<string> computeMessage)
         {
             if (!IsEnabled) return;
-            
-            var logger = LogManager.GetLogger(loggerName);
+
+            var logger = LogManager.GetLogger(LoggerName);
             if (logger == null) return;
             
             var context = Context;
@@ -60,50 +56,28 @@ namespace Nemo.Utilities
             logger.Info(message);
         }
 
-        public static void Capture(Func<string> computeMessage)
-        {
-            Capture(LogRollingFile, computeMessage);
-        }
-
-        public static void Capture(string loggerName, string message)
-        {
-            Capture(loggerName, () => message);
-        }
-
         public static void Capture(string message)
         {
-            Capture(LogRollingFile, message);
+            Capture(() => message);
         }
         
-        public static bool CaptureBegin(string loggerName, Func<string> computeMessage)
-        {
-            if (IsEnabled)
-            {
-                CreateContext();
-                var context = Context;
-                Capture(loggerName, computeMessage);
-                context.Item2.Start();
-                return true;
-            }
-            return false;
-        }
-
         public static bool CaptureBegin(Func<string> computeMessage)
         {
-            return CaptureBegin(LogRollingFile, computeMessage);
-        }
+            if (!IsEnabled) return false;
 
-        public static bool CaptureBegin(string loggerName, string message)
-        {
-            return CaptureBegin(loggerName, () => message);
+            CreateContext();
+            var context = Context;
+            Capture(computeMessage);
+            context.Item2.Start();
+            return true;
         }
 
         public static bool CaptureBegin(string message)
         {
-            return CaptureBegin(LogRollingFile, message);
+            return CaptureBegin(() => message);
         }
-
-        public static void CaptureEnd(string loggerName)
+        
+        public static void CaptureEnd()
         {
             if (!IsEnabled) return;
             
@@ -111,30 +85,25 @@ namespace Nemo.Utilities
             if (context.Item2 == null) return;
             
             context.Item2.Stop();
-            var message = Convert.ToString(context.Item2.GetElapsedTimeInMicroseconds() / 1000.0);
-            Capture(loggerName, message);
+            var message = Convert.ToString(context.Item2.Elapsed.TotalMilliseconds);
+            Capture(message);
             ClearContext();
         }
 
-        public static void CaptureEnd()
-        {
-            CaptureEnd(LogRollingFile);
-        }
-
-        private static Tuple<Guid, HiPerfTimer> Context
+        private static Tuple<Guid, Stopwatch> Context
         {
             get
             {
                 object context;
                 if (ConfigurationFactory.Default.ExecutionContext.TryGet(LogContextName, out context))
                 {
-                    var logContext = (Stack<Tuple<Guid, HiPerfTimer>>)context;
+                    var logContext = (Stack<Tuple<Guid, Stopwatch>>)context;
                     if (logContext != null && logContext.Count > 0)
                     {
                         return logContext.Peek();
                     }
                 }
-                return new Tuple<Guid, HiPerfTimer>(Guid.Empty, null);
+                return new Tuple<Guid, Stopwatch>(Guid.Empty, null);
             }
         }
 
@@ -143,7 +112,7 @@ namespace Nemo.Utilities
             object context;
             if (ConfigurationFactory.Default.ExecutionContext.TryGet(LogContextName, out context))
             {
-                var logContext = (Stack<Tuple<Guid, HiPerfTimer>>)context;
+                var logContext = (Stack<Tuple<Guid, Stopwatch>>)context;
                 if (logContext != null && logContext.Count > 0)
                 {
                     logContext.Pop();
@@ -158,13 +127,13 @@ namespace Nemo.Utilities
             object logContext;
             if (!executionContext.TryGet(LogContextName, out logContext))
             {
-                logContext = new Stack<Tuple<Guid, HiPerfTimer>>();
+                logContext = new Stack<Tuple<Guid, Stopwatch>>();
                 executionContext.Set(LogContextName, logContext);
             }
 
             if (logContext != null)
             {
-                ((Stack<Tuple<Guid, HiPerfTimer>>)logContext).Push(Tuple.Create(Guid.NewGuid(), new HiPerfTimer()));
+                ((Stack<Tuple<Guid, Stopwatch>>)logContext).Push(Tuple.Create(Guid.NewGuid(), new Stopwatch()));
             }
         }
     }

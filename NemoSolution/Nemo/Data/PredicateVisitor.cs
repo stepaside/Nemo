@@ -84,10 +84,9 @@ namespace Nemo.Data
 
                 if (m.Expression != null)
                 {
-                    string r = VisitMemberAccess<T>(m, dialect, alias);
+                    var r = VisitMemberAccess<T>(m, dialect, alias);
                     return string.Format("{0}={1}", r, GetQuotedTrueValue());
                 }
-
             }
             return Visit<T>(lambda.Body, dialect, alias);
         }
@@ -149,7 +148,7 @@ namespace Nemo.Data
 
         private static string VisitMemberAccess<T>(MemberExpression m, DialectProvider dialect, string alias)
         {
-            Type elementType = null;
+            Type elementType;
             if (m.Expression != null && m.Expression.Type == typeof(T))
             {
                 var parentPropertyMap = Reflector.GetPropertyMap(typeof(T));
@@ -191,8 +190,8 @@ namespace Nemo.Data
                 var o = getter();
                 return GetQuotedValue(o, o.GetType());
             }
-            catch (System.InvalidOperationException)
-            { // FieldName ?
+            catch (InvalidOperationException)
+            { 
                 var exprs = VisitExpressionList<T>(nex.Arguments, dialect, alias);
                 var r = new StringBuilder();
                 foreach (var e in exprs)
@@ -266,15 +265,9 @@ namespace Nemo.Data
                     if (args.Count == 2)
                     {
                         var length = Int32.Parse(args[1].ToString());
-                        return string.Format(dialect.SubstringFunction + "({0}, {1}, {2})",
-                        r,
-                        startIndex,
-                        length);
+                        return string.Format(dialect.SubstringFunction + "({0}, {1}, {2})", r, startIndex, length);
                     }
-                    else
-                        return string.Format(dialect.SubstringFunction + "({0}, {1})",
-                        r,
-                        startIndex);
+                    return string.Format(dialect.SubstringFunction + "({0}, {1})", r, startIndex);
                 case "Round":
                 case "Floor":
                 case "Ceiling":
@@ -337,7 +330,7 @@ namespace Nemo.Data
                         }
                     }
 
-                    return string.Format("{0} {1} ({2})", r, m.Method.Name, sIn.ToString());
+                    return string.Format("{0} {1} ({2})", r, m.Method.Name, sIn);
                 case "Desc":
                     return string.Format("{0} DESC", r);
                 case "As":
@@ -350,7 +343,7 @@ namespace Nemo.Data
                     {
                         s2.AppendFormat(",{0}", GetQuotedValue(e, e.GetType()));
                     }
-                    return string.Format("{0}({1}{2})", m.Method.Name, r, s2.ToString());
+                    return string.Format("{0}({1}{2})", m.Method.Name, r, s2);
             }
         }
 
@@ -382,7 +375,7 @@ namespace Nemo.Data
             return r.ToString();
         }
 
-        private static List<Object> VisitNewArrayFromExpressionList<T>(NewArrayExpression na, DialectProvider dialect, string alias)
+        private static IEnumerable<object> VisitNewArrayFromExpressionList<T>(NewArrayExpression na, DialectProvider dialect, string alias)
         {
             var exprs = VisitExpressionList<T>(na.Expressions, dialect, alias);
             return exprs;

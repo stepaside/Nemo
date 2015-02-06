@@ -906,21 +906,21 @@ namespace Nemo.Collections.Extensions
                 items = source.ToArray();
             }
 
-            var rnd = new ThreadSafeRandom();
+            var rnd = RandomProvider.GetThreadRandom();
 
-            // i is the number of items remaining to be shuffled.
-            for (int i = items.Count; i > 1; i--)
+            // Note i > 0 to avoid final pointless iteration
+            for (var i = items.Count - 1; i > 0; i--)
             {
-                // Pick a random element to swap with the i-th element.
-                int j = rnd.Next(i);  // 0 <= j <= i-1 (0-based array)
-                // Swap array elements.
-                var tmp = items[j];
-                items[j] = items[i - 1];
-                items[i - 1] = tmp;
-                yield return items[i - 1];
+                // Swap element "i" with a random earlier element it (or itself)
+                var swapIndex = rnd.Next(i + 1);
+                yield return items[swapIndex];
+                items[swapIndex] = items[i];
+                // we don't actually perform the swap, we can forget about the
+                // swapped element because we already returned it.
             }
 
-            yield return items[0];
+            // there is one item remaining that was not returned - we return it now
+            yield return items[0]; 
         }
 
         #endregion

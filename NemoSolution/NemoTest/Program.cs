@@ -412,9 +412,9 @@ namespace NemoTest
                 }
             }
 
-            var timer = new HiPerfTimer(true);
+            var timer = new Stopwatch();
             timer.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 using (var cmd = connection.CreateCommand())
                 {
@@ -433,7 +433,7 @@ namespace NemoTest
             timer.Stop();
             connection.Close();
 
-            Console.WriteLine("Native: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+            Console.WriteLine("Native: " + timer.Elapsed.TotalMilliseconds);
         }
 
         private static void RunExecute(int count)
@@ -451,9 +451,9 @@ namespace NemoTest
                 while (reader.Read()) { }
             }
 
-            var timer = new HiPerfTimer(true);
+            var timer = new Stopwatch();
             timer.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 response = ObjectFactory.Execute<ICustomer>(req);
                 using (var reader = (IDataReader)response.Value)
@@ -464,7 +464,7 @@ namespace NemoTest
             timer.Stop();
             connection.Close();
 
-            Console.WriteLine("Nemo.Execute:" + timer.GetElapsedTimeInMicroseconds() / 1000);
+            Console.WriteLine("Nemo.Execute:" + timer.Elapsed.TotalMilliseconds);
         }
 
         private static void RunRetrieve(int count, bool cached)
@@ -478,7 +478,7 @@ namespace NemoTest
             // Warm-up
             var result = ObjectFactory.Retrieve<ICustomer>(connection: connection, sql: sql, parameters: parameters, cached: cached).FirstOrDefault();
 
-            var timer = new HiPerfTimer(true);
+            var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
@@ -487,7 +487,7 @@ namespace NemoTest
             timer.Stop();
             connection.Close();
 
-            Console.WriteLine("Nemo.Retrieve: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+            Console.WriteLine("Nemo.Retrieve: " + timer.Elapsed.TotalMilliseconds);
         }
 
         private static void RunSelect(int count, bool buffered = false)
@@ -500,7 +500,7 @@ namespace NemoTest
             // Warm-up
             var result = ObjectFactory.Select(predicate, connection: connection).FirstOrDefault();
 
-            var timer = new HiPerfTimer(true);
+            var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
@@ -509,7 +509,7 @@ namespace NemoTest
             timer.Stop();
             connection.Close();
 
-            Console.WriteLine("Nemo.Select: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+            Console.WriteLine("Nemo.Select: " + timer.Elapsed.TotalMilliseconds);
         }
 
         private static void RunDapper(int count, bool buffered)
@@ -520,9 +520,9 @@ namespace NemoTest
             connection.Open();
             // Warm-up
             var result = connection.Query<Customer>(sql, new { CustomerID = "ALFKI" }, buffered: buffered).FirstOrDefault();
-            var timer = new HiPerfTimer(true);
+            var timer = new Stopwatch();
             timer.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 result = connection.Query<Customer>(sql, new { CustomerID = "ALFKI" }, buffered: buffered).FirstOrDefault();
             }
@@ -536,7 +536,7 @@ namespace NemoTest
             
             connection.Close();
 
-            Console.WriteLine("Dapper: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+            Console.WriteLine("Dapper: " + timer.Elapsed.TotalMilliseconds);
         }
 
         private static void RunNativeWithMapper(int count)
@@ -564,7 +564,7 @@ namespace NemoTest
                 }
             }
 
-            var timer = new HiPerfTimer(true);
+            var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
@@ -588,7 +588,7 @@ namespace NemoTest
             timer.Stop();
             connection.Close();
 
-            Console.WriteLine("Native+Nemo.Mapper: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+            Console.WriteLine("Native+Nemo.Mapper: " + timer.Elapsed.TotalMilliseconds);
         }
 
         private static void RunEF(int count, bool linq = false, bool noTracking = true)
@@ -610,7 +610,7 @@ namespace NemoTest
                 }
             }
 
-            var timer = new HiPerfTimer(true);
+            var timer = new Stopwatch();
             if (linq)
             {
                 using (var context = new EFContext(ConfigurationFactory.DefaultConnectionName))
@@ -638,7 +638,7 @@ namespace NemoTest
                 }
             }
 
-            Console.WriteLine("Entity Framework: " + timer.GetElapsedTimeInMicroseconds() / 1000);
+            Console.WriteLine("Entity Framework: " + timer.Elapsed.TotalMilliseconds);
         }
         
         public static void RunJsonParser(string json, int count)
@@ -646,14 +646,14 @@ namespace NemoTest
             // Warm-up
             var root = Json.Parse(json);
 
-            var t = new HiPerfTimer(true);
+            var t = new Stopwatch();
             t.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 root = Json.Parse(json);
             }
             t.Stop();
-            var time = t.GetElapsedTimeInMicroseconds();
+            var time = t.Elapsed.TotalMilliseconds * 1000;
 
             Console.WriteLine("Json Parser: {0}µs", time);
         }
@@ -663,14 +663,14 @@ namespace NemoTest
             // Warm-up
             var root = Newtonsoft.Json.Linq.JToken.Parse(json);
 
-            var t = new HiPerfTimer(true);
+            var t = new Stopwatch();
             t.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 root = Newtonsoft.Json.Linq.JToken.Parse(json);
             }
             t.Stop();
-            var time = t.GetElapsedTimeInMicroseconds();
+            var time = t.Elapsed.TotalMilliseconds * 1000;
 
             Console.WriteLine("Json.NET Parser: {0}µs", time);
         }
@@ -683,14 +683,14 @@ namespace NemoTest
             var json = ServiceStack.Text.JsonSerializer.SerializeToString(item);
             var root = serializer.DeserializeFromString(json);
 
-            var t = new HiPerfTimer(true);
+            var t = new Stopwatch();
             t.Start();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 root = serializer.DeserializeFromString(json);
             }
             t.Stop();
-            var time = t.GetElapsedTimeInMicroseconds();
+            var time = t.Elapsed.TotalMilliseconds * 1000;
 
             Console.WriteLine("ServiceStack Parser: {0}µs", time);
         }
@@ -698,7 +698,7 @@ namespace NemoTest
         public static List<SimpleObject> GenerateSimple(int count)
         {
             var list = new List<SimpleObject>();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 var item = new SimpleObject
                 {
@@ -715,7 +715,7 @@ namespace NemoTest
         public static List<ComplexObject> GenerateComplex(int count)
         {
             var list = new List<ComplexObject>();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 var item = new ComplexObject
                 {
@@ -739,14 +739,14 @@ namespace NemoTest
             var dtimeList = new List<double>();
             var sizeList = new List<int>();
 
-            var t = new HiPerfTimer(true);
-            for (int i = 0; i < objectList.Count; i++)
+            var t = new Stopwatch();
+            for (var i = 0; i < objectList.Count; i++)
             {
                 t.Start();
                 data = serialize(objectList[i]);
                 t.Stop();
                 dataList.Add(data);
-                stimeList.Add(t.GetElapsedTimeInMicroseconds());
+                stimeList.Add(t.Elapsed.TotalMilliseconds * 1000);
                 sizeList.Add(getLength(data));
                 t.Reset();
             }
@@ -756,12 +756,12 @@ namespace NemoTest
 
             t.Reset();
 
-            for (int i = 0; i < dataList.Count; i++)
+            for (var i = 0; i < dataList.Count; i++)
             {
                 t.Start();
                 item = deserialize(dataList[i]);
                 t.Stop();
-                dtimeList.Add(t.GetElapsedTimeInMicroseconds());
+                dtimeList.Add(t.Elapsed.TotalMilliseconds * 1000);
                 t.Reset();
             }
             
@@ -776,7 +776,7 @@ namespace NemoTest
         {
             var builder = new StringBuilder();
             char ch;
-            for (int i = 0; i < size; i++)
+            for (var i = 0; i < size; i++)
             {
                 ch = Convert.ToChar(Convert.ToInt32(Math.Floor(26 * random.NextDouble() + 65)));                 
                 builder.Append(ch);
