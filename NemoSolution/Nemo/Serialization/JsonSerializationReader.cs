@@ -15,7 +15,7 @@ namespace Nemo.Serialization
 {
     public static class JsonSerializationReader
     {
-        public static object ReadObject(JsonValue root, Type objectType)
+        public static object ReadObject(JsonValue root, Type objectType, bool isPolymorphic = false)
         {
             JsonValue current = root.FirstChild ?? root;
 
@@ -31,6 +31,11 @@ namespace Nemo.Serialization
             {
                 if (reflectedType.IsDataEntity)
                 {
+                    if (isPolymorphic)
+                    {
+                        objectType = Type.GetType(current.Value.As<string>()) ?? objectType;
+                        current = current.NexSibling;
+                    }
                     result = ObjectFactory.Create(objectType);
                     elementType = objectType;
                 }
@@ -49,7 +54,7 @@ namespace Nemo.Serialization
                     result = List.Create(objectType);
                     elementType = objectType;
                 }
-                else if (reflectedType.IsDataEntityList)
+                else if (reflectedType.IsDataEntityList || reflectedType.IsPolymorphicList)
                 {
                     elementType = reflectedType.ElementType;
                     listResult = !reflectedType.IsInterface ? objectType.New() : List.Create(elementType);
@@ -91,7 +96,7 @@ namespace Nemo.Serialization
                         {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
-                                ((IDataEntity)result).Property(property.PropertyName, current.Value.As<bool>());
+                                result.Property(property.PropertyName, current.Value.As<bool>());
                             }
                             var list = result as IList;
                             if (list != null)
@@ -123,13 +128,13 @@ namespace Nemo.Serialization
                                     switch (typeCode)
                                     {
                                         case TypeCode.Double:
-                                            ((IDataEntity)result).Property(property.PropertyName, (double)value);
+                                            result.Property(property.PropertyName, (double)value);
                                             break;
                                         case TypeCode.Single:
-                                            ((IDataEntity)result).Property(property.PropertyName, (float)value);
+                                            result.Property(property.PropertyName, (float)value);
                                             break;
                                         case TypeCode.Decimal:
-                                            ((IDataEntity)result).Property(property.PropertyName, value);
+                                            result.Property(property.PropertyName, value);
                                             break;
                                     }
                                 }
@@ -221,28 +226,28 @@ namespace Nemo.Serialization
                                     switch (typeCode)
                                     {
                                         case TypeCode.Byte:
-                                            ((IDataEntity)result).Property(property.PropertyName, (byte)value);
+                                            result.Property(property.PropertyName, (byte)value);
                                             break;
                                         case TypeCode.SByte:
-                                            ((IDataEntity)result).Property(property.PropertyName, (sbyte)value);
+                                            result.Property(property.PropertyName, (sbyte)value);
                                             break;
                                         case TypeCode.Int16:
-                                            ((IDataEntity)result).Property(property.PropertyName, (short)value);
+                                            result.Property(property.PropertyName, (short)value);
                                             break;
                                         case TypeCode.Int32:
-                                            ((IDataEntity)result).Property(property.PropertyName, (int)value);
+                                            result.Property(property.PropertyName, (int)value);
                                             break;
                                         case TypeCode.Int64:
-                                            ((IDataEntity)result).Property(property.PropertyName, value);
+                                            result.Property(property.PropertyName, value);
                                             break;
                                         case TypeCode.UInt16:
-                                            ((IDataEntity)result).Property(property.PropertyName, (ushort)value);
+                                            result.Property(property.PropertyName, (ushort)value);
                                             break;
                                         case TypeCode.UInt32:
-                                            ((IDataEntity)result).Property(property.PropertyName, (uint)value);
+                                            result.Property(property.PropertyName, (uint)value);
                                             break;
                                         case TypeCode.UInt64:
-                                            ((IDataEntity)result).Property(property.PropertyName, (ulong)value);
+                                            result.Property(property.PropertyName, (ulong)value);
                                             break;
                                     }
                                 }
@@ -435,14 +440,14 @@ namespace Nemo.Serialization
                                 var value = current.Value.As<string>();
                                 if (property.PropertyType == typeof(string))
                                 {
-                                    ((IDataEntity)result).Property(property.PropertyName, value);
+                                    result.Property(property.PropertyName, value);
                                 }
                                 else if (property.PropertyType == typeof(DateTime))
                                 {
                                     DateTime date;
                                     if (DateTime.TryParse(value, out date))
                                     {
-                                        ((IDataEntity)result).Property(property.PropertyName, date);
+                                        result.Property(property.PropertyName, date);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(TimeSpan))
@@ -450,7 +455,7 @@ namespace Nemo.Serialization
                                     TimeSpan time;
                                     if (TimeSpan.TryParse(value, out time))
                                     {
-                                        ((IDataEntity)result).Property(property.PropertyName, time);
+                                        result.Property(property.PropertyName, time);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(DateTimeOffset))
@@ -458,7 +463,7 @@ namespace Nemo.Serialization
                                     DateTimeOffset date;
                                     if (DateTimeOffset.TryParse(value, out date))
                                     {
-                                        ((IDataEntity)result).Property(property.PropertyName, date);
+                                        result.Property(property.PropertyName, date);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(Guid))
@@ -466,12 +471,12 @@ namespace Nemo.Serialization
                                     Guid guid;
                                     if (Guid.TryParse(value, out guid))
                                     {
-                                        ((IDataEntity)result).Property(property.PropertyName, guid);
+                                        result.Property(property.PropertyName, guid);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(char) && !string.IsNullOrEmpty(value))
                                 {
-                                    ((IDataEntity)result).Property(property.PropertyName, value[0]);
+                                    result.Property(property.PropertyName, value[0]);
                                 }
                             }
                             else
@@ -625,7 +630,7 @@ namespace Nemo.Serialization
                             switch (root.Type)
                             {
                                 case JsonType.Object:
-                                    ((IDataEntity)result).Property(property.PropertyName, item);
+                                    result.Property(property.PropertyName, item);
                                     break;
                                 case JsonType.Array:
                                     ((IList)result).Add(item);
@@ -651,11 +656,11 @@ namespace Nemo.Serialization
                                     var child = current.FirstChild;
                                     while (child != null)
                                     {
-                                        var item = (IDataEntity)ReadObject(child, property.ElementType);
+                                        var item = ReadObject(child, property.ElementType, property.IsPolymorphicList);
                                         list.Add(item);
                                         child = child.NexSibling;
                                     }
-                                    ((IDataEntity)result).Property(property.PropertyName, list);
+                                    result.Property(property.PropertyName, list);
                                 }
                                 else
                                 {

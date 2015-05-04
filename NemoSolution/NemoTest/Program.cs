@@ -44,6 +44,26 @@ namespace NemoTest
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
             
+            var company = new Company { Name = "Test Company" };
+            company.Contacts.Add(new Manager { Name = "Manager 1", HireDate = new DateTime(1990, 12, 20) });
+            company.Contacts.Add(new Manager { Name = "Manager 2", HireDate = new DateTime(1990, 12, 20) });
+
+            var manager = (Manager)company.Contacts[0];
+            manager.Employees.Add(new Employee { Name = "Employee 1.1", HireDate = new DateTime(1990, 12, 20) });
+            manager.Employees.Add(new Employee { Name = "Employee 1.2", HireDate = new DateTime(1990, 12, 20) });
+
+            //manager.Employees[0].Manager = manager;
+            //manager.Employees[1].Manager = manager;
+
+            var packedJson = company.ToJson();
+            var unpackedJson = packedJson.FromJson<Company>().FirstOrDefault();
+
+            var packedXml = company.ToXml();
+            var unpackedXml = packedXml.FromXml<Company>().FirstOrDefault();
+            
+            var packed = company.Serialize();
+            var unpacked = packed.Deserialize<Company>();
+            
             // Create an instance
             var created = ObjectFactory.Create<ICustomer>();
             var created_new = ObjectFactory.Create<Customer>();

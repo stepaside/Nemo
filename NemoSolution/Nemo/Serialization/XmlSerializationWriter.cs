@@ -19,7 +19,7 @@ namespace Nemo.Serialization
     {
         internal delegate void XmlObjectSerializer(object value, TextWriter output, bool addSchemaDeclaration);
 
-        private static readonly ConcurrentDictionary<string, XmlObjectSerializer> _serializers = new ConcurrentDictionary<string, XmlObjectSerializer>();
+        private static readonly ConcurrentDictionary<Tuple<string, bool>, XmlObjectSerializer> _serializers = new ConcurrentDictionary<Tuple<string, bool>, XmlObjectSerializer>();
 
         public static void WriteStartElement(string name, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
         {
@@ -40,12 +40,12 @@ namespace Nemo.Serialization
 
         public static void WriteEndElement(string name, TextWriter output)
         {
-            output.Write(string.Format("</{0}>", name));
+            output.Write("</{0}>", name);
         }
 
         public static void WriteEmptyElement(string name, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
         {
-            output.Write(string.Format("<{0}", name));
+            output.Write("<{0}", name);
             if (addSchemaDeclaration)
             {
                 output.Write(" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\"");
@@ -172,11 +172,6 @@ namespace Nemo.Serialization
                             {
                                 xmlValue = ((Guid)value).ToString("D");
                             }
-                            else if (value is IDataEntity)
-                            {
-                                var serializer = CreateDelegate(objectType);
-                                serializer(value, output, addSchemaDeclaration);
-                            }
                             else
                             {
                                 var list = value as IList;
@@ -184,13 +179,16 @@ namespace Nemo.Serialization
                                 {
                                     WriteStartElement(name, output, false, null);
                                     var items = list.Cast<object>().ToArray();
-                                    if (items.Length > 0 && items[0] is IDataEntity)
+                                    if (items.Length > 0 && (items[0] is IDataEntity || !Reflector.IsSimpleType(items[0].GetType())))
                                     {
-                                        var elementType = items[0].GetType();
-                                        var serializer = CreateDelegate(elementType);
-                                        foreach (var item in items)
+                                        var args = list.GetType().GetGenericArguments();
+                                        var isPolymorphicList = args.Length == 1 && args[0].IsAbstract && !args[0].IsInterface;
+                                        for (var i = 0; i < items.Length; i++)
                                         {
-                                            serializer(item, output, false);
+                                            var elementType = items[i].GetType();
+
+                                            var serializer = CreateDelegate(elementType, isPolymorphicList);
+                                            serializer(items[i], output, false);
                                         }
                                     }
                                     else
@@ -201,9 +199,8 @@ namespace Nemo.Serialization
                                 }
                                 else
                                 {
-                                    WriteStartElement(name, output, false, null);
-                                    new XmlSerializer(objectType).Serialize(output, value);
-                                    WriteEndElement(name, output);
+                                    var serializer = CreateDelegate(objectType);
+                                    serializer(value, output, addSchemaDeclaration);
                                 }
                             }
                             break;
@@ -274,13 +271,13 @@ namespace Nemo.Serialization
             return xmlValue;
         }
 
-        private static XmlObjectSerializer CreateDelegate(Type objectType)
+        private static XmlObjectSerializer CreateDelegate(Type objectType, bool isPolymorphic = false)
         {
             var reflectedType = Reflector.GetReflectedType(objectType);
-            return _serializers.GetOrAdd(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, k => GenerateDelegate(k, objectType));
+            return _serializers.GetOrAdd(Tuple.Create(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, isPolymorphic), k => GenerateDelegate(k.Item1, objectType, k.Item2));
         }
 
-        private static XmlObjectSerializer GenerateDelegate(string key, Type objectType)
+        private static XmlObjectSerializer GenerateDelegate(string key, Type objectType, bool isPolymorphic)
         {
             var method = new DynamicMethod("XmlSerialize_" + key, null, new[] { typeof(object), typeof(TextWriter), typeof(bool) }, typeof(XmlSerializationWriter).Module);
             var il = method.GetILGenerator();
@@ -302,13 +299,21 @@ namespace Nemo.Serialization
 
             var elementName = Xml.GetElementNameFromType(interfaceType);
 
-            if (properties.Item1.Any())
+            if (properties.Item1.Any() || isPolymorphic)
             {
                 var attributeSetType = typeof(Dictionary<string, string>);
                 var addItem = attributeSetType.GetMethod("Add");
                 il.DeclareLocal(attributeSetType);
                 il.Emit(OpCodes.Newobj, attributeSetType.GetConstructor(Type.EmptyTypes));
                 il.Emit(OpCodes.Stloc_0);
+
+                if (isPolymorphic)
+                {
+                    il.Emit(OpCodes.Ldloc_0);
+                    il.Emit(OpCodes.Ldstr, "_.type");
+                    il.Emit(OpCodes.Ldstr, SecurityElement.Escape(string.Format("{0},{1}", objectType.FullName, objectType.Assembly.GetName().Name)));
+                    il.EmitCall(OpCodes.Callvirt, addItem, null);
+                }
 
                 foreach (var property in properties.Item1)
                 {
@@ -328,7 +333,7 @@ namespace Nemo.Serialization
             il.Emit(OpCodes.Ldstr, elementName);
             il.Emit(OpCodes.Ldarg_1);
             il.Emit(OpCodes.Ldarg_2);
-            il.Emit(properties.Item1.Any() ? OpCodes.Ldloc_0 : OpCodes.Ldnull);
+            il.Emit(properties.Item1.Any() || isPolymorphic ? OpCodes.Ldloc_0 : OpCodes.Ldnull);
             il.Emit(OpCodes.Call, writeStart);
 
             foreach (var property in properties.Item2)
@@ -341,7 +346,7 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Ldstr, Xml.GetElementName(property.Key, property.Value.IsSimpleList));
                 il.Emit(OpCodes.Ldarg_1);
                 il.Emit(OpCodes.Ldc_I4_0);
-                il.Emit(properties.Item1.Any() ? OpCodes.Ldloc_0 : OpCodes.Ldnull);
+                il.Emit(properties.Item1.Any() || isPolymorphic ? OpCodes.Ldloc_0 : OpCodes.Ldnull);
                 il.Emit(OpCodes.Ldtoken, property.Value.PropertyType);
                 il.Emit(OpCodes.Call, getTypeFromHandle);
                 il.Emit(OpCodes.Call, writeObject);

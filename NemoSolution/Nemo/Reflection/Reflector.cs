@@ -94,7 +94,7 @@ namespace Nemo.Reflection
             if (IsList(objectType))
             {
                 elementType = GetElementType(objectType);
-                if (elementType != null && IsDataEntity(elementType))
+                if (elementType != null && (IsDataEntity(elementType) || !IsSimpleType(elementType)))
                 {
                     result = true;
                 }
@@ -731,13 +731,18 @@ namespace Nemo.Reflection
 
                     if (IsDataEntity(type))
                     {
-                        return ObjectTypeCode.DataEntity;
+                        return ObjectTypeCode.Object;
                     }
 
                     if (IsList(type))
                     {
                         var elementType = GetElementType(type);
-                        return IsDataEntity(elementType) ? ObjectTypeCode.DataEntityList : ObjectTypeCode.ObjectList;
+                        var isEntityList = IsDataEntity(elementType) || !IsSimpleType(elementType);
+                        if (isEntityList && elementType.IsAbstract && !elementType.IsInterface)
+                        {
+                            return ObjectTypeCode.PolymorphicObjectList;
+                        }
+                        return isEntityList ? ObjectTypeCode.ObjectList : ObjectTypeCode.SimpleList;
                     }
 
                     if (name == "Byte[]")

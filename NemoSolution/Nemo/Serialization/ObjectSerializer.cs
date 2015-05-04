@@ -33,11 +33,10 @@ namespace Nemo.Serialization
         Uri = 36,
         ByteArray = 64,
         CharArray = 65,
-        ObjectList = 66,
+        SimpleList = 66,
         ObjectMap = 67,
-        DataEntity = 128,
-        DataEntityList = 129,
-        ProtocolBuffer = 255
+        ObjectList = 68,
+        PolymorphicObjectList = 69
     }
 
     public enum ListAspectType : byte
@@ -83,7 +82,7 @@ namespace Nemo.Serialization
 
             using (var writer = SerializationWriter.CreateWriter(mode))
             {
-                writer.WriteObject(dataEntity, ObjectTypeCode.DataEntity);
+                writer.WriteObject(dataEntity, ObjectTypeCode.Object, null);
                 buffer = writer.GetBytes();
             }
 
@@ -112,7 +111,7 @@ namespace Nemo.Serialization
             T result;
             using (var reader = SerializationReader.CreateReader(data))
             {
-                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.DataEntity, typeof(IConvertible).IsAssignableFrom(typeof(T)));
+                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.Object, typeof(IConvertible).IsAssignableFrom(typeof(T)));
             }
             return result;
         }
@@ -121,18 +120,6 @@ namespace Nemo.Serialization
             where T : class
         {
             return dataCollection.Where(data => data != null).Select(Deserialize<T>);
-        }
-
-        internal static bool CheckType<T>(byte[] data)
-            where T : class
-        {
-            var objectTypeHash = SerializationReader.GetObjectTypeHash(data);
-            var type = Reflector.TypeCache<T>.Type;
-            if (type.ElementType != null)
-            {
-                return type.ElementType.FullName.GetHashCode() == objectTypeHash;
-            }
-            return type.FullTypeName.GetHashCode() == objectTypeHash;
         }
 
         #endregion

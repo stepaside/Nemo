@@ -26,17 +26,15 @@ namespace Nemo.Serialization
 {
     public class SerializationWriter : IDisposable
     {
-        public delegate void ObjectSerializer(SerializationWriter writer, IList values, int count);
+        public delegate void ObjectSerializer(SerializationWriter writer, IList values, int count, IDictionary<Type, int> map);
 
-        private static readonly ConcurrentDictionary<Type, ObjectSerializer> _serializers = new ConcurrentDictionary<Type, ObjectSerializer>();
-        private static readonly ConcurrentDictionary<Type, ObjectSerializer> _serializersNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
-        private static readonly ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllProperties = new ConcurrentDictionary<Type, ObjectSerializer>();
-        private static readonly ConcurrentDictionary<Type, ObjectSerializer> _serializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectSerializer> Serializers = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectSerializer> SerializersNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectSerializer> SerializersWithAllProperties = new ConcurrentDictionary<Type, ObjectSerializer>();
+        private static readonly ConcurrentDictionary<Type, ObjectSerializer> SerializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectSerializer>();
 
-        private readonly SerializationMode _mode;
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
-        private bool _objectTypeWritten;
         private readonly Stream _stream;
         private readonly Encoding _encoding;
 
@@ -44,10 +42,9 @@ namespace Nemo.Serialization
         {
             _stream = stream ?? new MemoryStream(512);
             _encoding = encoding ?? new UTF8Encoding();
-            _mode = mode;
             _serializeAll = (mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
-            Write((byte)_mode);
+            Write((byte)mode);
         }
 
         private static uint EncodeZigZag32(int n)
@@ -356,15 +353,7 @@ namespace Nemo.Serialization
             }
         }
 
-        public void WriteObjectType(int typeHash)
-        {
-            if (!_objectTypeWritten)
-            {
-                Write(typeHash);
-                _objectTypeWritten = true;
-            }
-        }
-
+        
         public void WriteListAspectType(IList value)
         {
             var sortedList = value as ISortedList;
@@ -395,12 +384,27 @@ namespace Nemo.Serialization
             }
         }
 
-        public void WriteObject(object value)
+        public void WriteTypes(IDictionary<Type, int> typeMap)
         {
-            WriteObject(value, value != null ? Reflector.GetObjectTypeCode(value.GetType()) : ObjectTypeCode.Empty);
+            WriteList((IList)typeMap.Select(t => t.Key.FullName + "," + t.Key.Assembly.GetName().Name).ToList());
         }
 
-        public void WriteObject(object value, ObjectTypeCode typeCode)
+        public void WriteTypeMarker(object value, IDictionary<Type, int> typeMap)
+        {
+            if (typeMap == null || value == null) return;
+            int index;
+            if (typeMap.TryGetValue(value.GetType(), out index))
+            {
+                Write(index);
+            }
+        }
+
+        public void WriteObject(object value)
+        {
+            WriteObject(value, value != null ? Reflector.GetObjectTypeCode(value.GetType()) : ObjectTypeCode.Empty, null);
+        }
+
+        public void WriteObject(object value, ObjectTypeCode typeCode, IDictionary<Type, int> typeMap)
         {
             if (value == null)
             {
@@ -474,26 +478,41 @@ namespace Nemo.Serialization
                     case ObjectTypeCode.DBNull:
                         break;
 
-                    case ObjectTypeCode.DataEntity:
-                        {
-                            var serializer = CreateDelegate(value.GetType());
-                            serializer(this, new object[] { value }, 1);
-                        }
-                        break;
-
-                    case ObjectTypeCode.DataEntityList:
-                        {
-                            var items = (IList)value;
-                            var serializer = CreateDelegate(value.GetType());
-                            serializer(this, items, items.Count);
-                        }
+                    case ObjectTypeCode.Object:
+                    {
+                        var serializer = CreateDelegate(value.GetType());
+                        serializer(this, new[] { value }, 1, null);
+                    }
                         break;
 
                     case ObjectTypeCode.ObjectList:
+                    {
+                        var items = (IList)value;
+                        var serializer = CreateDelegate(value.GetType());
+                        serializer(this, items, items.Count, null);
+                    }
+                        break;
+
+                    case ObjectTypeCode.PolymorphicObjectList:
+                    {
+                        var items = (IList)value;
+                        Write((uint)items.Count);
+                        WriteListAspectType(items);
+                        var map = items.Cast<object>().Where(t => t != null).Select(t => t.GetType()).Distinct().Select((t, i) => new { t, i }).ToDictionary(k => k.t, k => k.i);
+                        WriteTypes(map);
+                        foreach (var item in items)
                         {
-                            var items = (IList)value;
-                            WriteList(items);
+                            WriteTypeMarker(item, map);
+                            WriteObject(item, ObjectTypeCode.Object, map);
                         }
+                    }
+                        break;
+
+                    case ObjectTypeCode.SimpleList:
+                    {
+                        var items = (IList)value;
+                        WriteList(items);
+                    }
                         break;
 
                     case ObjectTypeCode.ByteArray:
@@ -517,26 +536,24 @@ namespace Nemo.Serialization
                         break;
 
                     case ObjectTypeCode.Version:
-                        {
-                            var version = (Version)value;
-                            Write((uint)version.Major);
-                            Write((uint)version.Minor);
-                            Write((uint)version.Build);
-                            Write((uint)version.Revision);
-                            break;
-                        }
+                    {
+                        var version = (Version)value;
+                        Write((uint)version.Major);
+                        Write((uint)version.Minor);
+                        Write((uint)version.Build);
+                        Write((uint)version.Revision);
+                        break;
+                    }
 
                     case ObjectTypeCode.Uri:
                         Write(((Uri)value).AbsoluteUri);
                         break;
 
-                    case ObjectTypeCode.ObjectMap:
+                    case ObjectTypeCode.ObjectMap: 
+                    {
                         var map = (IDictionary)value;
                         WriteDictionary(map);
-                        break;
-
-                    default:
-                        new BinaryFormatter().Serialize(_stream, value);
+                    }
                         break;
                 }
             }
@@ -568,23 +585,24 @@ namespace Nemo.Serialization
             //return _serializers.GetOrAdd(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, k => GenerateDelegate(k, objectType));
             if (!_serializeAll)
             {
-                return _includePropertyNames ? _serializers.GetOrAdd(objectType, GenerateDelegate) : _serializersNoHeader.GetOrAdd(objectType, GenerateDelegate);
+                return _includePropertyNames ? Serializers.GetOrAdd(objectType, GenerateDelegate) : SerializersNoHeader.GetOrAdd(objectType, GenerateDelegate);
             }
-            return _includePropertyNames ? _serializersWithAllProperties.GetOrAdd(objectType, GenerateDelegate) : _serializersWithAllPropertiesNoHeader.GetOrAdd(objectType, GenerateDelegate);
+            return _includePropertyNames ? SerializersWithAllProperties.GetOrAdd(objectType, GenerateDelegate) : SerializersWithAllPropertiesNoHeader.GetOrAdd(objectType, GenerateDelegate);
         }
 
         private ObjectSerializer GenerateDelegate(Type objectType)
         {
-            var method = new DynamicMethod("Serialize_" + objectType.Name, null, new[] { typeof(SerializationWriter), typeof(IList), typeof(int) }, typeof(SerializationWriter).Module);
+            var method = new DynamicMethod("Serialize_" + objectType.Name, null, new[] { typeof(SerializationWriter), typeof(IList), typeof(int), typeof(IDictionary<Type, int>) }, typeof(SerializationWriter).Module);
             var il = method.GetILGenerator();
 
-            var writeObjectType = GetType().GetMethod("WriteObjectType");
             var writeListAspectType = GetType().GetMethod("WriteListAspectType");                        
-            var writeObject = GetType().GetMethod("WriteObject", new[] { typeof(object), typeof(ObjectTypeCode) });
+            var writeObject = GetType().GetMethod("WriteObject", new[] { typeof(object), typeof(ObjectTypeCode), typeof(IDictionary<Type, int>) });
             var writeLength = GetType().GetMethod("Write", new[] { typeof(uint) });
             var writeName = GetType().GetMethod("Write", new[] { typeof(string) });
+            var writeTypes = GetType().GetMethod("WriteTypes");
+            var writeTypeMarker = GetType().GetMethod("WriteTypeMarker");
             var getItem = typeof(IList).GetMethod("get_Item");
-
+            
             Type elementType = null;
             Type interfaceType;
             bool isEmitted;
@@ -603,26 +621,17 @@ namespace Nemo.Serialization
 
             if (isEmitted)
             {
-                interfaceType = Reflector.GetInterface(elementType ?? objectType);
-
-                if (interfaceType == null)
-                {
-                    interfaceType = elementType ?? objectType;
-                }
+                interfaceType = Reflector.GetInterface(elementType ?? objectType) ?? (elementType ?? objectType);
             }
 
-            var properties = Reflector.GetAllProperties(interfaceType).Where(p => p.CanRead && p.CanWrite && p.Name != "Indexer" && (_serializeAll || !p.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any()));
+            var properties = Reflector.GetAllProperties(interfaceType).Where(p => p.CanRead && p.CanWrite && p.Name != "Indexer" && (_serializeAll || !p.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any())).ToArray();
             var propertyPositions = Reflector.GetAllPropertyPositions(interfaceType).OrderBy(p => p.Value).Select(p => p.Key);
             var orderedProperties = _includePropertyNames ? properties.ToArray() : properties.Arrange(propertyPositions, p => p.Name).ToArray();
             var objectTypeCode = Reflector.GetObjectTypeCode(objectType);
 
-            if (objectTypeCode == ObjectTypeCode.DataEntity || objectTypeCode == ObjectTypeCode.DataEntityList)
+            if (objectTypeCode == ObjectTypeCode.Object || objectTypeCode == ObjectTypeCode.ObjectList || objectTypeCode == ObjectTypeCode.PolymorphicObjectList)
             {
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldc_I4, interfaceType.FullName.GetHashCode());
-                il.Emit(OpCodes.Callvirt, writeObjectType);
-
-                if (objectTypeCode == ObjectTypeCode.DataEntityList)
+                if (objectTypeCode == ObjectTypeCode.ObjectList || objectTypeCode == ObjectTypeCode.PolymorphicObjectList)
                 {
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldarg_2);
@@ -632,6 +641,13 @@ namespace Nemo.Serialization
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldarg_1);
                     il.Emit(OpCodes.Callvirt, writeListAspectType);
+
+                    if (objectTypeCode == ObjectTypeCode.PolymorphicObjectList)
+                    {
+                        il.Emit(OpCodes.Ldarg_0);
+                        il.Emit(OpCodes.Ldarg_3);
+                        il.Emit(OpCodes.Callvirt, writeTypes);
+                    }
                 }
             }
 
@@ -670,6 +686,16 @@ namespace Nemo.Serialization
 
             foreach (var property in orderedProperties)
             {
+                if (objectTypeCode == ObjectTypeCode.PolymorphicObjectList)
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldarg_1);
+                    il.Emit(OpCodes.Ldloc_0);
+                    il.Emit(OpCodes.Callvirt, getItem);
+                    il.Emit(OpCodes.Ldarg_3);
+                    il.Emit(OpCodes.Callvirt, writeTypeMarker);
+                }
+
                 // Write property value
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
@@ -679,6 +705,7 @@ namespace Nemo.Serialization
                 il.EmitCall(OpCodes.Callvirt, property.GetGetMethod(), null);
                 il.BoxIfNeeded(property.PropertyType);
                 il.Emit(OpCodes.Ldc_I4, (int)Reflector.GetObjectTypeCode(property.PropertyType));
+                il.Emit(OpCodes.Ldarg_3);
                 il.Emit(OpCodes.Callvirt, writeObject);
             }
 

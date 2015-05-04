@@ -41,8 +41,8 @@ namespace Nemo.Extensions
                 var type = Reflector.GetInterface(dataEntity.GetType());
                 return (TResult)Reflector.Property.Get(type, dataEntity, propertyName);
             }
-            
-            if (Reflector.IsMarkerInterface<T>())
+
+            if (Reflector.IsMarkerInterface<T>() || typeof(T) == typeof(object))
             {
                 return (TResult)Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
             }
@@ -105,7 +105,7 @@ namespace Nemo.Extensions
                 var type = Reflector.GetInterface(dataEntity.GetType());
                 Reflector.Property.Set(type, dataEntity, propertyName, propertyValue);
             }
-            else if (Reflector.IsMarkerInterface<T>())
+            else if (Reflector.IsMarkerInterface<T>() || typeof(T) == typeof(object))
             {
                 Reflector.Property.Set(dataEntity.GetType(), dataEntity, propertyName, propertyValue);
             }

@@ -9,7 +9,7 @@ namespace Nemo.Serialization
     internal class SerializationReaderState
     {
         internal string Name { get; set; }
-        internal IDataEntity Item { get; set; }
+        internal object Item { get; set; }
         internal IList List { get; set; }
         internal object Value { get; set; }
         internal Type ElementType { get; set; }

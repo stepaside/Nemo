@@ -38,7 +38,7 @@ namespace Nemo.Serialization
             object result = null;
             isArray = false;
 
-            IDataEntity item = null;
+            object item = null;
             IList list = null;
             Type elementType = null;
             IDictionary<string, ReflectedProperty> propertyMap = null;
@@ -57,7 +57,7 @@ namespace Nemo.Serialization
                     propertyMap = Reflector.GetPropertyNameMap(elementType);
                     if (!objectType.IsInterface)
                     {
-                        list = (IList)Nemo.Reflection.Activator.New(objectType);
+                        list = (IList)objectType.New();
                     }
                     else
                     {
@@ -67,26 +67,33 @@ namespace Nemo.Serialization
                 }
                 else if (reflectedType.IsDataEntity)
                 {
-                    propertyMap = Reflector.GetPropertyNameMap(objectType);
-                    item = (IDataEntity)ObjectFactory.Create(objectType);
-                    result = item;
                     // Handle attributes
                     if (reader.HasAttributes)
                     {
-                        for (int i = 0; i < reader.AttributeCount; i++)
+                        objectType = Type.GetType(reader.GetAttribute("_.type") ?? "", false) ?? objectType;
+                        propertyMap = Reflector.GetPropertyNameMap(objectType);
+                        item = ObjectFactory.Create(objectType);
+                        result = item;
+
+                        for (var i = 0; i < reader.AttributeCount; i++)
                         {
                             reader.MoveToAttribute(i);
+                            if (reader.Name == "_.type") continue;
                             ReflectedProperty property;
                             var propertyName = reader.Name;
-                            if (propertyMap.TryGetValue(propertyName, out property))
+                            if (!propertyMap.TryGetValue(propertyName, out property)) continue;
+                            var value = ReadValue(reader, property.PropertyType, propertyName);
+                            if (value != null)
                             {
-                                object value = ReadValue(reader, property.PropertyType, propertyName);
-                                if (value != null)
-                                {
-                                    item.Property(propertyName, value);
-                                }
+                                item.Property(propertyName, value);
                             }
                         }
+                    }
+                    else
+                    {
+                        propertyMap = Reflector.GetPropertyNameMap(objectType);
+                        item = ObjectFactory.Create(objectType);
+                        result = item;
                     }
                 }
                 else if (reflectedType.IsSimpleType)
@@ -116,7 +123,7 @@ namespace Nemo.Serialization
                     if (property.IsDataEntity)
                     {
                         propertyMap = Reflector.GetPropertyNameMap(property.PropertyType);
-                        item = (IDataEntity)ObjectFactory.Create(property.PropertyType);
+                        item = ObjectFactory.Create(property.PropertyType);
                         states.AddLast(new SerializationReaderState { Name = name, Item = item, PropertyMap = propertyMap });
 
                         if (currentValue.Item != null)
@@ -134,7 +141,7 @@ namespace Nemo.Serialization
                         propertyMap = Reflector.GetPropertyNameMap(elementType);
                         if (!property.IsListInterface)
                         {
-                            list = (IList)Nemo.Reflection.Activator.New(property.PropertyType);
+                            list = (IList)property.PropertyType.New();
                         }
                         else
                         {
@@ -149,7 +156,7 @@ namespace Nemo.Serialization
                     }
                     else
                     {
-                        object value = ReadValue(reader, currentValue.ElementType ?? property.PropertyType, name);
+                        var value = ReadValue(reader, currentValue.ElementType ?? property.PropertyType, name);
                         if (value != null)
                         {
                             if (!currentValue.IsSimple)
@@ -175,7 +182,7 @@ namespace Nemo.Serialization
                 {
                     if (currentValue.IsSimple)
                     {
-                        object value = ReadValue(reader, currentValue.ElementType, name);
+                        var value = ReadValue(reader, currentValue.ElementType, name);
                         if (currentValue.List != null)
                         {
                             currentValue.List.Add(value);
@@ -191,7 +198,12 @@ namespace Nemo.Serialization
                     }
                     else
                     {
-                        item = (IDataEntity)ObjectFactory.Create(currentValue.ElementType);
+                        if (reader.HasAttributes)
+                        {
+                            currentValue.ElementType = Type.GetType(reader.GetAttribute("_.type") ?? "", false) ?? currentValue.ElementType;
+                            currentValue.PropertyMap = Reflector.GetPropertyNameMap(currentValue.ElementType);
+                        }
+                        item = ObjectFactory.Create(currentValue.ElementType);
                         if (currentValue.List != null)
                         {
                             currentValue.List.Add(item);

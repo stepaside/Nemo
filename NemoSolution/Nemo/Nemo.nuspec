@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Nemo</id>
-    <version>2.1.10</version>
+    <version>2.2.0</version>
     <title>Nemo</title>
     <authors>Max Stepanskiy</authors>
     <owners>Stepaside, Inc.</owners>
@@ -12,16 +12,7 @@
     <copyright>Copyright © Max Stepanskiy 2012-2014</copyright>
     <tags>ORM micro-ORM data-mapper sql-mapper</tags>
     <releaseNotes>
-      * Fixed update and delete sql generation
-      * Updated provider name detection
-      * Fixed execution context to work in both web and windows environments (including async/await patterns)
-      * Provided a way to clone current configuration
-      * Fixed Not operation in property map
-      * Provided a way for sql generation to use property maps
-      * Fixed select generation
-      * Fixed returning of identity value in the generated insert
-      * Added a way to handle UTC dates
-      * Added ability to specify type converters in entity maps
+      * Modified serialization format to support abstract types
     </releaseNotes>
     <dependencies>
       <dependency id="log4net" version="2.0.3" />

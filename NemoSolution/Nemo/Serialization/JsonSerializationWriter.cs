@@ -19,7 +19,7 @@ namespace Nemo.Serialization
     {
         internal delegate void JsonObjectSerializer(object values, TextWriter output, bool compact);
 
-        private static readonly ConcurrentDictionary<string, JsonObjectSerializer> _serializers = new ConcurrentDictionary<string, JsonObjectSerializer>();
+        private static readonly ConcurrentDictionary<Tuple<string, bool>, JsonObjectSerializer> _serializers = new ConcurrentDictionary<Tuple<string, bool>, JsonObjectSerializer>();
 
         public static void Write(string value, TextWriter output)
         {
@@ -162,15 +162,6 @@ namespace Nemo.Serialization
                                 jsonValue = ((Guid)value).ToString("D");
                                 isText = true;
                             }
-                            else if (value is IDataEntity)
-                            {
-                                var serializer = CreateDelegate(objectType);
-                                serializer(value, output, compact);
-                                if (hasMore)
-                                {
-                                    Write(",", output);
-                                }
-                            }
                             else
                             {
                                 var map = value as IDictionary;
@@ -191,12 +182,14 @@ namespace Nemo.Serialization
                                     {
                                         Write(name != null ? string.Format("\"{0}\":[", name) : "[", output);
                                         var items = list.Cast<object>().ToArray();
-                                        if (items.Length > 0 && items[0] is IDataEntity)
+                                        if (items.Length > 0 && (items[0] is IDataEntity || !Reflector.IsSimpleType(items[0].GetType())))
                                         {
-                                            var elementType = items[0].GetType();
-                                            var serializer = CreateDelegate(elementType);
+                                            var args = list.GetType().GetGenericArguments();
+                                            var isPolymorphicList = args.Length == 1 && args[0].IsAbstract && !args[0].IsInterface;
                                             for (var i = 0; i < items.Length; i++)
                                             {
+                                                var elementType = items[i].GetType();
+                                                var serializer = CreateDelegate(elementType, isPolymorphicList);
                                                 serializer(items[i], output, compact);
                                                 if (i < items.Length - 1)
                                                 {
@@ -209,6 +202,15 @@ namespace Nemo.Serialization
                                             WriteList(list, output);
                                         }
                                         Write("]", output);
+                                        if (hasMore)
+                                        {
+                                            Write(",", output);
+                                        }
+                                    }
+                                    else 
+                                    {
+                                        var serializer = CreateDelegate(objectType);
+                                        serializer(value, output, compact);
                                         if (hasMore)
                                         {
                                             Write(",", output);
@@ -262,13 +264,13 @@ namespace Nemo.Serialization
             }
         }
 
-        private static JsonObjectSerializer CreateDelegate(Type objectType)
+        private static JsonObjectSerializer CreateDelegate(Type objectType, bool isPolymorphic = false)
         {
             var reflectedType = Reflector.GetReflectedType(objectType);
-            return _serializers.GetOrAdd(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, k => GenerateDelegate(k, objectType));
+            return _serializers.GetOrAdd(Tuple.Create(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, isPolymorphic), k => GenerateDelegate(k.Item1, objectType, k.Item2));
         }
 
-        private static JsonObjectSerializer GenerateDelegate(string key, Type objectType)
+        private static JsonObjectSerializer GenerateDelegate(string key, Type objectType, bool isPolymorphic)
         {
             var method = new DynamicMethod("JsonSerialize_" + key, null, new[] { typeof(object), typeof(TextWriter), typeof(bool) }, typeof(JsonSerializationWriter).Module);
             var il = method.GetILGenerator();
@@ -289,6 +291,13 @@ namespace Nemo.Serialization
             il.Emit(OpCodes.Call, write);
 
             var index = 0;
+
+            if (isPolymorphic)
+            {
+                il.Emit(OpCodes.Ldstr, string.Format("\"$type\":\"{0},{1}\",", objectType.FullName, objectType.Assembly.GetName().Name));
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Call, write);
+            }
 
             foreach (var property in properties)
             {

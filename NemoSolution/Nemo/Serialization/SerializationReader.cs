@@ -26,8 +26,6 @@ namespace Nemo.Serialization
 {
     public class SerializationReader : IDisposable
     {
-        private readonly int _objectTypeHash;
-        private readonly SerializationMode _mode;
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
         private byte? _objectByte;
@@ -45,16 +43,12 @@ namespace Nemo.Serialization
         {
             _stream = stream;
             _encoding = encoding ?? new UTF8Encoding();
-            _mode = (SerializationMode)ReadByte();
-            _serializeAll = (_mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
-            _includePropertyNames = (_mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
-            if (_mode != SerializationMode.Manual)
+            var mode = (SerializationMode)ReadByte();
+            _serializeAll = (mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
+            _includePropertyNames = (mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
+            if (mode != SerializationMode.Manual)
             {
                 _objectByte = ReadByte();
-                if (_objectByte.Value == (byte)ObjectTypeCode.DataEntity || _objectByte.Value == (byte)ObjectTypeCode.DataEntityList)
-                {
-                    _objectTypeHash = ReadInt32();
-                }
             }
         }
 
@@ -95,19 +89,6 @@ namespace Nemo.Serialization
         public static SerializationReader CreateReader(byte[] buffer)
         {
             return new SerializationReader(new MemoryStream(buffer), null);
-        }
-
-        public static int GetObjectTypeHash(byte[] buffer)
-        {
-            return CreateReader(buffer).ObjectTypeHash;
-        }
-
-        public int ObjectTypeHash
-        {
-            get
-            {
-                return _objectTypeHash;
-            }
         }
 
         public byte ReadByte()
@@ -224,30 +205,30 @@ namespace Nemo.Serialization
         public byte[] ReadBytes()
         {
             var length = ReadUInt32();
+            
             if (length == 0)
             {
                 return null;
             }
-            else if (length == 1)
+
+            if (length == 1)
             {
                 return new byte[0];
             }
-            else
+
+            length -= 1;
+            var buffer = new byte[length];
+            int l = 0;
+            while (l < length)
             {
-                length -= 1;
-                var buffer = new byte[length];
-                int l = 0;
-                while (l < length)
+                int r = _stream.Read(buffer, l, (int)length - l);
+                if (r == 0)
                 {
-                    int r = _stream.Read(buffer, l, (int)length - l);
-                    if (r == 0)
-                    {
-                        throw new EndOfStreamException();
-                    }
-                    l += r;
+                    throw new EndOfStreamException();
                 }
-                return buffer;
+                l += r;
             }
+            return buffer;
         }
 
         public char[] ReadChars()
@@ -257,20 +238,19 @@ namespace Nemo.Serialization
             {
                 return null;
             }
-            else if (length == 1)
+
+            if (length == 1)
             {
                 return new char[0];
             }
-            else
+
+            length -= 1;
+            var buffer = new char[length];
+            for (int i = 0; i < length; i++)
             {
-                length -= 1;
-                var buffer = new char[length];
-                for (int i = 0; i < length; i++)
-                {
-                    buffer[i] = ReadChar();
-                }
-                return buffer;
+                buffer[i] = ReadChar();
             }
+            return buffer;
         }
 
         public string ReadString()
@@ -280,26 +260,25 @@ namespace Nemo.Serialization
             {
                 return null;
             }
-            else if (length == 1)
+
+            if (length == 1)
             {
                 return string.Empty;
             }
-            else
+
+            length -= 1;
+            var buffer = new byte[length];
+            int l = 0;
+            while (l < length)
             {
-                length -= 1;
-                var buffer = new byte[length];
-                int l = 0;
-                while (l < length)
+                int r = _stream.Read(buffer, l, (int)length - l);
+                if (r == 0)
                 {
-                    int r = _stream.Read(buffer, l, (int)length - l);
-                    if (r == 0)
-                    {
-                        throw new EndOfStreamException();
-                    }
-                    l += r;
+                    throw new EndOfStreamException();
                 }
-                return _encoding.GetString(buffer);
+                l += r;
             }
+            return _encoding.GetString(buffer);
         }
 
         public DateTime ReadDateTime()
@@ -533,9 +512,7 @@ namespace Nemo.Serialization
                     return ReadUri();
                 case ObjectTypeCode.DBNull:
                     return DBNull.Value;
-                case ObjectTypeCode.Object:
-                    return new BinaryFormatter().Deserialize(_stream);
-                case ObjectTypeCode.ObjectList:
+                case ObjectTypeCode.SimpleList:
                     {
                         var objectList = (IList)objectType.New();
                         ReadList(objectList, objectType.GetGenericArguments()[0]);
@@ -548,17 +525,18 @@ namespace Nemo.Serialization
                         ReadDictionary(objectMap, genericArgs[0], genericArgs[1]);
                         return objectMap;
                     }
-                case ObjectTypeCode.DataEntity:
+                case ObjectTypeCode.Object:
                     {
                         var deserializer = CreateDelegate(objectType);
-                        var dataEntitys = deserializer(this, 1);
-                        if (dataEntitys != null && dataEntitys.Length > 0)
+                        var dataEntities = deserializer(this, 1);
+                        if (dataEntities != null && dataEntities.Length > 0)
                         {
-                            return dataEntitys[0];
+                            return dataEntities[0];
                         }
                         return null;
                     }
-                case ObjectTypeCode.DataEntityList:
+                case ObjectTypeCode.ObjectList:
+                case ObjectTypeCode.PolymorphicObjectList:
                     {
                         var itemCount = (int)ReadUInt32();
 
@@ -585,11 +563,27 @@ namespace Nemo.Serialization
                         }
 
                         var list = List.Create(objectType, distinctAttribute, sortedAttribute);
-                        var deserializer = CreateDelegate(objectType);
-                        var dataEntitys = deserializer(this, itemCount);
-                        for (var i = 0; i < dataEntitys.Length; i++ )
+
+                        if (typeCode == ObjectTypeCode.PolymorphicObjectList)
                         {
-                            list.Add(dataEntitys[i]);
+                            var elementTypes = ReadList<string>().Select(t => Type.GetType(t, false)).ToArray();
+
+                            for (var i = 0; i < itemCount; i++)
+                            {
+                                var pos = ReadInt32();
+
+                                var dataEntity = ReadObject(elementTypes[pos], ObjectTypeCode.Object, false);
+                                list.Add(dataEntity);
+                            }
+                        }
+                        else
+                        {
+                            var deserializer = CreateDelegate(objectType);
+                            var dataEntities = deserializer(this, itemCount);
+                            for (var i = 0; i < dataEntities.Length; i++)
+                            {
+                                list.Add(dataEntities[i]);
+                            }
                         }
                         return list;
                     }
@@ -658,8 +652,8 @@ namespace Nemo.Serialization
         {
             var typeLength = BitConverter.ToInt32(buffer.Slice(0, 4), 0);
             var typeName = Encoding.UTF8.GetString(buffer.Slice(4, typeLength));
-            var reader = SerializationReader.CreateReader(buffer.Slice(4 + typeLength, buffer.Length - 1));
-            var result = reader.ReadObject(SerializationReader.GetType(typeName));
+            var reader = CreateReader(buffer.Slice(4 + typeLength, buffer.Length - 1));
+            var result = reader.ReadObject(GetType(typeName));
             return result;
         }
 
@@ -669,10 +663,7 @@ namespace Nemo.Serialization
             {
                 return Reflector.ChangeType(value, objectType);
             }
-            else
-            {
-                return value;
-            }
+            return value;
         }
 
         private ObjectDeserializer CreateDelegate(Type objectType)
@@ -703,7 +694,7 @@ namespace Nemo.Serialization
 
         private ObjectDeserializer CreateDeserializer(Type objectType, int propertyCount, ref bool exists)
         {
-            var dataEntity = ObjectFactory.Create(objectType);
+            var dataEntityType = objectType.IsInterface ? ObjectFactory.Create(objectType).GetType() : objectType;
             var propertyNames = new List<string>();
             if (_includePropertyNames)
             {
@@ -713,7 +704,7 @@ namespace Nemo.Serialization
                 }
             }
             exists = false;
-            return GenerateDelegate(dataEntity.GetType(), propertyNames);
+            return GenerateDelegate(dataEntityType, propertyNames);
         }
 
         private ObjectDeserializer GenerateDelegate(Type objectType, List<string> propertyNames)
@@ -721,7 +712,7 @@ namespace Nemo.Serialization
             var method = new DynamicMethod("Deserialize_" + objectType.Name, typeof(object[]), new[] { typeof(SerializationReader), typeof(int) }, typeof(SerializationReader).Module);
             var il = method.GetILGenerator();
 
-            var readObject = this.GetType().GetMethod("ReadObject", new[] { typeof(Type), typeof(ObjectTypeCode), typeof(bool) });
+            var readObject = GetType().GetMethod("ReadObject", new[] { typeof(Type), typeof(ObjectTypeCode), typeof(bool) });
             var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
 
             var interfaceType = objectType;

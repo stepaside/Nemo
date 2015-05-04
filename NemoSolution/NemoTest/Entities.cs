@@ -272,4 +272,53 @@ namespace NemoTest
             modelBuilder.Entity<Order>().Property(x => x.CustomerId).HasColumnName("CustomerID");
         }
     }
+
+    public abstract class Person
+    {
+        protected Person()
+        {
+        }
+
+        public virtual string Name { get; set; }
+
+        public DateTime DateOfBirth { get; set; }
+    }
+
+    public class Manager : Employee
+    {
+        public Manager()
+        {
+            Employees = new List<Employee>();
+        }
+
+        public List<Employee> Employees { get; set; }
+    }
+
+    public class Employee : Person
+    {
+        public override string Name { get; set; }
+
+        public DateTime HireDate { get; set; }
+
+        //public Employee Manager { get; set; }
+    }
+
+    public class Vendor : Person
+    {
+        public override string Name { get; set; }
+
+        public decimal CreditLimit { get; set; }
+    }
+
+    public class Company
+    {
+        public Company()
+        {
+            Contacts = new List<Person>();
+        }
+
+        public string Name { get; set; }
+
+        public List<Person> Contacts { get; set; }
+    }
 }
