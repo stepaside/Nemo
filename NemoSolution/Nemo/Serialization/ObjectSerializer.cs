@@ -75,7 +75,7 @@ namespace Nemo.Serialization
             return Serialize(dataEntity, ConfigurationFactory.Get<T>().DefaultSerializationMode);
         }
 
-        internal static byte[] Serialize<T>(this T dataEntity, SerializationMode mode)
+        public static byte[] Serialize<T>(this T dataEntity, SerializationMode mode)
             where T : class
         {
             byte[] buffer;
@@ -95,7 +95,7 @@ namespace Nemo.Serialization
             return Serialize(dataEntityCollection, ConfigurationFactory.Get<T>().DefaultSerializationMode);
         }
 
-        internal static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> dataEntityCollection, SerializationMode mode)
+        public static IEnumerable<byte[]> Serialize<T>(this IEnumerable<T> dataEntityCollection, SerializationMode mode)
             where T : class
         {
             return dataEntityCollection.Where(e => e != null).Select(e => e.Serialize(mode));
@@ -111,7 +111,7 @@ namespace Nemo.Serialization
             T result;
             using (var reader = SerializationReader.CreateReader(data))
             {
-                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.Object, typeof(IConvertible).IsAssignableFrom(typeof(T)));
+                result = (T)reader.ReadObject(typeof(T), ObjectTypeCode.Object, false);
             }
             return result;
         }
