@@ -114,110 +114,106 @@ namespace Nemo.Serialization
             if (value != null)
             {
                 var objectType = value.GetType();
-                var typeCode = Type.GetTypeCode(objectType);
+                var typeCode = Reflector.GetObjectTypeCode(objectType);
                 var isText = false;
-                if (typeCode != TypeCode.DBNull)
+                if (typeCode != ObjectTypeCode.DBNull)
                 {
                     string jsonValue = null;
                     switch (typeCode)
                     {
-                        case TypeCode.Boolean:
+                        case ObjectTypeCode.Boolean:
                             jsonValue = ((bool)value).ToString().ToLower();
                             break;
-                        case TypeCode.String:
+                        case ObjectTypeCode.String:
                             jsonValue = (string)value;
                             isText = true;
                             break;
-                        case TypeCode.DateTime:
+                        case ObjectTypeCode.DateTime:
                             jsonValue = XmlConvert.ToString((DateTime)value, XmlDateTimeSerializationMode.Utc);
                             isText = true;
                             break;
-                        case TypeCode.Byte:
-                        case TypeCode.UInt16:
-                        case TypeCode.UInt32:
-                        case TypeCode.UInt64:
-                        case TypeCode.SByte:
-                        case TypeCode.Int16:
-                        case TypeCode.Int32:
-                        case TypeCode.Int64:
-                        case TypeCode.Char:
-                        case TypeCode.Single:
-                        case TypeCode.Double:
-                        case TypeCode.Decimal:
+                        case ObjectTypeCode.Byte:
+                        case ObjectTypeCode.UInt16:
+                        case ObjectTypeCode.UInt32:
+                        case ObjectTypeCode.UInt64:
+                        case ObjectTypeCode.SByte:
+                        case ObjectTypeCode.Int16:
+                        case ObjectTypeCode.Int32:
+                        case ObjectTypeCode.Int64:
+                        case ObjectTypeCode.Char:
+                        case ObjectTypeCode.Single:
+                        case ObjectTypeCode.Double:
+                        case ObjectTypeCode.Decimal:
                             jsonValue = Convert.ToString(value);
                             break;
-                        default:
-                            if (objectType == typeof(DateTimeOffset))
+                        case ObjectTypeCode.DateTimeOffset:
+                            jsonValue = XmlConvert.ToString((DateTimeOffset)value);
+                            isText = true;
+                            break;
+                        case ObjectTypeCode.TimeSpan:
+
+                            jsonValue = XmlConvert.ToString((TimeSpan)value);
+                            isText = true;
+                            break;
+                        case ObjectTypeCode.Guid:
+
+                            jsonValue = ((Guid)value).ToString("D");
+                            isText = true;
+                            break;
+                        case ObjectTypeCode.ObjectMap:
+                            var map = (IDictionary)value;
+                            Write(name != null ? string.Format("\"{0}\":{{", name) : "{", output);
+                            WriteDictionary(map, output);
+                            Write("}", output);
+                            if (hasMore)
                             {
-                                jsonValue = XmlConvert.ToString((DateTimeOffset)value);
-                                isText = true;
+                                Write(",", output);
                             }
-                            else if (objectType == typeof(TimeSpan))
+                            break;
+                        case ObjectTypeCode.ObjectList:
+                        case ObjectTypeCode.PolymorphicObjectList:
+                        {
+                            var list = (IList)value;
+                            Write(name != null ? string.Format("\"{0}\":[", name) : "[", output);
+                            var isPolymorphicList = typeCode == ObjectTypeCode.PolymorphicObjectList;
+                            for (var i = 0; i < list.Count; i++)
                             {
-                                jsonValue = XmlConvert.ToString((TimeSpan)value);
-                                isText = true;
-                            }
-                            else if (objectType == typeof(Guid))
-                            {
-                                jsonValue = ((Guid)value).ToString("D");
-                                isText = true;
-                            }
-                            else
-                            {
-                                var map = value as IDictionary;
-                                if (map != null)
+                                var elementType = list[i].GetType();
+                                var serializer = CreateDelegate(elementType, isPolymorphicList);
+                                serializer(list[i], output, compact);
+                                if (i < list.Count - 1)
                                 {
-                                    Write(name != null ? string.Format("\"{0}\":{", name) : "{", output);
-                                    WriteDictionary(map, output);
-                                    Write("}", output);
-                                    if (hasMore)
-                                    {
-                                        Write(",", output);
-                                    }
-                                }
-                                else
-                                {
-                                    var list = value as IList;
-                                    if (list != null)
-                                    {
-                                        Write(name != null ? string.Format("\"{0}\":[", name) : "[", output);
-                                        var items = list.Cast<object>().ToArray();
-                                        if (items.Length > 0 && (items[0] is IDataEntity || !Reflector.IsSimpleType(items[0].GetType())))
-                                        {
-                                            var args = list.GetType().GetGenericArguments();
-                                            var isPolymorphicList = args.Length == 1 && args[0].IsAbstract && !args[0].IsInterface;
-                                            for (var i = 0; i < items.Length; i++)
-                                            {
-                                                var elementType = items[i].GetType();
-                                                var serializer = CreateDelegate(elementType, isPolymorphicList);
-                                                serializer(items[i], output, compact);
-                                                if (i < items.Length - 1)
-                                                {
-                                                    Write(",", output);
-                                                }
-                                            }
-                                        }
-                                        else
-                                        {
-                                            WriteList(list, output);
-                                        }
-                                        Write("]", output);
-                                        if (hasMore)
-                                        {
-                                            Write(",", output);
-                                        }
-                                    }
-                                    else 
-                                    {
-                                        var serializer = CreateDelegate(objectType);
-                                        serializer(value, output, compact);
-                                        if (hasMore)
-                                        {
-                                            Write(",", output);
-                                        }
-                                    }
+                                    Write(",", output);
                                 }
                             }
+                            Write("]", output);
+                            if (hasMore)
+                            {
+                                Write(",", output);
+                            }
+                        }
+                            break;
+                        case ObjectTypeCode.SimpleList:
+                        {
+                            var list = (IList)value;
+                            Write(name != null ? string.Format("\"{0}\":[", name) : "[", output);
+                            WriteList(list, output);
+                            Write("]", output);
+                            if (hasMore)
+                            {
+                                Write(",", output);
+                            }
+                        }
+                            break;
+                        case ObjectTypeCode.Object:
+                        {
+                            var serializer = CreateDelegate(objectType);
+                            serializer(value, output, compact);
+                            if (hasMore)
+                            {
+                                Write(",", output);
+                            }
+                        }
                             break;
                     }
 
@@ -230,10 +226,10 @@ namespace Nemo.Serialization
 
                         if (isText)
                         {
-                            Write(string.Format("\"", name), output);
+                            Write("\"", output);
                         }
 
-                        if (typeCode == TypeCode.String)
+                        if (typeCode == ObjectTypeCode.String)
                         {
                             WriteString(jsonValue, output);
                         }
