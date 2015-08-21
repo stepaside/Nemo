@@ -1,4 +1,5 @@
-﻿using Nemo.Attributes;
+﻿using System.Threading.Tasks;
+using Nemo.Attributes;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
@@ -25,7 +26,7 @@ using ObjectActivator = Nemo.Reflection.Activator.ObjectActivator;
 
 namespace Nemo
 {
-    public static class ObjectFactory
+    public static partial class ObjectFactory
     {
         #region Declarations
 
@@ -984,7 +985,7 @@ namespace Nemo
         {
             var rootType = types != null ? types[0] : null;
 
-            DbConnection dbConnection = null;
+            DbConnection dbConnection ;
             var closeConnection = false;
 
             if (transaction != null)
@@ -1023,7 +1024,7 @@ namespace Nemo
             command.CommandTimeout = 0;
             if (parameters != null)
             {
-                for (int i = 0; i < parameters.Count; ++i)
+                for (var i = 0; i < parameters.Count; ++i)
                 {
                     var parameter = parameters[i];
                     var dbParam = command.CreateParameter();
@@ -1038,14 +1039,7 @@ namespace Nemo
                             dbParam.Size = parameter.Size;
                         }
 
-                        if (!parameter.DbType.HasValue)
-                        {
-                            dbParam.DbType = Reflector.ClrToDbType(parameter.Type);
-                        }
-                        else
-                        {
-                            dbParam.DbType = parameter.DbType.Value;
-                        }
+                        dbParam.DbType = !parameter.DbType.HasValue ? Reflector.ClrToDbType(parameter.Type) : parameter.DbType.Value;
                     }
 
                     if (dbParam.Direction == ParameterDirection.Output)
@@ -1066,8 +1060,7 @@ namespace Nemo
                 dbConnection.Open();
             }
 
-            var response = new OperationResponse();
-            response.ReturnType = returnType;
+            var response = new OperationResponse { ReturnType = returnType };
             try
             {
                 switch (returnType)
@@ -1079,17 +1072,17 @@ namespace Nemo
                     case OperationReturnType.SingleResult:
                     case OperationReturnType.SingleRow:
                         var behavior = CommandBehavior.Default;
-                        if (returnType == OperationReturnType.SingleResult)
+                        switch (returnType)
                         {
-                            behavior = CommandBehavior.SingleResult;
-                        }
-                        else if (returnType == OperationReturnType.SingleRow)
-                        {
-                            behavior = CommandBehavior.SingleRow;
-                        }
-                        else
-                        {
-                            closeConnection = false;
+                            case OperationReturnType.SingleResult:
+                                behavior = CommandBehavior.SingleResult;
+                                break;
+                            case OperationReturnType.SingleRow:
+                                behavior = CommandBehavior.SingleRow;
+                                break;
+                            default:
+                                closeConnection = false;
+                                break;
                         }
 
                         if (closeConnection)
@@ -1121,19 +1114,11 @@ namespace Nemo
                             {
                                 for (var i = 0; i < set.Tables.Count; i++)
                                 {
-                                    Type tableType = types.ElementAtOrDefault(i);
+                                    var tableType = types.ElementAtOrDefault(i);
                                     if (tableType != null)
                                     {
                                         set.Tables[i].TableName = GetTableName(tableType);
                                     }
-                                }
-                            }
-                            else
-                            {
-                                var tableName = rootType != null ? GetTableName(rootType) : null;
-                                if (tableName.NullIfEmpty() != null)
-                                {
-                                    set.Tables[0].TableName = tableName;
                                 }
                             }
                             response.Value = set;
@@ -1207,7 +1192,7 @@ namespace Nemo
             where T : class
         {
             var config = ConfigurationFactory.Get<T>();
-            return Translate<T>(response, null, null, config.DefaultL1CacheRepresentation != L1CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
+            return Translate(response, null, null, config.DefaultL1CacheRepresentation != L1CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
         }
 
         private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, IdentityMap<T> identityMap)

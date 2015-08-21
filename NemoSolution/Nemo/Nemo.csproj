@@ -105,6 +105,7 @@
     </Compile>
     <Compile Include="Linq\NemoQueryContext.cs" />
     <Compile Include="Linq\NemoQueryProvider.cs" />
+    <Compile Include="ObjectFactoryAsync.cs" />
     <Compile Include="ParamList.cs" />
     <Compile Include="Reflection\ReflectedProperty.cs" />
     <Compile Include="Attributes\DoNotSelectAttribute.cs" />
