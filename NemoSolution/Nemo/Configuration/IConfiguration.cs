@@ -21,6 +21,7 @@ namespace Nemo.Configuration
         bool GenerateUpdateSql { get; }
         IAuditLogProvider AuditLogProvider { get; }
         IExecutionContext ExecutionContext { get; }
+        string HiLoTableName { get; }
 
         IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value);
         IConfiguration SetLogging(bool value);
@@ -36,6 +37,7 @@ namespace Nemo.Configuration
         IConfiguration SetGenerateUpdateSql(bool value);
         IConfiguration SetAuditLogProvider(IAuditLogProvider value);
         IConfiguration SetExecutionContext(IExecutionContext value);
+        IConfiguration SetHiLoTableName(string value);
 
         IConfiguration Merge(IConfiguration configuration);
     }

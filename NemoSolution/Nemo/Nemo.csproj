@@ -79,6 +79,7 @@
     <Compile Include="Configuration\Mapping\IPropertyMap.cs" />
     <Compile Include="Configuration\Mapping\MappingFactory.cs" />
     <Compile Include="Configuration\Mapping\PropertyMap.cs" />
+    <Compile Include="Id\HiLoGenerator.cs" />
     <Compile Include="L1CacheRepresentation.cs" />
     <Compile Include="Data\OracleDialectProvider.cs" />
     <Compile Include="Data\MySqlDialectProvider.cs" />

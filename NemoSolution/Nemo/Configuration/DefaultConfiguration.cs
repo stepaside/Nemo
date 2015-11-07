@@ -25,6 +25,7 @@ namespace Nemo.Configuration
         private bool _generateUpdateSql;
         private IAuditLogProvider _auditLogProvider;
         private IExecutionContext _executionContext = DefaultExecutionContext.Current;
+        private string _hiLoTableName;
 
         public L1CacheRepresentation DefaultL1CacheRepresentation
         {
@@ -112,6 +113,11 @@ namespace Nemo.Configuration
             {
                 return _executionContext;
             }
+        }
+
+        public string HiLoTableName
+        {
+            get { return _hiLoTableName ?? Config.AppSettings("HiLoTableName", "HiLoIdGenerator"); }
         }
 
         public IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value)
@@ -210,6 +216,12 @@ namespace Nemo.Configuration
             return this;
         }
 
+        public IConfiguration SetHiLoTableName(string value)
+        {
+            _hiLoTableName = value;
+            return this;
+        }
+
         private static L1CacheRepresentation ParseExecutionContextCacheConfig()
         {
             return Config.AppSettings("DefaultExecutionContextCacheType", L1CacheRepresentation.LazyList);
@@ -266,6 +278,8 @@ namespace Nemo.Configuration
             mergedConfig.SetOperationNamingConvention(_operationNamingConvention.HasValue ? _operationNamingConvention.Value : configuration.OperationNamingConvention);
 
             mergedConfig.SetOperationPrefix(_operationPrefix ?? configuration.OperationPrefix);
+
+            mergedConfig.SetHiLoTableName(_hiLoTableName ?? configuration.HiLoTableName);
 
             return mergedConfig;
         }
