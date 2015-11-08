@@ -34,6 +34,7 @@ namespace Nemo.Data
 
         public string AutoIncrementComputation { get; protected set; }
         public string TemporaryTableCreation { get; protected set; }
+        public string ConditionalTableCreation { get; protected set; }
         public string VariableDeclaration { get; protected set; }
         public string VariableAssignment { get; protected set; }
         public string VariableEvaluation { get; protected set; }
@@ -70,6 +71,11 @@ namespace Nemo.Data
             throw new NotImplementedException();
         }
 
+        public virtual string CreateTableIfNotExists(string tableName, Dictionary<string, Tuple<DbType, int>> coulmns)
+        {
+            throw new NotImplementedException();
+        }
+
         public virtual string AssignVariable(string variableName, object value)
         {
             throw new NotImplementedException();
@@ -90,39 +96,53 @@ namespace Nemo.Data
             switch (dbType)
             {
                 case DbType.AnsiString:
-                    return this.AnsiStringDefinition;
+                    return AnsiStringDefinition;
                 case DbType.AnsiStringFixedLength:
                     return "CHAR";
                 case DbType.Binary:
-                    return this.BlobDefition;
+                    return BlobDefition;
                 case DbType.Boolean:
-                    return this.BooleanDefinition;
+                    return BooleanDefinition;
                 case DbType.Byte:
-                    return this.ByteDefinition;
+                    return ByteDefinition;
                 case DbType.Double:
                     return DoubleDefinition;
                 case DbType.Guid:
-                    return this.GuidDefinition;
+                    return GuidDefinition;
                 case DbType.Int16:
-                    return this.SmallIntDefinition;
+                    return SmallIntDefinition;
                 case DbType.Int32:
-                    return this.IntDefinition;
+                    return IntDefinition;
                 case DbType.Int64:
-                    return this.BigIntDefinition;
+                    return BigIntDefinition;
                 case DbType.Single:
-                    return this.SingleDefinition;
+                    return SingleDefinition;
                 case DbType.String:
-                    return this.StringDefinition;
+                    return StringDefinition;
                 case DbType.StringFixedLength:
                     return "NCHAR";
                 case DbType.Date:
-                    return this.DateDefinition;
+                    return DateDefinition;
                 case DbType.DateTime:
-                    return this.DateTimeDefinition;
+                    return DateTimeDefinition;
                 case DbType.Time:
-                    return this.TimeDefinition;
+                    return TimeDefinition;
             }
             return null;
+        }
+
+        public virtual bool RequiresSize(DbType dbType)
+        {
+            switch (dbType)
+            {
+                case DbType.AnsiString:
+                case DbType.AnsiStringFixedLength:
+                case DbType.String:
+                case DbType.StringFixedLength:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         protected abstract string PagingTemplate { get; }

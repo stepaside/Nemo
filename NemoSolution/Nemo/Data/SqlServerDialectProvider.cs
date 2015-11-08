@@ -38,6 +38,7 @@ namespace Nemo.Data
             IdentifierEscapeStartCharacter = "[";
             IdentifierEscapeEndCharacter = "]";
             SupportsTemporaryTables = true;
+            ConditionalTableCreation = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='{0}' AND xtype='U') CREATE TABLE [{1}] ({2});";
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)
@@ -49,6 +50,14 @@ namespace Nemo.Data
         {
             var definition = coulmns.Select(d => string.Format("{2}{0}{3} {1}", d.Key, GetColumnType(d.Value), IdentifierEscapeStartCharacter, IdentifierEscapeEndCharacter)).ToDelimitedString(",");
             return string.Format(TemporaryTableCreation, GetTemporaryTableName(tableName), definition);
+        }
+
+        public override string CreateTableIfNotExists(string tableName, Dictionary<string, Tuple<DbType, int>> coulmns)
+        {
+            var definition =
+                coulmns.Select(d => string.Format("{2}{0}{3} {1}{4}", d.Key, GetColumnType(d.Value.Item1), IdentifierEscapeStartCharacter, IdentifierEscapeEndCharacter, RequiresSize(d.Value.Item1) && d.Value.Item2 > 0 ? "(" + d.Value.Item2 + ")" : ""))
+                    .ToDelimitedString(",");
+            return string.Format(ConditionalTableCreation, tableName.Replace("'", "''"), tableName, definition);
         }
 
         public override string DeclareVariable(string variableName, DbType dbType)

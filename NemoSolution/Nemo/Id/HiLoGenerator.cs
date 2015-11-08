@@ -19,10 +19,11 @@ namespace Nemo.Id
         private readonly int _maxLo;
         private long _currentHi;
         private int _currentLo;
+        private bool _hasTable;
 
         private readonly object _locker = new object();
         private const string GenerateSql = @"SELECT next_hi FROM {1}{0}{2} WHERE entity_type = {3}{4}; UPDATE {1}{0}{2} SET next_hi = next_hi + 1 WHERE entity_type = {3}{5} AND next_hi = {3}{6};";
-
+        
         public HiLoGenerator(object entity, PropertyInfo property)
             : this(entity, property, 1000)
         {
@@ -79,10 +80,16 @@ namespace Nemo.Id
 
         private void MoveNextHi()
         {
+            if (!_hasTable)
+            {
+                CreateTableIfNotExists();
+                _hasTable = true;
+            }
+
             var config = ConfigurationFactory.Get(_entityType);
             var connectionName = _connectionName ?? config.DefaultConnectionName;
             var dialect = DialectFactory.GetProvider(connectionName);
-
+            
             using (var connection = DbFactory.CreateConnection(connectionName, _entityType))
             {
                 connection.Open();
@@ -119,6 +126,31 @@ namespace Nemo.Id
 
                         _currentHi = (long)command.ExecuteScalar();
 
+                        tx.Commit();
+                    }
+                    connection.Close();
+                }
+            }
+        }
+
+        private void CreateTableIfNotExists()
+        {
+            var config = ConfigurationFactory.Get(_entityType);
+            var connectionName = _connectionName ?? config.DefaultConnectionName;
+            var dialect = DialectFactory.GetProvider(connectionName);
+
+            using (var connection = DbFactory.CreateConnection(connectionName, _entityType))
+            {
+                connection.Open();
+                using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
+                {
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.Transaction = tx;
+                        command.CommandText = dialect.CreateTableIfNotExists(config.HiLoTableName,
+                            new Dictionary<string, Tuple<DbType, int>> { { "next_hi", Tuple.Create(DbType.Int64, 0) }, { "entity_type", Tuple.Create(DbType.AnsiString, 128) } });
+                        command.CommandType = CommandType.Text;
+                        command.ExecuteNonQuery();
                         tx.Commit();
                     }
                     connection.Close();
