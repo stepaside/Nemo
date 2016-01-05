@@ -820,21 +820,113 @@ namespace Nemo
         #endregion
 
         #region Insert/Update/Delete/Execute Methods
-
-        public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class
+        
+        private static IEnumerable<OperationRequest> BuildBatchInsert<T>(IEnumerable<T> items, DbTransaction transaction, bool captureException, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, DialectProvider provider, int batchSize = 500)
+             where T : class
         {
-            return Insert<T>(parameters.GetParameters(typeof(T), OperationInsert), connectionName, captureException, schema);
+            var statementId = 0;
+            var insertSql = new StringBuilder();
+            var insertParameters = new List<Param>();
+
+            var batches = items.Split(batchSize <= 0 ? 500 : batchSize);
+            foreach (var batch in batches)
+            {
+                foreach (var item in batch)
+                {
+                    var parameters = ObjectExtensions.GetInsertParameters(item, propertyMap, statementId++);
+                    var sql = SqlBuilder.GetInsertStatement(typeof(T), parameters, provider);
+                    insertSql.Append(sql).AppendLine(";");
+                    insertParameters.AddRange(parameters);
+                }
+
+                var request = new OperationRequest
+                {
+                    Parameters = insertParameters,
+                    ReturnType = OperationReturnType.NonQuery,
+                    Transaction = transaction,
+                    CaptureException = captureException,
+                    OperationType = OperationType.Sql,
+                    Operation = insertSql.ToString()
+                };
+
+                yield return request;
+            }
         }
 
-        public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static long Insert<T>(IEnumerable<T> items, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var count = 0L;
+            var connectionOpenedHere = false;
+            var externalTransaction = transaction != null;
+            var externalConnection = externalTransaction || connection != null;
+            var config = ConfigurationFactory.Get<T>();
+            if (externalTransaction)
+            {
+                connection = transaction.Connection;
+            }
+            if (!externalConnection)
+            {
+                connection = DbFactory.CreateConnection(connectionName ?? config.DefaultConnectionName);
+            }
+
+            try
+            {
+                if (connection.State != ConnectionState.Open)
+                {
+                    connection.Open();
+                    connectionOpenedHere = true;
+                }
+                if (transaction == null)
+                {
+                    transaction = connection.BeginTransaction();
+                }
+
+                var propertyMap = Reflector.GetPropertyMap<T>();
+                var provider = DialectFactory.GetProvider(transaction.Connection);
+
+                var requests = BuildBatchInsert(items, transaction, captureException, propertyMap, provider);
+                count = requests.Select(Execute<T>).Where(response => !response.HasErrors).Aggregate(count, (current, response) => current + response.RecordsAffected);
+                transaction.Commit();
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                if (transaction != null)
+                {
+                    transaction.Rollback();
+                }
+                throw;
+            }
+            finally
+            {
+                if (connectionOpenedHere)
+                {
+                    connection.Clone();
+                }
+
+                if (!externalConnection)
+                {
+                    connection.Dispose();
+                }
+            }
+        }
+
+        public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
+            where T : class
+        {
+            return Insert<T>(parameters.GetParameters(typeof(T), OperationInsert), connectionName, captureException, schema, connection);
+        }
+
+        public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
+            where T : class
+        {
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
             var config = ConfigurationFactory.Get<T>();
             if (config.GenerateInsertSql)
             {
-                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -847,16 +939,16 @@ namespace Nemo
             return response;
         }
 
-        public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            return Update<T>(parameters.GetParameters(typeof(T), OperationUpdate), connectionName, captureException, schema);
+            return Update<T>(parameters.GetParameters(typeof(T), OperationUpdate), connectionName, captureException, schema, connection);
         }
 
-        public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
             var config = ConfigurationFactory.Get<T>();
             if (config.GenerateUpdateSql)
             {
@@ -880,7 +972,7 @@ namespace Nemo
                     });
                 }
 
-                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -893,16 +985,16 @@ namespace Nemo
             return response;
         }
 
-        public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            return Delete<T>(parameters.GetParameters(typeof(T), OperationDelete), connectionName, captureException);
+            return Delete<T>(parameters.GetParameters(typeof(T), OperationDelete), connectionName, captureException, schema, connection);
         }
 
-        public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
             var config = ConfigurationFactory.Get<T>();
             if (config.GenerateDeleteSql)
             {
@@ -942,7 +1034,7 @@ namespace Nemo
                     });
                 }
                 
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName), softDeleteColumn);
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), partition.Item1, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName), softDeleteColumn);
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -955,20 +1047,20 @@ namespace Nemo
             return response;
         }
 
-        public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            return Destroy<T>(parameters.GetParameters(typeof(T), OperationDestroy), connectionName, captureException, schema);
+            return Destroy<T>(parameters.GetParameters(typeof(T), OperationDestroy), connectionName, captureException, schema, connection);
         }
 
-        public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException, SchemaName = schema };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
             var config = ConfigurationFactory.Get<T>();
             if (config.GenerateDeleteSql)
             {
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else

@@ -11,15 +11,14 @@ using Nemo.Data;
 using Nemo.Extensions;
 using Nemo.Reflection;
 using Nemo.Serialization;
-using System.Diagnostics;
 using System.Collections.Concurrent;
 
 namespace Nemo.UnitOfWork
 {
     public static class ObjectScopeExtensions
     {
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _commitMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _rollbackMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> CommitMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> RollbackMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
 
         public static bool Commit<T>(this T dataEntity)
             where T : class
@@ -29,32 +28,97 @@ namespace Nemo.UnitOfWork
 
             if (context != null)
             {
+                DbTransaction transaction = null;
                 if (context.ChangeTracking == ChangeTrackingMode.Automatic)
                 {
-                    using (var connection = DbFactory.CreateConnection(null, typeof(T)))
+                    var connection = context.Connection ?? DbFactory.CreateConnection(null, typeof(T));
+                    var externalConnection = context.Connection != null;
+                    var openConnectionRequired = !externalConnection || context.Connection.State != ConnectionState.Open;
+                    try
                     {
-                        connection.Open();
+                        if (openConnectionRequired) connection.Open();
+                        if (context.Transaction == null)
+                        {
+                            transaction = connection.BeginTransaction();
+                        }
+
                         var changes = CompareObjects((IDataEntity)dataEntity, (IDataEntity)dataEntity.Old());
                         var statement = GetCommitStatement(changes, connection);
                         if (!string.IsNullOrEmpty(statement.Item1))
                         {
-                            var response = ObjectFactory.Execute<T>(new OperationRequest { Operation = statement.Item1, OperationType = OperationType.Sql, Parameters = statement.Item2, Connection = connection, ReturnType = OperationReturnType.DataTable });
+                            var response =
+                                ObjectFactory.Execute<T>(new OperationRequest
+                                {
+                                    Operation = statement.Item1,
+                                    OperationType = OperationType.Sql,
+                                    Parameters = statement.Item2,
+                                    Connection = connection,
+                                    ReturnType = OperationReturnType.DataTable,
+                                    Transaction = transaction
+                                });
                             success = response.Value != null;
                             if (success)
                             {
                                 SetGeneratedPropertyValues(statement.Item3, (DataTable)response.Value);
                             }
                         }
+
+                        if (transaction != null)
+                        {
+                            transaction.Commit();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (transaction != null)
+                        {
+                            transaction.Rollback();
+                        }
+                        throw;
+                    }
+                    finally
+                    {
+                        if (!externalConnection)
+                        {
+                            connection.Dispose();
+                        }
                     }
                 }
                 else if (context.ChangeTracking == ChangeTrackingMode.Debug)
                 {
-                    using (var connection = DbFactory.CreateConnection(null, typeof(T)))
+                    var connection = context.Connection ?? DbFactory.CreateConnection(null, typeof(T));
+                    var externalConnection = context.Connection != null;
+                    var openConnectionRequired = !externalConnection || context.Connection.State != ConnectionState.Open;
+                    try
                     {
-                        connection.Open();
+                        if (openConnectionRequired) connection.Open();
+                        if (context.Transaction == null)
+                        {
+                            transaction = connection.BeginTransaction();
+                        }
                         var changes = CompareObjects((IDataEntity)dataEntity, (IDataEntity)dataEntity.Old());
                         var statement = GetCommitStatement(changes, connection);
                         Console.WriteLine(statement.Item1);
+
+                        if (transaction != null)
+                        {
+                            transaction.Commit();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (transaction != null)
+                        {
+                            transaction.Rollback();
+                        }
+                        throw;
+                    }
+                    finally
+                    {
+                        if (!externalConnection)
+                        {
+                            connection.Dispose();
+                        }
                     }
                 }
 
@@ -66,19 +130,20 @@ namespace Nemo.UnitOfWork
                 if (success)
                 {
                     context.Cleanup();
+
+                    if (context.Transaction != null)
+                    {
+                        context.Transaction.Complete();
+                    }
                 }
             }
-
-            if (success && context.Transaction != null)
-            {
-                context.Transaction.Complete();
-            }
+            
             return success;
         }
         
         internal static bool Commit(this object dataEntity, Type objectType)
         {
-            var methodHandle = _commitMethods.GetOrAdd(objectType, type => 
+            var methodHandle = CommitMethods.GetOrAdd(objectType, type => 
             {
                 var commitMethod = typeof(ObjectScopeExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public).FirstOrDefault(m => m.Name == "Commit");
                 var genericCommitMethod = commitMethod.MakeGenericMethod(type);
@@ -104,7 +169,7 @@ namespace Nemo.UnitOfWork
 
         internal static bool Rollback(this object dataEntity, Type objectType)
         {
-            var methodHandle = _rollbackMethods.GetOrAdd(objectType, type =>
+            var methodHandle = RollbackMethods.GetOrAdd(objectType, type =>
             {
                 var rollbackMethod = typeof(ObjectScopeExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public).FirstOrDefault(m => m.Name == "Rollback");
                 var genericRollbackMethod = rollbackMethod.MakeGenericMethod(type);

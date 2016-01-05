@@ -344,20 +344,87 @@ namespace Nemo
 
         #region Insert/Update/Delete/Execute Methods
 
-        public static async Task<OperationResponse> InsertAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
-            where T : class
+        public static async Task<long> InsertAsync<T>(IEnumerable<T> items, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false)
+           where T : class
         {
-            return await InsertAsync<T>(parameters.GetParameters(typeof(T), OperationInsert), connectionName, captureException, schema);
+            var count = 0L;
+            var connectionOpenedHere = false;
+            var externalTransaction = transaction != null;
+            var externalConnection = externalTransaction || connection != null;
+            var config = ConfigurationFactory.Get<T>();
+            if (externalTransaction)
+            {
+                connection = transaction.Connection;
+            }
+            if (!externalConnection)
+            {
+                connection = DbFactory.CreateConnection(connectionName ?? config.DefaultConnectionName);
+            }
+
+            try
+            {
+                if (connection.State != ConnectionState.Open)
+                {
+                    connection.Open();
+                    connectionOpenedHere = true;
+                }
+                if (transaction == null)
+                {
+                    transaction = connection.BeginTransaction();
+                }
+
+                var propertyMap = Reflector.GetPropertyMap<T>();
+                var provider = DialectFactory.GetProvider(transaction.Connection);
+
+                var requests = BuildBatchInsert(items, transaction, captureException, propertyMap, provider);
+                foreach (var request in requests)
+                {
+                    var response = await ExecuteAsync<T>(request);
+                    if (!response.HasErrors)
+                    {
+                        count += response.RecordsAffected;
+                    }
+                }
+                transaction.Commit();
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                if (transaction != null)
+                {
+                    transaction.Rollback();
+                }
+                throw;
+            }
+            finally
+            {
+                if (connectionOpenedHere)
+                {
+                    connection.Clone();
+                }
+
+                if (!externalConnection)
+                {
+                    connection.Dispose();
+                }
+            }
         }
 
-        public static async Task<OperationResponse> InsertAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static async Task<OperationResponse> InsertAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            return await InsertAsync<T>(parameters.GetParameters(typeof(T), OperationInsert), connectionName, captureException, schema, connection);
+        }
+
+        public static async Task<OperationResponse> InsertAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
+            where T : class
+        {
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = null, CaptureException = captureException };
             var config = ConfigurationFactory.Get<T>();
             if (config.GenerateInsertSql)
             {
-                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -370,16 +437,16 @@ namespace Nemo
             return response;
         }
 
-        public static async Task<OperationResponse> UpdateAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static async Task<OperationResponse> UpdateAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            return await UpdateAsync<T>(parameters.GetParameters(typeof(T), OperationUpdate), connectionName, captureException, schema);
+            return await UpdateAsync<T>(parameters.GetParameters(typeof(T), OperationUpdate), connectionName, captureException, schema, connection);
         }
 
-        public static async Task<OperationResponse> UpdateAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static async Task<OperationResponse> UpdateAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
             var config = ConfigurationFactory.Get<T>();
             if (config.GenerateUpdateSql)
             {
@@ -403,7 +470,7 @@ namespace Nemo
                     });
                 }
 
-                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -416,16 +483,16 @@ namespace Nemo
             return response;
         }
 
-        public static async Task<OperationResponse> DeleteAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static async Task<OperationResponse> DeleteAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            return await DeleteAsync<T>(parameters.GetParameters(typeof(T), OperationDelete), connectionName, captureException);
+            return await DeleteAsync<T>(parameters.GetParameters(typeof(T), OperationDelete), connectionName, captureException, schema, connection);
         }
 
-        public static async Task<OperationResponse> DeleteAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static async Task<OperationResponse> DeleteAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
             var config = ConfigurationFactory.Get<T>();
             if (config.GenerateDeleteSql)
             {
@@ -465,7 +532,7 @@ namespace Nemo
                     });
                 }
 
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), partition.Item1, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName), softDeleteColumn);
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), partition.Item1, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName), softDeleteColumn);
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -478,20 +545,20 @@ namespace Nemo
             return response;
         }
 
-        public static async Task<OperationResponse> DestroyAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static async Task<OperationResponse> DestroyAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            return await DestroyAsync<T>(parameters.GetParameters(typeof(T), OperationDestroy), connectionName, captureException, schema);
+            return await DestroyAsync<T>(parameters.GetParameters(typeof(T), OperationDestroy), connectionName, captureException, schema, connection);
         }
 
-        public static async Task<OperationResponse> DestroyAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null)
+        public static async Task<OperationResponse> DestroyAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, CaptureException = captureException, SchemaName = schema };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
             var config = ConfigurationFactory.Get<T>();
             if (config.GenerateDeleteSql)
             {
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
                 request.OperationType = OperationType.Sql;
             }
             else

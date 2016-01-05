@@ -12,10 +12,9 @@
     <copyright>Copyright © Max Stepanskiy 2012-2014</copyright>
     <tags>ORM micro-ORM data-mapper sql-mapper</tags>
     <releaseNotes>
-      * Modified serialization format to support abstract types
-      * Added async methods
-      * Added HiLo id generator
       * Added COMB GUID generator
+      * Batch insert
+      * Object scope can accept existing connection
     </releaseNotes>
     <dependencies>
       <dependency id="log4net" version="2.0.3" />

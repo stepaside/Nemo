@@ -52,13 +52,13 @@ namespace Nemo.UnitOfWork
             return item.Serialize(SerializationMode.SerializeAll);
         }
 
-        public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default)
+        public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, DbConnection connection = null)
             where T : class
         {
-            return new ObjectScope(item, autoCommit, mode, typeof(T));
+            return new ObjectScope(item, autoCommit, mode, typeof(T), connection);
         }
-
-        private ObjectScope(object item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null)
+        
+        private ObjectScope(object item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null, DbConnection connection = null)
         {
             if (item == null && type == null)
             {
@@ -84,9 +84,16 @@ namespace Nemo.UnitOfWork
                 ItemSnapshot = CreateSnapshot(item);
             }
             Scopes.Push(this);
-            Transaction = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions { IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted });
+            if (connection == null || connection.State != ConnectionState.Open)
+            {
+                Transaction = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions { IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted });
+            }
+            else
+            {
+                Connection = connection;
+            }
         }
-
+        
         public bool AutoCommit
         {
             get;
@@ -114,6 +121,12 @@ namespace Nemo.UnitOfWork
         }
 
         internal TransactionScope Transaction
+        {
+            get;
+            private set;
+        }
+
+        internal DbConnection Connection
         {
             get;
             private set;
