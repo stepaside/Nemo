@@ -153,7 +153,7 @@
     <Compile Include="Attributes\GenerateAttribute.cs" />
     <Compile Include="Attributes\PrimaryKeyAttribute.cs" />
     <Compile Include="UnitOfWork\ObjectScope.cs" />
-    <Compile Include="UnitOfWork\ObjectScopeItem.cs" />
+    <Compile Include="UnitOfWork\ObjectScopeSurrogate.cs" />
     <Compile Include="Param.cs" />
     <Compile Include="OperationRequest.cs" />
     <Compile Include="OperationReturnType.cs" />
