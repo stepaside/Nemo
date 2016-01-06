@@ -4,6 +4,8 @@
  **/
 
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using Nemo.Fn;
 
 namespace Nemo.Utilities
@@ -16,7 +18,7 @@ namespace Nemo.Utilities
         String,
         Integer,
         Decimal,
-        Boolean,
+        Boolean
     };
 
     public class JsonValue
@@ -30,16 +32,47 @@ namespace Nemo.Utilities
         public JsonValue FirstChild { get; internal set; }
         public JsonValue LastChild { get; internal set; }
 
+        private readonly ConcurrentDictionary<string, JsonValue> _properties = new ConcurrentDictionary<string, JsonValue>();
+
         internal void Append(JsonValue value)
         {
+            //if (value.Name != null)
+            //{
+            //    _properties.Add(value.Name, value);
+            //}
             value.Parent = this;
-            if (this.LastChild != null)
+            if (LastChild != null)
             {
-                this.LastChild = this.LastChild.NexSibling = value;
+                LastChild = LastChild.NexSibling = value;
             }
             else
             {
-                this.FirstChild = this.LastChild = value;
+                FirstChild = LastChild = value;
+            }
+        }
+        
+        public JsonValue this[string name]
+        {
+            get
+            {
+                //JsonValue value;
+                //_properties.TryGetValue(name, out value);
+                //return value;
+
+                return _properties.GetOrAdd(name, key =>
+                {
+                    var child = FirstChild;
+                    while (child != null)
+                    {
+                        if (child.Name == key)
+                        {
+                            _properties[key] = child;
+                            return child;
+                        }
+                        child = child.NexSibling;
+                    }
+                    return null;
+                });
             }
         }
     }
