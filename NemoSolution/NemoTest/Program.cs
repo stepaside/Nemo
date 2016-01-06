@@ -56,10 +56,10 @@ namespace NemoTest
 //            //manager.Employees[1].Manager = manager;
 
 //            var packedJson = company.ToJson();
-//            var unpackedJson = packedJson.FromJson<Company>().FirstOrDefault();
+//            var unpackedJson = packedJson.FromJson<Company>();
 
 //            var packedXml = company.ToXml();
-//            var unpackedXml = packedXml.FromXml<Company>().FirstOrDefault();
+//            var unpackedXml = packedXml.FromXml<Company>();
             
 //            var packed = company.Serialize();
 //            var unpacked = packed.Deserialize<Company>();
@@ -206,7 +206,7 @@ namespace NemoTest
 //            var is_read_only = read_only.IsReadOnly();
 
 //            var json = customer.ToJson();
-//            var customer_from_json = json.FromJson<ICustomer>().FirstOrDefault();
+//            var customer_from_json = json.FromJson<ICustomer>();
 
 //            Console.WriteLine();
 //            Console.WriteLine("JSON DOM Parsing");
@@ -220,7 +220,7 @@ namespace NemoTest
 //            var xml = customer.ToXml();
 //            using (var reader = XmlReader.Create(new StringReader(xml)))
 //            {
-//                var customer_from_xml = reader.FromXml<ICustomer>().FirstOrDefault();
+//                var customer_from_xml = reader.FromXml<ICustomer>();
 //            }
 
 //            Console.WriteLine();
