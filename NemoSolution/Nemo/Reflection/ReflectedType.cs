@@ -7,16 +7,20 @@ namespace Nemo.Reflection
     {
         public ReflectedType(Type type)
         {
-            TypeName = type.Name;
+            UnderlyingType = type;
+            TypeName = type.GetFriendlyName();
             FullTypeName = type.FullName;
             var interfaceType = Reflector.GetInterface(type);
             if (interfaceType != null)
             {
+                InterfaceType = interfaceType;
                 InterfaceTypeName = interfaceType.FullName;
             }
             IsArray = type.IsArray;
+            IsList = Reflector.IsList(type);
+            IsDictionary = Reflector.IsDictionary(type);
             IsSimpleList = Reflector.IsSimpleList(type);
-            IsDataEntity = Reflector.IsDataEntity(type) || !Reflector.IsSimpleType(type);
+            IsDataEntity = Reflector.IsDataEntity(type) || (!Reflector.IsSimpleType(type) && !IsArray && !IsList && !IsDictionary);
             Type elementType;
             IsDataEntityList = Reflector.IsDataEntityList(type, out elementType);
             ElementType = elementType;
@@ -26,15 +30,16 @@ namespace Nemo.Reflection
                 IsListInterface = type.GetGenericTypeDefinition() == typeof(IList<>);
             }
             IsSimpleType = Reflector.IsSimpleType(type);
-            IsList = Reflector.IsList(type);
-            IsDictionary = Reflector.IsDictionary(type);
             IsNullableType = Reflector.IsNullableType(type);
             IsMarkerInterface = Reflector.IsMarkerInterface(type);
             HashCode = type.GetHashCode();
             IsGenericType = type.IsGenericType;
             IsInterface = type.IsInterface;
             IsAnonymous = Reflector.IsAnonymousType(type);
+            IsEmitted = Reflector.IsEmitted(type);
         }
+
+        public Type UnderlyingType { get; private set; }
 
         public string TypeName { get; private set; }
 
@@ -53,6 +58,8 @@ namespace Nemo.Reflection
         public bool IsNullableType { get; private set; }
 
         public string FullTypeName { get; private set; }
+
+        public Type InterfaceType { get; private set; }
 
         public string InterfaceTypeName { get; private set; }
 
@@ -75,5 +82,7 @@ namespace Nemo.Reflection
         public bool IsArray { get; private set; }
 
         public bool IsPolymorphicList { get; private set; }
+
+        public bool IsEmitted { get; private set; }
     }
 }

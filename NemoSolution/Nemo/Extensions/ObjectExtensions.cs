@@ -1,5 +1,4 @@
 ﻿using Nemo.Attributes;
-using Nemo.Audit;
 using Nemo.Configuration;
 using Nemo.Id;
 using Nemo.Reflection;
@@ -15,6 +14,7 @@ using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Nemo.Logging;
 
 namespace Nemo.Extensions
 {
@@ -36,15 +36,15 @@ namespace Nemo.Extensions
         public static TResult Property<T, TResult>(this T dataEntity, string propertyName)
             where T : class
         {
-            if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
+            var reflectedType = Reflector.GetReflectedType(dataEntity.GetType());
+            if (typeof(T) == typeof(object) && reflectedType.IsEmitted && reflectedType.InterfaceTypeName != null)
             {
-                var type = Reflector.GetInterface(dataEntity.GetType());
-                return (TResult)Reflector.Property.Get(type, dataEntity, propertyName);
+                return (TResult)Reflector.Property.Get(reflectedType.InterfaceType, dataEntity, propertyName);
             }
 
-            if (Reflector.IsMarkerInterface<T>() || typeof(T) == typeof(object))
+            if (reflectedType.IsMarkerInterface || typeof(T) == typeof(object))
             {
-                return (TResult)Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
+                return (TResult)Reflector.Property.Get(reflectedType.UnderlyingType, dataEntity, propertyName);
             }
             
             return (TResult)Reflector.Property.Get(dataEntity, propertyName);
@@ -62,20 +62,7 @@ namespace Nemo.Extensions
         public static TResult PropertyOrDefault<T, TResult>(this T dataEntity, string propertyName, TResult defaultValue)
             where T : class
         {
-            object result;
-            if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
-            {
-                var type = Reflector.GetInterface(dataEntity.GetType());
-                result = Reflector.Property.Get(type, dataEntity, propertyName);
-            }
-            else if (Reflector.IsMarkerInterface<T>())
-            {
-                result = Reflector.Property.Get(dataEntity.GetType(), dataEntity, propertyName);
-            }
-            else
-            {
-                result = Reflector.Property.Get(dataEntity, propertyName);
-            }
+            var result = dataEntity.Property(propertyName);
             return result != null ? (TResult)result : defaultValue;
         }
 
@@ -100,14 +87,14 @@ namespace Nemo.Extensions
         public static void Property<T>(this T dataEntity, string propertyName, object propertyValue)
             where T : class
         {
-            if (typeof(T) == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
+            var reflectedType = Reflector.GetReflectedType(dataEntity.GetType());
+            if (typeof(T) == typeof(object) && reflectedType.IsEmitted && reflectedType.InterfaceTypeName != null)
             {
-                var type = Reflector.GetInterface(dataEntity.GetType());
-                Reflector.Property.Set(type, dataEntity, propertyName, propertyValue);
+                Reflector.Property.Set(reflectedType.InterfaceType, dataEntity, propertyName, propertyValue);
             }
-            else if (Reflector.IsMarkerInterface<T>() || typeof(T) == typeof(object))
+            else if (reflectedType.IsMarkerInterface || typeof(T) == typeof(object))
             {
-                Reflector.Property.Set(dataEntity.GetType(), dataEntity, propertyName, propertyValue);
+                Reflector.Property.Set(reflectedType.UnderlyingType, dataEntity, propertyName, propertyValue);
             }
             else
             {

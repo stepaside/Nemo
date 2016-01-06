@@ -1,9 +1,9 @@
-﻿using Nemo.Audit;
-using Nemo.Extensions;
+﻿using Nemo.Extensions;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Utilities;
 using System;
+using Nemo.Logging;
 
 namespace Nemo.Configuration
 {
@@ -24,6 +24,7 @@ namespace Nemo.Configuration
         private bool _generateInsertSql;
         private bool _generateUpdateSql;
         private IAuditLogProvider _auditLogProvider;
+        private ILogProvider _logProvider;
         private IExecutionContext _executionContext = DefaultExecutionContext.Current;
         private string _hiLoTableName;
 
@@ -118,6 +119,11 @@ namespace Nemo.Configuration
         public string HiLoTableName
         {
             get { return _hiLoTableName ?? Config.AppSettings("HiLoTableName", "HiLoIdGenerator"); }
+        }
+
+        public ILogProvider LogProvider
+        {
+            get { return _logProvider; }
         }
 
         public IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value)
@@ -222,6 +228,12 @@ namespace Nemo.Configuration
             return this;
         }
 
+        public IConfiguration SetLogProvider(ILogProvider value)
+        {
+            _logProvider = value;
+            return this;
+        }
+
         private static L1CacheRepresentation ParseExecutionContextCacheConfig()
         {
             return Config.AppSettings("DefaultExecutionContextCacheType", L1CacheRepresentation.LazyList);
@@ -280,6 +292,8 @@ namespace Nemo.Configuration
             mergedConfig.SetOperationPrefix(_operationPrefix ?? configuration.OperationPrefix);
 
             mergedConfig.SetHiLoTableName(_hiLoTableName ?? configuration.HiLoTableName);
+
+            mergedConfig.SetLogProvider(_logProvider ?? configuration.LogProvider);
 
             return mergedConfig;
         }

@@ -94,13 +94,13 @@ namespace Nemo.Serialization
             }
         }
 
-        public static IEnumerable<T> FromXml<T>(this string xml)
+        public static T FromXml<T>(this string xml)
             where T : class
         {
             return FromXml<T>(new StringReader(xml));
         }
 
-        public static IEnumerable<T> FromXml<T>(this Stream stream)
+        public static T FromXml<T>(this Stream stream)
             where T : class
         {
             using (var reader = new StreamReader(stream))
@@ -109,7 +109,7 @@ namespace Nemo.Serialization
             }
         }
 
-        public static IEnumerable<T> FromXml<T>(this TextReader textReader)
+        public static T FromXml<T>(this TextReader textReader)
            where T : class
         {
             using (var reader = XmlReader.Create(textReader))
@@ -118,16 +118,38 @@ namespace Nemo.Serialization
             }
         }
 
-        public static IEnumerable<T> FromXml<T>(this XmlReader reader)
+        public static T FromXml<T>(this XmlReader reader)
             where T : class
         {
-            bool isArray;
-            var result = XmlSerializationReader.ReadObject(reader, typeof(T), out isArray);
-            if (isArray)
+            return (T)FromXml(reader, typeof(T));
+        }
+
+        public static object FromXml(this string xml, Type objectType)
+        {
+            return FromXml(new StringReader(xml), objectType);
+        }
+
+        public static object FromXml(this Stream stream, Type objectType)
+        {
+            using (var reader = new StreamReader(stream))
             {
-                return ((IList)result).Cast<T>();
+                return FromXml(reader, objectType);
             }
-            return ((T)result).Return();
+        }
+
+        public static object FromXml(this TextReader textReader, Type objectType)
+        {
+            using (var reader = XmlReader.Create(textReader))
+            {
+                return FromXml(reader, objectType);
+            }
+        }
+
+        public static object FromXml(this XmlReader reader, Type objectType)
+        {
+            bool isArray;
+            var result = XmlSerializationReader.ReadObject(reader, objectType, out isArray);
+            return result;
         }
     }
 }

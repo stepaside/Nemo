@@ -43,9 +43,6 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Configuration" />
-    <Reference Include="log4net">
-      <HintPath>packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Attributes\ConnectionAttribute.cs" />
@@ -57,8 +54,8 @@
     <Compile Include="Attributes\PropertyAttribute.cs" />
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
-    <Compile Include="Audit\AuditLog.cs" />
-    <Compile Include="Audit\IAuditLogProvider.cs" />
+    <Compile Include="Logging\AuditLog.cs" />
+    <Compile Include="Logging\IAuditLogProvider.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
     <Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" />
@@ -74,6 +71,7 @@
     <Compile Include="Collections\MapList.cs" />
     <Compile Include="Collections\SortedList.cs" />
     <Compile Include="Configuration\ConfigurationFactory.cs" />
+    <Compile Include="Logging\ILogProvider.cs" />
     <Compile Include="Configuration\Mapping\EntityMap.cs" />
     <Compile Include="Configuration\Mapping\IEntityMap.cs" />
     <Compile Include="Configuration\Mapping\IPropertyMap.cs" />
@@ -291,7 +289,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

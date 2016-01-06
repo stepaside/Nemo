@@ -1,7 +1,6 @@
-﻿using System;
+﻿using Nemo.Logging;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
-using Nemo.Audit;
 
 namespace Nemo.Configuration
 {
@@ -20,6 +19,7 @@ namespace Nemo.Configuration
         bool GenerateInsertSql { get; }
         bool GenerateUpdateSql { get; }
         IAuditLogProvider AuditLogProvider { get; }
+        ILogProvider LogProvider { get; }
         IExecutionContext ExecutionContext { get; }
         string HiLoTableName { get; }
 
@@ -38,6 +38,7 @@ namespace Nemo.Configuration
         IConfiguration SetAuditLogProvider(IAuditLogProvider value);
         IConfiguration SetExecutionContext(IExecutionContext value);
         IConfiguration SetHiLoTableName(string value);
+        IConfiguration SetLogProvider(ILogProvider value);
 
         IConfiguration Merge(IConfiguration configuration);
     }

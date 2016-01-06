@@ -52,6 +52,15 @@ namespace Nemo.Reflection
             return type.IsValueType ? System.Activator.CreateInstance(type) : null;
         }
 
+        public static string GetFriendlyName(this Type type)
+        {
+            if (type.IsGenericType)
+            {
+                return type.Name.Split('`')[0] + "<" + string.Join(", ", type.GetGenericArguments().Select(x => GetFriendlyName(x)).ToArray()) + ">";
+            }
+            return type.Name;
+        }
+
         public static object ChangeType(object value, Type conversionType)
         {
             if (conversionType == null)

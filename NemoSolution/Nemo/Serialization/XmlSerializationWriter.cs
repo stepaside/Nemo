@@ -19,7 +19,7 @@ namespace Nemo.Serialization
     {
         internal delegate void XmlObjectSerializer(object value, TextWriter output, bool addSchemaDeclaration);
 
-        private static readonly ConcurrentDictionary<Tuple<string, bool>, XmlObjectSerializer> _serializers = new ConcurrentDictionary<Tuple<string, bool>, XmlObjectSerializer>();
+        private static readonly ConcurrentDictionary<Tuple<string, bool>, XmlObjectSerializer> Serializers = new ConcurrentDictionary<Tuple<string, bool>, XmlObjectSerializer>();
 
         public static void WriteStartElement(string name, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
         {
@@ -274,7 +274,7 @@ namespace Nemo.Serialization
         private static XmlObjectSerializer CreateDelegate(Type objectType, bool isPolymorphic = false)
         {
             var reflectedType = Reflector.GetReflectedType(objectType);
-            return _serializers.GetOrAdd(Tuple.Create(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, isPolymorphic), k => GenerateDelegate(k.Item1, objectType, k.Item2));
+            return Serializers.GetOrAdd(Tuple.Create(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, isPolymorphic), k => GenerateDelegate(k.Item1, objectType, k.Item2));
         }
 
         private static XmlObjectSerializer GenerateDelegate(string key, Type objectType, bool isPolymorphic)

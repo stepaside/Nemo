@@ -135,6 +135,11 @@ namespace Nemo.Utilities
             if (objectType.IsGenericType)
             {
                 var pos = name.IndexOf('`');
+                if (pos > -1)
+                {
+                    return name.Substring(0, pos).TrimStart('I');
+                }
+                pos = name.IndexOf('<');
                 return name.Substring(0, pos).TrimStart('I');
             }
             return objectType.IsInterface ? name.TrimStart('I') : name;

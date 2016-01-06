@@ -1,6 +1,4 @@
 ﻿using System.Diagnostics;
-using log4net;
-using log4net.Config;
 using Nemo.Configuration;
 using System;
 using System.Collections.Generic;
@@ -12,13 +10,20 @@ namespace Nemo.Utilities
     public static class Log
     {
         private const string LogContextName = "__LogContext";
-        private const string LoggerName = "Nemo";
-
+        
         public static bool IsEnabled
         {
             get
             {
-                return ConfigurationFactory.Default.Logging;
+                return ConfigurationFactory.Default.Logging && LogProvider != null;
+            }
+        }
+
+        private static ILogProvider LogProvider
+        {
+            get
+            {
+                return ConfigurationFactory.Default.LogProvider;
             }
         }
 
@@ -26,7 +31,7 @@ namespace Nemo.Utilities
         {
             if (IsEnabled)
             {
-                XmlConfigurator.Configure();
+                LogProvider.Configure();
             }
         }
 
@@ -36,7 +41,7 @@ namespace Nemo.Utilities
 
             if (File.Exists(configFile))
             {
-                XmlConfigurator.Configure(new FileInfo(configFile));
+                LogProvider.Configure(configFile);
             }
         }
 
@@ -44,16 +49,13 @@ namespace Nemo.Utilities
         {
             if (!IsEnabled) return;
 
-            var logger = LogManager.GetLogger(LoggerName);
-            if (logger == null) return;
-            
             var context = Context;
             var message = computeMessage();
             if (context.Item1 != Guid.Empty && context.Item2 != null)
             {
                 message = string.Format("{0}-{1}", context.Item1, message);
             }
-            logger.Info(message);
+            LogProvider.Write(message);
         }
 
         public static void Capture(string message)

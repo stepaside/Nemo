@@ -19,7 +19,7 @@ namespace Nemo.Serialization
     {
         internal delegate void JsonObjectSerializer(object values, TextWriter output, bool compact);
 
-        private static readonly ConcurrentDictionary<Tuple<string, bool>, JsonObjectSerializer> _serializers = new ConcurrentDictionary<Tuple<string, bool>, JsonObjectSerializer>();
+        private static readonly ConcurrentDictionary<Tuple<string, bool>, JsonObjectSerializer> Serializers = new ConcurrentDictionary<Tuple<string, bool>, JsonObjectSerializer>();
 
         public static void Write(string value, TextWriter output)
         {
@@ -263,7 +263,7 @@ namespace Nemo.Serialization
         private static JsonObjectSerializer CreateDelegate(Type objectType, bool isPolymorphic = false)
         {
             var reflectedType = Reflector.GetReflectedType(objectType);
-            return _serializers.GetOrAdd(Tuple.Create(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, isPolymorphic), k => GenerateDelegate(k.Item1, objectType, k.Item2));
+            return Serializers.GetOrAdd(Tuple.Create(reflectedType.InterfaceTypeName ?? reflectedType.FullTypeName, isPolymorphic), k => GenerateDelegate(k.Item1, objectType, k.Item2));
         }
 
         private static JsonObjectSerializer GenerateDelegate(string key, Type objectType, bool isPolymorphic)

@@ -45,16 +45,16 @@ namespace Nemo.Serialization
             JsonSerializationWriter.WriteObject(dataEntitys.ToList(), null, writer);
         }
 
-        public static IEnumerable<T> FromJson<T>(this string json)
+        public static T FromJson<T>(this string json)
             where T : class
         {
+            return (T)json.FromJson(typeof(T));
+        }
+
+        public static object FromJson(this string json, Type objectType)
+        {
             var value = Json.Parse(json);
-            var result = JsonSerializationReader.ReadObject(value, typeof(T));
-            if (value.Type == JsonType.Array)
-            {
-                return ((IList)result).Cast<T>();
-            }
-            return ((T)result).Return();
+            return JsonSerializationReader.ReadObject(value, objectType);
         }
     }
 }
