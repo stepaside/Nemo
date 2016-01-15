@@ -116,10 +116,25 @@ namespace Nemo.Serialization
             return result;
         }
 
+        public static object Deserialize(this byte[] data, Type objectType)
+        {
+            object result;
+            using (var reader = SerializationReader.CreateReader(data))
+            {
+                result = reader.ReadObject(objectType, ObjectTypeCode.Object, false);
+            }
+            return result;
+        }
+
         public static IEnumerable<T> Deserialize<T>(this IEnumerable<byte[]> dataCollection)
             where T : class
         {
             return dataCollection.Where(data => data != null).Select(Deserialize<T>);
+        }
+
+        public static IEnumerable<object> Deserialize(this IEnumerable<byte[]> dataCollection, Type objectType)
+        {
+            return dataCollection.Where(data => data != null).Select(data => Deserialize(data, objectType));
         }
 
         #endregion
