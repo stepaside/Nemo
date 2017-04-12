@@ -9,8 +9,8 @@ namespace Nemo.Reflection
     {
         public static class Property
         {
-            private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericGetter> _getters = new ConcurrentDictionary<Tuple<Type, string>, GenericGetter>();
-            private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericSetter> _setters = new ConcurrentDictionary<Tuple<Type, string>, GenericSetter>();
+            private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericGetter> Getters = new ConcurrentDictionary<Tuple<Type, string>, GenericGetter>();
+            private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericSetter> Setters = new ConcurrentDictionary<Tuple<Type, string>, GenericSetter>();
             
             #region Property Getters
 
@@ -29,7 +29,7 @@ namespace Nemo.Reflection
                 if (target != null)
                 {
                     var propertyKey = Tuple.Create(targetType, propertyName);
-                    var getMethod = _getters.GetOrAdd(propertyKey, GenerateGetter);
+                    var getMethod = Getters.GetOrAdd(propertyKey, GenerateGetter);
                     return getMethod(target);
                 }
                 return null;
@@ -59,7 +59,7 @@ namespace Nemo.Reflection
                 if (target != null)
                 {
                     var propertyKey = Tuple.Create(targetType, propertyName);
-                    var setMethod = _setters.GetOrAdd(propertyKey, GenerateSetter);
+                    var setMethod = Setters.GetOrAdd(propertyKey, GenerateSetter);
                     setMethod(target, value);
                 }
             }

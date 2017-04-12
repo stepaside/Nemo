@@ -14,7 +14,7 @@ namespace Nemo.Reflection
 {
     public sealed class Adapter
     {
-        private static readonly ConcurrentDictionary<Tuple<Type, Type, string>, Type> _types = new ConcurrentDictionary<Tuple<Type, Type, string>, Type>();
+        private static readonly ConcurrentDictionary<Tuple<Type, Type, string>, Type> Types = new ConcurrentDictionary<Tuple<Type, Type, string>, Type>();
 
         public static T Bind<T>(object value)
             where T : class
@@ -62,7 +62,7 @@ namespace Nemo.Reflection
         {
             var interfaceType = typeof(T);
             var key = Tuple.Create(objectType, interfaceType, "Adapter");
-            var type = _types.GetOrAdd(key, n =>
+            var type = Types.GetOrAdd(key, n =>
             {
                 var isAnonymous = Reflector.IsAnonymousType(n.Item1);
                 var name = string.Format("{0}_{1}_{2}", isAnonymous ? n.Item1.Name : n.Item1.FullName, n.Item2.FullName, n.Item3);
@@ -82,7 +82,7 @@ namespace Nemo.Reflection
         {
             var interfaceType = typeof(T);
             var key = Tuple.Create(interfaceType, interfaceType, "Guard");
-            var type = _types.GetOrAdd(key, n =>
+            var type = Types.GetOrAdd(key, n =>
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
@@ -101,7 +101,7 @@ namespace Nemo.Reflection
         {
             var interfaceType = typeof(T);
             var key = Tuple.Create(interfaceType, interfaceType, "Implementation");
-            var type = _types.GetOrAdd(key, n =>
+            var type = Types.GetOrAdd(key, n =>
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
@@ -128,7 +128,7 @@ namespace Nemo.Reflection
                 suffix = String.Concat(suffix, "_All");
             }
             var key = Tuple.Create(interfaceType, interfaceType, suffix);
-            var type = _types.GetOrAdd(key, n =>
+            var type = Types.GetOrAdd(key, n =>
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
@@ -155,6 +155,7 @@ namespace Nemo.Reflection
 
             if (proxyType == DynamicProxyType.Guard)
             {
+                // ReSharper disable once AssignNullToNotNullAttribute
                 typeBuilder.SetCustomAttribute(new CustomAttributeBuilder(typeof(ReadOnlyAttribute).GetConstructor(Type.EmptyTypes), new object[] { }));
             }
 

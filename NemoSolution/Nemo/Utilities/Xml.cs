@@ -21,13 +21,7 @@ namespace Nemo.Utilities
             if (isDataEntity || reflectedType.IsList)
             {
                 var innerTypes = new HashSet<Type>();
-                var objectType = type;
-                var isArray = false;
-                if (!isDataEntity)
-                {
-                    objectType = reflectedType.ElementType;
-                    isArray = true;
-                }
+                var isArray = !isDataEntity;
 
                 var elementName = reflectedType.XmlElementName;
                 var schemaXml = new StringBuilder();
@@ -123,7 +117,7 @@ namespace Nemo.Utilities
 
         internal delegate string GetElementDelegate(Type objectType);
 
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getElementNameMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> GetElementNameMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
 
         public static string GetElementNameFromType<T>()
         {
@@ -147,7 +141,7 @@ namespace Nemo.Utilities
 
         internal static string GetElementNameFromType(Type objectType)
         {
-            var handle = _getElementNameMethods.GetOrAdd(objectType, type =>
+            var handle = GetElementNameMethods.GetOrAdd(objectType, type =>
             {
                 var method = typeof(Xml).GetMethods(BindingFlags.Public | BindingFlags.Static).First(m => m.Name == "GetElementNameFromType" && m.IsGenericMethod);
                 var genericMethod = method.MakeGenericMethod(objectType);

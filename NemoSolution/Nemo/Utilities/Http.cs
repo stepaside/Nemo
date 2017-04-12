@@ -11,17 +11,16 @@ namespace Nemo.Utilities
         public static NameValueCollection ParseQueryString(string queryString)
         {
             var queryParameters = new NameValueCollection(StringComparer.OrdinalIgnoreCase);
-            string[] querySegments = queryString.Split('&');
-            foreach (string segment in querySegments)
+            var querySegments = queryString.Split('&');
+            foreach (var segment in querySegments)
             {
-                string[] parts = segment.Split('=');
-                if (parts.Length > 0)
-                {
-                    string key = parts[0].Trim(new char[] { '?', ' ' });
-                    string val = Uri.UnescapeDataString(parts[1].Trim());
+                var parts = segment.Split('=');
+                if (parts.Length <= 0) continue;
 
-                    queryParameters.Add(key, val);
-                }
+                var key = parts[0].Trim('?', ' ');
+                var val = Uri.UnescapeDataString(parts[1].Trim());
+
+                queryParameters.Add(key, val);
             }
             return queryParameters;
         }

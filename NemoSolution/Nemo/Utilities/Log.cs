@@ -2,6 +2,7 @@
 using Nemo.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Web;
 
@@ -87,7 +88,7 @@ namespace Nemo.Utilities
             if (context.Item2 == null) return;
             
             context.Item2.Stop();
-            var message = Convert.ToString(context.Item2.Elapsed.TotalMilliseconds);
+            var message = Convert.ToString(context.Item2.Elapsed.TotalMilliseconds, CultureInfo.InvariantCulture);
             Capture(message);
             ClearContext();
         }

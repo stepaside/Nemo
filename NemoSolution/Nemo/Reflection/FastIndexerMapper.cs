@@ -17,7 +17,8 @@ namespace Nemo.Reflection
             IndexerMapper(source, target);
         }
 
-        private static Mapper.PropertyMapper IndexerMapper;
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly Mapper.PropertyMapper IndexerMapper;
     }
 
     internal class FastExactIndexerMapper<T1, T2>
@@ -32,6 +33,7 @@ namespace Nemo.Reflection
             IndexerMapper(source, target);
         }
 
-        private static Mapper.PropertyMapper IndexerMapper;
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly Mapper.PropertyMapper IndexerMapper;
     }
 }

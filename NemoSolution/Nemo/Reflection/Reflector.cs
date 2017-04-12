@@ -20,25 +20,25 @@ namespace Nemo.Reflection
     {
         #region Declarations
 
-        private static readonly MethodInfo _getReflectedTypeMethod = typeof(Reflector).GetMethod("GetReflectedType", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
-        private static readonly MethodInfo _getPropertyMapMethod = typeof(Reflector).GetMethod("GetPropertyMap", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
-        private static readonly MethodInfo _getPropertyNameMapMethod = typeof(Reflector).GetMethod("GetPropertyNameMap", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
-        private static readonly MethodInfo _getAllPropertiesMethod = typeof(Reflector).GetMethod("GetAllProperties", Type.EmptyTypes);
-        private static readonly MethodInfo _getAllPropertyPositionsMethod = typeof(Reflector).GetMethod("GetAllPropertyPositions", Type.EmptyTypes);
-        private static readonly MethodInfo _getPropertyMethod = typeof(Reflector).GetMethod("GetProperty", new[] { typeof(string) });
-        private static readonly MethodInfo _getInterfaceMethod = typeof(Reflector).GetMethod("GetInterface", Type.EmptyTypes);
-        private static readonly MethodInfo _getInterfacesMethod = typeof(Reflector).GetMethod("GetIntefaces", Type.EmptyTypes);
+        private static readonly MethodInfo GetReflectedTypeMethod = typeof(Reflector).GetMethod("GetReflectedType", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
+        private static readonly MethodInfo GetPropertyMapMethod = typeof(Reflector).GetMethod("GetPropertyMap", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
+        private static readonly MethodInfo GetPropertyNameMapMethod = typeof(Reflector).GetMethod("GetPropertyNameMap", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
+        private static readonly MethodInfo GetAllPropertiesMethod = typeof(Reflector).GetMethod("GetAllProperties", Type.EmptyTypes);
+        private static readonly MethodInfo GetAllPropertyPositionsMethod = typeof(Reflector).GetMethod("GetAllPropertyPositions", Type.EmptyTypes);
+        private static readonly MethodInfo GetPropertyMethod = typeof(Reflector).GetMethod("GetProperty", new[] { typeof(string) });
+        private static readonly MethodInfo GetInterfaceMethod = typeof(Reflector).GetMethod("GetInterface", Type.EmptyTypes);
+        private static readonly MethodInfo GetInterfacesMethod = typeof(Reflector).GetMethod("GetIntefaces", Type.EmptyTypes);
 
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getReflectedTypeCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getPropertyMapCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getPropertyNameMapCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getAllPropertiesCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getAllPropertyPositionsCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _getPropertyCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _extractInterfaceCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _extractInterfacesCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> GetReflectedTypeCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> GetPropertyMapCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> GetPropertyNameMapCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> GetAllPropertiesCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> GetAllPropertyPositionsCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> GetPropertyCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> ExtractInterfaceCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> ExtractInterfacesCache = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
 
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> _defaultConstructors = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> DefaultConstructors = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
         
         #endregion
 
@@ -278,7 +278,7 @@ namespace Nemo.Reflection
 
         public static Type GetInterface(Type objectType)
         {
-            var methodHandle = _extractInterfaceCache.GetOrAdd(objectType, t => _getInterfaceMethod.MakeGenericMethod(t).MethodHandle);
+            var methodHandle = ExtractInterfaceCache.GetOrAdd(objectType, t => GetInterfaceMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (Type)func(null, new object[] { });
         }
@@ -292,7 +292,7 @@ namespace Nemo.Reflection
 
         public static IEnumerable<Type> GetInterfaces(Type objectType)
         {
-            var methodHandle = _extractInterfacesCache.GetOrAdd(objectType, t => _getInterfacesMethod.MakeGenericMethod(t).MethodHandle);
+            var methodHandle = ExtractInterfacesCache.GetOrAdd(objectType, t => GetInterfacesMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (IEnumerable<Type>)func(null, new object[] { });
         }
@@ -328,7 +328,7 @@ namespace Nemo.Reflection
 
         public static PropertyInfo[] GetAllProperties(Type objectType)
         {
-            var methodHandle = _getAllPropertiesCache.GetOrAdd(objectType, t => _getAllPropertiesMethod.MakeGenericMethod(t).MethodHandle);
+            var methodHandle = GetAllPropertiesCache.GetOrAdd(objectType, t => GetAllPropertiesMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (PropertyInfo[])func(null, new object[] { });
         }
@@ -341,7 +341,7 @@ namespace Nemo.Reflection
 
         public static PropertyInfo GetProperty(Type objectType, string name)
         {
-            var methodHandle = _getPropertyCache.GetOrAdd(objectType, t => _getPropertyMethod.MakeGenericMethod(t).MethodHandle);
+            var methodHandle = GetPropertyCache.GetOrAdd(objectType, t => GetPropertyMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (PropertyInfo)func(null, new object[] { name });
         }
@@ -356,7 +356,7 @@ namespace Nemo.Reflection
 
         public static IDictionary<string, int> GetAllPropertyPositions(Type objectType)
         {
-            var methodHandle = _getAllPropertyPositionsCache.GetOrAdd(objectType, t => _getAllPropertyPositionsMethod.MakeGenericMethod(t).MethodHandle);
+            var methodHandle = GetAllPropertyPositionsCache.GetOrAdd(objectType, t => GetAllPropertyPositionsMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (IDictionary<string, int>)func(null, new object[] { });
         }
@@ -393,7 +393,7 @@ namespace Nemo.Reflection
         public static IDictionary<PropertyInfo, ReflectedProperty> GetPropertyMap(Type objectType)
         {
             //var type = !objectType.IsInterface ? Reflector.GetInterface(objectType) : objectType;
-            var methodHandle = _getPropertyMapCache.GetOrAdd(objectType, t => _getPropertyMapMethod.MakeGenericMethod(t).MethodHandle);
+            var methodHandle = GetPropertyMapCache.GetOrAdd(objectType, t => GetPropertyMapMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (IDictionary<PropertyInfo, ReflectedProperty>)func(null, new object[] { });
         }
@@ -405,7 +405,7 @@ namespace Nemo.Reflection
 
         public static IDictionary<string, ReflectedProperty> GetPropertyNameMap(Type objectType)
         {
-            var methodHandle = _getPropertyNameMapCache.GetOrAdd(objectType, t => _getPropertyNameMapMethod.MakeGenericMethod(t).MethodHandle);
+            var methodHandle = GetPropertyNameMapCache.GetOrAdd(objectType, t => GetPropertyNameMapMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (IDictionary<string, ReflectedProperty>)func(null, new object[] { });
         }
@@ -417,7 +417,7 @@ namespace Nemo.Reflection
 
         public static ReflectedType GetReflectedType(Type objectType)
         {
-            var methodHandle = _getReflectedTypeCache.GetOrAdd(objectType, t => _getReflectedTypeMethod.MakeGenericMethod(t).MethodHandle);
+            var methodHandle = GetReflectedTypeCache.GetOrAdd(objectType, t => GetReflectedTypeMethod.MakeGenericMethod(t).MethodHandle);
             var func = Method.CreateDelegate(methodHandle);
             return (ReflectedType)func(null, new object[] { });
         }
@@ -429,7 +429,7 @@ namespace Nemo.Reflection
         
         public static RuntimeMethodHandle GetDefaultConstructor(Type objectType)
         {
-            var ctor = _defaultConstructors.GetOrAdd(objectType, type => type.GetConstructor(Type.EmptyTypes).MethodHandle);
+            var ctor = DefaultConstructors.GetOrAdd(objectType, type => type.GetConstructor(Type.EmptyTypes).MethodHandle);
             return ctor;
         }
 
@@ -444,16 +444,15 @@ namespace Nemo.Reflection
                 {
                     types = asm.GetTypes();
                 }
+                // ReSharper disable once EmptyGeneralCatchClause
                 catch
                 {
                 }
 
-                if (types != null)
+                if (types == null) continue;
+                foreach (var type in types)
                 {
-                    foreach (var type in types)
-                    {
-                        yield return type;
-                    }
+                    yield return type;
                 }
             }
         }
@@ -553,7 +552,7 @@ namespace Nemo.Reflection
 
         #region CLR to DB Type
 
-        private static readonly Dictionary<Type, DbType> _clrToDbTypeLookup = new Dictionary<Type, DbType>
+        private static readonly Dictionary<Type, DbType> ClrToDbTypeLookup = new Dictionary<Type, DbType>
         {
             {typeof(bool),DbType.Boolean},
             {typeof(bool?),DbType.Boolean},
@@ -601,7 +600,7 @@ namespace Nemo.Reflection
             {
                 dbType = DbType.Xml;
             }
-            else if (!_clrToDbTypeLookup.TryGetValue(clrType, out dbType))
+            else if (!ClrToDbTypeLookup.TryGetValue(clrType, out dbType))
             {
                 dbType = clrType.IsEnum ? DbType.Int32 : DbType.Xml; 
             }
@@ -612,7 +611,7 @@ namespace Nemo.Reflection
 
         #region CLR to XML Schema Type
 
-        private static readonly Dictionary<Type, string> _clrToXmlLookup = new Dictionary<Type, string>
+        private static readonly Dictionary<Type, string> ClrToXmlLookup = new Dictionary<Type, string>
         {
             {typeof(Uri),"xs:anyURI"},
             {typeof(byte),"xs:unsignedByte"},
@@ -646,7 +645,7 @@ namespace Nemo.Reflection
                     clrType = clrType.GetGenericArguments()[0];
                     continue;
                 }
-                if (!_clrToXmlLookup.TryGetValue(clrType, out schemaType))
+                if (!ClrToXmlLookup.TryGetValue(clrType, out schemaType))
                 {
                     schemaType = string.Empty;
                 }
@@ -668,7 +667,7 @@ namespace Nemo.Reflection
                 }
                 if (clrType == typeof(string) || clrType.IsValueType)
                 {
-                    if (!_clrToXmlLookup.TryGetValue(clrType, out schemaType))
+                    if (!ClrToXmlLookup.TryGetValue(clrType, out schemaType))
                     {
                         schemaType = string.Empty;
                     }
@@ -881,6 +880,7 @@ namespace Nemo.Reflection
             {
                 Interfaces = PrepareInterfaces<T>();
             }
+            // ReSharper disable once StaticMemberInGenericType
             public static readonly Dictionary<Type, List<Type>> Interfaces;
         }
 
@@ -913,9 +913,13 @@ namespace Nemo.Reflection
                 
                 NameMap = new ReadOnlyDictionary<string, ReflectedProperty>(Map.ToDictionary(p => p.Key.Name, p => p.Value));
             }
-            public static readonly ReadOnlyDictionary<string, PropertyInfo> Properties;
+            // ReSharper disable once StaticMemberInGenericType
+            internal static readonly ReadOnlyDictionary<string, PropertyInfo> Properties;
+            // ReSharper disable once StaticMemberInGenericType
             internal static readonly ReadOnlyDictionary<PropertyInfo, ReflectedProperty> Map;
+            // ReSharper disable once StaticMemberInGenericType
             internal static readonly ReadOnlyDictionary<string, ReflectedProperty> NameMap;
+            // ReSharper disable once StaticMemberInGenericType
             internal static readonly ReadOnlyDictionary<string, int> Positions;
         }
 

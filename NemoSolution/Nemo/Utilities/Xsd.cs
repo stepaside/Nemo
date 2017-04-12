@@ -6,22 +6,22 @@ namespace Nemo.Utilities
 {
     public class Xsd<T>
     {
+        // ReSharper disable once StaticMemberInGenericType
         public static readonly XmlSchema Schema;
+        // ReSharper disable once StaticMemberInGenericType
         public static readonly string Text;
 
         static Xsd()
         {
             Schema = Xml.InferXmlSchema(typeof(T)).FirstOrDefault();
-            if (Schema != null)
+            if (Schema == null) return;
+            using (var stream = new MemoryStream(1024))
             {
-                using (var stream = new MemoryStream(1024))
+                Schema.Write(stream);
+                stream.Seek(0, SeekOrigin.Begin);
+                using (var reader = new StreamReader(stream))
                 {
-                    Schema.Write(stream);
-                    stream.Seek(0, SeekOrigin.Begin);
-                    using (var reader = new StreamReader(stream))
-                    {
-                        Text = reader.ReadToEnd();
-                    }
+                    Text = reader.ReadToEnd();
                 }
             }
         }

@@ -11,6 +11,7 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalImplement<T>();
         }
-        internal static Activator.ObjectActivator Instance;
+        // ReSharper disable once StaticMemberInGenericType
+        internal static readonly Activator.ObjectActivator Instance;
     }
 }

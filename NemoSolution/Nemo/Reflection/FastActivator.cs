@@ -17,7 +17,8 @@ namespace Nemo.Reflection
             return (T)InstanceBuilder();
         }
 
-        private static Activator.ObjectActivator InstanceBuilder;
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly Activator.ObjectActivator InstanceBuilder;
     }
 
     internal class FastActivator<T1, T2>
@@ -32,7 +33,8 @@ namespace Nemo.Reflection
             return (T1)InstanceBuilder(p);
         }
 
-        private static Activator.ObjectActivator InstanceBuilder;
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly Activator.ObjectActivator InstanceBuilder;
     }
 
     internal class FastActivator<T1, T2, T3>
@@ -47,6 +49,7 @@ namespace Nemo.Reflection
             return (T1)InstanceBuilder(p1, p2);
         }
 
-        private static Activator.ObjectActivator InstanceBuilder;
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly Activator.ObjectActivator InstanceBuilder;
     }
 }

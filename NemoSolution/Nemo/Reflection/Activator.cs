@@ -10,7 +10,7 @@ namespace Nemo.Reflection
 {
     public static class Activator
     {
-        private static readonly ConcurrentDictionary<uint, ObjectActivator> _activatorCache = new ConcurrentDictionary<uint, ObjectActivator>();
+        private static readonly ConcurrentDictionary<uint, ObjectActivator> ActivatorCache = new ConcurrentDictionary<uint, ObjectActivator>();
 
         public delegate object ObjectActivator(params object[] args);
 
@@ -28,7 +28,7 @@ namespace Nemo.Reflection
                 .Select(t => BitConverter.GetBytes(t.GetHashCode()))
                 .Run((i, b) => Buffer.BlockCopy(b, 0, data, i * sizeof(int), b.Length));
             var key = Hash.Compute(data);
-            return _activatorCache.GetOrAdd(key, (Func<uint, ObjectActivator>)(k => GenerateDelegate(type, types)));
+            return ActivatorCache.GetOrAdd(key, (Func<uint, ObjectActivator>)(k => GenerateDelegate(type, types)));
         }
 
         private static ObjectActivator GenerateDelegate(Type type, params Type[] types)

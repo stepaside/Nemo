@@ -20,7 +20,8 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), false, true);
         }
-        internal static Activator.ObjectActivator Instance;
+        // ReSharper disable once StaticMemberInGenericType
+        internal static readonly Activator.ObjectActivator Instance;
     }
 
     internal class FastExactWrapper<T>
@@ -29,7 +30,8 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), true, false);
         }
-        internal static Activator.ObjectActivator Instance;
+        // ReSharper disable once StaticMemberInGenericType
+        internal static readonly Activator.ObjectActivator Instance;
     }
 
     internal class FastExactComplexWrapper<T>
@@ -38,6 +40,7 @@ namespace Nemo.Reflection
         {
             Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), true, true);
         }
-        internal static Activator.ObjectActivator Instance;
+        // ReSharper disable once StaticMemberInGenericType
+        internal static readonly Activator.ObjectActivator Instance;
     }
 }

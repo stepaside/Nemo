@@ -11,11 +11,11 @@ namespace Nemo.Reflection
         {
             public delegate object FastInvoker(object target, object[] paramters);
 
-            private static readonly ConcurrentDictionary<RuntimeMethodHandle, FastInvoker> _invokers = new ConcurrentDictionary<RuntimeMethodHandle, FastInvoker>();
+            private static readonly ConcurrentDictionary<RuntimeMethodHandle, FastInvoker> Invokers = new ConcurrentDictionary<RuntimeMethodHandle, FastInvoker>();
 
             public static FastInvoker CreateDelegate(RuntimeMethodHandle methodHandle)
             {
-                var invoker = _invokers.GetOrAdd(methodHandle, GenerateDelegate);
+                var invoker = Invokers.GetOrAdd(methodHandle, GenerateDelegate);
                 return invoker;
             }
 
