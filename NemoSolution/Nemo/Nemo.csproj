@@ -107,6 +107,7 @@
     <Compile Include="Linq\NemoQueryContext.cs" />
     <Compile Include="Linq\NemoQueryProvider.cs" />
     <Compile Include="ObjectFactoryAsync.cs" />
+    <Compile Include="OrderBy.cs" />
     <Compile Include="ParamList.cs" />
     <Compile Include="Reflection\ReflectedProperty.cs" />
     <Compile Include="Attributes\DoNotSelectAttribute.cs" />
@@ -121,10 +122,7 @@
     <Compile Include="Reflection\FastMapper.cs" />
     <Compile Include="Reflection\FastImplementor.cs" />
     <Compile Include="Reflection\ReflectedType.cs" />
-    <Compile Include="Security\Cryptography\Hash.cs" />
-    <Compile Include="Security\Cryptography\Jenkins96Hash.cs" />
-    <Compile Include="Security\Cryptography\MurmurHash2.cs" />
-    <Compile Include="Security\Cryptography\SBoxHash.cs" />
+    <Compile Include="Utilities\Hash.cs" />
     <Compile Include="SelectOption.cs" />
     <Compile Include="Serialization\SerializationReader.cs" />
     <Compile Include="Serialization\JsonSerializationReader.cs" />

@@ -62,7 +62,7 @@ namespace Nemo.Extensions
         public static string ToNumericPhoneNumber(this string phonenumber)
         {
             int n;
-            return phonenumber.Select(c => _phoneMap.TryGetValue(Char.ToLower(c), out n) ? n.ToString() : c.ToString()).ToDelimitedString(string.Empty);
+            return phonenumber.Select(c => _phoneMap.TryGetValue(char.ToLower(c), out n) ? n.ToString() : c.ToString()).ToDelimitedString(string.Empty);
         }
 
         public static string Slice(this string source, int start, int end)

@@ -17,7 +17,6 @@ using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Fn.Extensions;
 using Nemo.Reflection;
-using Nemo.Security.Cryptography;
 using Nemo.Utilities;
 
 namespace Nemo
@@ -155,7 +154,7 @@ namespace Nemo
         {
             if (operationType == OperationType.Guess)
             {
-                operationType = operation.Any(Char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
@@ -763,7 +762,7 @@ namespace Nemo
             var operationType = request.OperationType;
             if (operationType == OperationType.Guess)
             {
-                operationType = request.Operation.Any(Char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
             var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, ConfigurationFactory.Get<T>());

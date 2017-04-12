@@ -34,7 +34,7 @@ namespace Nemo.Attributes.Converters
                     }
                     else if (from is char)
                     {
-                        var fromValue = Char.ToUpper((char)from);
+                        var fromValue = char.ToUpper((char)from);
                         if (fromValue == 'N' || fromValue == 'F' || fromValue == '0')
                         {
                             return (T)(object)false;

@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using Nemo.Attributes;
+﻿using Nemo.Attributes;
 using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Configuration;
@@ -9,7 +8,6 @@ using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Fn.Extensions;
 using Nemo.Reflection;
-using Nemo.Security.Cryptography;
 using Nemo.Utilities;
 using System;
 using System.Collections;
@@ -40,7 +38,7 @@ namespace Nemo
 
         #region Instantiation Methods
 
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle?> _createMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle?>();
+        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle?> CreateMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle?>();
 
         public static T Create<T>()
             where T : class
@@ -66,7 +64,7 @@ namespace Nemo
         {
             if (targetType == null) return null;
 
-            var genericCreateMethod = _createMethods.GetOrAdd(targetType, type =>
+            var genericCreateMethod = CreateMethods.GetOrAdd(targetType, type =>
             {
                 var createMethod = typeof(ObjectFactory).GetMethods().FirstOrDefault(m => m.Name == "Create" && m.GetGenericArguments().Length == 1 && m.GetParameters().Length == 1);
                 if (createMethod != null)
@@ -86,20 +84,20 @@ namespace Nemo
 
         #region Map Methods
 
-        private static readonly ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?> _mapMethods = new ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?>();
+        private static readonly ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?> MapMethods = new ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?>();
 
         public static object Map(object source, Type targetType, bool ignoreMappings = false)
         {
             return Map(source, targetType, targetType.IsInterface, ignoreMappings);
         }
 
-        internal static object Map(object source, Type targetType, bool isInterface, bool ignoreMappings = false)
+        internal static object Map(object source, Type targetType, bool isInterface, bool ignoreMappings)
         {
             if (source == null) return null;
 
             var instanceType = source.GetType();
             var key = Tuple.Create(instanceType, targetType, ignoreMappings);
-            var genericMapMethodHandle = _mapMethods.GetOrAdd(key, t =>
+            var genericMapMethodHandle = MapMethods.GetOrAdd(key, t =>
             {
                 if (!Reflector.IsAnonymousType(instanceType))
                 {
@@ -118,7 +116,7 @@ namespace Nemo
             return mapDelegate(null, new[] { source, isInterface, ignoreMappings });
         }
 
-        internal static TResult Map<TSource, TResult>(TSource source, bool isInterface, bool ignoreMappings = false)
+        internal static TResult Map<TSource, TResult>(TSource source, bool isInterface, bool ignoreMappings)
             where TResult : class
             where TSource : class
         {
@@ -293,7 +291,7 @@ namespace Nemo
         #region Select Methods
 
         public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            SelectOption selectOption = SelectOption.All, params OrderBy<T>[] orderBy)
             where T : class
         {
             string providerName = null;
@@ -314,7 +312,7 @@ namespace Nemo
         }
 
         private static IEnumerable<T> Select<T, T1>(Expression<Func<T, T1, bool>> join, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0,
-            bool? cached = null, SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            bool? cached = null, SelectOption selectOption = SelectOption.All, params OrderBy<T>[] orderBy)
             where T : class
             where T1 : class
         {
@@ -338,10 +336,10 @@ namespace Nemo
 
             return result;
         }
-
+        
         private static IEnumerable<T> Select<T, T1, T2>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, bool? cached = null, 
-            SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            SelectOption selectOption = SelectOption.All, params OrderBy<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -370,7 +368,7 @@ namespace Nemo
 
         internal static IEnumerable<T> Select<T, T1, T2, T3>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            SelectOption selectOption = SelectOption.All, params OrderBy<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -401,7 +399,7 @@ namespace Nemo
 
         private static IEnumerable<T> Select<T, T1, T2, T3, T4>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, bool? cached = null, 
-            SelectOption selectOption = SelectOption.All, params Tuple<Expression<Func<T, object>>, SortingOrder>[] orderBy)
+            SelectOption selectOption = SelectOption.All, params OrderBy<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -624,7 +622,7 @@ namespace Nemo
         {
             if (operationType == OperationType.Guess)
             {
-                operationType = operation.Any(Char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
@@ -639,7 +637,7 @@ namespace Nemo
 
         private static string GetQueryKey<T>(string operation, IEnumerable<Param> parameters, OperationReturnType returnType)
         {
-            var hash = Jenkins96Hash.Compute(Encoding.UTF8.GetBytes(returnType + "/" + operation + "/" + string.Join(",", parameters.OrderBy(p => p.Name).Select(p => p.Name + "=" + p.Value))));
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(returnType + "/" + operation + "/" + string.Join(",", parameters.OrderBy(p => p.Name).Select(p => p.Name + "=" + p.Value))));
             return typeof(T).FullName + "/" + hash;
         }
         
@@ -1265,7 +1263,7 @@ namespace Nemo
             var operationType = request.OperationType;
             if (operationType == OperationType.Guess)
             {
-                operationType = request.Operation.Any(Char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
             var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, ConfigurationFactory.Get<T>());
@@ -1326,15 +1324,17 @@ namespace Nemo
             {
                 return ConvertDataRow(dataRow, mode, isInterface, identityMap).Return();
             }
-            
-            if (value is T)
+
+            var item = value as T;
+            if (item != null)
             {
-                return ((T)value).Return();
+                return item.Return();
             }
-            
-            if (value is IList<T>)
+
+            var genericList = value as IList<T>;
+            if (genericList != null)
             {
-                return (IList<T>)value;
+                return genericList;
             }
 
             var list = value as IList;
@@ -1349,7 +1349,7 @@ namespace Nemo
         private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
              where T : class
         {
-            string tableName = GetTableName(typeof(T));
+            var tableName = GetTableName(typeof(T));
             return dataSet.Tables.Count != 0 ? ConvertDataTable(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], mode, isInterface, identityMap) : Enumerable.Empty<T>();
         }
 
@@ -1403,68 +1403,67 @@ namespace Nemo
 
         private static void LoadRelatedData(DataRow row, object value, Type targetType, MaterializationMode mode, Action<object> identityMapAction)
         {
-            DataTable table = row.Table;
-            if (table != null && table.ChildRelations.Count > 0)
+            var table = row.Table;
+            if (table == null || table.ChildRelations.Count <= 0) return;
+
+            var propertyMap = Reflector.GetPropertyMap(targetType);
+            var relations = table.ChildRelations.Cast<DataRelation>().ToArray();
+
+            foreach (var p in propertyMap)
             {
-                var propertyMap = Reflector.GetPropertyMap(targetType);
-                var relations = table.ChildRelations.Cast<DataRelation>().ToArray();
+                // By convention each relation should end with the name of the property prefixed with underscore
+                var relation = relations.FirstOrDefault(r => r.RelationName.EndsWith("_" + p.Key.Name));
 
-                foreach (var p in propertyMap)
+                if (relation == null) continue;
+                    
+                var childRows = row.GetChildRows(relation);
+                    
+                if (childRows.Length <= 0) continue;
+
+                object propertyValue = null;
+                if (p.Value.IsDataEntity)
                 {
-                    // By convention each relation should end with the name of the property prefixed with underscore
-                    var relation = relations.FirstOrDefault(r => r.RelationName.EndsWith("_" + p.Key.Name));
-
-                    if (relation == null) continue;
-                    
-                    var childRows = row.GetChildRows(relation);
-                    
-                    if (childRows.Length <= 0) continue;
-
-                    object propertyValue = null;
-                    if (p.Value.IsDataEntity)
-                    {
-                        propertyValue = ConvertDataRow(childRows[0], p.Key.PropertyType, mode, p.Key.PropertyType.IsInterface, identityMapAction);
+                    propertyValue = ConvertDataRow(childRows[0], p.Key.PropertyType, mode, p.Key.PropertyType.IsInterface, identityMapAction);
                         
+                    // Write-through for identity map
+                    if (identityMapAction != null)
+                    {
+                        identityMapAction(propertyValue);
+                    }
+                }
+                else if (p.Value.IsDataEntityList)
+                {
+                    var elementType = p.Value.ElementType;
+                    if (elementType != null)
+                    {
+                        var items = ConvertDataTable(childRows, elementType, mode, elementType.IsInterface, identityMapAction);
+                        IList list;
+                        if (!p.Value.IsListInterface)
+                        {
+                            list = (IList)p.Key.PropertyType.New();
+                        }
+                        else
+                        {
+                            list = List.Create(elementType, p.Value.Distinct, p.Value.Sorted);
+                        }
+
+                        foreach (var item in items)
+                        {
+                            list.Add(item);
+                        }
+
                         // Write-through for identity map
                         if (identityMapAction != null)
                         {
-                            identityMapAction(propertyValue);
+                            foreach (var item in list)
+                            {
+                                identityMapAction(item);
+                            }
                         }
+                        propertyValue = list;
                     }
-                    else if (p.Value.IsDataEntityList)
-                    {
-                        var elementType = p.Value.ElementType;
-                        if (elementType != null)
-                        {
-                            var items = ConvertDataTable(childRows, elementType, mode, elementType.IsInterface, identityMapAction);
-                            IList list;
-                            if (!p.Value.IsListInterface)
-                            {
-                                list = (IList)p.Key.PropertyType.New();
-                            }
-                            else
-                            {
-                                list = List.Create(elementType, p.Value.Distinct, p.Value.Sorted);
-                            }
-
-                            foreach (var item in items)
-                            {
-                                list.Add(item);
-                            }
-
-                            // Write-through for identity map
-                            if (identityMapAction != null)
-                            {
-                                foreach (var item in list)
-                                {
-                                    identityMapAction(item);
-                                }
-                            }
-                            propertyValue = list;
-                        }
-                    }
-                    Reflector.Property.Set(value.GetType(), value, p.Key.Name, propertyValue);
                 }
+                Reflector.Property.Set(value.GetType(), value, p.Key.Name, propertyValue);
             }
         }
         
@@ -1480,7 +1479,7 @@ namespace Nemo
                 {
                     if (!isInterface || mode == MaterializationMode.Exact)
                     {
-                        var item = Map<IDataRecord, T>(reader, isInterface: isInterface);
+                        var item = Map<IDataRecord, T>(reader, isInterface, false);
 
                         if (map != null)
                         {
@@ -1594,7 +1593,7 @@ namespace Nemo
                     {
                         if (!isInterface || mode == MaterializationMode.Exact)
                         {
-                            var item = Map(reader, types[resultIndex], isInterface: isInterface);
+                            var item = Map(reader, types[resultIndex], isInterface, false);
                             yield return TypeUnion.Create(types, item);
                         }
                         else

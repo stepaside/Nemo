@@ -9,8 +9,8 @@ namespace Nemo.Fn
     public interface ITypeUnion
     {
         Type UnionType { get; }
-        bool Is<K>();
-        K As<K>();
+        bool Is<T>();
+        T As<T>();
         Type[] AllTypes { get; }
         object GetObject();
     }
@@ -26,18 +26,18 @@ namespace Nemo.Fn
             UnionType = typeof(T1);
         }
 
-        public bool Is<K>()
+        public bool Is<T>()
         {
-            return typeof(K).IsAssignableFrom(UnionType);
+            return typeof(T).IsAssignableFrom(UnionType);
         }
 
-        public K As<K>()
+        public T As<T>()
         {
-            if (!Is<K>())
+            if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
             }
-            return (K)((ITypeUnion)this).GetObject();
+            return (T)((ITypeUnion)this).GetObject();
         }
 
         object ITypeUnion.GetObject()
@@ -106,18 +106,18 @@ namespace Nemo.Fn
             UnionType = typeof(T2);
         }
 
-        public bool Is<K>()
+        public bool Is<T>()
         {
-            return typeof(K).IsAssignableFrom(UnionType);
+            return typeof(T).IsAssignableFrom(UnionType);
         }
 
-        public K As<K>()
+        public T As<T>()
         {
-            if (!Is<K>())
+            if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
             }
-            return (K)((ITypeUnion)this).GetObject();
+            return (T)((ITypeUnion)this).GetObject();
         }
 
         object ITypeUnion.GetObject()
@@ -196,18 +196,18 @@ namespace Nemo.Fn
             UnionType = typeof(T3);
         }
 
-        public bool Is<K>()
+        public bool Is<T>()
         {
-            return typeof(K).IsAssignableFrom(UnionType);
+            return typeof(T).IsAssignableFrom(UnionType);
         }
 
-        public K As<K>()
+        public T As<T>()
         {
-            if (!Is<K>())
+            if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
             }
-            return (K)((ITypeUnion)this).GetObject();
+            return (T)((ITypeUnion)this).GetObject();
         }
 
         object ITypeUnion.GetObject()
@@ -296,18 +296,18 @@ namespace Nemo.Fn
             UnionType = typeof(T4);
         }
 
-        public bool Is<K>()
+        public bool Is<T>()
         {
-            return typeof(K).IsAssignableFrom(UnionType);
+            return typeof(T).IsAssignableFrom(UnionType);
         }
 
-        public K As<K>()
+        public T As<T>()
         {
-            if (!Is<K>())
+            if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
             }
-            return (K)((ITypeUnion)this).GetObject();
+            return (T)((ITypeUnion)this).GetObject();
         }
 
         object ITypeUnion.GetObject()
@@ -405,18 +405,18 @@ namespace Nemo.Fn
             UnionType = typeof(T5);
         }
 
-        public bool Is<K>()
+        public bool Is<T>()
         {
-            return typeof(K).IsAssignableFrom(UnionType);
+            return typeof(T).IsAssignableFrom(UnionType);
         }
 
-        public K As<K>()
+        public T As<T>()
         {
-            if (!Is<K>())
+            if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(K).Name));
+                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
             }
-            return (K)((ITypeUnion)this).GetObject();
+            return (T)((ITypeUnion)this).GetObject();
         }
 
         object ITypeUnion.GetObject()
@@ -485,7 +485,7 @@ namespace Nemo.Fn
 
     public static class TypeUnion
     {
-        private static readonly ConcurrentDictionary<TypeArray, Type> _types = new ConcurrentDictionary<TypeArray, Type>();
+        private static readonly ConcurrentDictionary<TypeArray, Type> Types = new ConcurrentDictionary<TypeArray, Type>();
 
         public static ITypeUnion Create(IList<Type> types, object value)
         {
@@ -515,7 +515,7 @@ namespace Nemo.Fn
                 if (genericType != null)
                 {
                     var key = new TypeArray(types);
-                    var type = _types.GetOrAdd(key, t => genericType.MakeGenericType(t.Types is Type[] ? (Type[])t.Types : t.Types.ToArray()));
+                    var type = Types.GetOrAdd(key, t => genericType.MakeGenericType(t.Types is Type[] ? (Type[])t.Types : t.Types.ToArray()));
                     union = (ITypeUnion)Nemo.Reflection.Activator.New(type, value);
                 }
             }

@@ -1,10 +1,10 @@
 ﻿using Nemo.Collections.Extensions;
-using Nemo.Security.Cryptography;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using Nemo.Utilities;
 
 namespace Nemo.Reflection
 {
@@ -27,7 +27,7 @@ namespace Nemo.Reflection
             type.Prepend(types)
                 .Select(t => BitConverter.GetBytes(t.GetHashCode()))
                 .Run((i, b) => Buffer.BlockCopy(b, 0, data, i * sizeof(int), b.Length));
-            var key = Jenkins96Hash.Compute(data);
+            var key = Hash.Compute(data);
             return _activatorCache.GetOrAdd(key, (Func<uint, ObjectActivator>)(k => GenerateDelegate(type, types)));
         }
 

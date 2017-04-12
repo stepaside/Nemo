@@ -5,7 +5,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using Nemo.Fn;
 
 namespace Nemo.Utilities
@@ -127,7 +126,7 @@ namespace Nemo.Utilities
             for (; i < source.Length; i++)
             {
                 int digit;
-                if (Char.IsDigit(source[i]))
+                if (char.IsDigit(source[i]))
                 {
                     digit = source[i] - '0';
                 }
@@ -169,7 +168,7 @@ namespace Nemo.Utilities
             }
 
             long result = 0;
-            for (; i < source.Length && Char.IsDigit(source[i]); i++)
+            for (; i < source.Length && char.IsDigit(source[i]); i++)
             {
                 result = 10 * result + (source[i] - '0');
             }
@@ -199,7 +198,7 @@ namespace Nemo.Utilities
 
             // integer part
             decimal result = 0;
-            for (; i < source.Length && Char.IsDigit(source[i]); i++)
+            for (; i < source.Length && char.IsDigit(source[i]); i++)
             {
                 result = 10 * result + (source[i] - '0');
             }
@@ -209,11 +208,11 @@ namespace Nemo.Utilities
             {
                 i++;
 
-                var inv_base = 0.1m;
-                for (; i < source.Length && Char.IsDigit(source[i]); i++)
+                var invBase = 0.1m;
+                for (; i < source.Length && char.IsDigit(source[i]); i++)
                 {
-                    result += (source[i] - '0') * inv_base;
-                    inv_base *= 0.1m;
+                    result += (source[i] - '0') * invBase;
+                    invBase *= 0.1m;
                 }
             }
 
@@ -221,7 +220,7 @@ namespace Nemo.Utilities
             result *= sign;
 
             // exponent
-            var exponent_negative = false;
+            var exponentNegative = false;
             var exponent = 0;
             if (i < source.Length && (source[i] == 'e' || source[i] == 'E'))
             {
@@ -230,7 +229,7 @@ namespace Nemo.Utilities
                 switch (source[i])
                 {
                     case '-':
-                        exponent_negative = true;
+                        exponentNegative = true;
                         i++;
                         break;
                     case '+':
@@ -238,7 +237,7 @@ namespace Nemo.Utilities
                         break;
                 }
 
-                for (; i < source.Length && Char.IsDigit(source[i]); i++)
+                for (; i < source.Length && char.IsDigit(source[i]); i++)
                 {
                     exponent = 10 * exponent + (source[i] - '0');
                 }
@@ -246,19 +245,19 @@ namespace Nemo.Utilities
 
             if (exponent > 0)
             {
-                var power_of_ten = 10m;
+                var powerOfTen = 10m;
                 for (; exponent > 1; exponent--)
                 {
-                    power_of_ten *= 10;
+                    powerOfTen *= 10;
                 }
 
-                if (exponent_negative)
+                if (exponentNegative)
                 {
-                    result /= power_of_ten;
+                    result /= powerOfTen;
                 }
                 else
                 {
-                    result *= power_of_ten;
+                    result *= powerOfTen;
                 }
             }
 
@@ -275,7 +274,7 @@ namespace Nemo.Utilities
             JsonValue top = null;
             string name = null;
 
-            var escaped_newlines = 0;
+            var escapedNewlines = 0;
 
             char[] jsonArray = null;
             var i = 0;
@@ -354,7 +353,7 @@ namespace Nemo.Utilities
 
                             var first = i;
                             var last = i;
-                            var ch_last = ch;
+                            var chLast = ch;
                             while (i < json.Length)
                             {
                                 if (ch < '\x20')
@@ -366,29 +365,29 @@ namespace Nemo.Utilities
                                     switch (json[i + 1])
                                     {
                                         case '"':
-                                            ch_last = '"';
+                                            chLast = '"';
                                             break;
                                         case '\\':
-                                            ch_last = '\\';
+                                            chLast = '\\';
                                             break;
                                         case '/':
-                                            ch_last = '/';
+                                            chLast = '/';
                                             break;
                                         case 'b':
-                                            ch_last = '\b';
+                                            chLast = '\b';
                                             break;
                                         case 'f':
-                                            ch_last = '\f';
+                                            chLast = '\f';
                                             break;
                                         case 'n':
-                                            ch_last = '\n';
-                                            ++escaped_newlines;
+                                            chLast = '\n';
+                                            ++escapedNewlines;
                                             break;
                                         case 'r':
-                                            ch_last = '\r';
+                                            chLast = '\r';
                                             break;
                                         case 't':
-                                            ch_last = '\t';
+                                            chLast = '\t';
                                             break;
                                         case 'u':
                                         {
@@ -405,7 +404,7 @@ namespace Nemo.Utilities
 
                                             if (codepoint <= 0x7F)
                                             {
-                                                ch_last = (char)codepoint;
+                                                chLast = (char)codepoint;
                                             }
                                             else if (codepoint <= 0x7FF)
                                             {
@@ -445,7 +444,7 @@ namespace Nemo.Utilities
                                 }
                             }
 
-                            if (name == null && top.Type == JsonType.Object)
+                            if (top != null && (name == null && top.Type == JsonType.Object))
                             {
                                 // field name in object
                                 name = json.Substring(first, i - first);
@@ -472,7 +471,10 @@ namespace Nemo.Utilities
                                 }
                                 value.Value = new TypeUnion<string, long, decimal, bool>(s);
 
-                                top.Append(value);
+                                if (top != null)
+                                {
+                                    top.Append(value);
+                                }
                             }
                         }
                         break;
@@ -502,7 +504,7 @@ namespace Nemo.Utilities
                                 i += 3;
                             }
                             // false
-                            else if (ch == 'f' && json[i + 1] == 'a' && json[i + 2] == 'l' && json[i + 3] == 's' && jsonArray[i + 4] == 'e')
+                            else if (jsonArray != null && (ch == 'f' && json[i + 1] == 'a' && json[i + 2] == 'l' && json[i + 3] == 's' && jsonArray[i + 4] == 'e'))
                             {
                                 value.Type = JsonType.Boolean;
                                 value.Value = new TypeUnion<string, long, decimal, bool>(false);
@@ -513,7 +515,10 @@ namespace Nemo.Utilities
                                 throw new JsonParserException(i, "Unknown identifier");
                             }
 
-                            top.Append(value);
+                            if (top != null)
+                            {
+                                top.Append(value);
+                            }
                         }
                         break;
 
@@ -574,7 +579,10 @@ namespace Nemo.Utilities
                                 i--;
                             }
 
-                            top.Append(value);
+                            if (top != null)
+                            {
+                                top.Append(value);
+                            }
                         }
                         break;
 

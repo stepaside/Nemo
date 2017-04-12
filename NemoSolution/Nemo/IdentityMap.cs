@@ -46,26 +46,25 @@ namespace Nemo
         {
             if (entities is Stream<T>)
             {
-                return entities
-                    .Select(e => new { Id = e.ComputeHash(), Entity = e })
-                    .Do(e =>
+                return entities.Select(e =>
+                {
+                    var id = e.ComputeHash();
+                    _indices.AddOrUpdate(index, k => new List<string>(new[] { id }), (k, l) =>
                     {
-                        _indices.AddOrUpdate(index, k => new List<string>(new[] { e.Id }), (k, l) =>
-                        {
-                            l.Add(e.Id);
-                            return l;
-                        });
+                        l.Add(id);
+                        return l;
+                    });
 
-                        if (_entities.TryAdd(e.Id, e.Entity))
+                    if (_entities.TryAdd(id, e))
+                    {
+                        _indicesReverse.AddOrUpdate(id, k => new HashSet<string>(new[] { index }), (k, set) =>
                         {
-                            _indicesReverse.AddOrUpdate(e.Id, k => new HashSet<string>(new[] { index }), (k, set) =>
-                            {
-                                set.Add(index);
-                                return set;
-                            });
-                        }
-                    })
-                    .Select(e => e.Entity);
+                            set.Add(index);
+                            return set;
+                        });
+                    }
+                    return e;
+                });
             }
 
             if (_indices.ContainsKey(index)) return entities;

@@ -2,7 +2,6 @@
 using Nemo.Configuration;
 using Nemo.Id;
 using Nemo.Reflection;
-using Nemo.Security.Cryptography;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Validation;
@@ -15,6 +14,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Nemo.Logging;
+using Nemo.Utilities;
 
 namespace Nemo.Extensions
 {
@@ -639,7 +639,7 @@ namespace Nemo.Extensions
         public static string ComputeHash<T>(this T dataEntity)
             where T : class
         {
-            var hash = Jenkins96Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", dataEntity.GetPrimaryKey().Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", dataEntity.GetPrimaryKey().Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
             var type = typeof(T);
             if (type == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
             {

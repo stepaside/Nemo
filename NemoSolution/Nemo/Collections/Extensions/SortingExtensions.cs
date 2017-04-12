@@ -8,12 +8,6 @@ using Nemo.Extensions;
 
 namespace Nemo.Collections.Extensions
 {
-    public enum SortingOrder
-    {
-        Ascending,
-        Descending
-    }
-
     public static class SortingExtensions
     {
         #region IsSorted Methods

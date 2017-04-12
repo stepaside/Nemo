@@ -6,7 +6,7 @@ namespace Nemo.Fn
     [Serializable]
     public sealed class Maybe<T>
     {
-        public readonly static Maybe<T> Empty = new Maybe<T>();
+        public static readonly Maybe<T> Empty = new Maybe<T>();
         public T Value { get; private set; }
         public bool HasValue { get; private set; }
         

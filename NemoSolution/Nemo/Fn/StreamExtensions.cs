@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Nemo.Fn.Extensions;
 
 namespace Nemo.Fn
 {
@@ -53,15 +50,7 @@ namespace Nemo.Fn
 
         public static T FoldRight<U, T>(this Stream<U> st1, Func<U, T, T> folder, T init)
         {
-            if (st1 == null)
-            {
-                return init;
-            }
-            if (st1 != null && st1.Tail == null)
-            {
-                return folder(st1.Head, init);
-            }
-            return folder(st1.Head, st1.Tail.FoldRight(folder, init));
+            return st1 == null ? init : folder(st1.Head, st1.Tail == null ? init : st1.Tail.FoldRight(folder, init));
         }
 
         public static T FoldLeft<U, T>(this Stream<U> st1, Func<T, U, T> folder, T init)
@@ -71,11 +60,7 @@ namespace Nemo.Fn
 
         public static Stream<T> Map<U, T>(this Stream<U> st1, Func<U, T> mapper)
         {
-            if (st1 == null)
-            {
-                return null;
-            }
-            return new Stream<T>(mapper(st1.Head), () => st1.Tail.Map(mapper));
+            return st1 == null ? null : new Stream<T>(mapper(st1.Head), () => st1.Tail.Map(mapper));
         }
 
         public static Stream<T> Filter<T>(this Stream<T> st1, Func<T, bool> filter)
@@ -103,11 +88,7 @@ namespace Nemo.Fn
             {
                 return new Stream<T>(st1.Head, () => Merge(st1.Tail, st2));
             }
-            if (result > 0)
-            {
-                return new Stream<T>(st2.Head, () => Merge(st1, st2.Tail));
-            }
-            return new Stream<T>(st1.Head, () => Merge(st1.Tail, st2.Tail));
+            return result > 0 ? new Stream<T>(st2.Head, () => Merge(st1, st2.Tail)) : new Stream<T>(st1.Head, () => Merge(st1.Tail, st2.Tail));
         }
     }
 }

@@ -22,14 +22,8 @@ namespace Nemo.Fn
 
         public static Maybe<T> ToMaybe<T>(this T value)
         {
-            if (!(value is ValueType))
-            {
-                if (ReferenceEquals(value, null))
-                {
-                    return Maybe<T>.Empty;
-                }
-            }
-            return new Maybe<T>(value);
+            if (value is ValueType) return new Maybe<T>(value);
+            return ReferenceEquals(value, null) ? Maybe<T>.Empty : new Maybe<T>(value);
         }
 
         #endregion
