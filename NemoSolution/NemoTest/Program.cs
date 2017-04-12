@@ -94,7 +94,7 @@ namespace NemoTest
 
 //            var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 
-            var selected_customers_and_orders_include = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0).Include<ICustomer, IOrder>((c, o) => c.Id == o.CustomerId).ToLazyList();
+//            var selected_customers_and_orders_include = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0).Include<ICustomer, IOrder>((c, o) => c.Id == o.CustomerId).ToLazyList();
 
 //            // Simple retrieve with dynamic parameters
 //            var retrieve_customer_dyn = ObjectFactory.Retrieve<Customer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
