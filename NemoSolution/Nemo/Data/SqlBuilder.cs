@@ -103,7 +103,7 @@ namespace Nemo.Data
 
         internal static string GetSelectStatement<T, T1, T2, T3, T4>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1,
             Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
-            int page, int pageSize, bool first, DialectProvider dialect, params OrderBy<T>[] orderBy)
+            int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -196,9 +196,9 @@ namespace Nemo.Data
                         var sortReverse = new StringBuilder();
                         foreach (var o in orderBy)
                         {
-                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.Expression.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
-                            sort.AppendFormat("{0} {1}, ", column, o.Direction == SortingOrder.Ascending ? "ASC" : "DESC");
-                            sortReverse.AppendFormat("{0} {1}, ", column, o.Direction == SortingOrder.Ascending ? "DESC" : "ASC");
+                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                            sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
+                            sortReverse.AppendFormat("{0} {1}, ", column, !o.Reverse ? "DESC" : "ASC");
                         }
                         sort.Length -= 2;
                         sortReverse.Length -= 2;
@@ -223,8 +223,8 @@ namespace Nemo.Data
                         var sort = new StringBuilder();
                         foreach (var o in orderBy)
                         {
-                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.Expression.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
-                            sort.AppendFormat("{0} {1}, ", column, o.Direction == SortingOrder.Ascending ? "ASC" : "DESC");
+                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                            sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
                         sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, sort, whereClause, (page - 1) * pageSize, page * pageSize, selectionWithoutAlias);
@@ -238,8 +238,8 @@ namespace Nemo.Data
                         var sort = new StringBuilder(" ORDER BY ");
                         foreach (var o in orderBy)
                         {
-                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.Expression.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
-                            sort.AppendFormat("{0} {1}, ", column, o.Direction == SortingOrder.Ascending ? "ASC" : "DESC");
+                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                            sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
 						orderByClause = sort.ToString();
@@ -255,8 +255,8 @@ namespace Nemo.Data
                     var sort = new StringBuilder(" ORDER BY ");
                     foreach (var o in orderBy)
                     {
-                        var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.Expression.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
-                        sort.AppendFormat("{0} {1}, ", column, o.Direction == SortingOrder.Ascending ? "ASC" : "DESC");
+                        var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                        sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                     }
                     sort.Length -= 2;
                     sql += sort;
@@ -282,20 +282,20 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, bool first, DialectProvider dialect, params OrderBy<T>[] orderBy)
+        internal static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
         {
             return GetSelectStatement<T, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, null, null, null, null, page, pageSize, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join, int page, int pageSize, bool first, DialectProvider dialect, params OrderBy<T>[] orderBy)
+        internal static string GetSelectStatement<T, T1>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join, int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
         {
             return GetSelectStatement<T, T1, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join, null, null, null, page, pageSize, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1, T2>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, int page, int pageSize, bool first, DialectProvider dialect, params OrderBy<T>[] orderBy)
+        internal static string GetSelectStatement<T, T1, T2>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -303,7 +303,7 @@ namespace Nemo.Data
             return GetSelectStatement<T, T1, T2, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join1, join2, null, null, page, pageSize, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1, T2, T3>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, int page, int pageSize, bool first, DialectProvider dialect, params OrderBy<T>[] orderBy)
+        internal static string GetSelectStatement<T, T1, T2, T3>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class

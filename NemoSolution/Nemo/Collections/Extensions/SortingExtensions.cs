@@ -27,20 +27,25 @@ namespace Nemo.Collections.Extensions
 
             if (source is IOrderedEnumerable<T>)
             {
-                if (source is OrderedEnumerable<T>)
+                var ordered = source as OrderedEnumerable<T>;
+                if (ordered != null)
                 {
-                    sortingOrder = ((OrderedEnumerable<T>)source).IsDescending ? 1 : -1;
-                }
-                else if (source is OrderedEnumerableConverter<T>)
-                {
-                    sortingOrder = ((OrderedEnumerableConverter<T>)source).IsDescending ? 1 : -1;
+                    sortingOrder = ordered.IsDescending ? 1 : -1;
                 }
                 else
                 {
-                    var field = source.GetType().GetField("descending", BindingFlags.Instance | BindingFlags.NonPublic);
-                    if (field != null)
+                    var converter = source as OrderedEnumerableConverter<T>;
+                    if (converter != null)
                     {
-                        sortingOrder = (bool)field.GetValue(source) ? 1 : -1;
+                        sortingOrder = converter.IsDescending ? 1 : -1;
+                    }
+                    else
+                    {
+                        var field = source.GetType().GetField("descending", BindingFlags.Instance | BindingFlags.NonPublic);
+                        if (field != null)
+                        {
+                            sortingOrder = (bool)field.GetValue(source) ? 1 : -1;
+                        }
                     }
                 }
             }
