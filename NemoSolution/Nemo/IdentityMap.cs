@@ -8,7 +8,16 @@ using Nemo.Fn;
 
 namespace Nemo
 {
-    internal class IdentityMap<T> 
+    public interface IIdentityMap
+    {
+        bool TryGetValue(string id, out object value);
+
+        void Set(string id, object value);
+
+        bool Remove(string id);
+    }
+
+    internal class IdentityMap<T> : IIdentityMap
         where T : class
     {
         private readonly ConcurrentDictionary<string, T> _entities = new ConcurrentDictionary<string, T>();
@@ -24,6 +33,7 @@ namespace Nemo
 
         public void Set(T entity)
         {
+            if (entity == null) return;
             _entities[entity.ComputeHash()] = entity;
         }
 
@@ -94,6 +104,25 @@ namespace Nemo
                 List<string> idList;
                 _indices.TryRemove(index, out idList);
             }
+        }
+
+        bool IIdentityMap.TryGetValue(string id, out object value)
+        {
+            T item;
+            var success = _entities.TryGetValue(id, out item);
+            value = item;
+            return success;
+        }
+
+        void IIdentityMap.Set(string id, object value)
+        {
+            _entities[id] = (T)value;
+        }
+
+        bool IIdentityMap.Remove(string id)
+        {
+            T item;
+            return _entities.TryRemove(id, out item);
         }
     }
 }

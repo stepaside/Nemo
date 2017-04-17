@@ -652,8 +652,18 @@ namespace Nemo.Extensions
             return type.FullName + "/" + hash;
         }
 
+        internal static string ComputeHash(this SortedDictionary<string, object> values, Type objectType)
+        {
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", values.Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
+            if (objectType == typeof(object) && Reflector.IsEmitted(objectType))
+            {
+                objectType = Reflector.GetInterface(objectType);
+            }
+            return objectType.FullName + "/" + hash;
+        }
+
         #endregion
-        
+
         #region ReadOnly Methods
 
         public static T AsReadOnly<T>(this T dataEntity)

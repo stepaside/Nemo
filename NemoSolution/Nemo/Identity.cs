@@ -9,6 +9,23 @@ namespace Nemo
 {
     internal static class Identity
     {
+        internal static IIdentityMap Get(Type objectType)
+        {
+            var executionContext = ConfigurationFactory.Get(objectType).ExecutionContext;
+            IIdentityMap identityMap;
+            var identityMapKey = objectType.FullName + "/IdentityMap";
+            if (!executionContext.Exists(identityMapKey))
+            {
+                identityMap = (IIdentityMap)Activator.CreateInstance(typeof(IdentityMap<>).MakeGenericType(objectType));
+                executionContext.Set(identityMapKey, identityMap);
+            }
+            else
+            {
+                identityMap = (IIdentityMap)executionContext.Get(identityMapKey);
+            }
+            return identityMap;
+        }
+
         internal static IdentityMap<T> Get<T>()
             where T : class
         {

@@ -9,25 +9,24 @@ using Nemo.Reflection;
 
 namespace Nemo.Linq
 {
-    class NemoQueryContext
+    internal class NemoQueryContext
     {
-        private static readonly MethodInfo _selectMethod = typeof(ObjectFactory).GetMethods().First(m => m.Name == "Select" && m.GetGenericArguments().Length == 1);
+        private static readonly MethodInfo SelectMethod = typeof(ObjectFactory).GetMethods().First(m => m.Name == "Select" && m.GetGenericArguments().Length == 1);
 
         // Executes the expression tree that is passed to it. 
         internal static object Execute(Expression expression, DbConnection connection = null)
         {
             var args = new Dictionary<string, object>();
             var type = Prepare(expression, args);
-
+            
             var funcType = typeof(Func<,>).MakeGenericType(type, typeof(object));
-            var expressinoType = typeof(Expression<>).MakeGenericType(funcType);
-            var tupleType = typeof(Tuple<,>).MakeGenericType(expressinoType, typeof(SortingOrder));
+            var sortingType = typeof(Sorting<>).MakeGenericType(type);
 
             var offset = 0;
             var limit = 0;
             var selectOption = SelectOption.All;
             LambdaExpression criteria = null;
-            var orderBy = new List<Tuple<LambdaExpression, SortingOrder>>();
+            var orderBy = new List<ISorting>();
 
             foreach (var pair in args)
             {
@@ -50,35 +49,45 @@ namespace Nemo.Linq
                         if (pair.Key.StartsWith("OrderBy."))
                         {
                             var exp = (LambdaExpression)pair.Value;
-                            orderBy.Add(Tuple.Create(Expression.Lambda(funcType, exp.Body, exp.Parameters), SortingOrder.Ascending));
+                            var sorting = (ISorting)System.Activator.CreateInstance(sortingType);
+                            sorting.SetOrderBy(Expression.Lambda(funcType, exp.Body, exp.Parameters));
+                            orderBy.Add(sorting);
                         }
                         else if (pair.Key.StartsWith("OrderByDescending."))
                         {
                             var exp = (LambdaExpression)pair.Value;
-                            orderBy.Add(Tuple.Create(Expression.Lambda(funcType, exp.Body, exp.Parameters), SortingOrder.Descending));
+                            var sorting = (ISorting)System.Activator.CreateInstance(sortingType);
+                            sorting.SetOrderBy(Expression.Lambda(funcType, exp.Body, exp.Parameters));
+                            sorting.Reverse = true;
+                            orderBy.Add(sorting);
                         }
                         else if (pair.Key.StartsWith("ThenBy."))
                         {
                             var exp = (LambdaExpression)pair.Value;
-                            orderBy.Add(Tuple.Create(Expression.Lambda(funcType, exp.Body, exp.Parameters), SortingOrder.Ascending));
+                            var sorting = (ISorting)System.Activator.CreateInstance(sortingType);
+                            sorting.SetOrderBy(Expression.Lambda(funcType, exp.Body, exp.Parameters));
+                            orderBy.Add(sorting);
                         }
                         else if (pair.Key.StartsWith("ThenByDescending."))
                         {
                             var exp = (LambdaExpression)pair.Value;
-                            orderBy.Add(Tuple.Create(Expression.Lambda(funcType, exp.Body, exp.Parameters), SortingOrder.Descending));
+                            var sorting = (ISorting)System.Activator.CreateInstance(sortingType);
+                            sorting.SetOrderBy(Expression.Lambda(funcType, exp.Body, exp.Parameters));
+                            sorting.Reverse = true;
+                            orderBy.Add(sorting);
                         }
                         break;
                 }
             }
 
-            var orderByArray = Array.CreateInstance(tupleType, orderBy.Count);
+            var orderByArray = Array.CreateInstance(sortingType, orderBy.Count);
             for (var i = 0; i < orderBy.Count; i++)
             {
                 var t = orderBy[i];
-                orderByArray.SetValue(tupleType.New(new object[] { t.Item1, t.Item2 }), i);
+                orderByArray.SetValue(t, i);
             }
 
-            return _selectMethod.MakeGenericMethod(type)
+            return SelectMethod.MakeGenericMethod(type)
                 .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset / limit + 1 : 0, limit, null, selectOption, orderByArray });
         }
 

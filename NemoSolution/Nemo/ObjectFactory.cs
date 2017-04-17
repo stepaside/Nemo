@@ -1282,10 +1282,10 @@ namespace Nemo
             where T : class
         {
             var config = ConfigurationFactory.Get<T>();
-            return Translate(response, null, null, config.DefaultL1CacheRepresentation != L1CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
+            return Translate<T>(response, null, null, config.DefaultL1CacheRepresentation != L1CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
         }
 
-        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, IdentityMap<T> identityMap)
+        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, IIdentityMap identityMap)
             where T : class
         {
             var value = response != null ? response.Value : null;
@@ -1310,19 +1310,19 @@ namespace Nemo
             var dataSet = value as DataSet;
             if (dataSet != null)
             {
-                return ConvertDataSet(dataSet, mode, isInterface, identityMap);
+                return ConvertDataSet<T>(dataSet, mode, isInterface, identityMap);
             }
 
             var dataTable = value as DataTable;
             if (dataTable != null)
             {
-                return ConvertDataTable(dataTable, mode, isInterface, identityMap);
+                return ConvertDataTable<T>(dataTable, mode, isInterface, identityMap);
             }
 
             var dataRow = value as DataRow;
             if (dataRow != null)
             {
-                return ConvertDataRow(dataRow, mode, isInterface, identityMap).Return();
+                return ConvertDataRow<T>(dataRow, mode, isInterface, identityMap, null).Return();
             }
 
             var item = value as T;
@@ -1346,33 +1346,49 @@ namespace Nemo
             return Bind<T>(value).Return();
         }
 
-        private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
+        private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, MaterializationMode mode, bool isInterface, IIdentityMap identityMap)
              where T : class
         {
             var tableName = GetTableName(typeof(T));
-            return dataSet.Tables.Count != 0 ? ConvertDataTable(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], mode, isInterface, identityMap) : Enumerable.Empty<T>();
+            return dataSet.Tables.Count != 0 ? ConvertDataTable<T>(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], mode, isInterface, identityMap) : Enumerable.Empty<T>();
         }
 
-        private static IEnumerable<T> ConvertDataTable<T>(DataTable table, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
+        private static IEnumerable<T> ConvertDataTable<T>(DataTable table, MaterializationMode mode, bool isInterface, IIdentityMap identityMap)
              where T : class
         {
-            return ConvertDataTable(table.AsEnumerable(), mode, isInterface, identityMap);
+            return ConvertDataTable<T>(table.AsEnumerable(), mode, isInterface, identityMap);
         }
 
-        private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
+        private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, MaterializationMode mode, bool isInterface, IIdentityMap identityMap)
              where T : class
         {
-            return table.Select(row => ConvertDataRow(row, mode, isInterface, identityMap));
+            var primaryKey = GetPrimaryKeyColumns(typeof(T));
+            return table.Select(row => ConvertDataRow<T>(row, mode, isInterface, identityMap, primaryKey));
         }
 
-        private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, MaterializationMode mode, bool isInterface, Action<object> identityMapAction)
+        private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, MaterializationMode mode, bool isInterface, IIdentityMap identityMap)
         {
-            return table.Select(row => ConvertDataRow(row, targetType, mode, isInterface, identityMapAction));
+            var primaryKey = GetPrimaryKeyColumns(targetType);
+            return table.Select(row => ConvertDataRow(row, targetType, mode, isInterface, identityMap, primaryKey));
         }
 
-        private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface, IdentityMap<T> identityMap)
+        private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface, IIdentityMap identityMap, string[] primaryKey)
              where T : class
         {
+            string hash = null;
+
+            if (identityMap != null)
+            {
+                var primaryKeyValue = new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => row[k]), StringComparer.Ordinal);
+                hash = primaryKeyValue.ComputeHash(typeof(T));
+
+                object result;
+                if (identityMap.TryGetValue(hash, out result))
+                {
+                    return (T)result;
+                }
+            }
+
             var value = mode == MaterializationMode.Exact || !isInterface ? Map<DataRow, T>(row, isInterface) : Wrap<T>(GetSerializableDataRow(row));
             var entity = value as ITrackableDataEntity;
             if (entity != null)
@@ -1380,15 +1396,33 @@ namespace Nemo
                 entity.ObjectState = ObjectState.Clean;
             }
 
-            var identityMapAction = identityMap != null ? new Action<object>(item => identityMap.Set((T)item)) : null;
+            // Write-through for identity map
+            if (identityMap != null && value != null && hash != null)
+            {
+                identityMap.Set(hash, value);
+            }
 
-            LoadRelatedData(row, value, typeof(T), mode, identityMapAction);
+            LoadRelatedData(row, value, typeof(T), mode, identityMap, primaryKey);
             
             return value;
         }
 
-        private static object ConvertDataRow(DataRow row, Type targetType, MaterializationMode mode, bool isInterface, Action<object> identityMapAction)
+        private static object ConvertDataRow(DataRow row, Type targetType, MaterializationMode mode, bool isInterface, IIdentityMap identityMap, string[] primaryKey)
         {
+            string hash = null;
+
+            if (identityMap != null)
+            {
+                var primaryKeyValue = new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => row[k]), StringComparer.Ordinal);
+                hash = primaryKeyValue.ComputeHash(targetType);
+
+                object result;
+                if (identityMap.TryGetValue(hash, out result))
+                {
+                    return result;
+                }
+            }
+
             var value = mode == MaterializationMode.Exact || !isInterface ? Map((object)row, targetType, isInterface) : Wrap(GetSerializableDataRow(row), targetType);
             var entity = value as ITrackableDataEntity;
             if (entity != null)
@@ -1396,12 +1430,18 @@ namespace Nemo
                 entity.ObjectState = ObjectState.Clean;
             }
 
-            LoadRelatedData(row, value, targetType, mode, identityMapAction);
+            // Write-through for identity map
+            if (identityMap != null && value != null && hash != null)
+            {
+                identityMap.Set(hash, value);
+            }
+            
+            LoadRelatedData(row, value, targetType, mode, identityMap, primaryKey);
 
             return value;
         }
 
-        private static void LoadRelatedData(DataRow row, object value, Type targetType, MaterializationMode mode, Action<object> identityMapAction)
+        private static void LoadRelatedData(DataRow row, object value, Type targetType, MaterializationMode mode, IIdentityMap identityMap, string[] primaryKey)
         {
             var table = row.Table;
             if (table == null || table.ChildRelations.Count <= 0) return;
@@ -1409,6 +1449,8 @@ namespace Nemo
             var propertyMap = Reflector.GetPropertyMap(targetType);
             var relations = table.ChildRelations.Cast<DataRelation>().ToArray();
 
+            primaryKey = primaryKey ?? GetPrimaryKeyColumns(targetType);
+            
             foreach (var p in propertyMap)
             {
                 // By convention each relation should end with the name of the property prefixed with underscore
@@ -1423,20 +1465,26 @@ namespace Nemo
                 object propertyValue = null;
                 if (p.Value.IsDataEntity)
                 {
-                    propertyValue = ConvertDataRow(childRows[0], p.Key.PropertyType, mode, p.Key.PropertyType.IsInterface, identityMapAction);
-                        
-                    // Write-through for identity map
-                    if (identityMapAction != null)
+                    var propertyKey = GetPrimaryKeyColumns(p.Key.PropertyType);
+                    IIdentityMap relatedIdentityMap = null;
+                    if (identityMap != null)
                     {
-                        identityMapAction(propertyValue);
+                        relatedIdentityMap = Identity.Get(p.Key.PropertyType);
                     }
+                    propertyValue = ConvertDataRow(childRows[0], p.Key.PropertyType, mode, p.Key.PropertyType.IsInterface, relatedIdentityMap, propertyKey);
                 }
                 else if (p.Value.IsDataEntityList)
                 {
                     var elementType = p.Value.ElementType;
                     if (elementType != null)
                     {
-                        var items = ConvertDataTable(childRows, elementType, mode, elementType.IsInterface, identityMapAction);
+                        IIdentityMap relatedIdentityMap = null;
+                        if (identityMap != null)
+                        {
+                            relatedIdentityMap = Identity.Get(elementType);
+                        }
+
+                        var items = ConvertDataTable(childRows, elementType, mode, elementType.IsInterface, relatedIdentityMap);
                         IList list;
                         if (!p.Value.IsListInterface)
                         {
@@ -1451,15 +1499,7 @@ namespace Nemo
                         {
                             list.Add(item);
                         }
-
-                        // Write-through for identity map
-                        if (identityMapAction != null)
-                        {
-                            foreach (var item in list)
-                            {
-                                identityMapAction(item);
-                            }
-                        }
+                        
                         propertyValue = list;
                     }
                 }
@@ -1796,10 +1836,16 @@ namespace Nemo
             return tableName;
         }
 
-        public static string[] GetPrimaryKeyProperties(Type interfaceType)
+        public static string[] GetPrimaryKeyProperties(Type objectType)
         {
-            var propertyMap = Reflector.GetPropertyMap(interfaceType);
+            var propertyMap = Reflector.GetPropertyMap(objectType);
             return propertyMap.Values.Where(p => p.CanRead && p.IsPrimaryKey).Select(p => p.PropertyName).ToArray();
+        }
+
+        private static string[] GetPrimaryKeyColumns(Type objectType)
+        {
+            var propertyMap = Reflector.GetPropertyMap(objectType);
+            return propertyMap.Values.Where(p => p.CanRead && p.IsPrimaryKey).Select(p => p.MappedColumnName ?? p.PropertyName).ToArray();
         }
 
         #endregion
