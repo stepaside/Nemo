@@ -41,198 +41,198 @@ namespace NemoTest
                 .SetOperationPrefix("spDTO_")
                 .SetLogging(false);
 
-//            var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
-//            var person_anonymous = new { person_id = 12345, name = "John Doe" };
-            
-//            var company = new Company { Name = "Test Company" };
-//            company.Contacts.Add(new Manager { Name = "Manager 1", HireDate = new DateTime(1990, 12, 20) });
-//            company.Contacts.Add(new Manager { Name = "Manager 2", HireDate = new DateTime(1990, 12, 20) });
+            //            var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
+            //            var person_anonymous = new { person_id = 12345, name = "John Doe" };
 
-//            var manager = (Manager)company.Contacts[0];
-//            manager.Employees.Add(new Employee { Name = "Employee 1.1", HireDate = new DateTime(1990, 12, 20) });
-//            manager.Employees.Add(new Employee { Name = "Employee 1.2", HireDate = new DateTime(1990, 12, 20) });
+            //            var company = new Company { Name = "Test Company" };
+            //            company.Contacts.Add(new Manager { Name = "Manager 1", HireDate = new DateTime(1990, 12, 20) });
+            //            company.Contacts.Add(new Manager { Name = "Manager 2", HireDate = new DateTime(1990, 12, 20) });
 
-//            //manager.Employees[0].Manager = manager;
-//            //manager.Employees[1].Manager = manager;
+            //            var manager = (Manager)company.Contacts[0];
+            //            manager.Employees.Add(new Employee { Name = "Employee 1.1", HireDate = new DateTime(1990, 12, 20) });
+            //            manager.Employees.Add(new Employee { Name = "Employee 1.2", HireDate = new DateTime(1990, 12, 20) });
 
-//            var packedJson = company.ToJson();
-//            var unpackedJson = packedJson.FromJson<Company>();
+            //            //manager.Employees[0].Manager = manager;
+            //            //manager.Employees[1].Manager = manager;
 
-//            var packedXml = company.ToXml();
-//            var unpackedXml = packedXml.FromXml<Company>();
-            
-//            var packed = company.Serialize();
-//            var unpacked = packed.Deserialize<Company>();
-            
-//            // Create an instance
-//            var created = ObjectFactory.Create<ICustomer>();
-//            var created_new = ObjectFactory.Create<Customer>();
+            //            var packedJson = company.ToJson();
+            //            var unpackedJson = packedJson.FromJson<Company>();
 
-//            // Binding to a legacy object
-//            var bound_legacy = ObjectFactory.Bind<PersonLegacy, IPerson>(person_legacy);
-            
-//            // Binding to an anonymous object
-//            var bound_anonymous = ObjectFactory.Bind<IPersonReadOnly>(person_anonymous);
+            //            var packedXml = company.ToXml();
+            //            var unpackedXml = packedXml.FromXml<Company>();
 
-//            // Mapping to a legacy object
-//            var mapped_legacy = ObjectFactory.Map<PersonLegacy, IPerson>(person_legacy);
-            
-//            // Mapping to an anonymous object
-//            try
-//            {
-//                var mapped_anonymous = ObjectFactory.Map<IPerson>(person_anonymous);
-//            }
-//            catch { }
+            //            var packed = company.Serialize();
+            //            var unpacked = packed.Deserialize<Company>();
 
-//            // Dynamic select
-//            var selected_customers_10 = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
-//            //var selected_customers_10_repeat = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
-//            var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
-//            var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
+            //            // Create an instance
+            //            var created = ObjectFactory.Create<ICustomer>();
+            //            var created_new = ObjectFactory.Create<Customer>();
 
-//            new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
+            //            // Binding to a legacy object
+            //            var bound_legacy = ObjectFactory.Bind<PersonLegacy, IPerson>(person_legacy);
 
-//            var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
+            //            // Binding to an anonymous object
+            //            var bound_anonymous = ObjectFactory.Bind<IPersonReadOnly>(person_anonymous);
 
-//            var selected_customers_and_orders_include = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0).Include<ICustomer, IOrder>((c, o) => c.Id == o.CustomerId).ToLazyList();
+            //            // Mapping to a legacy object
+            //            var mapped_legacy = ObjectFactory.Map<PersonLegacy, IPerson>(person_legacy);
 
-//            // Simple retrieve with dynamic parameters
-//            var retrieve_customer_dyn = ObjectFactory.Retrieve<Customer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
-           
-//            // Simple retrieve with actual parameters
-//            var retrieve_customer = ObjectFactory.Retrieve<ICustomer>(parameters: new[] { new Param { Name = "CustomerID", Value = "ALFKI" } }).FirstOrDefault();
+            //            // Mapping to an anonymous object
+            //            try
+            //            {
+            //                var mapped_anonymous = ObjectFactory.Map<IPerson>(person_anonymous);
+            //            }
+            //            catch { }
 
-//            // Simple retrieve with dynamic parameters and custom operation name
-//            var retrieve_customers_by_country = ObjectFactory.Retrieve<ICustomer>(operation: "RetrieveByCountry", parameters: new ParamList { Country => "USA" });
+            //            // Dynamic select
+            //            var selected_customers_10 = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
+            //            //var selected_customers_10_repeat = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
+            //            var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
+            //            var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
 
-//            // Simple retrieve with sql statement operation
-//            var retrieve_customer_sql = ObjectFactory.Retrieve<ICustomer>(sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
+            //            new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
 
-//            // Advanced!
-//            // Retrieve customers with orders as object graph
-//            var retrieve_customer_with_orders_graph = ObjectFactory.Retrieve<ICustomer, IOrder>(
-//                                                                    sql: @"select * from Customers where CustomerID = @CustomerID; 
-//                                                                        select * from Orders where CustomerID = @CustomerID",
-//                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
-//                                                                    mode: FetchMode.Eager);
-//            var customer = retrieve_customer_with_orders_graph.First();
+            //            var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 
-//            // Advanced!
-//            // Retrieve orders with customer as a single row mapping
-//            var retrieve_orders_with_customer = ObjectFactory.Retrieve<IOrder, ICustomer>(
-//                                                                    sql: @"select c.CustomerID, c.CompanyName, o.OrderID, o.ShipPostalCode from Customers c
-//                                                                            left join Orders o on o.CustomerID = c.CustomerID 
-//                                                                            where c.CustomerID = @CustomerID",
-//                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
-//                                                                    map: (o, c) => { o.Customer = c; return o; });
-//            var orders = retrieve_orders_with_customer.ToList();
-//            var same = orders[0].Customer == orders[1].Customer;
+            //            var selected_customers_and_orders_include = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0).Include<ICustomer, IOrder>((c, o) => c.Id == o.CustomerId).ToLazyList();
 
-//            // Advanced!
-//            // Retrieve customers with orders as a single row mapping
-//            var retrieve_customer_with_orders = ObjectFactory.Retrieve<ICustomer, IOrder>(
-//                                                                    sql: @"select c.CustomerID, c.CompanyName, o.OrderID, o.ShipPostalCode from Customers c
-//                                                                            left join Orders o on o.CustomerID = c.CustomerID 
-//                                                                            where c.CustomerID = @CustomerID",
-//                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
-//                                                                    map: new CustomerOrderMapper().Map);
+            //            // Simple retrieve with dynamic parameters
+            //            var retrieve_customer_dyn = ObjectFactory.Retrieve<Customer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
 
-//            // Advanced!
-//            // Retrieve customers with orders as multi-result
-//            var retrieve_customer_with_orders_lazy = ObjectFactory.Retrieve<ICustomer, IOrder>(
-//                                                                    sql: @"select * from Customers where CustomerID = @CustomerID;
-//                                                                            select * from Orders where CustomerID = @CustomerID",
-//                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
-//                                                                    mode: FetchMode.Lazy);
+            //            // Simple retrieve with actual parameters
+            //            var retrieve_customer = ObjectFactory.Retrieve<ICustomer>(parameters: new[] { new Param { Name = "CustomerID", Value = "ALFKI" } }).FirstOrDefault();
 
-//            var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault(); // ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
-//            var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>();
-            
-//            // UnitOfWork example
-//            using (ObjectScope.New(customer, autoCommit: false))
-//            {
-//                customer.CompanyName += "Test";
-//                customer.Orders[0].ShipPostalCode = "11111";
-//                customer.Orders.RemoveAt(1);
+            //            // Simple retrieve with dynamic parameters and custom operation name
+            //            var retrieve_customers_by_country = ObjectFactory.Retrieve<ICustomer>(operation: "RetrieveByCountry", parameters: new ParamList { Country => "USA" });
 
-//                var o = ObjectFactory.Create<IOrder>();
-//                o.CustomerId = customer.Id;
-//                o.ShipPostalCode = "19115";
-//                o.GenerateKey();
-//                customer.Orders.Add(o);
+            //            // Simple retrieve with sql statement operation
+            //            var retrieve_customer_sql = ObjectFactory.Retrieve<ICustomer>(sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
 
-//                //customer.Rollback();
-//                customer.Commit();
-//            }
+            //            // Advanced!
+            //            // Retrieve customers with orders as object graph
+            //            var retrieve_customer_with_orders_graph = ObjectFactory.Retrieve<ICustomer, IOrder>(
+            //                                                                    sql: @"select * from Customers where CustomerID = @CustomerID; 
+            //                                                                        select * from Orders where CustomerID = @CustomerID",
+            //                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
+            //                                                                    mode: FetchMode.Eager);
+            //            var customer = retrieve_customer_with_orders_graph.First();
 
-//            //using (new CacheScope(buffered: true))
-//            //{
-//            //    var c1 = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
-//            //    var c2 = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
-//            //}
+            //            // Advanced!
+            //            // Retrieve orders with customer as a single row mapping
+            //            var retrieve_orders_with_customer = ObjectFactory.Retrieve<IOrder, ICustomer>(
+            //                                                                    sql: @"select c.CustomerID, c.CompanyName, o.OrderID, o.ShipPostalCode from Customers c
+            //                                                                            left join Orders o on o.CustomerID = c.CustomerID 
+            //                                                                            where c.CustomerID = @CustomerID",
+            //                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
+            //                                                                    map: (o, c) => { o.Customer = c; return o; });
+            //            var orders = retrieve_orders_with_customer.ToList();
+            //            var same = orders[0].Customer == orders[1].Customer;
 
-//            //// UnitOfWork example: manual change tracking
-//            //using (new ObjectScope(customer, mode: ChangeTrackingMode.Manual))
-//            //{
-//            //    item.CompanyName += "Test";
-//            //    item.Orders[0].ShipPostalCode = "11111";
-//            //    item.Orders[0].Update();
+            //            // Advanced!
+            //            // Retrieve customers with orders as a single row mapping
+            //            var retrieve_customer_with_orders = ObjectFactory.Retrieve<ICustomer, IOrder>(
+            //                                                                    sql: @"select c.CustomerID, c.CompanyName, o.OrderID, o.ShipPostalCode from Customers c
+            //                                                                            left join Orders o on o.CustomerID = c.CustomerID 
+            //                                                                            where c.CustomerID = @CustomerID",
+            //                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
+            //                                                                    map: new CustomerOrderMapper().Map);
 
-//            //    var o1 = item.Orders[1];
-//            //    if (o1.Delete())
-//            //    {
-//            //        item.Orders.RemoveAt(1);
-//            //    }
+            //            // Advanced!
+            //            // Retrieve customers with orders as multi-result
+            //            var retrieve_customer_with_orders_lazy = ObjectFactory.Retrieve<ICustomer, IOrder>(
+            //                                                                    sql: @"select * from Customers where CustomerID = @CustomerID;
+            //                                                                            select * from Orders where CustomerID = @CustomerID",
+            //                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
+            //                                                                    mode: FetchMode.Lazy);
 
-//            //    var o2 = ObjectFactory.Create<IOrder>();
-//            //    o2.CustomerId = item.Id;
-//            //    o2.ShipPostalCode = "19115";
-//            //    if (o2.Insert())
-//            //    {
-//            //        item.Orders.Add(o2);
-//            //    }
+            //            var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault(); // ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
+            //            var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>();
 
-//            //    item.Commit();
-//            //}
+            //            // UnitOfWork example
+            //            using (ObjectScope.New(customer, autoCommit: false))
+            //            {
+            //                customer.CompanyName += "Test";
+            //                customer.Orders[0].ShipPostalCode = "11111";
+            //                customer.Orders.RemoveAt(1);
 
-//            // Passing open connection into the method
-//            using (var test_connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.Get<ICustomer>().DefaultConnectionName)))
-//            {
-//                test_connection.Open();
-//                var retrieve_customer_sql_wth_open_connection = ObjectFactory.Retrieve<ICustomer>(connection: test_connection, sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
-//            }
+            //                var o = ObjectFactory.Create<IOrder>();
+            //                o.CustomerId = customer.Id;
+            //                o.ShipPostalCode = "19115";
+            //                o.GenerateKey();
+            //                customer.Orders.Add(o);
 
-//            var read_only = customer.AsReadOnly();
-//            var is_read_only = read_only.IsReadOnly();
+            //                //customer.Rollback();
+            //                customer.Commit();
+            //            }
 
-//            var json = customer.ToJson();
-//            var customer_from_json = json.FromJson<ICustomer>();
+            //            //using (new CacheScope(buffered: true))
+            //            //{
+            //            //    var c1 = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
+            //            //    var c2 = ObjectFactory.Retrieve<ICustomer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
+            //            //}
 
-//            Console.WriteLine();
-//            Console.WriteLine("JSON DOM Parsing");
-            
-//            RunJsonParser(json, 500);
-//            RunJsonNetParser(json, 500);
-//            // ServiceStack does not support DOM parsing
-//            // RunServiceStackJsonParser<Customer>(new Customer(customer), 500);
+            //            //// UnitOfWork example: manual change tracking
+            //            //using (new ObjectScope(customer, mode: ChangeTrackingMode.Manual))
+            //            //{
+            //            //    item.CompanyName += "Test";
+            //            //    item.Orders[0].ShipPostalCode = "11111";
+            //            //    item.Orders[0].Update();
 
-//            var xsd = Xsd<ICustomer>.Text;
-//            var xml = customer.ToXml();
-//            using (var reader = XmlReader.Create(new StringReader(xml)))
-//            {
-//                var customer_from_xml = reader.FromXml<ICustomer>();
-//            }
+            //            //    var o1 = item.Orders[1];
+            //            //    if (o1.Delete())
+            //            //    {
+            //            //        item.Orders.RemoveAt(1);
+            //            //    }
 
-//            Console.WriteLine();
-//            Console.WriteLine("Object Fetching and Materialization");
+            //            //    var o2 = ObjectFactory.Create<IOrder>();
+            //            //    o2.CustomerId = item.Id;
+            //            //    o2.ShipPostalCode = "19115";
+            //            //    if (o2.Insert())
+            //            //    {
+            //            //        item.Orders.Add(o2);
+            //            //    }
 
-//            RunEF(500, false);
-//            RunNative(500);
-//            RunExecute(500);
-//            RunDapper(500, false);
-//            RunRetrieve(500, false);
-//            RunNativeWithMapper(500);
-//            RunSelect(500, false);
+            //            //    item.Commit();
+            //            //}
+
+            //            // Passing open connection into the method
+            //            using (var test_connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.Get<ICustomer>().DefaultConnectionName)))
+            //            {
+            //                test_connection.Open();
+            //                var retrieve_customer_sql_wth_open_connection = ObjectFactory.Retrieve<ICustomer>(connection: test_connection, sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
+            //            }
+
+            //            var read_only = customer.AsReadOnly();
+            //            var is_read_only = read_only.IsReadOnly();
+
+            //            var json = customer.ToJson();
+            //            var customer_from_json = json.FromJson<ICustomer>();
+
+            //            Console.WriteLine();
+            //            Console.WriteLine("JSON DOM Parsing");
+
+            //            RunJsonParser(json, 500);
+            //            RunJsonNetParser(json, 500);
+            //            // ServiceStack does not support DOM parsing
+            //            // RunServiceStackJsonParser<Customer>(new Customer(customer), 500);
+
+            //            var xsd = Xsd<ICustomer>.Text;
+            //            var xml = customer.ToXml();
+            //            using (var reader = XmlReader.Create(new StringReader(xml)))
+            //            {
+            //                var customer_from_xml = reader.FromXml<ICustomer>();
+            //            }
+
+            //            Console.WriteLine();
+            //            Console.WriteLine("Object Fetching and Materialization");
+
+            //            RunEF(500, false);
+            //            RunNative(500);
+            //            RunExecute(500);
+            //            RunDapper(500, false);
+            //            RunRetrieve(500, false);
+            //            RunNativeWithMapper(500);
+            //            RunSelect(500, false);
 
             //return;
 

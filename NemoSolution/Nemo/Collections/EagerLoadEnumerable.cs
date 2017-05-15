@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace Nemo.Collections
 {
-    class EagerLoadEnumerable<T> : IEnumerable<T>
+    internal class EagerLoadEnumerable<T> : IEnumerable<T>
         where T : class
     {
         private readonly Dictionary<string, Type> _sqlMap;
