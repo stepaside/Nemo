@@ -12,6 +12,9 @@
     <copyright>Copyright © Max Stepanskiy 2012-2017</copyright>
     <tags>ORM micro-ORM data-mapper sql-mapper</tags>
   </metadata>
+  <dependencies>
+    <dependency id="System.Interactive.Async" version="3.1.1" />
+  </dependencies>
   <files>
     <file src="bin\Release\Nemo.dll" target="lib\net40" />
   </files>
