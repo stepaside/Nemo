@@ -9,5 +9,6 @@ NemoSolution/Nemo/Nemo.sln.docstates.suo
 NemoSolution/Nemo/packages
 NemoSolution/Nemo/packages/*
 NemoSolution/Nemo/Nemo.v11.suo
+NemoSolution/Nemo/.vs/*
 
 *.nupkg
