@@ -83,7 +83,7 @@ namespace Nemo.Collections
 
         private class EagerLoadEnumeratorAsync : IAsyncEnumerator<T>
         {
-            private Func<Task<IEnumerator<T>>> _loader;
+            private readonly Func<Task<IEnumerator<T>>> _loader;
             private IEnumerator<T> _internal;
 
             public EagerLoadEnumeratorAsync(Func<Task<IEnumerator<T>>> loader)
@@ -102,7 +102,7 @@ namespace Nemo.Collections
             {
                 if (_internal == null)
                 {
-                    _internal = await _loader();
+                    _internal = await _loader().ConfigureAwait(false);
                 }
 
                 try

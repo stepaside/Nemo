@@ -873,7 +873,7 @@ namespace Nemo
 
             if (dbConnection.State != ConnectionState.Open)
             {
-                await dbConnection.OpenAsync();
+                await dbConnection.OpenAsync().ConfigureAwait(false);
             }
 
             var response = new OperationResponse { ReturnType = returnType };
@@ -882,7 +882,7 @@ namespace Nemo
                 switch (returnType)
                 {
                     case OperationReturnType.NonQuery:
-                        response.RecordsAffected = await command.ExecuteNonQueryAsync();
+                        response.RecordsAffected = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                         break;
                     case OperationReturnType.MultiResult:
                     case OperationReturnType.SingleResult:
@@ -907,10 +907,10 @@ namespace Nemo
                         }
 
                         closeConnection = false;
-                        response.Value = await command.ExecuteReaderAsync(behavior);
+                        response.Value = await command.ExecuteReaderAsync(behavior).ConfigureAwait(false);
                         break;
                     case OperationReturnType.Scalar:
-                        response.Value = command.ExecuteScalar();
+                        response.Value = await command.ExecuteScalarAsync().ConfigureAwait(false);
                         break;
                     case OperationReturnType.DataSet:
                     case OperationReturnType.DataTable:
