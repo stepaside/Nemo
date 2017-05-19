@@ -122,7 +122,7 @@ namespace Nemo.Linq
                 var method = methodCall.Method.Name;
                 if (methodCall.Arguments[0].NodeType == ExpressionType.Constant)
                 {
-                    if (method == "First" || method == "FirstOrDefault")
+                    if (type == null && (method == "First" || method == "FirstOrDefault"))
                     {
                         type = returnType;
                     }
@@ -161,6 +161,10 @@ namespace Nemo.Linq
                     else if (method == "First" || method == "FirstOrDefault")
                     {
                         args[method] = null;
+                        if (async && type == null)
+                        {
+                            type = returnType;
+                        }
                     }
                     expression = methodCall.Arguments[0];
                     continue;
