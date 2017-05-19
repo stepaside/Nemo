@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Nemo.Attributes;
 using Nemo.Collections;
@@ -42,11 +43,14 @@ namespace Nemo
 
         #region Select Methods
 
-        public static async Task<IEnumerable<T>> ExecuteAsync<T>(this IAsyncEnumerable<T> source)
+        public static async Task<IEnumerable<T>> ToEnumerableAsync<T>(this IAsyncEnumerable<T> source)
+            where T : class
         {
-            var result = new SortedList<int, T>();
-            await source.ForEachAsync((t, i) => result[i] = t);
-            return result.Values;
+            var loader = source as EagerLoadEnumerableAsync<T>;
+            if (loader == null) return source.ToEnumerable();
+
+            var iterator = await loader.GetEnumeratorAsync().ConfigureAwait(false);
+            return iterator.AsEnumerable();
         }
 
         public static IAsyncEnumerable<T> SelectAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, bool? cached = null,

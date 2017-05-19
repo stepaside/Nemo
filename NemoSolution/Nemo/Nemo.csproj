@@ -40,6 +40,9 @@
     <Reference Include="System.Interactive.Async, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
       <HintPath>packages\System.Interactive.Async.3.1.1\lib\net45\System.Interactive.Async.dll</HintPath>
     </Reference>
+    <Reference Include="System.Interactive.Async.Providers, Version=3.0.1000.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
+      <HintPath>packages\System.Interactive.Async.Providers.3.1.1\lib\net45\System.Interactive.Async.Providers.dll</HintPath>
+    </Reference>
     <Reference Include="System.Runtime.Caching" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Transactions" />
@@ -60,6 +63,7 @@
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
     <Compile Include="Collections\EagerLoadEnumerableAsync.cs" />
+    <Compile Include="Linq\NemoQueryableAsync.cs" />
     <Compile Include="Logging\AuditLog.cs" />
     <Compile Include="Logging\IAuditLogProvider.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />

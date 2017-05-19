@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading.Tasks;
 using Nemo.Collections.Extensions;
 using Nemo.Reflection;
 
@@ -12,13 +13,14 @@ namespace Nemo.Linq
     internal class NemoQueryContext
     {
         private static readonly MethodInfo SelectMethod = typeof(ObjectFactory).GetMethods().First(m => m.Name == "Select" && m.GetGenericArguments().Length == 1);
+        private static readonly MethodInfo SelectAsyncMethod = typeof(ObjectFactory).GetMethods().First(m => m.Name == "SelectAsync" && m.GetGenericArguments().Length == 1);
 
         // Executes the expression tree that is passed to it. 
-        internal static object Execute(Expression expression, DbConnection connection = null)
+        internal static object Execute(Expression expression, DbConnection connection = null, bool async = false)
         {
             var args = new Dictionary<string, object>();
-            var type = Prepare(expression, args);
-            
+            var type = Prepare(expression, args, async);
+
             var funcType = typeof(Func<,>).MakeGenericType(type, typeof(object));
             var sortingType = typeof(Sorting<>).MakeGenericType(type);
 
@@ -44,6 +46,7 @@ namespace Nemo.Linq
                     case "First":
                     case "FirstOrDefault":
                         selectOption = pair.Key == "First" ? SelectOption.First : SelectOption.FirstOrDefault;
+                        criteria = pair.Value as LambdaExpression;
                         break;
                     default:
                         if (pair.Key.StartsWith("OrderBy."))
@@ -87,11 +90,11 @@ namespace Nemo.Linq
                 orderByArray.SetValue(t, i);
             }
 
-            return SelectMethod.MakeGenericMethod(type)
+            return (async ? SelectAsyncMethod : SelectMethod).MakeGenericMethod(type)
                 .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset / limit + 1 : 0, limit, null, selectOption, orderByArray });
         }
 
-        private static Type Prepare(Expression expression, IDictionary<string, object> args)
+        private static Type Prepare(Expression expression, IDictionary<string, object> args, bool async)
         {
             Type type = null;
             while (true)
@@ -104,14 +107,25 @@ namespace Nemo.Linq
                 
                 var methodCall = (MethodCallExpression)expression;
 
+                var returnType = methodCall.Method.ReturnType;
+
+                if (async && typeof(Task).IsAssignableFrom(returnType))
+                {
+                    returnType = returnType.GetGenericArguments()[0];
+                }
+
                 if (type == null)
                 {
-                    type = Reflector.GetElementType(methodCall.Method.ReturnType);
+                    type = Reflector.GetElementType(returnType);
                 }
 
                 var method = methodCall.Method.Name;
                 if (methodCall.Arguments[0].NodeType == ExpressionType.Constant)
                 {
+                    if (method == "First" || method == "FirstOrDefault")
+                    {
+                        type = returnType;
+                    }
                     var lambda = (LambdaExpression)((UnaryExpression)(methodCall.Arguments[1])).Operand;
                     args[method] = lambda;
                 }

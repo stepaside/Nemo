@@ -31,7 +31,7 @@ namespace Nemo.Collections
             _selectOption = selectOption;
         }
 
-        private async Task<IEnumerator<T>> GetEnumeratorAsync()
+        internal async Task<IEnumerator<T>> GetEnumeratorAsync()
         {
             var types = _sqlMap.Arrange(_sqlOrder, t => t.Key).Select(t => t.Value).ToArray();
             var result = await _load(_sqlOrder.ToDelimitedString("; "), types);
