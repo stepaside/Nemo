@@ -62,10 +62,12 @@ namespace Nemo.Reflection
 
             var getItem = indexerType.GetMethod("get_Item", new[] { typeof(string) });
 
-            var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && (t.Value.IsSimpleType || t.Value.IsBinary));
+            var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && (t.Value.IsSimpleList || t.Value.IsSimpleType || t.Value.IsBinary));
             foreach (var match in matches)
             {
                 var typeConverter = MappingFactory.GetTypeConverter(getItem.ReturnType, match.Key, entityMap);
+
+                if (match.Value.IsSimpleList && typeConverter == null) continue;
 
                 il.Emit(OpCodes.Ldarg_1);
                 if (typeConverter.Item1 != null)
