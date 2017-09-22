@@ -54,6 +54,8 @@ namespace Nemo
 
         public IEnumerable<T> AddIndex(string index, IEnumerable<T> entities)
         {
+            if (entities == null) return null;
+
             if (entities is Stream<T>)
             {
                 return entities.Select(e =>
