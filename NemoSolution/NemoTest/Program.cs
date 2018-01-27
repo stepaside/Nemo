@@ -88,9 +88,12 @@ namespace NemoTest
             //            var selected_customers_10 = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
             //            //var selected_customers_10_repeat = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
             //            var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
-            //            var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
 
-            //            new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
+            //var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
+            //var linqCustomers = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
+            //var linqCustomer = new NemoQueryable<Customer>().FirstOrDefault(c => c.Id == "ALFKI");
+
+            //var linqCustomersAsync = new NemoQueryableAsync<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefault().Result;
 
             //            var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 
@@ -226,13 +229,13 @@ namespace NemoTest
             //            Console.WriteLine();
             //            Console.WriteLine("Object Fetching and Materialization");
 
-            //            RunEF(500, false);
-            //            RunNative(500);
-            //            RunExecute(500);
-            //            RunDapper(500, false);
-            //            RunRetrieve(500, false);
-            //            RunNativeWithMapper(500);
-            //            RunSelect(500, false);
+                        RunEF(500, false);
+                        RunNative(500);
+                        RunExecute(500);
+                        RunDapper(500, false);
+                        RunRetrieve(500, false);
+                        RunNativeWithMapper(500);
+                        RunSelect(500, false);
 
             //return;
 
@@ -408,7 +411,7 @@ namespace NemoTest
                 }
             }, "DataContractJsonSerializer", s => s.Length);
 
-            //Console.ReadLine();
+            Console.ReadLine();
         }
 
         private static void RunNative(int count)
