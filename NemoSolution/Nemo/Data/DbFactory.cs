@@ -56,8 +56,7 @@ namespace Nemo.Data
             {
                 connectionName = GetDefaultConnectionName(objectType);
             }
-            var config = Config.ConnectionStringSetting(connectionName);
-            return config.ProviderName;
+            return ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ProviderName;
         }
 
         internal static string GetProviderInvariantNameByConnectionString(string connectionString)

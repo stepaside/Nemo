@@ -20,111 +20,39 @@ namespace Nemo.Configuration
         private ChangeTrackingMode? _defaultChangeTrackingMode;
         private SerializationMode? _defaultSerializationMode;
 
-        private bool _generateDeleteSql;
-        private bool _generateInsertSql;
-        private bool _generateUpdateSql;
-        private IAuditLogProvider _auditLogProvider;
-        private ILogProvider _logProvider;
-        private IExecutionContext _executionContext = DefaultExecutionContext.Current;
         private string _hiLoTableName;
 
-        public L1CacheRepresentation DefaultL1CacheRepresentation
-        {
-            get
-            {
-                return _defaultL1CacheRepresentation.HasValue ? _defaultL1CacheRepresentation.Value : ParseExecutionContextCacheConfig();
-            }
-        }
+        public L1CacheRepresentation DefaultL1CacheRepresentation => _defaultL1CacheRepresentation ?? L1CacheRepresentation.LazyList;
 
-        public bool Logging
-        {
-            get { return _logging.HasValue ? _logging.Value : Config.AppSettings("EnableLogging", false); }
-        }
+        public bool Logging => _logging ?? false;
 
-        public FetchMode DefaultFetchMode
-        {
-            get { return _defaultFetchMode.HasValue ? _defaultFetchMode.Value : ParseFetchModeConfig(); }
-        }
+        public FetchMode DefaultFetchMode => _defaultFetchMode ?? FetchMode.Eager;
 
-        public MaterializationMode DefaultMaterializationMode
-        {
-            get { return _defaultMaterializationMode.HasValue ? _defaultMaterializationMode.Value : ParseMaterializationModeConfig(); }
-        }
+        public MaterializationMode DefaultMaterializationMode => _defaultMaterializationMode ?? MaterializationMode.Partial;
 
-        public string DefaultConnectionName
-        {
-            get { return _defaultConnectionName ?? Config.AppSettings("DefaultConnectionName", "DbConnection"); }
-        }
+        public string DefaultConnectionName => _defaultConnectionName ?? "DbConnection";
 
-        public string OperationPrefix
-        {
-            get { return _operationPrefix ?? Config.AppSettings("OperationPrefix", string.Empty); }
-        }
+        public string OperationPrefix => _operationPrefix ?? string.Empty;
 
-        public ChangeTrackingMode DefaultChangeTrackingMode
-        {
-            get { return _defaultChangeTrackingMode.HasValue ? _defaultChangeTrackingMode.Value : ParseChangeTrackingModeConfig(); }
-        }
+        public ChangeTrackingMode DefaultChangeTrackingMode => _defaultChangeTrackingMode ?? ChangeTrackingMode.Automatic;
 
-        public OperationNamingConvention OperationNamingConvention
-        {
-            get { return _operationNamingConvention.HasValue ? _operationNamingConvention.Value : ParseOperationNamingConventionConfig(); }
-        }
+        public OperationNamingConvention OperationNamingConvention => _operationNamingConvention ?? OperationNamingConvention.PrefixTypeName_Operation;
 
-        public SerializationMode DefaultSerializationMode
-        {
-            get { return _defaultSerializationMode.HasValue ? _defaultSerializationMode.Value : SerializationMode.IncludePropertyNames; }
-        }
+        public SerializationMode DefaultSerializationMode => _defaultSerializationMode ?? SerializationMode.IncludePropertyNames;
 
-        public bool GenerateDeleteSql
-        {
-            get
-            {
-                return _generateDeleteSql;
-            }
-        }
+        public bool GenerateDeleteSql { get; private set; }
 
-        public bool GenerateInsertSql
-        {
-            get
-            {
-                return _generateInsertSql;
-            }
-        }
+        public bool GenerateInsertSql { get; private set; }
 
-        public bool GenerateUpdateSql
-        {
-            get
-            {
-                return _generateUpdateSql;
-            }
-        }
+        public bool GenerateUpdateSql { get; private set; }
 
-        public IAuditLogProvider AuditLogProvider
-        {
-            get
-            {
-                return _auditLogProvider;
-            }
-        }
+        public IAuditLogProvider AuditLogProvider { get; private set; }
 
-        public IExecutionContext ExecutionContext
-        {
-            get
-            {
-                return _executionContext;
-            }
-        }
+        public IExecutionContext ExecutionContext { get; private set; } = DefaultExecutionContext.Current;
 
-        public string HiLoTableName
-        {
-            get { return _hiLoTableName ?? Config.AppSettings("HiLoTableName", "HiLoIdGenerator"); }
-        }
+        public string HiLoTableName => _hiLoTableName ?? "HiLoIdGenerator";
 
-        public ILogProvider LogProvider
-        {
-            get { return _logProvider; }
-        }
+        public ILogProvider LogProvider { get; private set; }
 
         public IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value)
         {
@@ -194,31 +122,31 @@ namespace Nemo.Configuration
 
         public IConfiguration SetGenerateDeleteSql(bool value)
         {
-            _generateDeleteSql = value;
+            GenerateDeleteSql = value;
             return this;
         }
 
         public IConfiguration SetGenerateInsertSql(bool value)
         {
-            _generateInsertSql = value;
+            GenerateInsertSql = value;
             return this;
         }
 
         public IConfiguration SetGenerateUpdateSql(bool value)
         {
-            _generateUpdateSql = value;
+            GenerateUpdateSql = value;
             return this;
         }
 
         public IConfiguration SetAuditLogProvider(IAuditLogProvider value)
         {
-            _auditLogProvider = value;
+            AuditLogProvider = value;
             return this;
         }
 
         public IConfiguration SetExecutionContext(IExecutionContext value)
         {
-            _executionContext = value;
+            ExecutionContext = value;
             return this;
         }
 
@@ -230,54 +158,29 @@ namespace Nemo.Configuration
 
         public IConfiguration SetLogProvider(ILogProvider value)
         {
-            _logProvider = value;
+            LogProvider = value;
             return this;
-        }
-
-        private static L1CacheRepresentation ParseExecutionContextCacheConfig()
-        {
-            return Config.AppSettings("DefaultExecutionContextCacheType", L1CacheRepresentation.LazyList);
-        }
-
-        private static OperationNamingConvention ParseOperationNamingConventionConfig()
-        {
-            return Config.AppSettings("OperationNamingConvention", OperationNamingConvention.PrefixTypeName_Operation);
-        }
-
-        private static FetchMode ParseFetchModeConfig()
-        {
-            return Config.AppSettings("DefaultFetchMode", FetchMode.Eager);
-        }
-
-        private static MaterializationMode ParseMaterializationModeConfig()
-        {
-            return Config.AppSettings("DefaultMaterializationMode", MaterializationMode.Partial);
-        }
-
-        private static ChangeTrackingMode ParseChangeTrackingModeConfig()
-        {
-            return Config.AppSettings("DefaultChangeTrackingMode", ChangeTrackingMode.Automatic);
         }
 
         public IConfiguration Merge(IConfiguration configuration)
         {
             var mergedConfig = new DefaultConfiguration();
 
-            mergedConfig.SetAuditLogProvider(_auditLogProvider ?? configuration.AuditLogProvider);
+            mergedConfig.SetAuditLogProvider(AuditLogProvider ?? configuration.AuditLogProvider);
 
-            mergedConfig.SetDefaultChangeTrackingMode(_defaultChangeTrackingMode.HasValue ? _defaultChangeTrackingMode.Value : configuration.DefaultChangeTrackingMode);
+            mergedConfig.SetDefaultChangeTrackingMode(_defaultChangeTrackingMode ?? configuration.DefaultChangeTrackingMode);
 
             mergedConfig.SetDefaultConnectionName(_defaultConnectionName ?? configuration.DefaultConnectionName);
 
-            mergedConfig.SetDefaultFetchMode(_defaultFetchMode.HasValue ? _defaultFetchMode.Value : configuration.DefaultFetchMode);
+            mergedConfig.SetDefaultFetchMode(_defaultFetchMode ?? configuration.DefaultFetchMode);
 
-            mergedConfig.SetDefaultL1CacheRepresentation(_defaultL1CacheRepresentation.HasValue ? _defaultL1CacheRepresentation.Value : configuration.DefaultL1CacheRepresentation);
+            mergedConfig.SetDefaultL1CacheRepresentation(_defaultL1CacheRepresentation ?? configuration.DefaultL1CacheRepresentation);
 
-            mergedConfig.SetDefaultMaterializationMode(_defaultMaterializationMode.HasValue ? _defaultMaterializationMode.Value : configuration.DefaultMaterializationMode);
+            mergedConfig.SetDefaultMaterializationMode(_defaultMaterializationMode ?? configuration.DefaultMaterializationMode);
 
-            mergedConfig.SetDefaultSerializationMode(_defaultSerializationMode.HasValue ? _defaultSerializationMode.Value : configuration.DefaultSerializationMode);
+            mergedConfig.SetDefaultSerializationMode(_defaultSerializationMode ?? configuration.DefaultSerializationMode);
 
-            mergedConfig.SetExecutionContext(_executionContext ?? configuration.ExecutionContext);
+            mergedConfig.SetExecutionContext(ExecutionContext ?? configuration.ExecutionContext);
 
             mergedConfig.SetGenerateDeleteSql(GenerateDeleteSql || configuration.GenerateDeleteSql);
 
@@ -287,13 +190,13 @@ namespace Nemo.Configuration
 
             mergedConfig.SetLogging(Logging || configuration.Logging);
 
-            mergedConfig.SetOperationNamingConvention(_operationNamingConvention.HasValue ? _operationNamingConvention.Value : configuration.OperationNamingConvention);
+            mergedConfig.SetOperationNamingConvention(_operationNamingConvention ?? configuration.OperationNamingConvention);
 
             mergedConfig.SetOperationPrefix(_operationPrefix ?? configuration.OperationPrefix);
 
             mergedConfig.SetHiLoTableName(_hiLoTableName ?? configuration.HiLoTableName);
 
-            mergedConfig.SetLogProvider(_logProvider ?? configuration.LogProvider);
+            mergedConfig.SetLogProvider(LogProvider ?? configuration.LogProvider);
 
             return mergedConfig;
         }

@@ -208,7 +208,6 @@
     <Compile Include="Attributes\Converters\TypeConverterException.cs" />
     <Compile Include="Utilities\Bytes.cs" />
     <Compile Include="Utilities\CombGuid.cs" />
-    <Compile Include="Utilities\Config.cs" />
     <Compile Include="Id\IIdGenerator.cs" />
     <Compile Include="Utilities\Http.cs" />
     <Compile Include="Utilities\Json.cs" />

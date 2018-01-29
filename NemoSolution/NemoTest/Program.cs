@@ -13,6 +13,7 @@ using Nemo.UnitOfWork;
 using Nemo.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
@@ -416,7 +417,7 @@ namespace NemoTest
 
         private static void RunNative(int count)
         {
-            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
 
             connection.Open();
@@ -462,7 +463,7 @@ namespace NemoTest
 
         private static void RunExecute(int count)
         {
-            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
 
             connection.Open();
 
@@ -493,7 +494,7 @@ namespace NemoTest
 
         private static void RunRetrieve(int count, bool cached)
         {
-            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
             var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
 
@@ -516,7 +517,7 @@ namespace NemoTest
 
         private static void RunSelect(int count, bool buffered = false)
         {
-            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
 
             connection.Open();
@@ -538,7 +539,7 @@ namespace NemoTest
 
         private static void RunDapper(int count, bool buffered)
         {
-            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
                 
             connection.Open();
@@ -565,7 +566,7 @@ namespace NemoTest
 
         private static void RunNativeWithMapper(int count)
         {
-            var connection = DbFactory.CreateConnection(Config.ConnectionString(ConfigurationFactory.DefaultConnectionName));
+            var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
 
             connection.Open();
