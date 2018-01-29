@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2026
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nemo", "src\Nemo\Nemo.csproj", "{C1F87B42-B17E-4648-83D0-973074129C75}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nemo.Test", "tests\Nemo.Test\Nemo.Test.csproj", "{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C1F87B42-B17E-4648-83D0-973074129C75} = {C1F87B42-B17E-4648-83D0-973074129C75}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C1F87B42-B17E-4648-83D0-973074129C75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1F87B42-B17E-4648-83D0-973074129C75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1F87B42-B17E-4648-83D0-973074129C75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1F87B42-B17E-4648-83D0-973074129C75}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FB53EA1D-A0C6-456C-8928-19FE5357C136}
+	EndGlobalSection
+EndGlobal

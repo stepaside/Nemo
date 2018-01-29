@@ -14,3 +14,5 @@ NemoSolution/Nemo/.vs/*
 *.nupkg
 NemoSolution/Nemo/.vs/*
 NemoSolution/Nemo/.vs/Nemo/v15/.suo
+/.vs/*
+/packages/*
