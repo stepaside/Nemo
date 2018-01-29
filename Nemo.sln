@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nemo.Test", "tests\Nemo.Tes
 		{C1F87B42-B17E-4648-83D0-973074129C75} = {C1F87B42-B17E-4648-83D0-973074129C75}
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nemo.Test.Core", "tests\Nemo.Test.Core\Nemo.Test.Core.csproj", "{4A157EAE-D0DB-45A5-A25D-C9F353407FD0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +26,10 @@ Global
 		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1F1DA800-4EC1-44CE-9B7B-C2C3E3E6EC3E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A157EAE-D0DB-45A5-A25D-C9F353407FD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A157EAE-D0DB-45A5-A25D-C9F353407FD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A157EAE-D0DB-45A5-A25D-C9F353407FD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A157EAE-D0DB-45A5-A25D-C9F353407FD0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

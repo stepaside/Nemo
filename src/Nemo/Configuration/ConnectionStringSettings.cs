@@ -3,8 +3,8 @@
     public class ConnectionStringSettings
     {
         public string Name { get; set; }
-        public string ConnectionString { get; }
-        public string ProviderName { get; }
+        public string ConnectionString { get; set;  }
+        public string ProviderName { get; set; }
 
         public ConnectionStringSettings()
         {
