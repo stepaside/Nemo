@@ -66,8 +66,12 @@ namespace Nemo.Reflection
             {
                 var isAnonymous = Reflector.IsAnonymousType(n.Item1);
                 var name = string.Format("{0}_{1}_{2}", isAnonymous ? n.Item1.Name : n.Item1.FullName, n.Item2.FullName, n.Item3);
-                // creates the assembly and module.
+            // creates the assembly and module.
+#if NETCOREAPP2_0
+                var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
+#else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
+#endif
                 var module = builder.DefineDynamicModule(name);
                 // create the type that is used to wrap the object given. This
                 // type will also implement the interface.
@@ -86,7 +90,11 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
+#if NETCOREAPP2_0
+                var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
+#else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
+#endif
                 var module = builder.DefineDynamicModule(name);
                 // create the type that is used to wrap the object given. This
                 // type will also implement the interface.
@@ -105,7 +113,11 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
+#if NETCOREAPP2_0
+                var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
+#else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
+#endif
                 var module = builder.DefineDynamicModule(name);
                 // create the type that is used to wrap the object given. This
                 // type will also implement the interface.
@@ -132,7 +144,11 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
+#if NETCOREAPP2_0
+                var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
+#else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
+#endif
                 var module = builder.DefineDynamicModule(name);
                 // create the type that is used to wrap the object given. This
                 // type will also implement the interface.

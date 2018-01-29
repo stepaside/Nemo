@@ -214,11 +214,13 @@ namespace Nemo.Collections.Extensions
             return head.Return().Concat(tail);
         }
 
+#if !NETCOREAPP2_0
         public static IEnumerable<T> Append<T>(this IEnumerable<T> head, T tail)
         {
             head.ThrowIfNull("head");
             return head.Concat(tail.Return());
         }
+#endif
 
         public static IEnumerable<T> Concat<T>(params IEnumerable<T>[] sources)
         {
@@ -237,9 +239,9 @@ namespace Nemo.Collections.Extensions
             }
         }
 
-        #endregion
+#endregion
 
-        #region Union Methods
+#region Union Methods
 
         public static IEnumerable<T> Union<T>(this IEnumerable<T> source, T value)
         {
@@ -251,9 +253,9 @@ namespace Nemo.Collections.Extensions
             return source.Union(value.Return(), comparer);
         }
 
-        #endregion
+#endregion
 
-        #region Intersect Methods
+#region Intersect Methods
 
         public static IEnumerable<T> Intersect<T>(this IEnumerable<T> source, T value)
         {
@@ -265,9 +267,9 @@ namespace Nemo.Collections.Extensions
             return Enumerable.Intersect<T>(source, value.Return(), comparer);
         }
 
-        #endregion
+#endregion
 
-        #region Except Methods
+#region Except Methods
 
         public static IEnumerable<T> Except<T>(this IEnumerable<T> source, T value)
         {
@@ -279,9 +281,9 @@ namespace Nemo.Collections.Extensions
             return source.Except(value.Return(), comparer);
         }
 
-        #endregion
+#endregion
 
-        #region Zip Methods
+#region Zip Methods
 
         public static IEnumerable<V> Zip<T, U, V>(this IEnumerable<T> first, IEnumerable<U> second, Func<T, U, int, V> selector)
         {
@@ -318,9 +320,9 @@ namespace Nemo.Collections.Extensions
             return Tuple.Create(items.Select(i => i.Item1), items.Select(i => i.Item2));
         }
 
-        #endregion
+#endregion
 
-        #region Repeat Methods
+#region Repeat Methods
 
         public static IEnumerable<T> Repeat<T>(this T value)
         {
@@ -353,9 +355,9 @@ namespace Nemo.Collections.Extensions
             return source.Repeat().Take(count);
         }
 
-        #endregion
+#endregion
         
-        #region Merge Methods
+#region Merge Methods
 
         public static IEnumerable<T> Merge<T>(this IEnumerable<IEnumerable<T>> sources)
         {
@@ -478,9 +480,9 @@ namespace Nemo.Collections.Extensions
             }
         }
 
-        #endregion
+#endregion
 
-        #region Share Methods
+#region Share Methods
 
         /// <summary>
         /// Shares an enumerable among multiple consumers guaranteeing that no two consumers can see the same element
@@ -615,9 +617,9 @@ namespace Nemo.Collections.Extensions
             }
         }
 
-        #endregion
+#endregion
 
-        #region Replicate Methods
+#region Replicate Methods
 
         public static IEnumerable<IEnumerable<T>> Replicate<T>(this IEnumerable<T> source)
         {
@@ -634,9 +636,9 @@ namespace Nemo.Collections.Extensions
             return source.Replicate().Take(count);
         }
 
-        #endregion
+#endregion
 
-        #region Partition Methods
+#region Partition Methods
         
         public static IEnumerable<IEnumerable<T>> Split<T>(this IEnumerable<T> source, int size)
         {
@@ -710,9 +712,9 @@ namespace Nemo.Collections.Extensions
                 : Tuple.Create((IList<T>)new T[0], (IList<T>)new T[0]);
         }
 
-        #endregion
+#endregion
 
-        #region Cartesian Product Methods
+#region Cartesian Product Methods
         
         public static IEnumerable<Tuple<int, T1, T2>> CrossJoin<T1, T2>(this IEnumerable<T1> first, IEnumerable<T2> second)
         {
@@ -735,9 +737,9 @@ namespace Nemo.Collections.Extensions
                     select accseq.Append(item));
         }
 
-        #endregion
+#endregion
 
-        #region PowerSet Method
+#region PowerSet Method
 
         public static IEnumerable<IEnumerable<T>> PowerSet<T>(this IList<T> source)
         {
@@ -749,9 +751,9 @@ namespace Nemo.Collections.Extensions
             return Enumerable.Range(0, 1 << source.Count).Select(m => Enumerable.Range(0, source.Count).Where(i => (m & (1 << i)) != 0).Select(i => source[i]));
         }
 
-        #endregion
+#endregion
 
-        #region Flatten Methods
+#region Flatten Methods
 
         public static IEnumerable<T> Flatten<T>(this IEnumerable<IEnumerable<T>> source)
         {
@@ -759,9 +761,9 @@ namespace Nemo.Collections.Extensions
             return source.SelectMany(s => s);
         }
 
-        #endregion
+#endregion
 
-        #region Rotate Methods
+#region Rotate Methods
         
         public static IEnumerable<T> Rotate<T>(this IEnumerable<T> source, int offset)
         {
@@ -769,9 +771,9 @@ namespace Nemo.Collections.Extensions
             return source.Skip(offset).Concat(source.Take(offset));
         }
 
-        #endregion
+#endregion
 
-        #region Step Methods
+#region Step Methods
 
         public static IEnumerable<T> Step<T>(this IEnumerable<T> source, int step)
         {
@@ -798,9 +800,9 @@ namespace Nemo.Collections.Extensions
             }
         }
 
-        #endregion
+#endregion
 
-        #region Find Index Methods
+#region Find Index Methods
 
         public static int FindIndex<T>(this IEnumerable<T> source, Func<T, bool> predicate)
         {
@@ -846,9 +848,9 @@ namespace Nemo.Collections.Extensions
             return -1;
         }
 
-        #endregion
+#endregion
         
-        #region Check Methods
+#region Check Methods
 
         public static bool IsEmpty<T>(this IEnumerable<T> source)
         {
@@ -885,9 +887,9 @@ namespace Nemo.Collections.Extensions
             }
         }
 
-        #endregion
+#endregion
 
-        #region Shuffle Methods
+#region Shuffle Methods
 
         public static IEnumerable<T> TakeRandom<T>(this IEnumerable<T> source, int count)
         {
@@ -923,9 +925,9 @@ namespace Nemo.Collections.Extensions
             yield return items[0]; 
         }
 
-        #endregion
+#endregion
 
-        #region Arrange Methods
+#region Arrange Methods
 
         public static IEnumerable<TSource> Arrange<TSource, TKey>(this IEnumerable<TSource> source, IEnumerable<TKey> keys, Func<TSource, TKey> keySelector, IEqualityComparer<TKey> comparer)
         {
@@ -960,18 +962,18 @@ namespace Nemo.Collections.Extensions
             }
         }
 
-        #endregion
+#endregion
 
-        #region Delay Methods
+#region Delay Methods
 
         public static IEnumerable<TSource> Delay<TSource>(this IEnumerable<TSource> source, int delay)
         {
             return Defer(() => { Thread.Sleep(delay); return source; });
         }
 
-        #endregion
+#endregion
 
-        #region Min/Max Methods
+#region Min/Max Methods
 
         public static TSource MaxElement<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector)
             where TKey : IComparable<TKey>
@@ -1006,6 +1008,6 @@ namespace Nemo.Collections.Extensions
             return result;
         }
 
-        #endregion
+#endregion
     }
 }

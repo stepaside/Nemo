@@ -4,6 +4,9 @@ using Nemo.UnitOfWork;
 using Nemo.Utilities;
 using System;
 using Nemo.Logging;
+#if NETCOREAPP2_0
+using Microsoft.Extensions.Configuration;
+#endif
 
 namespace Nemo.Configuration
 {
@@ -53,6 +56,10 @@ namespace Nemo.Configuration
         public string HiLoTableName => _hiLoTableName ?? "HiLoIdGenerator";
 
         public ILogProvider LogProvider { get; private set; }
+
+#if NETCOREAPP2_0
+        public IConfigurationRoot SystemConfiguration { get; private set; }
+#endif
 
         public IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value)
         {
@@ -162,6 +169,14 @@ namespace Nemo.Configuration
             return this;
         }
 
+#if NETCOREAPP2_0
+        public IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration)
+        {
+            SystemConfiguration = systemConfiguration;
+            return this;
+        }
+#endif
+
         public IConfiguration Merge(IConfiguration configuration)
         {
             var mergedConfig = new DefaultConfiguration();
@@ -197,6 +212,10 @@ namespace Nemo.Configuration
             mergedConfig.SetHiLoTableName(_hiLoTableName ?? configuration.HiLoTableName);
 
             mergedConfig.SetLogProvider(LogProvider ?? configuration.LogProvider);
+
+#if NETCOREAPP2_0
+            mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);
+#endif
 
             return mergedConfig;
         }

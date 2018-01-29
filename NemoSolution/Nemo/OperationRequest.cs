@@ -5,6 +5,8 @@ using System.Data.Common;
 using System.Linq;
 using Nemo.Extensions;
 using System.Collections.Generic;
+using Nemo.Configuration;
+using Nemo.Data;
 
 namespace Nemo
 {
@@ -131,18 +133,33 @@ namespace Nemo
             }
             else
             {
-                var css = ConfigurationManager.ConnectionStrings.Cast<ConnectionStringSettings>().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
+#if NETCOREAPP2_0
+                var css = ConfigurationFactory.Default.SystemConfiguration?.ConnectionStrings().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
+#else
+                var css = ConfigurationManager.ConnectionStrings.Cast<Configuration.ConnectionStringSettings>().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
+#endif
                 if (css != null) providerName = css.ProviderName;
             }
 
             if (providerName != null)
             {
+#if NETCOREAPP2_0
+                try
+                {
+                    var factory = DbFactory.GetDbProviderFactory(providerName);
+                    return factory.CreateConnection();
+                }
+                catch
+                {
+                }
+#else
                 var providerExists = DbProviderFactories.GetFactoryClasses().Rows.Cast<DataRow>().Any(r => r[2].Equals(providerName));
                 if (providerExists)
                 {
                     var factory = DbProviderFactories.GetFactory(providerName);
                     return factory.CreateConnection();
                 }
+#endif
             }
 
             return null;

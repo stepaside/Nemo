@@ -27,14 +27,7 @@ namespace Nemo.Logging
             private set;
         }
 
-        public string CreatedBy
-        {
-            get
-            {
-                var createdBy = Thread.CurrentPrincipal.ToMaybe().Select(m => m.Identity).Select(m => m.Name);
-                return createdBy.HasValue ? createdBy.Value : null;
-            }
-        }
+        public string CreatedBy => Thread.CurrentPrincipal?.Identity?.Name;
 
         public string Action
         {

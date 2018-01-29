@@ -1,48 +1,35 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Web;
+#if !NETCOREAPP2_0
 using System.Runtime.Remoting.Messaging;
-using System.Collections.Concurrent;
+#endif
 using System.Threading;
 
 namespace Nemo
 {
     public sealed class DefaultExecutionContext : IExecutionContext
     {
-        private readonly static Lazy<DefaultExecutionContext> _current = new Lazy<DefaultExecutionContext>(() => new DefaultExecutionContext(), true);
+        private static readonly Lazy<DefaultExecutionContext> LazyCurrent = new Lazy<DefaultExecutionContext>(() => new DefaultExecutionContext(), true);
 
-        public static DefaultExecutionContext Current
-        {
-            get
-            {
-                return _current.Value;
-            }
-        }
+        public static DefaultExecutionContext Current => LazyCurrent.Value;
 
         public bool Exists(string name)
         {
             var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-            return principal != null ? principal.Items.ContainsKey(name) : CallContext.LogicalGetData(name) != null;
+            return principal?.Items.ContainsKey(name) ?? CallContext.LogicalGetData(name) != null;
         }
 
         public object Get(string name)
         {
-            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-            if (principal != null)
-            {
-                object value;
-                principal.Items.TryGetValue(name, out value);
-                return value;
-            }
-            return CallContext.LogicalGetData(name);
+            if (!(Thread.CurrentPrincipal is ThreadedPrincipal principal)) return CallContext.LogicalGetData(name);
+            principal.Items.TryGetValue(name, out object value);
+            return value;
         }
 
         public bool TryGet(string name, out object value)
         {
-            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-            if (principal != null)
+            if (Thread.CurrentPrincipal is ThreadedPrincipal principal)
             {
                 return principal.Items.TryGetValue(name, out value);
             }
@@ -52,8 +39,7 @@ namespace Nemo
 
         public void Set(string name, object value)
         {
-            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-            if (principal != null)
+            if (Thread.CurrentPrincipal is ThreadedPrincipal principal)
             {
                 principal.Items[name] = value;
             }
@@ -72,8 +58,7 @@ namespace Nemo
 
         public void Remove(string name)
         {
-            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-            if (principal != null)
+            if (Thread.CurrentPrincipal is ThreadedPrincipal principal)
             {
                 principal.Items.Remove(name);
             }
@@ -92,8 +77,7 @@ namespace Nemo
 
         public void Clear()
         {
-            var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-            if (principal != null)
+            if (Thread.CurrentPrincipal is ThreadedPrincipal principal)
             {
                 principal.Items.Clear();
             }
@@ -113,13 +97,12 @@ namespace Nemo
         {
             get
             {
-                var principal = Thread.CurrentPrincipal as ThreadedPrincipal;
-                if (principal != null)
+                if (Thread.CurrentPrincipal is ThreadedPrincipal principal)
                 {
                     return principal.Items.Keys.ToArray();
                 }
                 var keys = CallContext.LogicalGetData("$$keys") as HashSet<string>;
-                return keys == null ? new string[] { } : keys.ToArray();
+                return keys?.ToArray() ?? new string[] { };
             }
         }
     }

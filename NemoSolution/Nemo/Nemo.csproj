@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -8,10 +8,11 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Nemo</RootNamespace>
     <AssemblyName>Nemo</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">.\</SolutionDir>
     <RestorePackages>true</RestorePackages>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,6 +23,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>7.2</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>true</Optimize>
@@ -29,6 +31,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>7.2</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
@@ -62,7 +65,16 @@
     <Compile Include="Attributes\PropertyAttribute.cs" />
     <Compile Include="Attributes\ReadOnlyAttribute.cs" />
     <Compile Include="Attributes\DistinctAttribute.cs" />
+    <Compile Include="CallContext.cs" />
     <Compile Include="Collections\EagerLoadEnumerableAsync.cs" />
+    <Compile Include="Configuration\ConnectionStringSettings.cs" />
+    <Compile Include="Configuration\ConnectionStringSettingsCollection.cs" />
+    <Compile Include="Configuration\ConnectionStringSettingsExtensions.cs" />
+    <Compile Include="DataRowExtensions.cs" />
+    <Compile Include="DataSetUtil.cs" />
+    <Compile Include="Data\DataAccessProviderTypes.cs" />
+    <Compile Include="Fn\Maybe.cs" />
+    <Compile Include="Fn\TypeUnion.cs" />
     <Compile Include="Linq\NemoQueryableAsync.cs" />
     <Compile Include="Logging\AuditLog.cs" />
     <Compile Include="Logging\IAuditLogProvider.cs" />
@@ -96,16 +108,8 @@
     <Compile Include="Collections\Extensions\SortingExtensions.cs" />
     <Compile Include="Data\SqliteDialectProvider.cs" />
     <Compile Include="Fn\Extensions\FunctionExtensions.cs" />
-    <Compile Include="Fn\Maybe.cs" />
-    <Compile Include="Fn\MaybeExtensions.cs" />
     <Compile Include="Fn\Stream.cs" />
     <Compile Include="Fn\StreamExtensions.cs" />
-    <Compile Include="Fn\Utilities\Tuple.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Fn\TypeUnion.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="IdentityMap.cs" />
     <Compile Include="IExecutionContext.cs" />
     <Compile Include="Identity.cs" />
@@ -279,24 +283,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
-      <Visible>False</Visible>
-      <ProductName>Windows Installer 3.1</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -248,12 +248,11 @@ namespace Nemo.UnitOfWork
 
         private static void SetGeneratedPropertyValues(IReadOnlyList<object> dataEntities, DataTable generatedValues)
         {
-            var map = generatedValues.AsEnumerable().ToDictionary(r => r.Field<int>("StatementId"), r => Tuple.Create(r.Field<object>("GeneratedId"), r.Field<string>("ParameterName"), r.Field<string>("PropertyName")));
+            var map = generatedValues.Rows.Cast<DataRow>().ToDictionary(r => r.Field<int>("StatementId"), r => Tuple.Create(r.Field<object>("GeneratedId"), r.Field<string>("ParameterName"), r.Field<string>("PropertyName")));
 
             for (var i = 0; i < dataEntities.Count; i++)
             {
-                Tuple<object, string, string> value;
-                if (!map.TryGetValue(i, out value)) continue;
+                if (!map.TryGetValue(i, out Tuple<object, string, string> value)) continue;
                 dataEntities[i].Property(value.Item3, value.Item1);
                 dataEntities[i].Cascade(value.Item3, value.Item1);
             }

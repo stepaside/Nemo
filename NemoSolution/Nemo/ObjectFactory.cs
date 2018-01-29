@@ -1356,7 +1356,7 @@ namespace Nemo
         private static IEnumerable<T> ConvertDataTable<T>(DataTable table, MaterializationMode mode, bool isInterface, IIdentityMap identityMap)
              where T : class
         {
-            return ConvertDataTable<T>(table.AsEnumerable(), mode, isInterface, identityMap);
+            return ConvertDataTable<T>(table.Rows.Cast<DataRow>(), mode, isInterface, identityMap);
         }
 
         private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, MaterializationMode mode, bool isInterface, IIdentityMap identityMap)

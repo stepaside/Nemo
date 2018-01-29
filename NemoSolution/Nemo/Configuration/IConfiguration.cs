@@ -1,4 +1,7 @@
-﻿using Nemo.Logging;
+﻿#if NETCOREAPP2_0
+using Microsoft.Extensions.Configuration;
+#endif
+using Nemo.Logging;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 
@@ -22,6 +25,9 @@ namespace Nemo.Configuration
         ILogProvider LogProvider { get; }
         IExecutionContext ExecutionContext { get; }
         string HiLoTableName { get; }
+#if NETCOREAPP2_0
+        IConfigurationRoot SystemConfiguration { get; }
+#endif
 
         IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value);
         IConfiguration SetLogging(bool value);
@@ -39,7 +45,9 @@ namespace Nemo.Configuration
         IConfiguration SetExecutionContext(IExecutionContext value);
         IConfiguration SetHiLoTableName(string value);
         IConfiguration SetLogProvider(ILogProvider value);
-
+#if NETCOREAPP2_0
+        IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration);
+#endif
         IConfiguration Merge(IConfiguration configuration);
     }
 }

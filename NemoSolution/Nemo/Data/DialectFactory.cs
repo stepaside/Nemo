@@ -5,6 +5,7 @@ using System.Text;
 using System.Data.Common;
 using System.Configuration;
 using System.Data;
+using Nemo.Configuration;
 
 namespace Nemo.Data
 {
@@ -17,7 +18,11 @@ namespace Nemo.Data
 
         public static DialectProvider GetProvider(string connectionName)
         {
+#if NETCOREAPP2_0
+            var config = ConfigurationFactory.Default.SystemConfiguration?.ConnectionString(connectionName);
+#else
             var config = ConfigurationManager.ConnectionStrings[connectionName];
+#endif
             var connection = DbFactory.CreateConnection(config.ConnectionString, config.ProviderName);
             return GetProvider(connection, config.ProviderName);
         }
