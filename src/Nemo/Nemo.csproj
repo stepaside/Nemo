@@ -71,6 +71,10 @@
     <DefineConstants>NET452;NETFULL</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net452|AnyCPU'">
+    <DefineConstants>TRACE;DEBUG;NET452</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="Attributes\ConnectionAttribute.cs" /> 
 	<Compile Include="Attributes\Converters\CastFromObjectConverter.cs" /> 
@@ -174,7 +178,7 @@
 	<Compile Include="Identity.cs" /> 
 	<Compile Include="IdentityMap.cs" /> 
 	<Compile Include="IExecutionContext.cs" /> 
-	<Compile Include="L1CacheRepresentation.cs" /> 
+	<Compile Include="CacheRepresentation.cs" /> 
 	<Compile Include="Linq\Expressions\Evaluator.cs" /> 
 	<Compile Include="Linq\Expressions\LocalCollectionExpander.cs" /> 
 	<Compile Include="Linq\NemoQueryable.cs" /> 

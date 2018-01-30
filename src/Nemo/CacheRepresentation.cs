@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Nemo
 {
-    public enum L1CacheRepresentation
+    public enum CacheRepresentation
     {
         None, 
         LazyList, 

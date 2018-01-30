@@ -32,6 +32,6 @@ namespace NemoTest
         [PrimaryKey, MapColumn("CustomerID")]
         public string Id { get; set; }
         public string CompanyName { get; set; }
-        public IList<Order> Orders { get; set; }
+        public List<Order> Orders { get; set; }
     }
 }

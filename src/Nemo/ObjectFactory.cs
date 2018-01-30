@@ -170,6 +170,48 @@ namespace Nemo
             return target;
         }
 
+        public static T Map<T>(IDictionary<string, object> source, T target, bool ignoreMappings = false)
+            where T : class
+        {
+            if (ignoreMappings)
+            {
+                FastExactIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
+            }
+            else
+            {
+                FastIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
+            }
+            return target;
+        }
+
+        public static T Map<T>(DataRow source, T target, bool ignoreMappings = false)
+            where T : class
+        {
+            if (ignoreMappings)
+            {
+                FastExactIndexerMapper<DataRow, T>.Map(source, target);
+            }
+            else
+            {
+                FastIndexerMapper<DataRow, T>.Map(source, target);
+            }
+            return target;
+        }
+
+        public static T Map<T>(IDataReader source, T target, bool ignoreMappings = false)
+            where T : class
+        {
+            if (ignoreMappings)
+            {
+                FastExactIndexerMapper<IDataRecord, T>.Map(source, target);
+            }
+            else
+            {
+                FastIndexerMapper<IDataRecord, T>.Map(source, target);
+            }
+            return target;
+        }
+
         /// <summary>
         /// Maps values from source to target by copying object's properties
         /// </summary>
@@ -542,7 +584,7 @@ namespace Nemo
                     config = ConfigurationFactory.Get<TResult>();
                 }
 
-                cached = config.DefaultL1CacheRepresentation != L1CacheRepresentation.None;
+                cached = config.DefaultCacheRepresentation != CacheRepresentation.None;
             }
 
             if (cached.Value)
@@ -591,7 +633,7 @@ namespace Nemo
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
-                    if (config.DefaultL1CacheRepresentation == L1CacheRepresentation.List)
+                    if (config.DefaultCacheRepresentation == CacheRepresentation.List)
                     {
                         result = result.ToList();
                     }
@@ -651,7 +693,7 @@ namespace Nemo
         /// Retrieves an enumerable of type T using provided rule parameters.
         /// </summary>
         /// <returns></returns>
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where T3 : class
@@ -677,11 +719,13 @@ namespace Nemo
                 realTypes.Add(typeof(T4));
             }
 
-            IConfiguration config = null;
+            if (config == null)
+            {
+                config = ConfigurationFactory.Get<TResult>();
+            }
 
             if (mode == FetchMode.Default)
             {
-                config = ConfigurationFactory.Get<TResult>();
                 mode = config.DefaultFetchMode;
             }
             
@@ -737,43 +781,45 @@ namespace Nemo
             return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where T3 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached, config);
         }
 
-        public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
             where T : class
         {
             var returnType = OperationReturnType.SingleResult;
-
-            IConfiguration config = null;
+            
+            if (config == null)
+            {
+                config = ConfigurationFactory.Get<T>();
+            }
 
             if (mode == FetchMode.Default)
             {
-                config = ConfigurationFactory.Get<T>();
                 mode = config.DefaultFetchMode;
             }
 
@@ -1270,7 +1316,7 @@ namespace Nemo
             where T : class
         {
             var config = ConfigurationFactory.Get<T>();
-            return Translate<T>(response, null, null, config.DefaultL1CacheRepresentation != L1CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
+            return Translate<T>(response, null, null, config.DefaultCacheRepresentation != CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
         }
 
         private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, IIdentityMap identityMap)
@@ -1507,7 +1553,8 @@ namespace Nemo
                 {
                     if (!isInterface || mode == MaterializationMode.Exact)
                     {
-                        var item = Map<IDataRecord, T>(reader, isInterface, false);
+                        var item = Create<T>(isInterface);
+                        Map(reader, item, false);
 
                         if (map != null)
                         {

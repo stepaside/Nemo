@@ -30,7 +30,7 @@ namespace Nemo.Collections
             _cached = cached;
             if (cached)
             {
-                if (ConfigurationFactory.Get<T1>().DefaultL1CacheRepresentation == L1CacheRepresentation.List)
+                if (ConfigurationFactory.Get<T1>().DefaultCacheRepresentation == CacheRepresentation.List)
                 {
                     _source = source.ToList();
                 }

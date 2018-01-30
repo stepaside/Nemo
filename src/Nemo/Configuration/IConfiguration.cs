@@ -9,7 +9,7 @@ namespace Nemo.Configuration
 {
     public interface IConfiguration
     {
-        L1CacheRepresentation DefaultL1CacheRepresentation { get; }
+        CacheRepresentation DefaultCacheRepresentation { get; }
         bool Logging { get; }
         FetchMode DefaultFetchMode { get; }
         MaterializationMode DefaultMaterializationMode { get; }
@@ -29,7 +29,7 @@ namespace Nemo.Configuration
         IConfigurationRoot SystemConfiguration { get; }
 #endif
 
-        IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value);
+        IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value);
         IConfiguration SetLogging(bool value);
         IConfiguration SetDefaultFetchMode(FetchMode value);
         IConfiguration SetDefaultMaterializationMode(MaterializationMode value);

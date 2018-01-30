@@ -305,7 +305,7 @@ namespace Nemo
                     config = ConfigurationFactory.Get<TResult>();
                 }
 
-                cached = config.DefaultL1CacheRepresentation != L1CacheRepresentation.None;
+                cached = config.DefaultCacheRepresentation != CacheRepresentation.None;
             }
 
             if (cached.Value)
@@ -354,7 +354,7 @@ namespace Nemo
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
-                    if (config.DefaultL1CacheRepresentation == L1CacheRepresentation.List)
+                    if (config.DefaultCacheRepresentation == CacheRepresentation.List)
                     {
                         result = result.ToList();
                     }

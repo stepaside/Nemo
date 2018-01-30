@@ -16,7 +16,7 @@ namespace Nemo.Configuration
         private string _operationPrefix;
         private bool? _logging;
 
-        private L1CacheRepresentation? _defaultL1CacheRepresentation;
+        private CacheRepresentation? _defaultL1CacheRepresentation;
         private OperationNamingConvention? _operationNamingConvention;
         private FetchMode? _defaultFetchMode;
         private MaterializationMode? _defaultMaterializationMode;
@@ -25,7 +25,7 @@ namespace Nemo.Configuration
 
         private string _hiLoTableName;
 
-        public L1CacheRepresentation DefaultL1CacheRepresentation => _defaultL1CacheRepresentation ?? L1CacheRepresentation.LazyList;
+        public CacheRepresentation DefaultCacheRepresentation => _defaultL1CacheRepresentation ?? CacheRepresentation.LazyList;
 
         public bool Logging => _logging ?? false;
 
@@ -61,7 +61,7 @@ namespace Nemo.Configuration
         public IConfigurationRoot SystemConfiguration { get; private set; }
 #endif
 
-        public IConfiguration SetDefaultL1CacheRepresentation(L1CacheRepresentation value)
+        public IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value)
         {
             _defaultL1CacheRepresentation = value;
             return this;
@@ -189,7 +189,7 @@ namespace Nemo.Configuration
 
             mergedConfig.SetDefaultFetchMode(_defaultFetchMode ?? configuration.DefaultFetchMode);
 
-            mergedConfig.SetDefaultL1CacheRepresentation(_defaultL1CacheRepresentation ?? configuration.DefaultL1CacheRepresentation);
+            mergedConfig.SetDefaultCacheRepresentation(_defaultL1CacheRepresentation ?? configuration.DefaultCacheRepresentation);
 
             mergedConfig.SetDefaultMaterializationMode(_defaultMaterializationMode ?? configuration.DefaultMaterializationMode);
 

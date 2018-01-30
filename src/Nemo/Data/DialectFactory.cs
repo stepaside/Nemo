@@ -11,11 +11,6 @@ namespace Nemo.Data
 {
     public static class DialectFactory
     {
-        public const string ProviderInvariantSql = "System.Data.SqlClient";
-        public const string ProviderInvariantMysql = "MySql.Data.MySqlClient";
-        public const string ProviderInvariantSqlite = "System.Data.SQLite";
-        public const string ProviderInvariantOracle = "Oracle.DataAccess.Client";
-
         public static DialectProvider GetProvider(string connectionName)
         {
 #if NETCOREAPP2_0
@@ -31,10 +26,8 @@ namespace Nemo.Data
         {
             if (providerName == null)
             {
-                providerName = DbFactory.GetProviderInvariantNameByConnectionString(connection.ConnectionString);
+                providerName = DbFactory.GetProviderInvariantName(connection);
             }
-
-            //var isSqlServer = string.Equals(providerName, ProviderInvariantSql, StringComparison.OrdinalIgnoreCase);
 
             if (connection.State != ConnectionState.Open)
             {
@@ -43,17 +36,19 @@ namespace Nemo.Data
 
             switch (providerName)
             {
-                case ProviderInvariantSql:
+                case DbFactory.ProviderInvariantSql:
                 {
                     var isLegacy = new Version(connection.ServerVersion).Major <= 8;
                     return isLegacy ? SqlServerLegacyDialectProvider.Instance : SqlServerDialectProvider.Instance;
                 }
-                case ProviderInvariantMysql:
+                case DbFactory.ProviderInvariantMysql:
                     return MySqlDialectProvider.Instance;
-                case ProviderInvariantSqlite:
+                case DbFactory.ProviderInvariantSqlite:
                     return SqliteDialectProvider.Instance;
-                case ProviderInvariantOracle:
+                case DbFactory.ProviderInvariantOracle:
                     return OracleDialectProvider.Instance;
+                case DbFactory.ProviderInvariantPostgres:
+                    return PostgresDialectProvider.Instance;
                 default:
                     throw new NotSupportedException();
             }

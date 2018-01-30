@@ -16,6 +16,12 @@ namespace Nemo.Data
 {
     public static class DbFactory
     {
+        public const string ProviderInvariantSql = "System.Data.SqlClient";
+        public const string ProviderInvariantMysql = "MySql.Data.MySqlClient";
+        public const string ProviderInvariantSqlite = "System.Data.SQLite";
+        public const string ProviderInvariantOracle = "Oracle.DataAccess.Client";
+        public const string ProviderInvariantPostgres = "Npgsql";
+
         private static string GetDefaultConnectionName(Type objectType)
         {
             string connectionName = null;
@@ -208,6 +214,38 @@ namespace Nemo.Data
 #else
             return providerName != null ? DbProviderFactories.GetFactory(providerName).CreateDataAdapter() : null;
 #endif
+        }
+
+        internal static string GetProviderInvariantName(DbConnection connection)
+        {
+            var connectionType = connection.GetType().FullName.ToLower();
+
+            if (connectionType == "system.data.sqlclient.sqlconnection")
+            {
+                return ProviderInvariantSql;
+            }
+
+            if (connectionType == "system.data.sqlite.sqliteconnection" || connectionType == "microsoft.data.sqlite.sqliteconnection")
+            {
+                return ProviderInvariantSqlite;
+            }
+
+            if (connectionType == "mysql.data.mysqlclient.mysqlconnection")
+            {
+                return ProviderInvariantMysql;
+            }
+
+            if (connectionType == "oracle.dataaccess.client.oracleconnection")
+            {
+                return ProviderInvariantOracle;
+            }
+
+            if (connectionType == "npgsql.npgsqlconnection")
+            {
+                return ProviderInvariantPostgres;
+            }
+
+            return null;
         }
 
         public static DbProviderFactory GetDbProviderFactory(string providerName)

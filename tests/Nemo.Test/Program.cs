@@ -36,7 +36,7 @@ namespace NemoTest
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
                 .SetDefaultFetchMode(FetchMode.Lazy)
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
-                .SetDefaultL1CacheRepresentation(L1CacheRepresentation.None)
+                .SetDefaultCacheRepresentation(CacheRepresentation.None)
                 .SetDefaultSerializationMode(SerializationMode.Compact)
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")

@@ -38,12 +38,19 @@ namespace Nemo.Data
         public const string DefaultSoftDeleteColumn = "__deleted";
         public const string DefaultTimestampColumn = "__timestamp";
 
+        private static readonly ConcurrentDictionary<Tuple<Type, DialectProvider>, string> AllTables = new ConcurrentDictionary<Tuple<Type, DialectProvider>, string>();
+
         internal static string GetTableNameForSql(Type objectType, DialectProvider dialect)
         {
             string tableName = null;
             if (Reflector.IsEmitted(objectType))
             {
                 objectType = Reflector.GetInterface(objectType);
+            }
+            
+            if (AllTables.TryGetValue(Tuple.Create(objectType, dialect), out tableName))
+            {
+                return tableName;
             }
 
             var map = MappingFactory.GetEntityMap(objectType);
@@ -69,12 +76,21 @@ namespace Nemo.Data
                 }
             }
 
-            if (tableName != null) return tableName;
+            if (tableName != null)
+            {
+                AllTables.TryAdd(Tuple.Create(objectType, dialect), tableName);
+                return tableName;
+            }
             
             tableName = objectType.Name;
             if (objectType.IsInterface && tableName[0] == 'I')
             {
                 tableName = tableName.Substring(1);
+            }
+            
+            if (tableName != null)
+            {
+                AllTables.TryAdd(Tuple.Create(objectType, dialect), tableName);
             }
 
             return tableName;
