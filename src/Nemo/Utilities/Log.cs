@@ -16,7 +16,7 @@ namespace Nemo.Utilities
         {
             get
             {
-                return ConfigurationFactory.Default.Logging && LogProvider != null;
+                return ConfigurationFactory.DefaultConfiguration.Logging && LogProvider != null;
             }
         }
 
@@ -24,7 +24,7 @@ namespace Nemo.Utilities
         {
             get
             {
-                return ConfigurationFactory.Default.LogProvider;
+                return ConfigurationFactory.DefaultConfiguration.LogProvider;
             }
         }
 
@@ -98,7 +98,7 @@ namespace Nemo.Utilities
             get
             {
                 object context;
-                if (ConfigurationFactory.Default.ExecutionContext.TryGet(LogContextName, out context))
+                if (ConfigurationFactory.DefaultConfiguration.ExecutionContext.TryGet(LogContextName, out context))
                 {
                     var logContext = (Stack<Tuple<Guid, Stopwatch>>)context;
                     if (logContext != null && logContext.Count > 0)
@@ -113,7 +113,7 @@ namespace Nemo.Utilities
         private static void ClearContext()
         {
             object context;
-            if (ConfigurationFactory.Default.ExecutionContext.TryGet(LogContextName, out context))
+            if (ConfigurationFactory.DefaultConfiguration.ExecutionContext.TryGet(LogContextName, out context))
             {
                 var logContext = (Stack<Tuple<Guid, Stopwatch>>)context;
                 if (logContext != null && logContext.Count > 0)
@@ -125,7 +125,7 @@ namespace Nemo.Utilities
 
         private static void CreateContext()
         {
-            var executionContext = ConfigurationFactory.Default.ExecutionContext;
+            var executionContext = ConfigurationFactory.DefaultConfiguration.ExecutionContext;
 
             object logContext;
             if (!executionContext.TryGet(LogContextName, out logContext))

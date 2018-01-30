@@ -58,7 +58,7 @@ namespace Nemo.Data
                 connectionName = GetDefaultConnectionName(objectType);
             }
 #if NETCOREAPP2_0
-            return ConfigurationFactory.Default.SystemConfiguration?.ConnectionString(connectionName)?.ProviderName;
+            return ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName)?.ProviderName;
 #else
             return ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ProviderName;
 #endif
@@ -67,18 +67,16 @@ namespace Nemo.Data
         internal static string GetProviderInvariantNameByConnectionString(string connectionString)
         {
             if (connectionString == null) return null;
-
+            
             var builder = new DbConnectionStringBuilder { ConnectionString = connectionString };
 
-            object providerValue;
-            if (builder.TryGetValue("provider", out providerValue))
+            if (builder.TryGetValue("provider", out object providerValue))
             {
                 return providerValue.ToString();
             }
 
             var persistSecurityInfo = false;
-            object persistSecurityInfoValue;
-            if (builder.TryGetValue("persist security info", out persistSecurityInfoValue))
+            if (builder.TryGetValue("persist security info", out object persistSecurityInfoValue))
             {
                 persistSecurityInfo = Convert.ToBoolean(persistSecurityInfoValue);
             }
@@ -88,7 +86,7 @@ namespace Nemo.Data
             if (!lostPassword)
             {
 #if NETCOREAPP2_0
-                var connectionStrings = ConfigurationFactory.Default.SystemConfiguration?.ConnectionStrings();
+                var connectionStrings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings();
 #else
                 var connectionStrings = ConfigurationManager.ConnectionStrings;
 #endif
@@ -110,7 +108,7 @@ namespace Nemo.Data
                 }
 
 #if NETCOREAPP2_0
-                var connectionStrings = ConfigurationFactory.Default.SystemConfiguration?.ConnectionStrings();
+                var connectionStrings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings();
 #else
                 var connectionStrings = ConfigurationManager.ConnectionStrings;
 #endif
@@ -168,7 +166,7 @@ namespace Nemo.Data
                 connectionName = GetDefaultConnectionName(objectType);
             }
 #if NETCOREAPP2_0
-            var config = ConfigurationFactory.Default.SystemConfiguration?.ConnectionString(connectionName);
+            var config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
             var factory = GetDbProviderFactory(config.ProviderName);
 #else
             var config = ConfigurationManager.ConnectionStrings[connectionName];
@@ -184,8 +182,22 @@ namespace Nemo.Data
 
         public static DbConnection CreateConnection(string connectionStringOrName)
         {
-            var providerName = GetProviderInvariantNameByConnectionString(connectionStringOrName);
-            return providerName != null ? CreateConnection(connectionStringOrName, providerName) : CreateConnection(connectionStringOrName, (Type)null);
+#if NETCOREAPP2_0
+            var config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionStringOrName);
+#else
+            var config = ConfigurationManager.ConnectionStrings[connectionStringOrName];
+#endif
+            var isName = config != null;
+            if (isName)
+            {
+                var providerName = config.ProviderName ?? GetProviderInvariantNameByConnectionString(config.ConnectionString);
+                return CreateConnection(config.ConnectionString, config.ProviderName);
+            }
+            else
+            {
+                var providerName = GetProviderInvariantNameByConnectionString(connectionStringOrName);
+                return CreateConnection(connectionStringOrName, providerName);
+            }
         }
 
         internal static DbDataAdapter CreateDataAdapter(DbConnection connection)
@@ -200,7 +212,7 @@ namespace Nemo.Data
 
         public static DbProviderFactory GetDbProviderFactory(string providerName)
         {
-            var providername = providerName.ToLower();
+            providerName = providerName.ToLower();
 
             if (providerName == "system.data.sqlclient")
             {
@@ -212,7 +224,7 @@ namespace Nemo.Data
                 return GetDbProviderFactory(DataAccessProviderTypes.SqLite);
             }
 
-            if (providerName == "mysql.data.mysqlclient" || providername == "mysql.data")
+            if (providerName == "mysql.data.mysqlclient" || providerName == "mysql.data")
             {
                 return GetDbProviderFactory(DataAccessProviderTypes.MySql);
             }

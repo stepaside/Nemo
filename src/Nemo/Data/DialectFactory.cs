@@ -19,7 +19,7 @@ namespace Nemo.Data
         public static DialectProvider GetProvider(string connectionName)
         {
 #if NETCOREAPP2_0
-            var config = ConfigurationFactory.Default.SystemConfiguration?.ConnectionString(connectionName);
+            var config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
 #else
             var config = ConfigurationManager.ConnectionStrings[connectionName];
 #endif

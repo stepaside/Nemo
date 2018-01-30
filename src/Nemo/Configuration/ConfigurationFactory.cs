@@ -13,10 +13,10 @@ namespace Nemo.Configuration
 
         public static string DefaultConnectionName
         {
-            get { return Default.DefaultConnectionName; }
+            get { return DefaultConfiguration.DefaultConnectionName; }
         }
 
-        internal static IConfiguration Default
+        public static IConfiguration DefaultConfiguration
         {
             get
             {
@@ -50,7 +50,7 @@ namespace Nemo.Configuration
 
         public static IConfiguration Get(Type type)
         {
-            var globalConfig = Default;
+            var globalConfig = DefaultConfiguration;
             var configurationKey = type.FullName + "/Configuration";
             var config = (IConfiguration)globalConfig.ExecutionContext.Get(configurationKey);
             return config != null ? config.Merge(globalConfig) : globalConfig;
@@ -65,7 +65,7 @@ namespace Nemo.Configuration
         public static void Set(Type type, IConfiguration configuration)
         {
             var configurationKey = type.FullName + "/Configuration";
-            Default.ExecutionContext.Set(configurationKey, configuration);
+            DefaultConfiguration.ExecutionContext.Set(configurationKey, configuration);
         }
 
     }

@@ -134,7 +134,7 @@ namespace Nemo
             else
             {
 #if NETCOREAPP2_0
-                var css = ConfigurationFactory.Default.SystemConfiguration?.ConnectionStrings().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
+                var css = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
 #else
                 var css = ConfigurationManager.ConnectionStrings.Cast<Configuration.ConnectionStringSettings>().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
 #endif

@@ -29,11 +29,11 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                var scopes = ConfigurationFactory.Default.ExecutionContext.Get(ScopeNameStore);
+                var scopes = ConfigurationFactory.DefaultConfiguration.ExecutionContext.Get(ScopeNameStore);
                 if (scopes == null)
                 {
                     scopes = new Stack<ObjectScope>();
-                    ConfigurationFactory.Default.ExecutionContext.Set(ScopeNameStore, scopes);
+                    ConfigurationFactory.DefaultConfiguration.ExecutionContext.Set(ScopeNameStore, scopes);
                 }
                 return (Stack<ObjectScope>)scopes;
             }

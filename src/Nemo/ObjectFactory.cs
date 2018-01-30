@@ -526,7 +526,7 @@ namespace Nemo
 			return (T)Reflector.ChangeType(value, typeof(T));
         }
 
-        private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
+        private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
             Log.CaptureBegin(() => string.Format("RetrieveImplemenation: {0}::{1}", typeof(TResult).FullName, operation));
@@ -583,7 +583,7 @@ namespace Nemo
                 Log.Capture(() => string.Format("Not found in L1 cache: {0}", queryKey));
             }
 
-            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema, config, identityMap);
+            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap);
             
             if (queryKey != null)
             {
@@ -617,7 +617,7 @@ namespace Nemo
             return result;
         }
 
-        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, MaterializationMode mode, string schema, IConfiguration config, IdentityMap<T> identityMap)
+        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, string schema, IConfiguration config, IdentityMap<T> identityMap)
             where T : class
         {
             if (operationType == OperationType.Guess)
@@ -630,6 +630,12 @@ namespace Nemo
             var response = connection != null 
                 ? Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema) 
                 : Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
+
+            if (config == null)
+            {
+                config = ConfigurationFactory.Get<T>();
+            }
+            var mode = config.DefaultMaterializationMode;
 
             var result = Translate(response, map, types, cached, mode, identityMap);
             return result;
@@ -645,7 +651,7 @@ namespace Nemo
         /// Retrieves an enumerable of type T using provided rule parameters.
         /// </summary>
         /// <returns></returns>
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
             where T1 : class
             where T2 : class
             where T3 : class
@@ -678,16 +684,7 @@ namespace Nemo
                 config = ConfigurationFactory.Get<TResult>();
                 mode = config.DefaultFetchMode;
             }
-
-            if (materialization == MaterializationMode.Default)
-            {
-                if (config == null)
-                {
-                    config = ConfigurationFactory.Get<TResult>();
-                }
-                materialization = config.DefaultMaterializationMode;
-            }
-
+            
             var returnType = OperationReturnType.SingleResult;
 
             Func<object[], TResult> func = null;
@@ -737,37 +734,37 @@ namespace Nemo
                     }
                 }
             }
-            return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema, cached, config);
+            return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
             where T1 : class
             where T2 : class
             where T3 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
             where T1 : class
             where T2 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
             where T1 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached);
         }
 
-        public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null)
             where T : class
         {
             var returnType = OperationReturnType.SingleResult;
@@ -778,15 +775,6 @@ namespace Nemo
             {
                 config = ConfigurationFactory.Get<T>();
                 mode = config.DefaultFetchMode;
-            }
-
-            if (materialization == MaterializationMode.Default)
-            {
-                if (config == null)
-                {
-                    config = ConfigurationFactory.Get<T>();
-                }
-                materialization = config.DefaultMaterializationMode;
             }
 
             if (mode == FetchMode.Eager) returnType = OperationReturnType.DataTable;
@@ -810,7 +798,7 @@ namespace Nemo
                     }
                 }
             }
-            return RetrieveImplemenation<T>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached, config);
+            return RetrieveImplemenation<T>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
         }
 
         internal class Fake { }
