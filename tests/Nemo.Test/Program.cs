@@ -230,15 +230,15 @@ namespace NemoTest
             //            Console.WriteLine();
             //            Console.WriteLine("Object Fetching and Materialization");
 
-                        RunEF(500, false);
-                        RunNative(500);
-                        RunExecute(500);
-                        RunDapper(500, false);
-                        RunRetrieve(500, false);
-                        RunNativeWithMapper(500);
-                        RunSelect(500, false);
+            RunEF(500, false);
+            RunNative(500);
+            RunExecute(500);
+            RunDapper(500);
+            RunRetrieve(500, false);
+            RunNativeWithMapper(500);
+            RunSelect(500, false);
 
-            //return;
+            return;
 
             //var buffer = customer.Serialize();
             //var new_customer = SerializationExtensions.Deserialize<ICustomer>(buffer);
@@ -418,7 +418,8 @@ namespace NemoTest
         private static void RunNative(int count)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
-            const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            //const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            const string sql = @"select CustomerID, CompanyName from Customers";
 
             connection.Open();
 
@@ -427,10 +428,10 @@ namespace NemoTest
             {
                 cmd.CommandText = sql;
                 cmd.CommandType = CommandType.Text;
-                var param = cmd.CreateParameter();
-                param.ParameterName = "CustomerId";
-                param.Value = "ALFKI";
-                cmd.Parameters.Add(param);
+                //var param = cmd.CreateParameter();
+                //param.ParameterName = "CustomerId";
+                //param.Value = "ALFKI";
+                //cmd.Parameters.Add(param);
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read()) { }
@@ -445,10 +446,10 @@ namespace NemoTest
                 {
                     cmd.CommandText = sql;
                     cmd.CommandType = CommandType.Text;
-                    var param = cmd.CreateParameter();
-                    param.ParameterName = "CustomerId";
-                    param.Value = "ALFKI";
-                    cmd.Parameters.Add(param);
+                    //var param = cmd.CreateParameter();
+                    //param.ParameterName = "CustomerId";
+                    //param.Value = "ALFKI";
+                    //cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read()) { };
@@ -467,10 +468,11 @@ namespace NemoTest
 
             connection.Open();
 
-            var req = new OperationRequest { Operation = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID", Parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } }, ReturnType = OperationReturnType.SingleResult, OperationType = Nemo.OperationType.Sql, Connection = connection };
+            //var req = new OperationRequest { Operation = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID", Parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } }, ReturnType = OperationReturnType.SingleResult, OperationType = Nemo.OperationType.Sql, Connection = connection };
+            var req = new OperationRequest { Operation = @"select CustomerID, CompanyName from Customers", ReturnType = OperationReturnType.SingleResult, OperationType = Nemo.OperationType.Sql, Connection = connection };
 
             // Warm-up
-            var response = ObjectFactory.Execute<ICustomer>(req);
+            var response = ObjectFactory.Execute<Customer>(req);
             using (var reader = (IDataReader)response.Value)
             {
                 while (reader.Read()) { }
@@ -480,7 +482,7 @@ namespace NemoTest
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                response = ObjectFactory.Execute<ICustomer>(req);
+                response = ObjectFactory.Execute<Customer>(req);
                 using (var reader = (IDataReader)response.Value)
                 {
                     while (reader.Read()) { }
@@ -495,19 +497,20 @@ namespace NemoTest
         private static void RunRetrieve(int count, bool cached)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
-            const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            //const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            const string sql = @"select CustomerID, CompanyName from Customers";
             var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
 
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Retrieve<ICustomer>(connection: connection, sql: sql, parameters: parameters, cached: cached).FirstOrDefault();
+            var result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, cached: cached).ToList();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ObjectFactory.Retrieve<ICustomer>(connection: connection, sql: sql, parameters: parameters, cached: cached).FirstOrDefault();
+                result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, cached: cached).ToList();
             }
             timer.Stop();
             connection.Close();
@@ -523,13 +526,13 @@ namespace NemoTest
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Select(predicate, connection: connection).FirstOrDefault();
+            var result = ObjectFactory.Select<Customer>(null, connection: connection).ToList();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ObjectFactory.Select(predicate, connection: connection).FirstOrDefault();
+                result = ObjectFactory.Select<Customer>(null, connection: connection).ToList();
             }
             timer.Stop();
             connection.Close();
@@ -537,19 +540,20 @@ namespace NemoTest
             Console.WriteLine("Nemo.Select: " + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunDapper(int count, bool buffered)
+        private static void RunDapper(int count)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
-            var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
-                
+            //var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerID";
+            var sql = @"select CustomerID as Id, CompanyName from Customers";
+
             connection.Open();
             // Warm-up
-            var result = connection.Query<Customer>(sql, new { CustomerID = "ALFKI" }, buffered: buffered).FirstOrDefault();
+            var result = connection.Query<Customer>(sql, new { CustomerID = "ALFKI" }, buffered: false).ToList();
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = connection.Query<Customer>(sql, new { CustomerID = "ALFKI" }, buffered: buffered).FirstOrDefault();
+                result = connection.Query<Customer>(sql, new { CustomerID = "ALFKI" }, buffered: false).ToList();
             }
             timer.Stop();
 
@@ -567,7 +571,8 @@ namespace NemoTest
         private static void RunNativeWithMapper(int count)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
-            const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            //const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            const string sql = @"select CustomerID, CompanyName from Customers";
 
             connection.Open();
 
@@ -576,15 +581,16 @@ namespace NemoTest
             {
                 cmd.CommandText = sql;
                 cmd.CommandType = CommandType.Text;
-                var param = cmd.CreateParameter();
-                param.ParameterName = "CustomerId";
-                param.Value = "ALFKI";
-                cmd.Parameters.Add(param);
+                //var param = cmd.CreateParameter();
+                //param.ParameterName = "CustomerId";
+                //param.Value = "ALFKI";
+                //cmd.Parameters.Add(param);
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read()) 
                     {
-                        var customer = ObjectFactory.Map<IDataReader, Customer>(reader);
+                        var customer = new Customer();
+                        ObjectFactory.Map(reader, customer);
                     }
                 }
             }
@@ -597,15 +603,16 @@ namespace NemoTest
                 {
                     cmd.CommandText = sql;
                     cmd.CommandType = CommandType.Text;
-                    var param = cmd.CreateParameter();
-                    param.ParameterName = "CustomerId";
-                    param.Value = "ALFKI";
-                    cmd.Parameters.Add(param);
+                    //var param = cmd.CreateParameter();
+                    //param.ParameterName = "CustomerId";
+                    //param.Value = "ALFKI";
+                    //cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read()) 
                         {
-                            var customer = ObjectFactory.Map<IDataReader, Customer>(reader);
+                            var customer = new Customer();
+                            ObjectFactory.Map(reader, customer);
                         };
                     }
                 }
@@ -618,7 +625,8 @@ namespace NemoTest
 
         private static void RunEF(int count, bool linq = false, bool noTracking = true)
         {
-            var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @p0";
+            //var sql = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @p0";
+            var sql = @"select CustomerID as Id, CompanyName from Customers";
             // Warm-up
             using (var context = new EFContext(ConfigurationFactory.DefaultConnectionName))
             {
@@ -626,12 +634,12 @@ namespace NemoTest
 
                 if (linq)
                 {
-                    var customer = context.Customers.AsNoTracking().FirstOrDefault(c => c.Id == "ALFKI");
+                    var customer = context.Customers.AsNoTracking().ToList();//FirstOrDefault(c => c.Id == "ALFKI");
                 }
                 else
                 {
                     var parameters = new object[] { "ALFKI" };
-                    var customer = context.Customers.SqlQuery(sql, parameters).AsNoTracking().FirstOrDefault();
+                    var customer = context.Customers.SqlQuery(sql, parameters).AsNoTracking().ToList();
                 }
             }
 
@@ -644,7 +652,7 @@ namespace NemoTest
 
                     for (var i = 0; i < count; i++)
                     {
-                        var customer = context.Customers.AsNoTracking().FirstOrDefault(c => c.Id == "ALFKI");
+                        var customer = context.Customers.AsNoTracking().ToList();//.FirstOrDefault(c => c.Id == "ALFKI");
                     }
                     timer.Stop();
                 }
@@ -657,7 +665,7 @@ namespace NemoTest
                     for (var i = 0; i < count; i++)
                     {
                         var parameters = new object[] { "ALFKI" };
-                        var customer = context.Customers.SqlQuery(sql, parameters).AsNoTracking().FirstOrDefault();
+                        var customer = context.Customers.SqlQuery(sql, parameters).AsNoTracking().ToList();
                     }
                     timer.Stop();
                 }
