@@ -13,8 +13,8 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <AssemblyName>Nemo</AssemblyName>
 	<AssemblyTitle>Nemo</AssemblyTitle>
-	<AssemblyVersion>2.4.0</AssemblyVersion>
-    <FileVersion>2.4.6</FileVersion>
+	<AssemblyVersion>2.5.0</AssemblyVersion>
+    <FileVersion>2.5.0</FileVersion>
     <RootNamespace>Nemo</RootNamespace>
 	
     <PackageId>Nemo</PackageId>
@@ -25,12 +25,12 @@
     <Copyright>Copyright © Max Stepanskiy 2012-2018</Copyright>
     <PackageProjectUrl>https://github.com/stepaside/Nemo/wiki</PackageProjectUrl>
     <PackageTags>ORM micro-ORM data-mapper sql-mapper</PackageTags>
-    <Version>2.4.6</Version>
+    <Version>2.5.0</Version>
     
     <RepositoryUrl>https://github.com/stepaside/Nemo</RepositoryUrl>
     <RepositoryType>Github</RepositoryType>
     
-	<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <!-- common NuGet package refs that affect all projects -->
@@ -144,7 +144,8 @@
 	<Compile Include="Configuration\Mapping\IPropertyMap.cs" /> 
 	<Compile Include="Configuration\Mapping\MappingFactory.cs" /> 
 	<Compile Include="Configuration\Mapping\PropertyMap.cs" /> 
-	<Compile Include="Data\DataAccessProviderTypes.cs" /> 
+	<Compile Include="Data\DataAccessProviderTypes.cs" />
+  <Compile Include="Data\DataReaderExtensions.cs" />
 	<Compile Include="Data\DbFactory.cs" /> 
 	<Compile Include="Data\DialectFactory.cs" /> 
 	<Compile Include="Data\DialectProvider.cs" /> 
@@ -163,7 +164,6 @@
 	<Compile Include="Extensions\ExceptionExtensions.cs" /> 
 	<Compile Include="Extensions\ObjectExtensions.cs" /> 
 	<Compile Include="Extensions\StringExtensions.cs" /> 
-	<Compile Include="FetchMode.cs" /> 
 	<Compile Include="Fn\Extensions\FunctionExtensions.cs" /> 
 	<Compile Include="Fn\Maybe.cs" /> 
 	<Compile Include="Fn\Stream.cs" /> 

@@ -11,7 +11,6 @@ namespace Nemo.Configuration
     {
         CacheRepresentation DefaultCacheRepresentation { get; }
         bool Logging { get; }
-        FetchMode DefaultFetchMode { get; }
         MaterializationMode DefaultMaterializationMode { get; }
         string DefaultConnectionName { get; }
         string OperationPrefix { get; }
@@ -31,7 +30,6 @@ namespace Nemo.Configuration
 
         IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value);
         IConfiguration SetLogging(bool value);
-        IConfiguration SetDefaultFetchMode(FetchMode value);
         IConfiguration SetDefaultMaterializationMode(MaterializationMode value);
         IConfiguration SetOperationPrefix(string value);
         IConfiguration SetDefaultConnectionName(string value);

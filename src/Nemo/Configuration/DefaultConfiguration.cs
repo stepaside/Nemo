@@ -18,7 +18,6 @@ namespace Nemo.Configuration
 
         private CacheRepresentation? _defaultL1CacheRepresentation;
         private OperationNamingConvention? _operationNamingConvention;
-        private FetchMode? _defaultFetchMode;
         private MaterializationMode? _defaultMaterializationMode;
         private ChangeTrackingMode? _defaultChangeTrackingMode;
         private SerializationMode? _defaultSerializationMode;
@@ -28,8 +27,6 @@ namespace Nemo.Configuration
         public CacheRepresentation DefaultCacheRepresentation => _defaultL1CacheRepresentation ?? CacheRepresentation.LazyList;
 
         public bool Logging => _logging ?? false;
-
-        public FetchMode DefaultFetchMode => _defaultFetchMode ?? FetchMode.Eager;
 
         public MaterializationMode DefaultMaterializationMode => _defaultMaterializationMode ?? MaterializationMode.Partial;
 
@@ -72,16 +69,7 @@ namespace Nemo.Configuration
             _logging = value;
             return this;
         }
-
-        public IConfiguration SetDefaultFetchMode(FetchMode value)
-        {
-            if (value != FetchMode.Default)
-            {
-                _defaultFetchMode = value;
-            }
-            return this;
-        }
-
+        
         public IConfiguration SetDefaultMaterializationMode(MaterializationMode value)
         {
             if (value != MaterializationMode.Default)
@@ -186,8 +174,6 @@ namespace Nemo.Configuration
             mergedConfig.SetDefaultChangeTrackingMode(_defaultChangeTrackingMode ?? configuration.DefaultChangeTrackingMode);
 
             mergedConfig.SetDefaultConnectionName(_defaultConnectionName ?? configuration.DefaultConnectionName);
-
-            mergedConfig.SetDefaultFetchMode(_defaultFetchMode ?? configuration.DefaultFetchMode);
 
             mergedConfig.SetDefaultCacheRepresentation(_defaultL1CacheRepresentation ?? configuration.DefaultCacheRepresentation);
 

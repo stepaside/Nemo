@@ -95,7 +95,7 @@ namespace Nemo
             var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin }, new[] { typeof(T), typeof(T1) },
-                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
 
             return result;
         }
@@ -124,7 +124,7 @@ namespace Nemo
             var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2 }, new[] { typeof(T), typeof(T1), typeof(T2) },
-                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
 
             return result;
         }
@@ -155,7 +155,7 @@ namespace Nemo
             var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) },
-                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
 
             return result;
         }
@@ -188,7 +188,7 @@ namespace Nemo
             var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3, sqlJoin4 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) },
-                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
 
             return result;
         }
@@ -394,7 +394,7 @@ namespace Nemo
                 ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema)
                 : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
 
-            var result = Translate(response, map, types, cached, mode, identityMap);
+            var result = Translate(response, map, types, cached, mode, response.ReturnType, identityMap);
             return result;
         }
 
@@ -402,7 +402,7 @@ namespace Nemo
         /// Retrieves an enumerable of type T using provided rule parameters.
         /// </summary>
         /// <returns></returns>
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class
             where T2 : class
             where T3 : class
@@ -429,19 +429,9 @@ namespace Nemo
             }
 
             IConfiguration config = null;
-
-            if (mode == FetchMode.Default)
-            {
-                config = ConfigurationFactory.Get<TResult>();
-                mode = config.DefaultFetchMode;
-            }
-
             if (materialization == MaterializationMode.Default)
             {
-                if (config == null)
-                {
-                    config = ConfigurationFactory.Get<TResult>();
-                }
+                config = ConfigurationFactory.Get<TResult>();
                 materialization = config.DefaultMaterializationMode;
             }
 
@@ -450,7 +440,7 @@ namespace Nemo
             Func<object[], TResult> func = null;
             if (map == null && realTypes.Count > 1)
             {
-                returnType = mode == FetchMode.Lazy ? OperationReturnType.MultiResult : OperationReturnType.DataSet;
+                returnType = OperationReturnType.MultiResult;
             }
             else if (map != null && realTypes.Count > 1)
             {
@@ -470,11 +460,7 @@ namespace Nemo
                         break;
                 }
             }
-            else if (mode == FetchMode.Eager && realTypes.Count == 1)
-            {
-                returnType = OperationReturnType.DataTable;
-            }
-
+            
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
             IList<Param> parameterList = null;
@@ -497,57 +483,43 @@ namespace Nemo
             return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema, cached, config);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class
             where T2 : class
             where T3 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, materialization, schema, cached);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class
             where T2 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, materialization, schema, cached);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T1 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, mode, materialization, schema, cached);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, materialization, schema, cached);
         }
 
-        public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
             where T : class
         {
-            var returnType = OperationReturnType.SingleResult;
-
             IConfiguration config = null;
-
-            if (mode == FetchMode.Default)
-            {
-                config = ConfigurationFactory.Get<T>();
-                mode = config.DefaultFetchMode;
-            }
-
             if (materialization == MaterializationMode.Default)
             {
-                if (config == null)
-                {
-                    config = ConfigurationFactory.Get<T>();
-                }
+                config = ConfigurationFactory.Get<T>();
                 materialization = config.DefaultMaterializationMode;
             }
-
-            if (mode == FetchMode.Eager) returnType = OperationReturnType.DataTable;
-
+            
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
             IList<Param> parameterList = null;
@@ -567,7 +539,7 @@ namespace Nemo
                     }
                 }
             }
-            return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached, config);
+            return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached, config);
         }
 
         #endregion
@@ -915,38 +887,6 @@ namespace Nemo
                         break;
                     case OperationReturnType.Scalar:
                         response.Value = await command.ExecuteScalarAsync().ConfigureAwait(false);
-                        break;
-                    case OperationReturnType.DataSet:
-                    case OperationReturnType.DataTable:
-                        var adapter = DbFactory.CreateDataAdapter(dbConnection);
-                        adapter.SelectCommand = command;
-                        if (returnType == OperationReturnType.DataTable)
-                        {
-                            var table = rootType != null ? new DataTable(GetTableName(rootType)) : new DataTable();
-                            adapter.Fill(table);
-                            response.Value = table;
-                        }
-                        else
-                        {
-                            var set = new DataSet();
-                            adapter.Fill(set);
-                            if (types != null)
-                            {
-                                for (var i = 0; i < set.Tables.Count; i++)
-                                {
-                                    var tableType = types.ElementAtOrDefault(i);
-                                    if (tableType != null)
-                                    {
-                                        set.Tables[i].TableName = GetTableName(tableType);
-                                    }
-                                }
-                            }
-                            response.Value = set;
-                            if (rootType != null)
-                            {
-                                InferRelations(set, rootType);
-                            }
-                        }
                         break;
                 }
 

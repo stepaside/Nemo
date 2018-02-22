@@ -695,7 +695,7 @@ namespace Nemo.Extensions
             {
                 interfaceType = Reflector.GetInterface(dataEntity.GetType());
             }
-            else if (Reflector.IsMarkerInterface<T>())
+            else if (Reflector.IsMarkerInterface<T>() || interfaceType == typeof(object))
             {
                 interfaceType = dataEntity.GetType();
             }

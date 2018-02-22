@@ -34,7 +34,6 @@ namespace NemoTest
         {
             ConfigurationFactory.Configure()
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
-                .SetDefaultFetchMode(FetchMode.Lazy)
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
                 .SetDefaultCacheRepresentation(CacheRepresentation.None)
                 .SetDefaultSerializationMode(SerializationMode.Compact)
@@ -90,11 +89,11 @@ namespace NemoTest
             //            //var selected_customers_10_repeat = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
             //            var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
 
-            //var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
-            //var linqCustomers = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
-            //var linqCustomer = new NemoQueryable<Customer>().FirstOrDefault(c => c.Id == "ALFKI");
+            //            var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
+            //            var linqCustomers = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
+            //            var linqCustomer = new NemoQueryable<Customer>().FirstOrDefault(c => c.Id == "ALFKI");
 
-            //var linqCustomersAsync = new NemoQueryableAsync<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefault().Result;
+            //            var linqCustomersAsync = new NemoQueryableAsync<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefault().Result;
 
             //            var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 
@@ -114,11 +113,11 @@ namespace NemoTest
 
             //            // Advanced!
             //            // Retrieve customers with orders as object graph
-            //            var retrieve_customer_with_orders_graph = ObjectFactory.Retrieve<ICustomer, IOrder>(
+            //            var retrieve_customer_with_orders_graph = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order>(
             //                                                                    sql: @"select * from Customers where CustomerID = @CustomerID; 
-            //                                                                        select * from Orders where CustomerID = @CustomerID",
-            //                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
-            //                                                                    mode: FetchMode.Eager);
+            //                                                                            select * from Orders where CustomerID = @CustomerID",
+            //                                                                    parameters: new ParamList { CustomerId => "ALFKI" })).Aggregate<Customer>();
+                        
             //            var customer = retrieve_customer_with_orders_graph.First();
 
             //            // Advanced!
@@ -146,11 +145,10 @@ namespace NemoTest
             //            var retrieve_customer_with_orders_lazy = ObjectFactory.Retrieve<ICustomer, IOrder>(
             //                                                                    sql: @"select * from Customers where CustomerID = @CustomerID;
             //                                                                            select * from Orders where CustomerID = @CustomerID",
-            //                                                                    parameters: new ParamList { CustomerId => "ALFKI" },
-            //                                                                    mode: FetchMode.Lazy);
+            //                                                                    parameters: new ParamList { CustomerId => "ALFKI" });
 
             //            var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault(); // ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
-            //            var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>();
+            //            var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>().ToList();
 
             //            // UnitOfWork example
             //            using (ObjectScope.New(customer, autoCommit: false))
@@ -230,13 +228,14 @@ namespace NemoTest
             //            Console.WriteLine();
             //            Console.WriteLine("Object Fetching and Materialization");
 
-            RunEF(500, false);
-            RunNative(500);
-            RunExecute(500);
-            RunDapper(500);
+            //RunEF(500, false);
+            //RunNative(500);
+            //RunExecute(500);
+            //RunDapper(500);
             RunRetrieve(500, false);
-            RunNativeWithMapper(500);
-            RunSelect(500, false);
+            //RunNativeWithMapper(500);
+            //RunSelect(500, false);
+            //RunRetrieveComplex(500);
 
             return;
 
@@ -518,7 +517,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Retrieve: " + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunSelect(int count, bool buffered = false)
+        private static void RunSelect(int count)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
@@ -538,6 +537,28 @@ namespace NemoTest
             connection.Close();
 
             Console.WriteLine("Nemo.Select: " + timer.Elapsed.TotalMilliseconds);
+        }
+
+        private static void RunRetrieveComplex(int count)
+        {
+            var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
+            var sql = @"select * from Customers where CustomerID = @CustomerID; select * from Orders where CustomerID = @CustomerID";
+
+            connection.Open();
+
+            // Warm-up
+            var result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+
+            var timer = new Stopwatch();
+            timer.Start();
+            for (var i = 0; i < count; i++)
+            {
+                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+            }
+            timer.Stop();
+            connection.Close();
+
+            Console.WriteLine("Nemo.Retrieve.Complex: " + timer.Elapsed.TotalMilliseconds);
         }
 
         private static void RunDapper(int count)

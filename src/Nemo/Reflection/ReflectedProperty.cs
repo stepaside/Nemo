@@ -21,7 +21,7 @@ namespace Nemo.Reflection
             IsBinary = property.PropertyType == typeof(byte[]);
             IsSimpleList = !IsBinary && Reflector.IsSimpleList(property.PropertyType);
             IsDataEntity = Reflector.IsDataEntity(property.PropertyType);
-
+            
             Type elementType;
             IsDataEntityList = Reflector.IsDataEntityList(property.PropertyType, out elementType);
             ElementType = elementType;
@@ -47,6 +47,8 @@ namespace Nemo.Reflection
             CanWrite = property.CanWrite;
             CanRead = property.CanRead;
             Position = position;
+            IsObject = IsDataEntity || (property.PropertyType.IsClass && !IsSimpleType && !IsSimpleList && !IsBinary && !IsList);
+            IsObjectList = IsDataEntityList || (IsList && ElementType != null && ElementType.IsClass && !Reflector.IsSimpleType(ElementType) && !Reflector.IsSimpleList(ElementType));
 
             Converter = null;
 
@@ -167,6 +169,10 @@ namespace Nemo.Reflection
         public bool IsNullableType { get; private set; }
 
         public bool IsList { get; private set; }
+
+        public bool IsObject { get; private set; }
+
+        public bool IsObjectList { get; private set; }
 
         public SortedAttribute Sorted { get; internal set; }
 

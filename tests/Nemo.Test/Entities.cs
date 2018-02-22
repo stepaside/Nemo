@@ -173,7 +173,7 @@ namespace NemoTest
 
     [Nemo.Attributes.Table("Customers")]
     // Used for Dapper performance test
-    public class Customer : ICustomer
+    public class Customer 
     {
         public Customer() { }
         public Customer(string id, string companyName) 
@@ -182,13 +182,13 @@ namespace NemoTest
             CompanyName = companyName;
         }
 
-        public Customer(ICustomer customer)
+        public Customer(Customer customer)
         {
             Id = customer.Id;
             CompanyName = customer.CompanyName;
             if (customer.Orders != null)
             {
-                Orders = new List<IOrder>();
+                Orders = new List<Order>();
                 foreach (var order in customer.Orders)
                 {
                     Orders.Add(new Order { OrderId = order.OrderId, CustomerId = order.CustomerId, ShipPostalCode = order.ShipPostalCode });
@@ -199,12 +199,12 @@ namespace NemoTest
         [PrimaryKey, MapColumn("CustomerID"), Key]
         public string Id { get; set; }
         public string CompanyName { get; set; }
-        public IList<IOrder> Orders { get; set; }
+        public IList<Order> Orders { get; set; }
         //public List<int> ListTest { get; set; }
         //public Dictionary<int, string> MapTest { get; set; }   
     }
     
-    public class Order : IOrder
+    public class Order 
     {
         [PrimaryKey, Key]
         public int OrderId
@@ -220,7 +220,7 @@ namespace NemoTest
             set;
         }
 
-        public ICustomer Customer { get; set; }
+        public Customer Customer { get; set; }
 
         public string ShipPostalCode { get; set; }
     }

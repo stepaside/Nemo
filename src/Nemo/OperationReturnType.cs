@@ -12,8 +12,6 @@ namespace Nemo
         MultiResult, 
         SingleResult, 
         SingleRow, 
-        Scalar, 
-        DataSet,
-        DataTable
+        Scalar
     }
 }

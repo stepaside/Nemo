@@ -53,13 +53,13 @@ namespace Nemo.UnitOfWork
                                     OperationType = OperationType.Sql,
                                     Parameters = statement.Item2,
                                     Connection = connection,
-                                    ReturnType = OperationReturnType.DataTable,
+                                    ReturnType = OperationReturnType.SingleResult,
                                     Transaction = transaction
                                 });
                             success = response.Value != null;
                             if (success)
                             {
-                                SetGeneratedPropertyValues(statement.Item3, (DataTable)response.Value);
+                                SetGeneratedPropertyValues(statement.Item3, (IDataReader)response.Value);
                             }
                         }
 
@@ -137,13 +137,13 @@ namespace Nemo.UnitOfWork
                     }
                 }
             }
-            
+
             return success;
         }
-        
+
         internal static bool Commit(this object dataEntity, Type objectType)
         {
-            var methodHandle = CommitMethods.GetOrAdd(objectType, type => 
+            var methodHandle = CommitMethods.GetOrAdd(objectType, type =>
             {
                 var commitMethod = typeof(ObjectScopeExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public).FirstOrDefault(m => m.Name == "Commit");
                 var genericCommitMethod = commitMethod.MakeGenericMethod(type);
@@ -246,9 +246,15 @@ namespace Nemo.UnitOfWork
             }
         }
 
-        private static void SetGeneratedPropertyValues(IReadOnlyList<object> dataEntities, DataTable generatedValues)
+        private static void SetGeneratedPropertyValues(IReadOnlyList<object> dataEntities, IDataReader generatedValues)
         {
-            var map = generatedValues.Rows.Cast<DataRow>().ToDictionary(r => r.Field<int>("StatementId"), r => Tuple.Create(r.Field<object>("GeneratedId"), r.Field<string>("ParameterName"), r.Field<string>("PropertyName")));
+            var map = generatedValues.AsEnumerable().Select(r => new
+            {
+                StatementId = r.GetInt32(r.GetOrdinal("StatementId")),
+                GeneratedId = r.GetValue(r.GetOrdinal("GeneratedId")),
+                ParameterName = r.GetString(r.GetOrdinal("ParameterName")),
+                PropertyName = r.GetString(r.GetOrdinal("PropertyName"))
+            }).ToDictionary(r => r.StatementId, r => Tuple.Create(r.GeneratedId, r.ParameterName, r.PropertyName));
 
             for (var i = 0; i < dataEntities.Count; i++)
             {
@@ -313,7 +319,7 @@ namespace Nemo.UnitOfWork
                         {
                             currentValue = ((IEnumerable)currentValue).Cast<object>().ToArray();
                         }
-                        
+
                         if (oldValue != null)
                         {
                             oldValue = ((IEnumerable)oldValue).Cast<object>().ToArray();
@@ -658,7 +664,7 @@ namespace Nemo.UnitOfWork
             {
                 var objectType = dirtyNode.Value.GetType();
                 var propertyMap = Reflector.GetPropertyMap(objectType).ToDictionary(p => p.Key.Name, p => p);
-                
+
                 var parameters = new List<Param>();
                 foreach (var change in dirtyNode.Nodes.Where(n => n.IsSimpleLeaf))
                 {

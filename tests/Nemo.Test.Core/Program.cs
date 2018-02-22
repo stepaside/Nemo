@@ -26,7 +26,6 @@ namespace NemoTest
 
             ConfigurationFactory.Configure()
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
-                .SetDefaultFetchMode(FetchMode.Lazy)
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
                 .SetDefaultCacheRepresentation(CacheRepresentation.None)
                 .SetDefaultSerializationMode(SerializationMode.Compact)

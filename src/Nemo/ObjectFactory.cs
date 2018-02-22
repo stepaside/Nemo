@@ -51,11 +51,7 @@ namespace Nemo
         {
             var value = isInterface ? Adapter.Implement<T>() : FastActivator<T>.New();
 
-            var entity = value as ITrackableDataEntity;
-            if (entity != null)
-            {
-                entity.ObjectState = ObjectState.New;
-            }
+            TrySetObjectState(value);
 
             return value;
         }
@@ -374,7 +370,7 @@ namespace Nemo
             var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin }, new[] { typeof(T), typeof(T1) },
-                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
 
             return result;
         }
@@ -403,7 +399,7 @@ namespace Nemo
             var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2 }, new[] { typeof(T), typeof(T1), typeof(T2) },
-                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
 
             return result;
         }
@@ -434,7 +430,7 @@ namespace Nemo
             var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) },
-                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
 
             return result;
         }
@@ -467,7 +463,7 @@ namespace Nemo
             var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3, sqlJoin4 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) },
-              (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.DataSet, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+              (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
 
             return result;
         }
@@ -679,7 +675,7 @@ namespace Nemo
             }
             var mode = config.DefaultMaterializationMode;
 
-            var result = Translate(response, map, types, cached, mode, identityMap);
+            var result = Translate(response, map, types, cached, mode, returnType, identityMap);
             return result;
         }
 
@@ -693,7 +689,7 @@ namespace Nemo
         /// Retrieves an enumerable of type T using provided rule parameters.
         /// </summary>
         /// <returns></returns>
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where T3 : class
@@ -723,18 +719,13 @@ namespace Nemo
             {
                 config = ConfigurationFactory.Get<TResult>();
             }
-
-            if (mode == FetchMode.Default)
-            {
-                mode = config.DefaultFetchMode;
-            }
-            
+                        
             var returnType = OperationReturnType.SingleResult;
 
             Func<object[], TResult> func = null;
             if (map == null && realTypes.Count > 1)
             {
-                returnType = mode == FetchMode.Lazy ? OperationReturnType.MultiResult : OperationReturnType.DataSet;
+                returnType = OperationReturnType.MultiResult;
             }
             else if (map != null && realTypes.Count > 1)
             {
@@ -753,10 +744,6 @@ namespace Nemo
                         func = args => map.Curry((TResult)args[0], (T1)args[1])(null, null, null);
                         break;
                 }
-            }
-            else if (mode == FetchMode.Eager && realTypes.Count == 1)
-            {
-                returnType = OperationReturnType.DataTable;
             }
 
             var command = sql ?? operation;
@@ -781,49 +768,40 @@ namespace Nemo
             return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where T3 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached, config);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached, config);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
-            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, mode, schema, cached, config);
+            return Retrieve(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, FetchMode mode = FetchMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T : class
         {
-            var returnType = OperationReturnType.SingleResult;
-            
             if (config == null)
             {
                 config = ConfigurationFactory.Get<T>();
             }
-
-            if (mode == FetchMode.Default)
-            {
-                mode = config.DefaultFetchMode;
-            }
-
-            if (mode == FetchMode.Eager) returnType = OperationReturnType.DataTable;
             
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
@@ -844,7 +822,7 @@ namespace Nemo
                     }
                 }
             }
-            return RetrieveImplemenation<T>(command, commandType, parameterList, returnType, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
+            return RetrieveImplemenation<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
         }
 
         internal class Fake { }
@@ -1204,9 +1182,6 @@ namespace Nemo
                             case OperationReturnType.SingleRow:
                                 behavior = CommandBehavior.SingleRow;
                                 break;
-                            default:
-                                closeConnection = false;
-                                break;
                         }
 
                         if (closeConnection)
@@ -1219,38 +1194,6 @@ namespace Nemo
                         break;
                     case OperationReturnType.Scalar:
                         response.Value = command.ExecuteScalar();
-                        break;
-                    case OperationReturnType.DataSet:
-                    case OperationReturnType.DataTable:
-                        var adapter = DbFactory.CreateDataAdapter(dbConnection);
-                        adapter.SelectCommand = command;
-                        if (returnType == OperationReturnType.DataTable)
-                        {
-                            var table = rootType != null ? new DataTable(GetTableName(rootType)) : new DataTable();
-                            adapter.Fill(table);
-                            response.Value = table;
-                        }
-                        else
-                        {
-                            var set = new DataSet();
-                            adapter.Fill(set);
-                            if (types != null)
-                            {
-                                for (var i = 0; i < set.Tables.Count; i++)
-                                {
-                                    var tableType = types.ElementAtOrDefault(i);
-                                    if (tableType != null)
-                                    {
-                                        set.Tables[i].TableName = GetTableName(tableType);
-                                    }
-                                }
-                            }
-                            response.Value = set;
-                            if (rootType != null)
-                            {
-                                InferRelations(set, rootType);
-                            }
-                        }
                         break;
                 }
 
@@ -1316,10 +1259,10 @@ namespace Nemo
             where T : class
         {
             var config = ConfigurationFactory.Get<T>();
-            return Translate<T>(response, null, null, config.DefaultCacheRepresentation != CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
+            return Translate<T>(response, null, null, config.DefaultCacheRepresentation != CacheRepresentation.None, config.DefaultMaterializationMode, response.ReturnType, Identity.Get<T>());
         }
 
-        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, IIdentityMap identityMap)
+        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, OperationReturnType returnType, IIdentityMap identityMap)
             where T : class
         {
             var value = response != null ? response.Value : null;
@@ -1406,22 +1349,43 @@ namespace Nemo
             return table.Select(row => ConvertDataRow(row, targetType, mode, isInterface, identityMap, primaryKey));
         }
 
-        private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface, IIdentityMap identityMap, string[] primaryKey)
-             where T : class
+        internal static TResult GetByIdentity<T, TResult>(T item, Func<T, string, object> getValue, IIdentityMap identityMap, string[] primaryKey, out string hash)
+            where T : class
+            where TResult : class
         {
-            string hash = null;
+            hash = null;
 
             if (identityMap != null)
             {
-                var primaryKeyValue = new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => row[k]), StringComparer.Ordinal);
+                var primaryKeyValue = new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => getValue(item, k)), StringComparer.Ordinal);
                 hash = primaryKeyValue.ComputeHash(typeof(T));
 
                 object result;
                 if (identityMap.TryGetValue(hash, out result))
                 {
-                    return (T)result;
+                    return (TResult)result;
                 }
             }
+
+            return default(TResult);
+        }
+
+        internal static void WriteThroughIdentity<T>(T value, IIdentityMap identityMap, string hash)
+            where T : class
+        {
+            if (identityMap != null && value != null && hash != null)
+            {
+                identityMap.Set(hash, value);
+            }
+        }
+
+        private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface, IIdentityMap identityMap, string[] primaryKey)
+             where T : class
+        {
+            string hash = null;
+            var result = GetByIdentity<DataRow, T>(row, (r, k) => r[k], identityMap, primaryKey, out hash);
+
+            if (result != null) return result;
 
             var value = mode == MaterializationMode.Exact || !isInterface ? Map<DataRow, T>(row, isInterface) : Wrap<T>(GetSerializableDataRow(row));
             var entity = value as ITrackableDataEntity;
@@ -1431,10 +1395,7 @@ namespace Nemo
             }
 
             // Write-through for identity map
-            if (identityMap != null && value != null && hash != null)
-            {
-                identityMap.Set(hash, value);
-            }
+            WriteThroughIdentity(value, identityMap, hash);
 
             LoadRelatedData(row, value, typeof(T), mode, identityMap, primaryKey);
             
@@ -1540,7 +1501,7 @@ namespace Nemo
                 Reflector.Property.Set(value.GetType(), value, p.Key.Name, propertyValue);
             }
         }
-        
+
         private static IEnumerable<T> ConvertDataReader<T>(IDataReader reader, Func<object[], T> map, IList<Type> types, MaterializationMode mode, bool isInterface)
             where T : class
         {
@@ -1594,6 +1555,8 @@ namespace Nemo
                             bag.Add(reader.GetName(index), reader[index]);
                         }
                         var item = Wrap<T>(bag);
+
+                        TrySetObjectState(item);
 
                         if (map != null)
                         {
@@ -1669,6 +1632,7 @@ namespace Nemo
                         if (!isInterface || mode == MaterializationMode.Exact)
                         {
                             var item = Map(reader, types[resultIndex], isInterface, false);
+                            TrySetObjectState(item);
                             yield return TypeUnion.Create(types, item);
                         }
                         else
@@ -1679,6 +1643,7 @@ namespace Nemo
                                 bag.Add(reader.GetName(index), reader.GetValue(index));
                             }
                             var item = Wrap(bag, types[resultIndex]);
+                            TrySetObjectState(item);
                             yield return TypeUnion.Create(types, item);
                         }
                     }
@@ -1698,6 +1663,15 @@ namespace Nemo
             }
         }
 
+        private static void TrySetObjectState(object item)
+        {
+            var entity = item as ITrackableDataEntity;
+            if (entity != null)
+            {
+                entity.ObjectState = ObjectState.Clean;
+            }
+        }
+        
         private static IDictionary<string, object> GetSerializableDataRow(DataRow row)
         {
             IDictionary<string, object> result = new Dictionary<string, object>(StringComparer.Ordinal);
@@ -1724,10 +1698,10 @@ namespace Nemo
             }
 
             var primaryKey = propertyMap.Where(p => p.Value.IsPrimaryKey).OrderBy(p => p.Value.KeyPosition).Select(p => p.Value).ToList();
-            var references = propertyMap.Where(p => p.Value.IsDataEntity || p.Value.IsDataEntityList).Select(p => p.Value);
+            var references = propertyMap.Where(p => p.Value.IsDataEntity || p.Value.IsDataEntityList || p.Value.IsObject || p.Value.IsObjectList).Select(p => p.Value);
             foreach (var reference in references)
             {
-                var elementType = reference.IsDataEntityList ? Reflector.GetElementType(reference.PropertyType) : reference.PropertyType;
+                var elementType = (reference.IsDataEntityList || reference.IsObjectList) ? reference.ElementType : reference.PropertyType;
 
                 var referencedPropertyMap = Reflector.GetPropertyMap(elementType);
                 var referencedProperties = referencedPropertyMap.Where(p => p.Value != null && p.Value.Parent == objectType).OrderBy(p => p.Value.RefPosition).Select(p => p.Value).ToList();
