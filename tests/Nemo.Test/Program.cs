@@ -556,7 +556,7 @@ namespace NemoTest
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>(true).FirstOrDefault();
             }
             timer.Stop();
             connection.Close();

@@ -214,7 +214,7 @@ namespace Nemo.Collections
             }
         }
 
-        public static IEnumerable<T> Aggregate<T>(this IMultiResult source)
+        public static IEnumerable<T> Aggregate<T>(this IMultiResult source, bool noTracking = false)
             where T : class
         {
             var results = source.AsEnumerable().Select(s => s.ToList()).ToList();
@@ -225,12 +225,13 @@ namespace Nemo.Collections
 
             for (var i = 0; i < source.AllTypes.Length; i++)
             {
-                var identityMap = Identity.Get(source.AllTypes[i]);
-                var propertyKey = ObjectFactory.GetPrimaryKeyProperties(source.AllTypes[i]);
+                var identityMap = noTracking ? null : Identity.Get(source.AllTypes[i]);
+                var propertyKey = noTracking ? null : ObjectFactory.GetPrimaryKeyProperties(source.AllTypes[i]);
                 var count = 0;
                 foreach (var item in results[i])
                 {
-                    var value = identityMap.GetEntityByKey<object, object>(() => new SortedDictionary<string, object>(propertyKey.ToDictionary(k => k, k => item.Property(k)), StringComparer.OrdinalIgnoreCase), out string hash);
+                    string hash = null;
+                    var value = noTracking ? null : identityMap.GetEntityByKey<object, object>(item.GetKeySelector(propertyKey), out hash);
                     if (value != null)
                     {
                         if (i == 0)
@@ -245,12 +246,12 @@ namespace Nemo.Collections
                         roots.Add((T)item);
                     }
 
-                    LoadRelatedData(item, source.AllTypes[i], relations, results);
+                    LoadRelatedData(item, source.AllTypes[i], relations, results, noTracking);
 
                     identityMap.WriteThrough(item, hash);
                 }
 
-                if (i == 0 && count == roots.Count)
+                if (!noTracking && i == 0 && count == roots.Count)
                 {
                     return roots;
                 }
@@ -259,7 +260,7 @@ namespace Nemo.Collections
             return roots;
         }
         
-        private static void LoadRelatedData(object value, Type objectType, List<ObjectRelation> relations, List<List<object>> set)
+        private static void LoadRelatedData(object value, Type objectType, List<ObjectRelation> relations, List<List<object>> set, bool noTracking)
         {
             var propertyMap = Reflector.GetPropertyMap(objectType);
 
@@ -279,10 +280,10 @@ namespace Nemo.Collections
                 object propertyValue = null;
                 if (property.Value.IsDataEntity || property.Value.IsObject)
                 {
-                    var propertyKey = ObjectFactory.GetPrimaryKeyProperties(property.Key.PropertyType);
-                    var identityMap = Identity.Get(property.Key.PropertyType);
+                    var propertyKey = noTracking ? null : ObjectFactory.GetPrimaryKeyProperties(property.Key.PropertyType);
+                    var identityMap = noTracking ? null : Identity.Get(property.Key.PropertyType);
 
-                    propertyValue = identityMap.GetEntityByKey<object, object>(items[0].GetKeySelector(propertyKey), out string hash) ?? items[0];
+                    propertyValue = noTracking ? items[0] : identityMap.GetEntityByKey<object, object>(items[0].GetKeySelector(propertyKey), out string hash) ?? items[0];
                     
                     SetForeignKeys(property.Key.PropertyType, propertyValue, objectType, value);
                 }
@@ -291,9 +292,9 @@ namespace Nemo.Collections
                     var elementType = property.Value.ElementType;
                     if (elementType != null)
                     {
-                        var propertyKey = ObjectFactory.GetPrimaryKeyProperties(elementType);
+                        var propertyKey = noTracking ? null : ObjectFactory.GetPrimaryKeyProperties(elementType);
                         var foreignKeys = Reflector.GetPropertyNameMap(elementType).Values.Where(p => p.PropertyType == objectType);
-                        var identityMap = Identity.Get(elementType);
+                        var identityMap = noTracking ? null :Identity.Get(elementType);
 
                         IList list;
                         if (!property.Value.IsListInterface)
@@ -307,7 +308,7 @@ namespace Nemo.Collections
 
                         foreach (var item in items)
                         {
-                            var listItem = identityMap.GetEntityByKey<object, object>(item.GetKeySelector(propertyKey), out string hash) ?? item;
+                            var listItem = noTracking ? item : identityMap.GetEntityByKey<object, object>(item.GetKeySelector(propertyKey), out string hash) ?? item;
                             
                             SetForeignKeys(foreignKeys, listItem, value);
 
