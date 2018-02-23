@@ -12,6 +12,7 @@ using System.Data.Entity;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Nemo.Configuration.Mapping;
+using Nemo.Attributes.Converters;
 
 namespace NemoTest
 {
@@ -223,6 +224,28 @@ namespace NemoTest
         public Customer Customer { get; set; }
 
         public string ShipPostalCode { get; set; }
+
+        public IList<OrderProduct> Products { get; set; }
+    }
+
+    public class OrderProduct
+    {
+        [PrimaryKey, Key]
+        public int ProductId { get; set; }
+
+        [PrimaryKey, Key, References(typeof(Order))]
+        public int OrderId { get; set; }
+
+        public Order Order { get; set; }
+
+        public string ProductName { get; set; }
+
+        public decimal UnitPrice { get; set; }
+
+        public short Quantity { get; set; }
+
+        [TypeConverter(typeof(DBNullableTypeConverter<float>))]
+        public float? Discount { get; set; }
     }
 
     [ProtoContract, Serializable, DataContract]

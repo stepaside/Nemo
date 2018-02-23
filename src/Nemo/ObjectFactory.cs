@@ -1348,42 +1348,11 @@ namespace Nemo
             var primaryKey = GetPrimaryKeyColumns(targetType);
             return table.Select(row => ConvertDataRow(row, targetType, mode, isInterface, identityMap, primaryKey));
         }
-
-        internal static TResult GetByIdentity<T, TResult>(T item, Func<T, string, object> getValue, IIdentityMap identityMap, string[] primaryKey, out string hash)
-            where T : class
-            where TResult : class
-        {
-            hash = null;
-
-            if (identityMap != null)
-            {
-                var primaryKeyValue = new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => getValue(item, k)), StringComparer.Ordinal);
-                hash = primaryKeyValue.ComputeHash(typeof(T));
-
-                object result;
-                if (identityMap.TryGetValue(hash, out result))
-                {
-                    return (TResult)result;
-                }
-            }
-
-            return default(TResult);
-        }
-
-        internal static void WriteThroughIdentity<T>(T value, IIdentityMap identityMap, string hash)
-            where T : class
-        {
-            if (identityMap != null && value != null && hash != null)
-            {
-                identityMap.Set(hash, value);
-            }
-        }
-
+        
         private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface, IIdentityMap identityMap, string[] primaryKey)
              where T : class
         {
-            string hash = null;
-            var result = GetByIdentity<DataRow, T>(row, (r, k) => r[k], identityMap, primaryKey, out hash);
+            var result = identityMap.GetEntityByKey<DataRow, T>(row.GetKeySelector(primaryKey), out string hash);
 
             if (result != null) return result;
 
@@ -1395,7 +1364,7 @@ namespace Nemo
             }
 
             // Write-through for identity map
-            WriteThroughIdentity(value, identityMap, hash);
+            identityMap.WriteThrough(value, hash);
 
             LoadRelatedData(row, value, typeof(T), mode, identityMap, primaryKey);
             

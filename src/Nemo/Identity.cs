@@ -1,4 +1,5 @@
 ﻿using Nemo.Configuration;
+using Nemo.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,6 +43,35 @@ namespace Nemo
                 identityMap = (IdentityMap<T>)executionContext.Get(identityMapKey);
             }
             return identityMap;
+        }
+
+        internal static void WriteThrough<T>(this IIdentityMap identityMap, T value, string hash)
+            where T : class
+        {
+            if (identityMap != null && value != null && hash != null)
+            {
+                identityMap.Set(hash, value);
+            }
+        }
+
+        internal static TResult GetEntityByKey<T, TResult>(this IIdentityMap identityMap, Func<SortedDictionary<string, object>> getKey, out string hash)
+            where T : class
+            where TResult : class
+        {
+            hash = null;
+
+            if (identityMap != null)
+            {
+                var primaryKeyValue = getKey();
+                hash = primaryKeyValue.ComputeHash(typeof(T));
+
+                if (identityMap.TryGetValue(hash, out object result))
+                {
+                    return (TResult)result;
+                }
+            }
+
+            return default(TResult);
         }
     }
 }

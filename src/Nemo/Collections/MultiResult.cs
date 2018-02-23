@@ -221,20 +221,45 @@ namespace Nemo.Collections
             
             var relations = InferRelations(source.AllTypes).ToList();
 
+            var roots = new List<T>();
+
             for (var i = 0; i < source.AllTypes.Length; i++)
             {
                 var identityMap = Identity.Get(source.AllTypes[i]);
-
+                var propertyKey = ObjectFactory.GetPrimaryKeyProperties(source.AllTypes[i]);
+                var count = 0;
                 foreach (var item in results[i])
                 {
-                    LoadRelatedData(item, source.AllTypes[i], identityMap, relations, results);
+                    var value = identityMap.GetEntityByKey<object, object>(() => new SortedDictionary<string, object>(propertyKey.ToDictionary(k => k, k => item.Property(k)), StringComparer.OrdinalIgnoreCase), out string hash);
+                    if (value != null)
+                    {
+                        if (i == 0)
+                        {
+                            roots.Add((T)value);
+                            count++;
+                        }
+                        continue;
+                    }
+                    else if (i == 0)
+                    {
+                        roots.Add((T)item);
+                    }
+
+                    LoadRelatedData(item, source.AllTypes[i], relations, results);
+
+                    identityMap.WriteThrough(item, hash);
+                }
+
+                if (i == 0 && count == roots.Count)
+                {
+                    return roots;
                 }
             }
 
-            return results[0].Cast<T>();
+            return roots;
         }
         
-        private static void LoadRelatedData(object value, Type objectType, IIdentityMap identityMap, List<ObjectRelation> relations, List<List<object>> set)
+        private static void LoadRelatedData(object value, Type objectType, List<ObjectRelation> relations, List<List<object>> set)
         {
             var propertyMap = Reflector.GetPropertyMap(objectType);
 
@@ -255,25 +280,11 @@ namespace Nemo.Collections
                 if (property.Value.IsDataEntity || property.Value.IsObject)
                 {
                     var propertyKey = ObjectFactory.GetPrimaryKeyProperties(property.Key.PropertyType);
-                    IIdentityMap relatedIdentityMap = null;
-                    if (identityMap != null)
-                    {
-                        relatedIdentityMap = Identity.Get(property.Key.PropertyType);
-                    }
+                    var identityMap = Identity.Get(property.Key.PropertyType);
 
-                    string hash = null;
-                    propertyValue = ObjectFactory.GetByIdentity<object, object>(items[0], (r, k) => r.Property(k), relatedIdentityMap, propertyKey, out hash) ?? items[0];
-                    if (propertyValue != null)
-                    {
-                        ObjectFactory.WriteThroughIdentity(items[0], relatedIdentityMap, hash);
-                    }
-
-                    var foreignKeys = Reflector.GetPropertyNameMap(property.Key.PropertyType).Values.Where(p => p.PropertyType == objectType);
-
-                    foreach (var foreignKey in foreignKeys)
-                    {
-                        propertyValue.Property(foreignKey.PropertyName, value);
-                    }
+                    propertyValue = identityMap.GetEntityByKey<object, object>(items[0].GetKeySelector(propertyKey), out string hash) ?? items[0];
+                    
+                    SetForeignKeys(property.Key.PropertyType, propertyValue, objectType, value);
                 }
                 else if (property.Value.IsDataEntityList || property.Value.IsObjectList)
                 {
@@ -282,12 +293,8 @@ namespace Nemo.Collections
                     {
                         var propertyKey = ObjectFactory.GetPrimaryKeyProperties(elementType);
                         var foreignKeys = Reflector.GetPropertyNameMap(elementType).Values.Where(p => p.PropertyType == objectType);
+                        var identityMap = Identity.Get(elementType);
 
-                        IIdentityMap relatedIdentityMap = null;
-                        if (identityMap != null)
-                        {
-                            relatedIdentityMap = Identity.Get(elementType);
-                        }
                         IList list;
                         if (!property.Value.IsListInterface)
                         {
@@ -300,17 +307,9 @@ namespace Nemo.Collections
 
                         foreach (var item in items)
                         {
-                            string hash = null;
-                            var listItem = ObjectFactory.GetByIdentity<object, object>(item, (r, k) => r.Property(k), relatedIdentityMap, propertyKey, out hash) ?? item;
-                            if (listItem != null)
-                            {
-                                ObjectFactory.WriteThroughIdentity(item, relatedIdentityMap, hash);
-                            }
-
-                            foreach (var foreignKey in foreignKeys)
-                            {
-                                listItem.Property(foreignKey.PropertyName, value);
-                            }
+                            var listItem = identityMap.GetEntityByKey<object, object>(item.GetKeySelector(propertyKey), out string hash) ?? item;
+                            
+                            SetForeignKeys(foreignKeys, listItem, value);
 
                             list.Add(listItem);
                         }
@@ -320,6 +319,21 @@ namespace Nemo.Collections
                 }
                 
                 Reflector.Property.Set(value.GetType(), value, property.Key.Name, propertyValue);
+            }
+        }
+
+        private static void SetForeignKeys(Type propertyType, object propertyValue, Type parentType, object parentValue)
+        {
+            var foreignKeys = Reflector.GetPropertyNameMap(propertyType).Values.Where(p => p.PropertyType == parentType);
+
+            SetForeignKeys(foreignKeys, propertyValue, parentValue);
+        }
+
+        private static void SetForeignKeys(IEnumerable<ReflectedProperty> foreignKeys, object propertyValue, object parentValue)
+        {
+            foreach (var foreignKey in foreignKeys)
+            {
+                propertyValue.Property(foreignKey.PropertyName, parentValue);
             }
         }
 

@@ -752,6 +752,16 @@ namespace Nemo.Extensions
             return objectType.FullName + "/" + hash;
         }
 
+        internal static Func<SortedDictionary<string, object>> GetKeySelector(this DataRow row, string[] primaryKey)
+        {
+            return () => new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => row[k]));
+        }
+
+        internal static Func<SortedDictionary<string, object>> GetKeySelector(this object item, string[] propertyKey)
+        {
+            return () => new SortedDictionary<string, object>(propertyKey.ToDictionary(k => k, k => item.Property(k)));
+        }
+
         #endregion
 
         #region ReadOnly Methods

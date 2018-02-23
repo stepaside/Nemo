@@ -235,7 +235,7 @@ namespace NemoTest
             RunRetrieve(500, false);
             //RunNativeWithMapper(500);
             //RunSelect(500, false);
-            //RunRetrieveComplex(500);
+            RunRetrieveComplex(500);
 
             return;
 
@@ -542,18 +542,21 @@ namespace NemoTest
         private static void RunRetrieveComplex(int count)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
-            var sql = @"select * from Customers where CustomerID = @CustomerID; select * from Orders where CustomerID = @CustomerID";
+            var sql = @"select * from Customers where CustomerID = @CustomerID; select * from Orders where CustomerID = @CustomerID; 
+                    select distinct d.ProductID, d.OrderID, p.ProductName, p.UnitsInStock, d.UnitPrice, d.Quantity, d.Discount 
+                    from Orders o inner join [Order Details] d on o.OrderID = d.OrderID inner join Products p on d.ProductID = p.ProductID
+                    where o.CustomerID = @CustomerID";
 
             connection.Open();
 
             // Warm-up
-            var result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+            var result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
             }
             timer.Stop();
             connection.Close();
