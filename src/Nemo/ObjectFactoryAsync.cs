@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Nemo.Attributes;
 using Nemo.Collections;
@@ -46,8 +43,7 @@ namespace Nemo
         public static async Task<IEnumerable<T>> ToEnumerableAsync<T>(this IAsyncEnumerable<T> source)
             where T : class
         {
-            var loader = source as EagerLoadEnumerableAsync<T>;
-            if (loader == null) return source.ToEnumerable();
+            if (!(source is EagerLoadEnumerableAsync<T> loader)) return source.ToEnumerable();
 
             var iterator = await loader.GetEnumeratorAsync().ConfigureAwait(false);
             return iterator.AsEnumerable();
@@ -219,8 +215,7 @@ namespace Nemo
             where TSource : class
             where TInclude : class
         {
-            var eagerSource = source as EagerLoadEnumerableAsync<TSource>;
-            if (eagerSource != null)
+            if (source is EagerLoadEnumerableAsync<TSource> eagerSource)
             {
                 return UnionAsync(source, SelectAsync(join, eagerSource.Predicate, provider: eagerSource.Provider, selectOption: eagerSource.SelectOption));
             }
@@ -232,8 +227,7 @@ namespace Nemo
             where TInclude1 : class
             where TInclude2 : class
         {
-            var eagerSource = source as EagerLoadEnumerableAsync<TSource>;
-            if (eagerSource != null)
+            if (source is EagerLoadEnumerableAsync<TSource> eagerSource)
             {
                 return UnionAsync(source, SelectAsync(join1, join2, eagerSource.Predicate, provider: eagerSource.Provider, selectOption: eagerSource.SelectOption));
             }
@@ -246,8 +240,7 @@ namespace Nemo
             where TInclude2 : class
             where TInclude3 : class
         {
-            var eagerSource = source as EagerLoadEnumerableAsync<TSource>;
-            if (eagerSource != null)
+            if (source is EagerLoadEnumerableAsync<TSource> eagerSource)
             {
                 return UnionAsync(source, SelectAsync(join1, join2, join3, eagerSource.Predicate, provider: eagerSource.Provider, selectOption: eagerSource.SelectOption));
             }
@@ -261,8 +254,7 @@ namespace Nemo
             where TInclude3 : class
             where TInclude4 : class
         {
-            var eagerSource = source as EagerLoadEnumerableAsync<TSource>;
-            if (eagerSource != null)
+            if (source is EagerLoadEnumerableAsync<TSource> eagerSource)
             {
                 return UnionAsync(source, SelectAsync(join1, join2, join3, join4, eagerSource.Predicate, provider: eagerSource.Provider, selectOption: eagerSource.SelectOption));
             }
@@ -292,7 +284,7 @@ namespace Nemo
         private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
-            Log.CaptureBegin(() => string.Format("RetrieveImplemenation: {0}::{1}", typeof(TResult).FullName, operation));
+            Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}");
             IEnumerable<TResult> result;
 
             string queryKey = null;
@@ -317,7 +309,7 @@ namespace Nemo
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
-                Log.CaptureBegin(() => string.Format("Retrieving from L1 cache: {0}", queryKey));
+                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}");
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -333,7 +325,7 @@ namespace Nemo
 
                 if (result != null)
                 {
-                    Log.Capture(() => string.Format("Found in L1 cache: {0}", queryKey));
+                    Log.Capture(() => $"Found in L1 cache: {queryKey}");
 
                     if (returnType == OperationReturnType.MultiResult)
                     {
@@ -343,14 +335,14 @@ namespace Nemo
                     Log.CaptureEnd();
                     return result;
                 }
-                Log.Capture(() => string.Format("Not found in L1 cache: {0}", queryKey));
+                Log.Capture(() => $"Not found in L1 cache: {queryKey}");
             }
 
             result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema, config, identityMap);
 
             if (queryKey != null)
             {
-                Log.CaptureBegin(() => string.Format("Saving to L1 cache: {0}", queryKey));
+                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}");
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
@@ -394,7 +386,7 @@ namespace Nemo
                 ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema)
                 : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
 
-            var result = Translate(response, map, types, cached, mode, response.ReturnType, identityMap);
+            var result = Translate(response, map, types, cached, mode, identityMap);
             return result;
         }
 
@@ -466,18 +458,14 @@ namespace Nemo
             IList<Param> parameterList = null;
             if (parameters != null)
             {
-                var list = parameters as ParamList;
-                if (list != null)
+                switch (parameters)
                 {
-                    parameterList = list.GetParameters(typeof(TResult), operation);
-                }
-                else
-                {
-                    var array = parameters as Param[];
-                    if (array != null)
-                    {
+                    case ParamList list:
+                        parameterList = list.GetParameters(typeof(TResult), operation);
+                        break;
+                    case Param[] array:
                         parameterList = array;
-                    }
+                        break;
                 }
             }
             return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema, cached, config);
@@ -525,18 +513,14 @@ namespace Nemo
             IList<Param> parameterList = null;
             if (parameters != null)
             {
-                var list = parameters as ParamList;
-                if (list != null)
+                switch (parameters)
                 {
-                    parameterList = list.GetParameters(typeof(T), operation);
-                }
-                else
-                {
-                    var array = parameters as Param[];
-                    if (array != null)
-                    {
+                    case ParamList list:
+                        parameterList = list.GetParameters(typeof(T), operation);
+                        break;
+                    case Param[] array:
                         parameterList = array;
-                    }
+                        break;
                 }
             }
             return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached, config);
@@ -593,10 +577,7 @@ namespace Nemo
             }
             catch (Exception ex)
             {
-                if (transaction != null)
-                {
-                    transaction.Rollback();
-                }
+                transaction?.Rollback();
                 throw;
             }
             finally
@@ -661,8 +642,7 @@ namespace Nemo
                     var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).ToDictionary(p => p.ParameterName ?? p.PropertyName, p => p.MappedColumnName);
                     partition = parameters.Partition(p =>
                     {
-                        string column;
-                        if (pimaryKeySet.TryGetValue(p.Name, out column))
+                        if (pimaryKeySet.TryGetValue(p.Name, out var column))
                         {
                             p.Source = column;
                             p.IsPrimaryKey = true;
@@ -723,8 +703,7 @@ namespace Nemo
                     var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).ToDictionary(p => p.ParameterName ?? p.PropertyName, p => p.MappedColumnName);
                     partition = parameters.Partition(p =>
                     {
-                        string column;
-                        if (pimaryKeySet.TryGetValue(p.Name, out column))
+                        if (pimaryKeySet.TryGetValue(p.Name, out var column))
                         {
                             p.Source = column;
                             p.IsPrimaryKey = true;
@@ -775,7 +754,7 @@ namespace Nemo
 
         internal static async Task<OperationResponse> ExecuteAsync(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null)
         {
-            var rootType = types != null ? types[0] : null;
+            var rootType = types?[0];
 
             DbConnection dbConnection;
             var closeConnection = false;
@@ -831,7 +810,7 @@ namespace Nemo
                             dbParam.Size = parameter.Size;
                         }
 
-                        dbParam.DbType = !parameter.DbType.HasValue ? Reflector.ClrToDbType(parameter.Type) : parameter.DbType.Value;
+                        dbParam.DbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
                     }
 
                     if (dbParam.Direction == ParameterDirection.Output)

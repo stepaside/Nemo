@@ -192,11 +192,7 @@ namespace Nemo.Extensions
         {
             if (retrievedObject == null) return;
             ObjectFactory.Map(retrievedObject, dataEntity, true);
-            var entity = dataEntity as ITrackableDataEntity;
-            if (entity != null)
-            {
-                entity.ObjectState = ObjectState.Clean;
-            }
+            ObjectFactory.TrySetObjectState(dataEntity);
         }
 
         /// <summary>
@@ -209,10 +205,7 @@ namespace Nemo.Extensions
         public static bool Insert<T>(this T dataEntity, params Param[] additionalParameters)
             where T : class
         {
-            IDictionary<PropertyInfo, ReflectedProperty> propertyMap;
-            PropertyInfo identityProperty;
-            Param[] parameters;
-            GetInsertParameters(dataEntity, additionalParameters, out propertyMap, out identityProperty, out parameters);
+            GetInsertParameters(dataEntity, additionalParameters, out var propertyMap, out var identityProperty, out var parameters);
 
             var response = ObjectFactory.Insert<T>(parameters);
 
@@ -222,10 +215,7 @@ namespace Nemo.Extensions
         public static async Task<bool> InsertAsync<T>(this T dataEntity, params Param[] additionalParameters)
             where T : class
         {
-            IDictionary<PropertyInfo, ReflectedProperty> propertyMap;
-            PropertyInfo identityProperty;
-            Param[] parameters;
-            GetInsertParameters(dataEntity, additionalParameters, out propertyMap, out identityProperty, out parameters);
+            GetInsertParameters(dataEntity, additionalParameters, out var propertyMap, out var identityProperty, out var parameters);
             
             var response = await ObjectFactory.InsertAsync<T>(parameters);
 
@@ -297,11 +287,7 @@ namespace Nemo.Extensions
 
             SetOutputParameterValues(dataEntity, outputProperties, propertyMap, parameters);
 
-            var entity = dataEntity as ITrackableDataEntity;
-            if (entity != null)
-            {
-                entity.ObjectState = ObjectState.Clean;
-            }
+            ObjectFactory.TrySetObjectState(dataEntity);
 
             if (!(dataEntity is IAuditableDataEntity)) return true;
 
@@ -489,11 +475,7 @@ namespace Nemo.Extensions
 
             Identity.Get<T>().Remove(dataEntity);
 
-            var entity = dataEntity as ITrackableDataEntity;
-            if (entity != null)
-            {
-                entity.ObjectState = ObjectState.Deleted;
-            }
+            ObjectFactory.TrySetObjectState(dataEntity, ObjectState.Deleted);
 
             if (!(dataEntity is IAuditableDataEntity)) return true;
 

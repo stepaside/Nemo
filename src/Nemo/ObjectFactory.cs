@@ -141,8 +141,7 @@ namespace Nemo
                 }
                 else
                 {
-                    var reader = source as IDataReader;
-                    if (reader != null)
+                    if (source is IDataReader reader)
                     {
                        FastIndexerMapper<IDataRecord, TResult>.Map(reader, target);
                     }
@@ -237,7 +236,7 @@ namespace Nemo
             where TResult : class
             where TSource : class
         {
-            if (source == null) throw new ArgumentNullException("source");
+            if (source == null) throw new ArgumentNullException(nameof(source));
             var target = Adapter.Bind<TResult>(source);
             return target;
         }
@@ -494,8 +493,7 @@ namespace Nemo
             where TSource : class
             where TInclude : class
         {
-            var eagerSource = source as EagerLoadEnumerable<TSource>;
-            if (eagerSource != null)
+            if (source is EagerLoadEnumerable<TSource> eagerSource)
             {
                 return Union(source, Select(join, eagerSource.Predicate, provider: eagerSource.Provider, selectOption: eagerSource.SelectOption));
             }
@@ -507,8 +505,7 @@ namespace Nemo
             where TInclude1 : class
             where TInclude2 : class
         {
-            var eagerSource = source as EagerLoadEnumerable<TSource>;
-            if (eagerSource != null)
+            if (source is EagerLoadEnumerable<TSource> eagerSource)
             {
                 return Union(source, Select(join1, join2, eagerSource.Predicate, provider: eagerSource.Provider, selectOption: eagerSource.SelectOption));
             }
@@ -521,8 +518,7 @@ namespace Nemo
             where TInclude2 : class
             where TInclude3 : class
         {
-            var eagerSource = source as EagerLoadEnumerable<TSource>;
-            if (eagerSource != null)
+            if (source is EagerLoadEnumerable<TSource> eagerSource)
             {
                 return Union(source, Select(join1, join2, join3, eagerSource.Predicate, provider: eagerSource.Provider, selectOption: eagerSource.SelectOption));
             }
@@ -536,8 +532,7 @@ namespace Nemo
             where TInclude3 : class
             where TInclude4 : class
         {
-            var eagerSource = source as EagerLoadEnumerable<TSource>;
-            if (eagerSource != null)
+            if (source is EagerLoadEnumerable<TSource> eagerSource)
             {
                 return Union(source, Select(join1, join2, join3, join4, eagerSource.Predicate, provider: eagerSource.Provider, selectOption: eagerSource.SelectOption));
             }
@@ -567,7 +562,7 @@ namespace Nemo
         private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
-            Log.CaptureBegin(() => string.Format("RetrieveImplemenation: {0}::{1}", typeof(TResult).FullName, operation));
+            Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}");
             IEnumerable<TResult> result;
             
             string queryKey = null;
@@ -592,7 +587,7 @@ namespace Nemo
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
-                Log.CaptureBegin(() => string.Format("Retrieving from L1 cache: {0}", queryKey));
+                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}");
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -608,7 +603,7 @@ namespace Nemo
 
                 if (result != null)
                 {
-                    Log.Capture(() => string.Format("Found in L1 cache: {0}", queryKey));
+                    Log.Capture(() => $"Found in L1 cache: {queryKey}");
                     
                     if (returnType == OperationReturnType.MultiResult)
                     {
@@ -618,14 +613,14 @@ namespace Nemo
                     Log.CaptureEnd();
                     return result;
                 }
-                Log.Capture(() => string.Format("Not found in L1 cache: {0}", queryKey));
+                Log.Capture(() => $"Not found in L1 cache: {queryKey}");
             }
 
             result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap);
             
             if (queryKey != null)
             {
-                Log.CaptureBegin(() => string.Format("Saving to L1 cache: {0}", queryKey));
+                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}");
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
@@ -675,7 +670,7 @@ namespace Nemo
             }
             var mode = config.DefaultMaterializationMode;
 
-            var result = Translate(response, map, types, cached, mode, returnType, identityMap);
+            var result = Translate(response, map, types, cached, mode, identityMap);
             return result;
         }
 
@@ -751,18 +746,14 @@ namespace Nemo
             IList<Param> parameterList = null;
             if (parameters != null)
             {
-                var list = parameters as ParamList;
-                if (list != null)
+                switch (parameters)
                 {
-                    parameterList = list.GetParameters(typeof(TResult), operation);
-                }
-                else
-                {
-                    var array = parameters as Param[];
-                    if (array != null)
-                    {
+                    case ParamList list:
+                        parameterList = list.GetParameters(typeof(TResult), operation);
+                        break;
+                    case Param[] array:
                         parameterList = array;
-                    }
+                        break;
                 }
             }
             return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
@@ -808,18 +799,14 @@ namespace Nemo
             IList<Param> parameterList = null;
             if (parameters != null)
             {
-                var list = parameters as ParamList;
-                if (list != null)
+                switch (parameters)
                 {
-                    parameterList = list.GetParameters(typeof(T), operation);
-                }
-                else
-                {
-                    var array = parameters as Param[];
-                    if (array != null)
-                    {
+                    case ParamList list:
+                        parameterList = list.GetParameters(typeof(T), operation);
+                        break;
+                    case Param[] array:
                         parameterList = array;
-                    }
+                        break;
                 }
             }
             return RetrieveImplemenation<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
@@ -903,10 +890,7 @@ namespace Nemo
             }
             catch (Exception ex)
             {
-                if (transaction != null)
-                {
-                    transaction.Rollback();
-                }
+                transaction?.Rollback();
                 throw;
             }
             finally
@@ -971,14 +955,10 @@ namespace Nemo
                     var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).ToDictionary(p => p.ParameterName ?? p.PropertyName, p => p.MappedColumnName);
                     partition = parameters.Partition(p =>
                     {
-                        string column;
-                        if (pimaryKeySet.TryGetValue(p.Name, out column))
-                        {
-                            p.Source = column;
-                            p.IsPrimaryKey = true;
-                            return true;
-                        }
-                        return false;
+                        if (!pimaryKeySet.TryGetValue(p.Name, out var column)) return false;
+                        p.Source = column;
+                        p.IsPrimaryKey = true;
+                        return true;
                     });
                 }
 
@@ -1033,14 +1013,10 @@ namespace Nemo
                     var pimaryKeySet = propertyMap.Values.Where(p => p.IsPrimaryKey).ToDictionary(p => p.ParameterName ?? p.PropertyName, p => p.MappedColumnName);
                     partition = parameters.Partition(p =>
                     {
-                        string column;
-                        if (pimaryKeySet.TryGetValue(p.Name, out column))
-                        {
-                            p.Source = column;
-                            p.IsPrimaryKey = true;
-                            return true;
-                        }
-                        return false;
+                        if (!pimaryKeySet.TryGetValue(p.Name, out var column)) return false;
+                        p.Source = column;
+                        p.IsPrimaryKey = true;
+                        return true;
                     });
                 }
                 
@@ -1085,7 +1061,7 @@ namespace Nemo
 
         internal static OperationResponse Execute(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null)
         {
-            var rootType = types != null ? types[0] : null;
+            var rootType = types?[0];
 
             DbConnection dbConnection ;
             var closeConnection = false;
@@ -1141,7 +1117,7 @@ namespace Nemo
                             dbParam.Size = parameter.Size;
                         }
 
-                        dbParam.DbType = !parameter.DbType.HasValue ? Reflector.ClrToDbType(parameter.Type) : parameter.DbType.Value;
+                        dbParam.DbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
                     }
 
                     if (dbParam.Direction == ParameterDirection.Output)
@@ -1259,13 +1235,13 @@ namespace Nemo
             where T : class
         {
             var config = ConfigurationFactory.Get<T>();
-            return Translate<T>(response, null, null, config.DefaultCacheRepresentation != CacheRepresentation.None, config.DefaultMaterializationMode, response.ReturnType, Identity.Get<T>());
+            return Translate<T>(response, null, null, config.DefaultCacheRepresentation != CacheRepresentation.None, config.DefaultMaterializationMode, Identity.Get<T>());
         }
 
-        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, OperationReturnType returnType, IIdentityMap identityMap)
+        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool cached, MaterializationMode mode, IIdentityMap identityMap)
             where T : class
         {
-            var value = response != null ? response.Value : null;
+            var value = response?.Value;
             if (value == null)
             {
                 return Enumerable.Empty<T>();
@@ -1273,53 +1249,26 @@ namespace Nemo
 
             var isInterface = Reflector.GetReflectedType<T>().IsInterface;
 
-            var reader = value as IDataReader;
-            if (reader != null)
+            switch (value)
             {
-                if (map == null && types != null && types.Count > 1)
-                {
+                case IDataReader reader:
+                    if (map != null || types == null || types.Count == 1) return ConvertDataReader(reader, map, types, mode, isInterface);
                     var multiResultItems = ConvertDataReaderMultiResult(reader, types, mode, isInterface);
                     return (IEnumerable<T>)MultiResult.Create(types, multiResultItems, cached);
-                }
-                return ConvertDataReader(reader, map, types, mode, isInterface);
+                case DataSet dataSet:
+                    return ConvertDataSet<T>(dataSet, mode, isInterface, identityMap);
+                case DataTable dataTable:
+                    return ConvertDataTable<T>(dataTable, mode, isInterface, identityMap);
+                case DataRow dataRow:
+                    return ConvertDataRow<T>(dataRow, mode, isInterface, identityMap, null).Return();
+                case T item:
+                    return item.Return();
+                case IList<T> genericList:
+                    return genericList;
+                case IList list:
+                    return list.Cast<object>().Select(i => mode == MaterializationMode.Exact ? Map<T>(i) : Bind<T>(i));
             }
 
-            var dataSet = value as DataSet;
-            if (dataSet != null)
-            {
-                return ConvertDataSet<T>(dataSet, mode, isInterface, identityMap);
-            }
-
-            var dataTable = value as DataTable;
-            if (dataTable != null)
-            {
-                return ConvertDataTable<T>(dataTable, mode, isInterface, identityMap);
-            }
-
-            var dataRow = value as DataRow;
-            if (dataRow != null)
-            {
-                return ConvertDataRow<T>(dataRow, mode, isInterface, identityMap, null).Return();
-            }
-
-            var item = value as T;
-            if (item != null)
-            {
-                return item.Return();
-            }
-
-            var genericList = value as IList<T>;
-            if (genericList != null)
-            {
-                return genericList;
-            }
-
-            var list = value as IList;
-            if (list != null)
-            {
-                return list.Cast<object>().Select(i => mode == MaterializationMode.Exact ? Map<T>(i) : Bind<T>(i));
-            }
-            
             return Bind<T>(value).Return();
         }
 
@@ -1352,16 +1301,12 @@ namespace Nemo
         private static T ConvertDataRow<T>(DataRow row, MaterializationMode mode, bool isInterface, IIdentityMap identityMap, string[] primaryKey)
              where T : class
         {
-            var result = identityMap.GetEntityByKey<DataRow, T>(row.GetKeySelector(primaryKey), out string hash);
+            var result = identityMap.GetEntityByKey<DataRow, T>(row.GetKeySelector(primaryKey), out var hash);
 
             if (result != null) return result;
 
             var value = mode == MaterializationMode.Exact || !isInterface ? Map<DataRow, T>(row, isInterface) : Wrap<T>(GetSerializableDataRow(row));
-            var entity = value as ITrackableDataEntity;
-            if (entity != null)
-            {
-                entity.ObjectState = ObjectState.Clean;
-            }
+            TrySetObjectState(value);
 
             // Write-through for identity map
             identityMap.WriteThrough(value, hash);
@@ -1380,19 +1325,14 @@ namespace Nemo
                 var primaryKeyValue = new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => row[k]), StringComparer.Ordinal);
                 hash = primaryKeyValue.ComputeHash(targetType);
 
-                object result;
-                if (identityMap.TryGetValue(hash, out result))
+                if (identityMap.TryGetValue(hash, out var result))
                 {
                     return result;
                 }
             }
 
             var value = mode == MaterializationMode.Exact || !isInterface ? Map((object)row, targetType, isInterface) : Wrap(GetSerializableDataRow(row), targetType);
-            var entity = value as ITrackableDataEntity;
-            if (entity != null)
-            {
-                entity.ObjectState = ObjectState.Clean;
-            }
+            TrySetObjectState(value);
 
             // Write-through for identity map
             if (identityMap != null && value != null && hash != null)
@@ -1408,7 +1348,7 @@ namespace Nemo
         private static void LoadRelatedData(DataRow row, object value, Type targetType, MaterializationMode mode, IIdentityMap identityMap, string[] primaryKey)
         {
             var table = row.Table;
-            if (table == null || table.ChildRelations.Count <= 0) return;
+            if (table.ChildRelations.Count <= 0) return;
 
             var propertyMap = Reflector.GetPropertyMap(targetType);
             var relations = table.ChildRelations.Cast<DataRelation>().ToArray();
@@ -1484,7 +1424,7 @@ namespace Nemo
                     if (!isInterface || mode == MaterializationMode.Exact)
                     {
                         var item = Create<T>(isInterface);
-                        Map(reader, item, false);
+                        Map(reader, item);
 
                         if (map != null)
                         {
@@ -1493,8 +1433,7 @@ namespace Nemo
                             for (var i = 1; i < types.Count; i++)
                             {
                                 var identity = CreateIdentity(types[i], reader);
-                                object reference;
-                                if (!references.TryGetValue(identity, out reference))
+                                if (!references.TryGetValue(identity, out var reference))
                                 {
                                     reference = Map((object)reader, types[i]);
                                     references.Add(identity, reference);
@@ -1534,8 +1473,7 @@ namespace Nemo
                             for (var i = 1; i < types.Count; i++)
                             {
                                 var identity = CreateIdentity(types[i], reader);
-                                object reference;
-                                if (!references.TryGetValue(identity, out reference))
+                                if (!references.TryGetValue(identity, out var reference))
                                 {
                                     reference = Wrap(bag, types[i]);
                                     references.Add(identity, reference);
@@ -1571,10 +1509,7 @@ namespace Nemo
             }
             finally
             {
-                if (reader != null)
-                {
-                    reader.Dispose();
-                }
+                reader?.Dispose();
             }
         }
 
@@ -1625,19 +1560,15 @@ namespace Nemo
             }
             finally
             {
-                if (reader != null)
-                {
-                    reader.Dispose();
-                }
+                reader?.Dispose();
             }
         }
 
-        private static void TrySetObjectState(object item)
+        internal static void TrySetObjectState(object item, ObjectState state = ObjectState.Clean)
         {
-            var entity = item as ITrackableDataEntity;
-            if (entity != null)
+            if (item is ITrackableDataEntity entity)
             {
-                entity.ObjectState = ObjectState.Clean;
+                entity.ObjectState = state;
             }
         }
         

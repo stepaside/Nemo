@@ -63,17 +63,11 @@ namespace Nemo.UnitOfWork
                             }
                         }
 
-                        if (transaction != null)
-                        {
-                            transaction.Commit();
-                        }
+                        transaction?.Commit();
                     }
                     catch (Exception ex)
                     {
-                        if (transaction != null)
-                        {
-                            transaction.Rollback();
-                        }
+                        transaction?.Rollback();
                         throw;
                     }
                     finally
@@ -100,17 +94,11 @@ namespace Nemo.UnitOfWork
                         var statement = GetCommitStatement(changes, connection);
                         Console.WriteLine(statement.Item1);
 
-                        if (transaction != null)
-                        {
-                            transaction.Commit();
-                        }
+                        transaction?.Commit();
                     }
                     catch (Exception ex)
                     {
-                        if (transaction != null)
-                        {
-                            transaction.Rollback();
-                        }
+                        transaction?.Rollback();
                         throw;
                     }
                     finally
@@ -131,10 +119,7 @@ namespace Nemo.UnitOfWork
                 {
                     context.Cleanup();
 
-                    if (context.Transaction != null)
-                    {
-                        context.Transaction.Complete();
-                    }
+                    context.Transaction?.Complete();
                 }
             }
 
@@ -258,7 +243,7 @@ namespace Nemo.UnitOfWork
 
             for (var i = 0; i < dataEntities.Count; i++)
             {
-                if (!map.TryGetValue(i, out Tuple<object, string, string> value)) continue;
+                if (!map.TryGetValue(i, out var value)) continue;
                 dataEntities[i].Property(value.Item3, value.Item1);
                 dataEntities[i].Cascade(value.Item3, value.Item1);
             }
@@ -271,7 +256,9 @@ namespace Nemo.UnitOfWork
         private static ChangeNode CompareObjects(object currentObject, object oldObject, ChangeNode parentNode = null)
         {
             if (currentObject == null && oldObject == null)
-                throw new ArgumentNullException("currentObject and oldObject cannot be null at the same time");
+            {
+                throw new ArgumentException("currentObject and oldObject cannot be null at the same time");
+            }
 
             var rootNode = new ChangeNode { Value = currentObject };
             if (parentNode != null)
@@ -315,15 +302,9 @@ namespace Nemo.UnitOfWork
                 {
                     if (property.IsSimpleList)
                     {
-                        if (currentValue != null)
-                        {
-                            currentValue = ((IEnumerable)currentValue).Cast<object>().ToArray();
-                        }
+                        currentValue = ((IEnumerable)currentValue)?.Cast<object>().ToArray();
 
-                        if (oldValue != null)
-                        {
-                            oldValue = ((IEnumerable)oldValue).Cast<object>().ToArray();
-                        }
+                        oldValue = ((IEnumerable)oldValue)?.Cast<object>().ToArray();
                     }
 
                     if (currentObject != null && oldObject != null)
