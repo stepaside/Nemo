@@ -229,11 +229,11 @@ namespace NemoTest
             //            Console.WriteLine("Object Fetching and Materialization");
 
             //RunEF(500, false);
-            //RunNative(500);
+            RunNative(500);
             //RunExecute(500);
-            //RunDapper(500);
+            RunDapper(500);
             RunRetrieve(500, false);
-            //RunNativeWithMapper(500);
+            RunNativeWithMapper(500);
             //RunSelect(500, false);
             RunRetrieveComplex(500);
 
@@ -433,7 +433,13 @@ namespace NemoTest
                 //cmd.Parameters.Add(param);
                 using (var reader = cmd.ExecuteReader())
                 {
-                    while (reader.Read()) { }
+                    while (reader.Read())
+                    {
+                        for (var i = 0; i < reader.FieldCount; i++)
+                        {
+                            var item = reader.GetValue(i);
+                        }
+                    }
                 }
             }
 
@@ -451,7 +457,13 @@ namespace NemoTest
                     //cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
-                        while (reader.Read()) { };
+                        while (reader.Read())
+                        {
+                            for (var j = 0; j < reader.FieldCount; j++)
+                            {
+                                var item = reader.GetValue(j);
+                            }
+                        };
                     }
                 }
             }
@@ -474,7 +486,13 @@ namespace NemoTest
             var response = ObjectFactory.Execute<Customer>(req);
             using (var reader = (IDataReader)response.Value)
             {
-                while (reader.Read()) { }
+                while (reader.Read())
+                {
+                    for (var j = 0; j < reader.FieldCount; j++)
+                    {
+                        var item = reader.GetValue(j);
+                    }
+                }
             }
 
             var timer = new Stopwatch();
@@ -484,7 +502,13 @@ namespace NemoTest
                 response = ObjectFactory.Execute<Customer>(req);
                 using (var reader = (IDataReader)response.Value)
                 {
-                    while (reader.Read()) { }
+                    while (reader.Read())
+                    {
+                        for (var j = 0; j < reader.FieldCount; j++)
+                        {
+                            var item = reader.GetValue(j);
+                        }
+                    }
                 }
             }
             timer.Stop();

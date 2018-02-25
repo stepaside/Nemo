@@ -141,9 +141,9 @@ namespace Nemo
                 }
                 else
                 {
-                    if (source is IDataReader reader)
+                    if (source is IDataRecord record)
                     {
-                       FastIndexerMapper<IDataRecord, TResult>.Map(reader, target);
+                       FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
                     }
                     else
                     {
@@ -1509,7 +1509,10 @@ namespace Nemo
             }
             finally
             {
-                reader?.Dispose();
+                if (reader != null)
+                {
+                    reader.Dispose();
+                }
             }
         }
 
@@ -1560,13 +1563,17 @@ namespace Nemo
             }
             finally
             {
-                reader?.Dispose();
+                if (reader != null)
+                {
+                    reader.Dispose();
+                }
             }
         }
 
         internal static void TrySetObjectState(object item, ObjectState state = ObjectState.Clean)
         {
-            if (item is ITrackableDataEntity entity)
+            var entity = item as ITrackableDataEntity;
+            if (entity != null)
             {
                 entity.ObjectState = state;
             }

@@ -1001,7 +1001,7 @@ namespace Nemo.Reflection
                 Interfaces = PrepareInterfaces<T>();
             }
             // ReSharper disable once StaticMemberInGenericType
-            public static readonly Dictionary<Type, List<Type>> Interfaces;
+            internal static readonly Dictionary<Type, List<Type>> Interfaces;
         }
 
         internal static class PropertyCache<T>
@@ -1051,7 +1051,7 @@ namespace Nemo.Reflection
                 Attribute = (TAttribute)typeof(T).GetCustomAttributes(typeof(TAttribute), false).FirstOrDefault();
             }
 
-            public static readonly TAttribute Attribute;
+            internal static readonly TAttribute Attribute;
         }
 
         internal static class ClassHierarchyAttributeCache<T, TAttribute>
@@ -1062,7 +1062,7 @@ namespace Nemo.Reflection
                 Attribute = (TAttribute)typeof(T).GetCustomAttributes(typeof(TAttribute), true).FirstOrDefault();
             }
 
-            public static readonly TAttribute Attribute;
+            internal static readonly TAttribute Attribute;
         }
 
         internal static class ClassAttributeListCache<T, TAttribute>
@@ -1073,7 +1073,7 @@ namespace Nemo.Reflection
                 AttributeList = typeof(T).GetCustomAttributes(typeof(TAttribute), true).Cast<TAttribute>().ToList();
             }
 
-            public static readonly IList<TAttribute> AttributeList;
+            internal static readonly IList<TAttribute> AttributeList;
         }
 
         internal class TypeCache<T>
@@ -1081,10 +1081,10 @@ namespace Nemo.Reflection
             static TypeCache()
             {
                 Type = new ReflectedType(typeof(T));
-				Type.XmlElementName = Xml.GetElementNameFromType<T>();
-			}
+                Type.XmlElementName = Xml.GetElementNameFromType<T>();
+            }
 
-            public readonly static ReflectedType Type;
+            internal static readonly ReflectedType Type;
         }
     }
 }
