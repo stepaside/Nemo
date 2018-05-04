@@ -630,7 +630,7 @@ namespace Nemo
                     }
                     else
                     {
-                        result = result.AsStream();
+                        result = result.AsStream() ?? Enumerable.Empty<TResult>();
                     }
                 }
 
