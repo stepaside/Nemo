@@ -52,6 +52,8 @@ namespace Nemo.Reflection
 
             Converter = null;
 
+            MappedColumnName = property.Name;
+
             if (readAttributes)
             {
                 if (IsListInterface)
