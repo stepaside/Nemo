@@ -12,4 +12,12 @@ namespace Nemo.Id
             return Guid.NewGuid();
         }
     }
+
+    public class GuidStringGenerator : IIdGenerator
+    {
+        public object Generate()
+        {
+            return Guid.NewGuid().ToString("N");
+        }
+    }
 }

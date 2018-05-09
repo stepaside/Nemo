@@ -658,7 +658,7 @@ namespace Nemo.Collections.Extensions
                 {
                     continue;
                 }
-                yield return items.Select(x => x);
+                yield return items;
                 items = null;
                 count = 0;
             }

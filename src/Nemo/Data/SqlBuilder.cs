@@ -42,13 +42,12 @@ namespace Nemo.Data
 
         internal static string GetTableNameForSql(Type objectType, DialectProvider dialect)
         {
-            string tableName = null;
             if (Reflector.IsEmitted(objectType))
             {
                 objectType = Reflector.GetInterface(objectType);
             }
             
-            if (AllTables.TryGetValue(Tuple.Create(objectType, dialect), out tableName))
+            if (AllTables.TryGetValue(Tuple.Create(objectType, dialect), out var tableName))
             {
                 return tableName;
             }
@@ -87,11 +86,8 @@ namespace Nemo.Data
             {
                 tableName = tableName.Substring(1);
             }
-            
-            if (tableName != null)
-            {
-                AllTables.TryAdd(Tuple.Create(objectType, dialect), tableName);
-            }
+
+            AllTables.TryAdd(Tuple.Create(objectType, dialect), tableName);
 
             return tableName;
         }

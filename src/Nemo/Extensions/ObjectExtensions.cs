@@ -708,6 +708,22 @@ namespace Nemo.Extensions
             }
         }
 
+        internal static void GenerateKeys<T>(this IList<T> dataEntities)
+            where T : class
+        {
+            var propertyMap = Reflector.GetPropertyMap<T>();
+            var generatorKeys = propertyMap.Where(p => p.Value != null && p.Value.Generator != null).Select(p => Tuple.Create(typeof(T), p.Key, p.Value.Generator));
+            foreach (var key in generatorKeys)
+            {
+                var generator = _idGenerators.GetOrAdd(key, k => (IIdGenerator)(k.Item3 == typeof(HiLoGenerator) ? k.Item3.New(k.Item1, k.Item2) : k.Item3.New()));
+
+                foreach (var dataEntity in dataEntities.Where(e => e.IsNew()))
+                {
+                    dataEntity.Property(key.Item2.Name, generator.Generate());
+                }
+            }
+        }
+
         public static string ComputeHash<T>(this T dataEntity)
             where T : class
         {

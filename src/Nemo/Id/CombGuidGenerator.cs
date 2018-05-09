@@ -13,4 +13,12 @@ namespace Nemo.Id
             return CombGuid.Generate();
         }
     }
+
+    public class CombGuidStringGenerator : IIdGenerator
+    {
+        public object Generate()
+        {
+            return CombGuid.Generate().ToString("N");
+        }
+    }
 }

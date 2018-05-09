@@ -828,7 +828,10 @@ namespace Nemo
             var batches = items.Split(batchSize <= 0 ? 500 : batchSize);
             foreach (var batch in batches)
             {
-                foreach (var item in batch)
+                var entities = batch as T[] ?? batch.ToArray();
+                entities.GenerateKeys();
+
+                foreach (var item in entities)
                 {
                     var parameters = ObjectExtensions.GetInsertParameters(item, propertyMap, statementId++);
                     var sql = SqlBuilder.GetInsertStatement(typeof(T), parameters, provider);
