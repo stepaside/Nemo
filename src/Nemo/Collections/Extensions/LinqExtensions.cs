@@ -214,7 +214,7 @@ namespace Nemo.Collections.Extensions
             return head.Return().Concat(tail);
         }
 
-#if !NETCOREAPP2_0
+#if NET452
         public static IEnumerable<T> Append<T>(this IEnumerable<T> head, T tail)
         {
             head.ThrowIfNull("head");

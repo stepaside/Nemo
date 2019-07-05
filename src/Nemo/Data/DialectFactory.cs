@@ -13,8 +13,13 @@ namespace Nemo.Data
     {
         public static DialectProvider GetProvider(string connectionName)
         {
-#if NETCOREAPP2_0
-            var config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
+#if NETSTANDARD
+            dynamic config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
+
+            if (config == null)
+            {
+                config = ConfigurationManager.ConnectionStrings[connectionName];
+            }
 #else
             var config = ConfigurationManager.ConnectionStrings[connectionName];
 #endif

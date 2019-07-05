@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-#if !NETCOREAPP2_0
+#if !NETSTANDARD
 using System.Runtime.Remoting.Messaging;
 #endif
 using System.Threading;

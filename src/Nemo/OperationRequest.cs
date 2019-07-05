@@ -133,17 +133,23 @@ namespace Nemo
             }
             else
             {
-#if NETCOREAPP2_0
-                var css = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
+#if NETSTANDARD
+                dynamic css = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
+
+                if (css == null)
+                {
+                    css = ConfigurationManager.ConnectionStrings.Cast<System.Configuration.ConnectionStringSettings>().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
+                }
+
 #else
-                var css = ConfigurationManager.ConnectionStrings.Cast<Configuration.ConnectionStringSettings>().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
+                var css = ConfigurationManager.ConnectionStrings.Cast<System.Configuration.ConnectionStringSettings>().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
 #endif
                 if (css != null) providerName = css.ProviderName;
             }
 
             if (providerName != null)
             {
-#if NETCOREAPP2_0
+#if NETSTANDARD
                 try
                 {
                     var factory = DbFactory.GetDbProviderFactory(providerName);

@@ -1,4 +1,4 @@
-﻿#if NETCOREAPP2_0
+﻿#if NETSTANDARD
 using Microsoft.Extensions.Configuration;
 #endif
 using Nemo.Logging;
@@ -24,7 +24,7 @@ namespace Nemo.Configuration
         ILogProvider LogProvider { get; }
         IExecutionContext ExecutionContext { get; }
         string HiLoTableName { get; }
-#if NETCOREAPP2_0
+#if NETSTANDARD
         IConfigurationRoot SystemConfiguration { get; }
 #endif
 
@@ -43,7 +43,7 @@ namespace Nemo.Configuration
         IConfiguration SetExecutionContext(IExecutionContext value);
         IConfiguration SetHiLoTableName(string value);
         IConfiguration SetLogProvider(ILogProvider value);
-#if NETCOREAPP2_0
+#if NETSTANDARD
         IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration);
 #endif
         IConfiguration Merge(IConfiguration configuration);

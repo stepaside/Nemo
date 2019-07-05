@@ -3,7 +3,6 @@ using Nemo.Configuration;
 using Nemo.Configuration.Mapping;
 using Nemo.Extensions;
 using Nemo.Reflection;
-using Nemo.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -63,7 +62,7 @@ namespace Nemo.Data
             {
                 connectionName = GetDefaultConnectionName(objectType);
             }
-#if NETCOREAPP2_0
+#if NETSTANDARD
             return ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName)?.ProviderName;
 #else
             return ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ProviderName;
@@ -91,8 +90,13 @@ namespace Nemo.Data
 
             if (!lostPassword)
             {
-#if NETCOREAPP2_0
-                var connectionStrings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings();
+#if NETSTANDARD
+                dynamic connectionStrings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings();
+
+                if (connectionStrings == null)
+                {
+                    connectionStrings = ConfigurationManager.ConnectionStrings;
+                }
 #else
                 var connectionStrings = ConfigurationManager.ConnectionStrings;
 #endif
@@ -113,8 +117,13 @@ namespace Nemo.Data
                     builder["user id"] = uid;
                 }
 
-#if NETCOREAPP2_0
-                var connectionStrings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings();
+#if NETSTANDARD
+                dynamic connectionStrings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings();
+
+                if (connectionStrings == null)
+                {
+                    connectionStrings = ConfigurationManager.ConnectionStrings;
+                }
 #else
                 var connectionStrings = ConfigurationManager.ConnectionStrings;
 #endif
@@ -152,7 +161,7 @@ namespace Nemo.Data
 
         internal static DbConnection CreateConnection(string connectionString, string providerName)
         {
-#if NETCOREAPP2_0
+#if NETSTANDARD
             var factory = GetDbProviderFactory(providerName);
 #else
             var factory = DbProviderFactories.GetFactory(providerName);
@@ -171,7 +180,7 @@ namespace Nemo.Data
             {
                 connectionName = GetDefaultConnectionName(objectType);
             }
-#if NETCOREAPP2_0
+#if NETSTANDARD
             var config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
             var factory = GetDbProviderFactory(config.ProviderName);
 #else
@@ -188,8 +197,13 @@ namespace Nemo.Data
 
         public static DbConnection CreateConnection(string connectionStringOrName)
         {
-#if NETCOREAPP2_0
-            var config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionStringOrName);
+#if NETSTANDARD
+            dynamic config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionStringOrName);
+
+            if (config == null)
+            {
+                config = ConfigurationManager.ConnectionStrings[connectionStringOrName];
+            }
 #else
             var config = ConfigurationManager.ConnectionStrings[connectionStringOrName];
 #endif
@@ -209,7 +223,7 @@ namespace Nemo.Data
         internal static DbDataAdapter CreateDataAdapter(DbConnection connection)
         {
             var providerName = GetProviderInvariantNameByConnectionString(connection.ConnectionString);
-#if NETCOREAPP2_0
+#if NETSTANDARD
             return providerName != null ? GetDbProviderFactory(providerName).CreateDataAdapter() : null;
 #else
             return providerName != null ? DbProviderFactories.GetFactory(providerName).CreateDataAdapter() : null;
@@ -218,7 +232,7 @@ namespace Nemo.Data
 
         internal static string GetProviderInvariantName(DbConnection connection)
         {
-            var connectionType = connection.GetType().FullName.ToLower();
+            var connectionType = connection.GetType().FullName?.ToLower();
 
             if (connectionType == "system.data.sqlclient.sqlconnection")
             {

@@ -1,57 +1,63 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net452;netcoreapp2.0</TargetFrameworks>
+    <TargetFrameworks>net452;net472;netstandard2.0</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <RestorePackages>true</RestorePackages>
     <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
 
     <Language>en-US</Language>
     <NeutralLanguage>en-US</NeutralLanguage>
     <AssemblyName>Nemo</AssemblyName>
-	<AssemblyTitle>Nemo</AssemblyTitle>
-	<AssemblyVersion>2.5.0</AssemblyVersion>
-    <FileVersion>2.5.2</FileVersion>
+    <AssemblyTitle>Nemo</AssemblyTitle>
+    <AssemblyVersion>2.5.0</AssemblyVersion>
+    <FileVersion>2.5.3</FileVersion>
     <RootNamespace>Nemo</RootNamespace>
-	
+
     <PackageId>Nemo</PackageId>
     <Title>Nemo</Title>
     <Description>.Net Enterprise Micro-ORM</Description>
     <Authors>Max Stepanskiy</Authors>
-	<Company>Stepaside, Inc.</Company>
+    <Company>Stepaside, Inc.</Company>
     <Copyright>Copyright © Max Stepanskiy 2012-2018</Copyright>
     <PackageProjectUrl>https://github.com/stepaside/Nemo/wiki</PackageProjectUrl>
     <PackageTags>ORM micro-ORM data-mapper sql-mapper</PackageTags>
-    <Version>2.5.2</Version>
-    
+    <Version>2.5.3</Version>
+
     <RepositoryUrl>https://github.com/stepaside/Nemo</RepositoryUrl>
     <RepositoryType>Github</RepositoryType>
-    
-	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <!-- common NuGet package refs that affect all projects -->
   <ItemGroup>
-    <PackageReference Include="System.Interactive.Async.Providers" Version="3.1.1" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
+    <PackageReference Include="System.Interactive.Async.Providers" Version="3.2.0" />
   </ItemGroup>
 
   <!-- .NET Core 2.0 references, compilation flags and build options -->
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="2.0.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.4.2" />
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="2.2.4" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.6.1" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
+    <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
+    <PackageReference Include="System.Reflection.Emit.ILGeneration" Version="4.3.0" />
+    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
+    <PackageReference Include="System.ComponentModel.Annotations" Version="4.5.0" />
   </ItemGroup>
+  
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <DefineConstants>NETCOREAPP;NETCOREAPP2_0</DefineConstants>
+    <DefineConstants>NETSTANDARD</DefineConstants>
   </PropertyGroup>
 
   <!-- .NET 4.5.2 references, compilation flags and build options -->
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net452' OR  '$(TargetFramework)' == 'net472'">
     <Reference Include="mscorlib" />
-    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
@@ -67,199 +73,195 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net45'">
-    <DefineConstants>NET452;NETFULL</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net452|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;NET452</DefineConstants>
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' OR '$(TargetFramework)' == 'net472'">
+    <DefineConstants>NETFULL</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Attributes\ConnectionAttribute.cs" /> 
-	<Compile Include="Attributes\Converters\CastFromObjectConverter.cs" /> 
-	<Compile Include="Attributes\Converters\CompositeConverter.cs" /> 
-	<Compile Include="Attributes\Converters\DBNullableByteArrayConverter.cs" /> 
-	<Compile Include="Attributes\Converters\DBNullableStringConverter.cs" /> 
-	<Compile Include="Attributes\Converters\DBNullableTypeConverter.cs" /> 
-	<Compile Include="Attributes\Converters\EnumConverter.cs" /> 
-	<Compile Include="Attributes\Converters\ITypeConverter.cs" /> 
-	<Compile Include="Attributes\Converters\ListConverter.cs" /> 
-	<Compile Include="Attributes\Converters\NullableEnumConverter.cs" /> 
-	<Compile Include="Attributes\Converters\SimpleTypeConverter.cs" /> 
-	<Compile Include="Attributes\Converters\StringConverter.cs" /> 
-	<Compile Include="Attributes\Converters\TypeConverterAttribute.cs" /> 
-	<Compile Include="Attributes\Converters\TypeConverterException.cs" /> 
-	<Compile Include="Attributes\Converters\UtcDateTimeConverter.cs" /> 
-	<Compile Include="Attributes\Converters\XmlReaderTypeConverter.cs" /> 
-	<Compile Include="Attributes\Converters\XmlTypeConverter.cs" /> 
-	<Compile Include="Attributes\DistinctAttribute.cs" /> 
-	<Compile Include="Attributes\DoNotPersistAttribute.cs" /> 
-	<Compile Include="Attributes\DoNotSelectAttribute.cs" /> 
-	<Compile Include="Attributes\DoNotSerializeAttribute.cs" /> 
-	<Compile Include="Attributes\GenerateAttribute.cs" /> 
-	<Compile Include="Attributes\MapAttribute.cs" /> 
-	<Compile Include="Attributes\MapColumnAttribute.cs" /> 
-	<Compile Include="Attributes\MapPropertyAttribute.cs" /> 
-	<Compile Include="Attributes\ParameterAttribute.cs" /> 
-	<Compile Include="Attributes\PrimaryKeyAttribute.cs" /> 
-	<Compile Include="Attributes\PropertyAttribute.cs" /> 
-	<Compile Include="Attributes\ReadOnlyAttribute.cs" /> 
-	<Compile Include="Attributes\ReferencesAttribute.cs" /> 
-	<Compile Include="Attributes\SortedAttribute.cs" /> 
-	<Compile Include="Attributes\TableAttribute.cs" /> 
-	<Compile Include="CallContext.cs" /> 
-	<Compile Include="Collections\BinaryHeap.cs" /> 
-	<Compile Include="Collections\Comparers\ComparerProxy.cs" /> 
-	<Compile Include="Collections\Comparers\ComparisonComparer.cs" /> 
-	<Compile Include="Collections\Comparers\ElementComparer.cs" /> 
-	<Compile Include="Collections\Comparers\ProjectionComparer.cs" /> 
-	<Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" /> 
-	<Compile Include="Collections\Comparers\ReverseComparer.cs" /> 
-	<Compile Include="Collections\Dictionary.cs" /> 
-	<Compile Include="Collections\EagerLoadEnumerable.cs" /> 
-	<Compile Include="Collections\EagerLoadEnumerableAsync.cs" /> 
-	<Compile Include="Collections\Extensions\ArrayExtensions.cs" /> 
-	<Compile Include="Collections\Extensions\DictionaryExtensions.cs" /> 
-	<Compile Include="Collections\Extensions\LinqExtensions.cs" /> 
-	<Compile Include="Collections\Extensions\SetExtensions.cs" /> 
-	<Compile Include="Collections\Extensions\SortingExtensions.cs" /> 
-	<Compile Include="Collections\HashList.cs" /> 
-	<Compile Include="Collections\ISharedEnumerable.cs" /> 
-	<Compile Include="Collections\List.cs" /> 
-	<Compile Include="Collections\MapList.cs" /> 
-	<Compile Include="Collections\MultiResult.cs" /> 
-	<Compile Include="Collections\OrderedEnumerable.cs" /> 
-	<Compile Include="Collections\OrderedEnumerableConverter.cs" /> 
-	<Compile Include="Collections\SortedList.cs" /> 
-	<Compile Include="Collections\TypeArray.cs" /> 
-	<Compile Include="Configuration\ConfigurationFactory.cs" /> 
-	<Compile Include="Configuration\ConnectionStringSettings.cs" /> 
-	<Compile Include="Configuration\ConnectionStringSettingsCollection.cs" /> 
-	<Compile Include="Configuration\ConnectionStringSettingsExtensions.cs" /> 
-	<Compile Include="Configuration\DefaultConfiguration.cs" /> 
-	<Compile Include="Configuration\IConfiguration.cs" /> 
-	<Compile Include="Configuration\Mapping\EntityMap.cs" /> 
-	<Compile Include="Configuration\Mapping\IEntityMap.cs" /> 
-	<Compile Include="Configuration\Mapping\IPropertyMap.cs" /> 
-	<Compile Include="Configuration\Mapping\MappingFactory.cs" /> 
-	<Compile Include="Configuration\Mapping\PropertyMap.cs" /> 
-	<Compile Include="Data\DataAccessProviderTypes.cs" />
-  <Compile Include="Data\DataReaderExtensions.cs" />
-	<Compile Include="Data\DbFactory.cs" /> 
-	<Compile Include="Data\DialectFactory.cs" /> 
-	<Compile Include="Data\DialectProvider.cs" /> 
-	<Compile Include="Data\MySqlDialectProvider.cs" /> 
-	<Compile Include="Data\OracleDialectProvider.cs" /> 
-	<Compile Include="Data\PostgresDialectProvider.cs" /> 
-	<Compile Include="Data\PredicateVisitor.cs" /> 
-	<Compile Include="Data\SqlBuilder.cs" /> 
-	<Compile Include="Data\SqliteDialectProvider.cs" /> 
-	<Compile Include="Data\SqlServerDialectProvider.cs" /> 
-	<Compile Include="Data\SqlServerLegacyDialectProvider.cs" /> 
-	<Compile Include="DataRowExtensions.cs" /> 
-	<Compile Include="DataSetUtil.cs" /> 
-	<Compile Include="DefaultExecutionContext.cs" /> 
-	<Compile Include="Extensions\CastExtensions.cs" /> 
-	<Compile Include="Extensions\ExceptionExtensions.cs" /> 
-	<Compile Include="Extensions\ObjectExtensions.cs" /> 
-	<Compile Include="Extensions\StringExtensions.cs" /> 
-	<Compile Include="Fn\Extensions\FunctionExtensions.cs" /> 
-	<Compile Include="Fn\Maybe.cs" /> 
-	<Compile Include="Fn\Stream.cs" /> 
-	<Compile Include="Fn\StreamExtensions.cs" /> 
-	<Compile Include="Fn\TypeUnion.cs" /> 
-	<Compile Include="Id\CombGuidGenerator.cs" /> 
-	<Compile Include="Id\GuidGenerator.cs" /> 
-	<Compile Include="Id\HiLoGenerator.cs" /> 
-	<Compile Include="Id\IIdGenerator.cs" /> 
-	<Compile Include="Id\UniqueNegativeNumberGenerator.cs" /> 
-	<Compile Include="IDataEntity.cs" /> 
-	<Compile Include="Identity.cs" /> 
-	<Compile Include="IdentityMap.cs" /> 
-	<Compile Include="IExecutionContext.cs" /> 
-	<Compile Include="CacheRepresentation.cs" /> 
-	<Compile Include="Linq\Expressions\Evaluator.cs" /> 
-	<Compile Include="Linq\Expressions\LocalCollectionExpander.cs" /> 
-	<Compile Include="Linq\NemoQueryable.cs" /> 
-	<Compile Include="Linq\NemoQueryableAsync.cs" /> 
-	<Compile Include="Linq\NemoQueryContext.cs" /> 
-	<Compile Include="Linq\NemoQueryProvider.cs" /> 
-	<Compile Include="Logging\AuditLog.cs" /> 
-	<Compile Include="Logging\IAuditLogProvider.cs" /> 
-	<Compile Include="Logging\ILogProvider.cs" /> 
-	<Compile Include="MaterializationMode.cs" /> 
-	<Compile Include="ObjectFactory.cs" /> 
-	<Compile Include="ObjectFactoryAsync.cs" /> 
-	<Compile Include="OperationNamingConvention.cs" /> 
-	<Compile Include="OperationRequest.cs" /> 
-	<Compile Include="OperationResponse.cs" /> 
-	<Compile Include="OperationReturnType.cs" /> 
-	<Compile Include="OperationType.cs" /> 
-	<Compile Include="Param.cs" /> 
-	<Compile Include="ParamList.cs" /> 
-	<Compile Include="Reflection\Activator.cs" /> 
-	<Compile Include="Reflection\Adapter.cs" /> 
-	<Compile Include="Reflection\FastActivator.cs" /> 
-	<Compile Include="Reflection\FastImplementor.cs" /> 
-	<Compile Include="Reflection\FastIndexerMapper.cs" /> 
-	<Compile Include="Reflection\FastMapper.cs" /> 
-	<Compile Include="Reflection\FastWrapper.cs" /> 
-	<Compile Include="Reflection\Mapper.cs" /> 
-	<Compile Include="Reflection\ReflectedProperty.cs" /> 
-	<Compile Include="Reflection\ReflectedType.cs" /> 
-	<Compile Include="Reflection\Reflector.cs" /> 
-	<Compile Include="Reflection\Reflector.Method.cs" /> 
-	<Compile Include="Reflection\Reflector.Property.cs" /> 
-	<Compile Include="SelectOption.cs" /> 
-	<Compile Include="Serialization\JsonSerializationReader.cs" /> 
-	<Compile Include="Serialization\JsonSerializationWriter.cs" /> 
-	<Compile Include="Serialization\ObjectJsonSerializer.cs" /> 
-	<Compile Include="Serialization\ObjectSerializer.cs" /> 
-	<Compile Include="Serialization\ObjectXmlSerializer.cs" /> 
-	<Compile Include="Serialization\SerializationReader.cs" /> 
-	<Compile Include="Serialization\SerializationReaderState.cs" /> 
-	<Compile Include="Serialization\SerializationWriter.cs" /> 
-	<Compile Include="Serialization\XmlSerializationReader.cs" /> 
-	<Compile Include="Serialization\XmlSerializationWriter.cs" /> 
-	<Compile Include="Sorting.cs" /> 
-	<Compile Include="SortingOrder.cs" /> 
-	<Compile Include="ThreadedPrincipal.cs" /> 
-	<Compile Include="UnitOfWork\ChangeNode.cs" /> 
-	<Compile Include="UnitOfWork\ChangeTrackingMode.cs" /> 
-	<Compile Include="UnitOfWork\ObjectScope.cs" /> 
-	<Compile Include="UnitOfWork\ObjectScopeExtensions.cs" /> 
-	<Compile Include="UnitOfWork\ObjectScopeSurrogate.cs" /> 
-	<Compile Include="Utilities\Bytes.cs" /> 
-	<Compile Include="Utilities\CombGuid.cs" /> 
-	<Compile Include="Utilities\Hash.cs" /> 
-	<Compile Include="Utilities\Http.cs" /> 
-	<Compile Include="Utilities\Json.cs" /> 
-	<Compile Include="Utilities\Log.cs" /> 
-	<Compile Include="Utilities\RandomProvider.cs" /> 
-	<Compile Include="Utilities\StringStream.cs" /> 
-	<Compile Include="Utilities\UnixDateTime.cs" /> 
-	<Compile Include="Utilities\Xml.cs" /> 
-	<Compile Include="Utilities\Xsd.cs" /> 
-	<Compile Include="Validation\CompareAttribute.cs" /> 
-	<Compile Include="Validation\ContainsAttribute.cs" /> 
-	<Compile Include="Validation\CustomAttribute.cs" /> 
-	<Compile Include="Validation\CustomValidator.cs" /> 
-	<Compile Include="Validation\CustomValidatorContext.cs" /> 
-	<Compile Include="Validation\DataTypeAttribute.cs" /> 
-	<Compile Include="Validation\IResourceKeyProvider.cs" /> 
-	<Compile Include="Validation\ISeverityTypeProvider.cs" /> 
-	<Compile Include="Validation\RangeAttribute.cs" /> 
-	<Compile Include="Validation\RegularExpressionAttribute.cs" /> 
-	<Compile Include="Validation\RequiredAttribute.cs" /> 
-	<Compile Include="Validation\StringLengthAttribute.cs" /> 
-	<Compile Include="Validation\ValidationAttributeBase.cs" /> 
-	<Compile Include="Validation\ValidationError.cs" /> 
-	<Compile Include="Validation\ValidationException.cs" /> 
-	<Compile Include="Validation\ValidationExtensions.cs" /> 
-	<Compile Include="Validation\ValidationFunctions.cs" /> 
-	<Compile Include="Validation\ValidationResult.cs" /> 
-	<Compile Include="Validation\XmlSchemaAttribute.cs" /> 
+    <Compile Include="Attributes\ConnectionAttribute.cs" />
+    <Compile Include="Attributes\Converters\CastFromObjectConverter.cs" />
+    <Compile Include="Attributes\Converters\CompositeConverter.cs" />
+    <Compile Include="Attributes\Converters\DBNullableByteArrayConverter.cs" />
+    <Compile Include="Attributes\Converters\DBNullableStringConverter.cs" />
+    <Compile Include="Attributes\Converters\DBNullableTypeConverter.cs" />
+    <Compile Include="Attributes\Converters\EnumConverter.cs" />
+    <Compile Include="Attributes\Converters\ITypeConverter.cs" />
+    <Compile Include="Attributes\Converters\ListConverter.cs" />
+    <Compile Include="Attributes\Converters\NullableEnumConverter.cs" />
+    <Compile Include="Attributes\Converters\SimpleTypeConverter.cs" />
+    <Compile Include="Attributes\Converters\StringConverter.cs" />
+    <Compile Include="Attributes\Converters\TypeConverterAttribute.cs" />
+    <Compile Include="Attributes\Converters\TypeConverterException.cs" />
+    <Compile Include="Attributes\Converters\UtcDateTimeConverter.cs" />
+    <Compile Include="Attributes\Converters\XmlReaderTypeConverter.cs" />
+    <Compile Include="Attributes\Converters\XmlTypeConverter.cs" />
+    <Compile Include="Attributes\DistinctAttribute.cs" />
+    <Compile Include="Attributes\DoNotPersistAttribute.cs" />
+    <Compile Include="Attributes\DoNotSelectAttribute.cs" />
+    <Compile Include="Attributes\DoNotSerializeAttribute.cs" />
+    <Compile Include="Attributes\GenerateAttribute.cs" />
+    <Compile Include="Attributes\MapAttribute.cs" />
+    <Compile Include="Attributes\MapColumnAttribute.cs" />
+    <Compile Include="Attributes\MapPropertyAttribute.cs" />
+    <Compile Include="Attributes\ParameterAttribute.cs" />
+    <Compile Include="Attributes\PrimaryKeyAttribute.cs" />
+    <Compile Include="Attributes\PropertyAttribute.cs" />
+    <Compile Include="Attributes\ReadOnlyAttribute.cs" />
+    <Compile Include="Attributes\ReferencesAttribute.cs" />
+    <Compile Include="Attributes\SortedAttribute.cs" />
+    <Compile Include="Attributes\TableAttribute.cs" />
+    <Compile Include="CallContext.cs" />
+    <Compile Include="Collections\BinaryHeap.cs" />
+    <Compile Include="Collections\Comparers\ComparerProxy.cs" />
+    <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
+    <Compile Include="Collections\Comparers\ElementComparer.cs" />
+    <Compile Include="Collections\Comparers\ProjectionComparer.cs" />
+    <Compile Include="Collections\Comparers\ProjectionEqualityComparer.cs" />
+    <Compile Include="Collections\Comparers\ReverseComparer.cs" />
+    <Compile Include="Collections\Dictionary.cs" />
+    <Compile Include="Collections\EagerLoadEnumerable.cs" />
+    <Compile Include="Collections\EagerLoadEnumerableAsync.cs" />
+    <Compile Include="Collections\Extensions\ArrayExtensions.cs" />
+    <Compile Include="Collections\Extensions\DictionaryExtensions.cs" />
+    <Compile Include="Collections\Extensions\LinqExtensions.cs" />
+    <Compile Include="Collections\Extensions\SetExtensions.cs" />
+    <Compile Include="Collections\Extensions\SortingExtensions.cs" />
+    <Compile Include="Collections\HashList.cs" />
+    <Compile Include="Collections\ISharedEnumerable.cs" />
+    <Compile Include="Collections\List.cs" />
+    <Compile Include="Collections\MapList.cs" />
+    <Compile Include="Collections\MultiResult.cs" />
+    <Compile Include="Collections\OrderedEnumerable.cs" />
+    <Compile Include="Collections\OrderedEnumerableConverter.cs" />
+    <Compile Include="Collections\SortedList.cs" />
+    <Compile Include="Collections\TypeArray.cs" />
+    <Compile Include="Configuration\ConfigurationFactory.cs" />
+    <Compile Include="Configuration\ConnectionStringSettings.cs" />
+    <Compile Include="Configuration\ConnectionStringSettingsCollection.cs" />
+    <Compile Include="Configuration\ConnectionStringSettingsExtensions.cs" />
+    <Compile Include="Configuration\DefaultConfiguration.cs" />
+    <Compile Include="Configuration\IConfiguration.cs" />
+    <Compile Include="Configuration\Mapping\EntityMap.cs" />
+    <Compile Include="Configuration\Mapping\IEntityMap.cs" />
+    <Compile Include="Configuration\Mapping\IPropertyMap.cs" />
+    <Compile Include="Configuration\Mapping\MappingFactory.cs" />
+    <Compile Include="Configuration\Mapping\PropertyMap.cs" />
+    <Compile Include="Data\DataAccessProviderTypes.cs" />
+    <Compile Include="Data\DataReaderExtensions.cs" />
+    <Compile Include="Data\DbFactory.cs" />
+    <Compile Include="Data\DialectFactory.cs" />
+    <Compile Include="Data\DialectProvider.cs" />
+    <Compile Include="Data\MySqlDialectProvider.cs" />
+    <Compile Include="Data\OracleDialectProvider.cs" />
+    <Compile Include="Data\PostgresDialectProvider.cs" />
+    <Compile Include="Data\PredicateVisitor.cs" />
+    <Compile Include="Data\SqlBuilder.cs" />
+    <Compile Include="Data\SqliteDialectProvider.cs" />
+    <Compile Include="Data\SqlServerDialectProvider.cs" />
+    <Compile Include="Data\SqlServerLegacyDialectProvider.cs" />
+    <Compile Include="DataRowExtensions.cs" />
+    <Compile Include="DataSetUtil.cs" />
+    <Compile Include="DefaultExecutionContext.cs" />
+    <Compile Include="Extensions\CastExtensions.cs" />
+    <Compile Include="Extensions\ExceptionExtensions.cs" />
+    <Compile Include="Extensions\ObjectExtensions.cs" />
+    <Compile Include="Extensions\StringExtensions.cs" />
+    <Compile Include="Fn\Extensions\FunctionExtensions.cs" />
+    <Compile Include="Fn\Maybe.cs" />
+    <Compile Include="Fn\Stream.cs" />
+    <Compile Include="Fn\StreamExtensions.cs" />
+    <Compile Include="Fn\TypeUnion.cs" />
+    <Compile Include="Id\CombGuidGenerator.cs" />
+    <Compile Include="Id\GuidGenerator.cs" />
+    <Compile Include="Id\HiLoGenerator.cs" />
+    <Compile Include="Id\IIdGenerator.cs" />
+    <Compile Include="Id\UniqueNegativeNumberGenerator.cs" />
+    <Compile Include="IDataEntity.cs" />
+    <Compile Include="Identity.cs" />
+    <Compile Include="IdentityMap.cs" />
+    <Compile Include="IExecutionContext.cs" />
+    <Compile Include="CacheRepresentation.cs" />
+    <Compile Include="Linq\Expressions\Evaluator.cs" />
+    <Compile Include="Linq\Expressions\LocalCollectionExpander.cs" />
+    <Compile Include="Linq\NemoQueryable.cs" />
+    <Compile Include="Linq\NemoQueryableAsync.cs" />
+    <Compile Include="Linq\NemoQueryContext.cs" />
+    <Compile Include="Linq\NemoQueryProvider.cs" />
+    <Compile Include="Logging\AuditLog.cs" />
+    <Compile Include="Logging\IAuditLogProvider.cs" />
+    <Compile Include="Logging\ILogProvider.cs" />
+    <Compile Include="MaterializationMode.cs" />
+    <Compile Include="ObjectFactory.cs" />
+    <Compile Include="ObjectFactoryAsync.cs" />
+    <Compile Include="OperationNamingConvention.cs" />
+    <Compile Include="OperationRequest.cs" />
+    <Compile Include="OperationResponse.cs" />
+    <Compile Include="OperationReturnType.cs" />
+    <Compile Include="OperationType.cs" />
+    <Compile Include="Param.cs" />
+    <Compile Include="ParamList.cs" />
+    <Compile Include="Reflection\Activator.cs" />
+    <Compile Include="Reflection\Adapter.cs" />
+    <Compile Include="Reflection\FastActivator.cs" />
+    <Compile Include="Reflection\FastImplementor.cs" />
+    <Compile Include="Reflection\FastIndexerMapper.cs" />
+    <Compile Include="Reflection\FastMapper.cs" />
+    <Compile Include="Reflection\FastWrapper.cs" />
+    <Compile Include="Reflection\Mapper.cs" />
+    <Compile Include="Reflection\ReflectedProperty.cs" />
+    <Compile Include="Reflection\ReflectedType.cs" />
+    <Compile Include="Reflection\Reflector.cs" />
+    <Compile Include="Reflection\Reflector.Method.cs" />
+    <Compile Include="Reflection\Reflector.Property.cs" />
+    <Compile Include="SelectOption.cs" />
+    <Compile Include="Serialization\JsonSerializationReader.cs" />
+    <Compile Include="Serialization\JsonSerializationWriter.cs" />
+    <Compile Include="Serialization\ObjectJsonSerializer.cs" />
+    <Compile Include="Serialization\ObjectSerializer.cs" />
+    <Compile Include="Serialization\ObjectXmlSerializer.cs" />
+    <Compile Include="Serialization\SerializationReader.cs" />
+    <Compile Include="Serialization\SerializationReaderState.cs" />
+    <Compile Include="Serialization\SerializationWriter.cs" />
+    <Compile Include="Serialization\XmlSerializationReader.cs" />
+    <Compile Include="Serialization\XmlSerializationWriter.cs" />
+    <Compile Include="Sorting.cs" />
+    <Compile Include="SortingOrder.cs" />
+    <Compile Include="ThreadedPrincipal.cs" />
+    <Compile Include="UnitOfWork\ChangeNode.cs" />
+    <Compile Include="UnitOfWork\ChangeTrackingMode.cs" />
+    <Compile Include="UnitOfWork\ObjectScope.cs" />
+    <Compile Include="UnitOfWork\ObjectScopeExtensions.cs" />
+    <Compile Include="UnitOfWork\ObjectScopeSurrogate.cs" />
+    <Compile Include="Utilities\Bytes.cs" />
+    <Compile Include="Utilities\CombGuid.cs" />
+    <Compile Include="Utilities\Hash.cs" />
+    <Compile Include="Utilities\Http.cs" />
+    <Compile Include="Utilities\Json.cs" />
+    <Compile Include="Utilities\Log.cs" />
+    <Compile Include="Utilities\RandomProvider.cs" />
+    <Compile Include="Utilities\StringStream.cs" />
+    <Compile Include="Utilities\UnixDateTime.cs" />
+    <Compile Include="Utilities\Xml.cs" />
+    <Compile Include="Utilities\Xsd.cs" />
+    <Compile Include="Validation\CompareAttribute.cs" />
+    <Compile Include="Validation\ContainsAttribute.cs" />
+    <Compile Include="Validation\CustomAttribute.cs" />
+    <Compile Include="Validation\CustomValidator.cs" />
+    <Compile Include="Validation\CustomValidatorContext.cs" />
+    <Compile Include="Validation\DataTypeAttribute.cs" />
+    <Compile Include="Validation\IResourceKeyProvider.cs" />
+    <Compile Include="Validation\ISeverityTypeProvider.cs" />
+    <Compile Include="Validation\RangeAttribute.cs" />
+    <Compile Include="Validation\RegularExpressionAttribute.cs" />
+    <Compile Include="Validation\RequiredAttribute.cs" />
+    <Compile Include="Validation\StringLengthAttribute.cs" />
+    <Compile Include="Validation\ValidationAttributeBase.cs" />
+    <Compile Include="Validation\ValidationError.cs" />
+    <Compile Include="Validation\ValidationException.cs" />
+    <Compile Include="Validation\ValidationExtensions.cs" />
+    <Compile Include="Validation\ValidationFunctions.cs" />
+    <Compile Include="Validation\ValidationResult.cs" />
+    <Compile Include="Validation\XmlSchemaAttribute.cs" />
   </ItemGroup>
 
 </Project>

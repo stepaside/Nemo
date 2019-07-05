@@ -4,7 +4,7 @@ using Nemo.UnitOfWork;
 using Nemo.Utilities;
 using System;
 using Nemo.Logging;
-#if NETCOREAPP2_0
+#if NETSTANDARD
 using Microsoft.Extensions.Configuration;
 #endif
 
@@ -54,7 +54,7 @@ namespace Nemo.Configuration
 
         public ILogProvider LogProvider { get; private set; }
 
-#if NETCOREAPP2_0
+#if NETSTANDARD
         public IConfigurationRoot SystemConfiguration { get; private set; }
 #endif
 
@@ -157,7 +157,7 @@ namespace Nemo.Configuration
             return this;
         }
 
-#if NETCOREAPP2_0
+#if NETSTANDARD
         public IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration)
         {
             SystemConfiguration = systemConfiguration;
@@ -199,7 +199,7 @@ namespace Nemo.Configuration
 
             mergedConfig.SetLogProvider(LogProvider ?? configuration.LogProvider);
 
-#if NETCOREAPP2_0
+#if NETSTANDARD
             mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);
 #endif
 

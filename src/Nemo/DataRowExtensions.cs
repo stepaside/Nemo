@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 
-#if NETCOREAPP2_0
+#if NETSTANDARD
 using Nemo;
 
 namespace System.Data

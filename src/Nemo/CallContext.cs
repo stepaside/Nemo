@@ -1,4 +1,4 @@
-﻿#if NETCOREAPP2_0
+﻿#if NETSTANDARD
 using System.Collections.Concurrent;
 using System.Threading;
 
