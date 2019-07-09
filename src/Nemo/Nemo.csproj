@@ -14,7 +14,7 @@
     <AssemblyName>Nemo</AssemblyName>
     <AssemblyTitle>Nemo</AssemblyTitle>
     <AssemblyVersion>2.5.0</AssemblyVersion>
-    <FileVersion>2.5.3</FileVersion>
+    <FileVersion>2.5.4</FileVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>
@@ -25,7 +25,7 @@
     <Copyright>Copyright © Max Stepanskiy 2012-2018</Copyright>
     <PackageProjectUrl>https://github.com/stepaside/Nemo/wiki</PackageProjectUrl>
     <PackageTags>ORM micro-ORM data-mapper sql-mapper</PackageTags>
-    <Version>2.5.3</Version>
+    <Version>2.5.4</Version>
 
     <RepositoryUrl>https://github.com/stepaside/Nemo</RepositoryUrl>
     <RepositoryType>Github</RepositoryType>
@@ -226,7 +226,7 @@
     <Compile Include="Serialization\XmlSerializationWriter.cs" />
     <Compile Include="Sorting.cs" />
     <Compile Include="SortingOrder.cs" />
-    <Compile Include="ThreadedPrincipal.cs" />
+    <Compile Include="HttpContextPrincipal.cs" />
     <Compile Include="UnitOfWork\ChangeNode.cs" />
     <Compile Include="UnitOfWork\ChangeTrackingMode.cs" />
     <Compile Include="UnitOfWork\ObjectScope.cs" />

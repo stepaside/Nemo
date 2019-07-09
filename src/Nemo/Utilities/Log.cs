@@ -12,21 +12,9 @@ namespace Nemo.Utilities
     {
         private const string LogContextName = "__LogContext";
         
-        public static bool IsEnabled
-        {
-            get
-            {
-                return ConfigurationFactory.DefaultConfiguration.Logging && LogProvider != null;
-            }
-        }
+        public static bool IsEnabled => ConfigurationFactory.DefaultConfiguration.Logging && LogProvider != null;
 
-        private static ILogProvider LogProvider
-        {
-            get
-            {
-                return ConfigurationFactory.DefaultConfiguration.LogProvider;
-            }
-        }
+        private static ILogProvider LogProvider => ConfigurationFactory.DefaultConfiguration.LogProvider;
 
         public static void Configure()
         {
@@ -54,9 +42,17 @@ namespace Nemo.Utilities
             var message = computeMessage();
             if (context.Item1 != Guid.Empty && context.Item2 != null)
             {
-                message = string.Format("{0}-{1}", context.Item1, message);
+                message = $"{context.Item1}: {message}";
             }
             LogProvider.Write(message);
+        }
+
+        public static void Capture(Exception error)
+        {
+            if (!IsEnabled) return;
+
+            var context = Context;
+            LogProvider.Write(error, context.Item1 != Guid.Empty ? context.Item1.ToString() : null);
         }
 
         public static void Capture(string message)
@@ -97,8 +93,7 @@ namespace Nemo.Utilities
         {
             get
             {
-                object context;
-                if (ConfigurationFactory.DefaultConfiguration.ExecutionContext.TryGet(LogContextName, out context))
+                if (ConfigurationFactory.DefaultConfiguration.ExecutionContext.TryGet(LogContextName, out var context))
                 {
                     var logContext = (Stack<Tuple<Guid, Stopwatch>>)context;
                     if (logContext != null && logContext.Count > 0)
@@ -112,8 +107,7 @@ namespace Nemo.Utilities
 
         private static void ClearContext()
         {
-            object context;
-            if (ConfigurationFactory.DefaultConfiguration.ExecutionContext.TryGet(LogContextName, out context))
+            if (ConfigurationFactory.DefaultConfiguration.ExecutionContext.TryGet(LogContextName, out var context))
             {
                 var logContext = (Stack<Tuple<Guid, Stopwatch>>)context;
                 if (logContext != null && logContext.Count > 0)
@@ -127,17 +121,13 @@ namespace Nemo.Utilities
         {
             var executionContext = ConfigurationFactory.DefaultConfiguration.ExecutionContext;
 
-            object logContext;
-            if (!executionContext.TryGet(LogContextName, out logContext))
+            if (!executionContext.TryGet(LogContextName, out var logContext))
             {
                 logContext = new Stack<Tuple<Guid, Stopwatch>>();
                 executionContext.Set(LogContextName, logContext);
             }
 
-            if (logContext != null)
-            {
-                ((Stack<Tuple<Guid, Stopwatch>>)logContext).Push(Tuple.Create(Guid.NewGuid(), new Stopwatch()));
-            }
+            ((Stack<Tuple<Guid, Stopwatch>>)logContext)?.Push(Tuple.Create(Guid.NewGuid(), new Stopwatch()));
         }
     }
 }

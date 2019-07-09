@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Nemo.Utilities;
+using System;
 using System.Data;
 using System.Diagnostics;
 
@@ -13,16 +14,17 @@ namespace Nemo
                 throw ArgumentNull(argumentName);
             }
         }
-
-        private static T TraceException<T>(string trace, T e)
-        {
-            Debug.Assert(null != e, "TraceException: null Exception");
-            return e;
-        }
-
+        
         private static T TraceExceptionAsReturnValue<T>(T e)
+            where T : Exception
         {
-            return TraceException("<comm.ADP.TraceException|ERR|THROW> '%ls'\n", e);
+            Debug.Assert(e != null, "TraceException: null Exception");
+            if (e == null) return null;
+
+            Debug.Assert(IsCatchableExceptionType(e), "Invalid exception type, should have been re-thrown!");
+            Log.Capture(e);
+
+            return e;
         }
 
         internal static ArgumentException Argument(string message)

@@ -7,6 +7,6 @@ namespace Nemo.Configuration
         void Configure();
         void Configure(string configFile);
         void Write(string message);
-        void Write(Exception exception);
+        void Write(Exception exception, string id);
     }
 }
