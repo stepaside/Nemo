@@ -22,13 +22,15 @@
     <Description>.Net Enterprise Micro-ORM</Description>
     <Authors>Max Stepanskiy</Authors>
     <Company>Stepaside, Inc.</Company>
-    <Copyright>Copyright © Max Stepanskiy 2012-2018</Copyright>
+    <Copyright>Copyright © Max Stepanskiy 2012-2020</Copyright>
     <PackageProjectUrl>https://github.com/stepaside/Nemo/wiki</PackageProjectUrl>
     <PackageTags>ORM micro-ORM data-mapper sql-mapper</PackageTags>
     <Version>2.5.5</Version>
 
     <RepositoryUrl>https://github.com/stepaside/Nemo</RepositoryUrl>
     <RepositoryType>Github</RepositoryType>
+
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
