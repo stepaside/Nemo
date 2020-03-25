@@ -62,10 +62,17 @@ namespace Nemo.Data
             {
                 connectionName = GetDefaultConnectionName(objectType);
             }
+
+            if (connectionName.NullIfEmpty() == null)
+            {
+                connectionName = ConfigurationFactory.DefaultConnectionName;
+            }
+
 #if NETSTANDARD
-            return ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName)?.ProviderName;
+            return ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName)?.ProviderName
+                ?? ConfigurationManager.ConnectionStrings[connectionName]?.ProviderName;
 #else
-            return ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ProviderName;
+            return ConfigurationManager.ConnectionStrings[connectionName]?.ProviderName;
 #endif
         }
 
@@ -180,17 +187,29 @@ namespace Nemo.Data
             {
                 connectionName = GetDefaultConnectionName(objectType);
             }
+
+            if (connectionName.NullIfEmpty() == null)
+            {
+                connectionName = ConfigurationFactory.DefaultConnectionName;
+            }
+
 #if NETSTANDARD
-            var config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
-            var factory = GetDbProviderFactory(config.ProviderName);
+            var providerName = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName)?.ProviderName 
+                ?? ConfigurationManager.ConnectionStrings[connectionName]?.ProviderName;
+
+            var connectionString = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName)?.ConnectionString
+                ?? ConfigurationManager.ConnectionStrings[connectionName]?.ConnectionString;
+
+            var factory = GetDbProviderFactory(providerName);
 #else
             var config = ConfigurationManager.ConnectionStrings[connectionName];
-            var factory = DbProviderFactories.GetFactory(config.ProviderName);
+            var connectionString = config?.ConnectionString;
+            var factory = DbProviderFactories.GetFactory(config?.ProviderName);
 #endif
             var connection = factory.CreateConnection();
             if (connection != null)
             {
-                connection.ConnectionString = config.ConnectionString;
+                connection.ConnectionString = connectionString;
             }
             return connection;
         }
@@ -264,6 +283,11 @@ namespace Nemo.Data
 
         public static DbProviderFactory GetDbProviderFactory(string providerName)
         {
+            if (providerName == null)
+            {
+                throw new ArgumentNullException(nameof(providerName));
+            }
+
             providerName = providerName.ToLower();
 
             if (providerName == "system.data.sqlclient")
