@@ -230,11 +230,11 @@ namespace NemoTest
 
             //RunEF(500, false);
             RunNative(500);
-            //RunExecute(500);
+            RunExecute(500);
             RunDapper(500);
             RunRetrieve(500, false);
             RunNativeWithMapper(500);
-            //RunSelect(500, false);
+            RunSelect(500);
             RunRetrieveComplex(500);
 
             return;
