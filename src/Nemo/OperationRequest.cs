@@ -33,7 +33,7 @@ namespace Nemo
             {
                 if (_connection == null && ConnectionName.NullIfEmpty() == null && _connectionString.NullIfEmpty() != null)
                 {
-                    _connection = GetConnection(_connectionString);
+                    _connection = DbFactory.CreateConnection(_connectionString);
                 }
                 return _connection;
             }
@@ -120,55 +120,6 @@ namespace Nemo
         public bool IsValid()
         {
             return _transaction != null || _connection != null || !string.IsNullOrEmpty(_connectionString) || (Types != null && Types.Count > 0);
-        }
-        
-        private static DbConnection GetConnection(string connectionString)
-        {
-            string providerName = null;
-            var csb = new DbConnectionStringBuilder { ConnectionString = connectionString };
-
-            if (csb.ContainsKey("provider"))
-            {
-                providerName = csb["provider"].ToString();
-            }
-            else
-            {
-#if NETSTANDARD
-                dynamic css = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
-
-                if (css == null)
-                {
-                    css = ConfigurationManager.ConnectionStrings.Cast<System.Configuration.ConnectionStringSettings>().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
-                }
-
-#else
-                var css = ConfigurationManager.ConnectionStrings.Cast<System.Configuration.ConnectionStringSettings>().FirstOrDefault(x => string.Equals(x.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase));
-#endif
-                if (css != null) providerName = css.ProviderName;
-            }
-
-            if (providerName != null)
-            {
-#if NETSTANDARD
-                try
-                {
-                    var factory = DbFactory.GetDbProviderFactory(providerName);
-                    return factory.CreateConnection();
-                }
-                catch
-                {
-                }
-#else
-                var providerExists = DbProviderFactories.GetFactoryClasses().Rows.Cast<DataRow>().Any(r => r[2].Equals(providerName));
-                if (providerExists)
-                {
-                    var factory = DbProviderFactories.GetFactory(providerName);
-                    return factory.CreateConnection();
-                }
-#endif
-            }
-
-            return null;
         }
     }
 }
