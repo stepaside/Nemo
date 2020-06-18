@@ -281,7 +281,7 @@ namespace Nemo
             return (T)Reflector.ChangeType(value, typeof(T));
         }
 
-        private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, MaterializationMode mode = MaterializationMode.Default, string schema = null, bool? cached = null, IConfiguration config = null)
+        private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
             Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}");
@@ -338,7 +338,7 @@ namespace Nemo
                 Log.Capture(() => $"Not found in L1 cache: {queryKey}");
             }
 
-            result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, mode, schema, config, identityMap);
+            result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap);
 
             if (queryKey != null)
             {
@@ -372,7 +372,7 @@ namespace Nemo
             return result;
         }
 
-        private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, MaterializationMode mode, string schema, IConfiguration config, IdentityMap<T> identityMap)
+        private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, string schema, IConfiguration config, IdentityMap<T> identityMap)
             where T : class
         {
             if (operationType == OperationType.Guess)
@@ -386,6 +386,12 @@ namespace Nemo
                 ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema)
                 : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
 
+            if (config == null)
+            {
+                config = ConfigurationFactory.Get<T>();
+            }
+            var mode = config.DefaultMaterializationMode;
+
             var result = Translate(response, map, types, cached, mode, identityMap);
             return result;
         }
@@ -394,7 +400,7 @@ namespace Nemo
         /// Retrieves an enumerable of type T using provided rule parameters.
         /// </summary>
         /// <returns></returns>
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where T3 : class
@@ -420,11 +426,9 @@ namespace Nemo
                 realTypes.Add(typeof(T4));
             }
 
-            IConfiguration config = null;
-            if (materialization == MaterializationMode.Default)
+            if (config == null)
             {
                 config = ConfigurationFactory.Get<TResult>();
-                materialization = config.DefaultMaterializationMode;
             }
 
             var returnType = OperationReturnType.SingleResult;
@@ -468,44 +472,42 @@ namespace Nemo
                         break;
                 }
             }
-            return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, materialization, schema, cached, config);
+            return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where T3 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, materialization, schema, cached);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where T2 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, materialization, schema, cached);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T1 : class
             where TResult : class
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, materialization, schema, cached);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, MaterializationMode materialization = MaterializationMode.Default, string schema = null, bool? cached = null)
+        public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T : class
         {
-            IConfiguration config = null;
-            if (materialization == MaterializationMode.Default)
+            if (config == null)
             {
                 config = ConfigurationFactory.Get<T>();
-                materialization = config.DefaultMaterializationMode;
             }
             
             var command = sql ?? operation;
@@ -523,7 +525,7 @@ namespace Nemo
                         break;
                 }
             }
-            return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, materialization, schema, cached, config);
+            return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
         }
 
         #endregion

@@ -25,6 +25,10 @@ namespace Nemo.Configuration.Mapping
                     {
                         return a.DefinedTypes;
                     }
+                    catch (ReflectionTypeLoadException e)
+                    {
+                        return e.Types.Where(t => t != null).Select(t => t.GetTypeInfo()).ToArray();
+                    }
                     catch
                     {
                         return new TypeInfo[] { };
