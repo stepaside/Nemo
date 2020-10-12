@@ -93,8 +93,7 @@ namespace Nemo.Linq
             }
             else
             {
-                var task = (Task<IEnumerable<TResult>>)ToEnumerableAsyncMethod.MakeGenericMethod(typeof(TResult)).Invoke(null, new object[] { async });
-                return (await task).FirstOrDefault();
+                return await ((IAsyncEnumerable<TResult>)async).FirstOrDefaultAsync();
             }
         }
     }

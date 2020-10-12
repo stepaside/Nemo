@@ -33,6 +33,8 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <!-- common NuGet package refs that affect all projects -->
