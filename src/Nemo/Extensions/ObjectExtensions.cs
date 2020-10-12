@@ -770,16 +770,16 @@ namespace Nemo.Extensions
             return dataEntity == null ? null : Adapter.Guard(dataEntity);
         }
 
-        public static List<T> AsReadOnly<T>(this List<T> dataEntitys)
+        public static List<T> AsReadOnly<T>(this List<T> dataEntities)
             where T : class
         {
-            return dataEntitys == null ? null : dataEntitys.Select(b => b.AsReadOnly()).ToList();
+            return dataEntities == null ? null : dataEntities.Select(b => b.AsReadOnly()).ToList();
         }
 
-        public static IList<T> AsReadOnly<T>(this IList<T> dataEntitys)
+        public static IList<T> AsReadOnly<T>(this IList<T> dataEntities)
             where T : class
         {
-            return dataEntitys == null ? null : dataEntitys.Select(b => b.AsReadOnly()).ToArray();
+            return dataEntities == null ? null : dataEntities.Select(b => b.AsReadOnly()).ToArray();
         }
 
         internal static void CheckReadOnly<T>(this T dataEntity)

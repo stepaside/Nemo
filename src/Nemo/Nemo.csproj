@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net452;net472;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net472;netstandard2.0</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <RestorePackages>true</RestorePackages>
     <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
@@ -25,7 +25,7 @@
     <Copyright>Copyright © Max Stepanskiy 2012-2020</Copyright>
     <PackageProjectUrl>https://github.com/stepaside/Nemo/wiki</PackageProjectUrl>
     <PackageTags>ORM micro-ORM data-mapper sql-mapper</PackageTags>
-    <PackageVersion>2.5.7</PackageVersion>
+    <PackageVersion>2.5.8</PackageVersion>
 
     <RepositoryUrl>https://github.com/stepaside/Nemo</RepositoryUrl>
     <RepositoryType>Github</RepositoryType>
@@ -37,20 +37,20 @@
 
   <!-- common NuGet package refs that affect all projects -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
-    <PackageReference Include="System.Interactive.Async.Providers" Version="3.2.0" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="System.Interactive.Async.Providers" Version="4.1.1" />
   </ItemGroup>
 
   <!-- .NET Core 2.0 references, compilation flags and build options -->
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="2.2.4" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.6.1" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
-    <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
-    <PackageReference Include="System.Reflection.Emit.ILGeneration" Version="4.3.0" />
-    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
-    <PackageReference Include="System.ComponentModel.Annotations" Version="4.5.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.1.8" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="3.1.8" />
+    <PackageReference Include="System.ComponentModel.Annotations" Version="4.7.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
+    <PackageReference Include="System.Reflection.Emit" Version="4.7.0" />
+    <PackageReference Include="System.Reflection.Emit.ILGeneration" Version="4.7.0" />
+    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" />
   </ItemGroup>
   
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
@@ -58,7 +58,7 @@
   </PropertyGroup>
 
   <!-- .NET 4.5.2 references, compilation flags and build options -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net452' OR  '$(TargetFramework)' == 'net472'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -75,7 +75,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net452' OR '$(TargetFramework)' == 'net472'">
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
     <DefineConstants>NETFULL</DefineConstants>
   </PropertyGroup>
 
@@ -113,6 +113,7 @@
     <Compile Include="Attributes\SortedAttribute.cs" />
     <Compile Include="Attributes\TableAttribute.cs" />
     <Compile Include="CallContext.cs" />
+    <Compile Include="DefaultAggregatePropertyMapper.cs" />
     <Compile Include="Collections\BinaryHeap.cs" />
     <Compile Include="Collections\Comparers\ComparerProxy.cs" />
     <Compile Include="Collections\Comparers\ComparisonComparer.cs" />
@@ -183,6 +184,7 @@
     <Compile Include="IdentityMap.cs" />
     <Compile Include="IExecutionContext.cs" />
     <Compile Include="CacheRepresentation.cs" />
+    <Compile Include="IAggregatePropertyMapper.cs" />
     <Compile Include="Linq\Expressions\Evaluator.cs" />
     <Compile Include="Linq\Expressions\LocalCollectionExpander.cs" />
     <Compile Include="Linq\NemoQueryable.cs" />

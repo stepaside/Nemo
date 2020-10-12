@@ -55,6 +55,11 @@ namespace Nemo.Collections
             var item = result.FirstOrDefault();
             return item != null ? new List<T> { item }.GetEnumerator() : Enumerable.Empty<T>().GetEnumerator();
         }
+           
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        {
+            return new EagerLoadEnumeratorAsync(GetEnumeratorAsync);
+        }
 
         internal Expression<Func<T, bool>> Predicate
         {
@@ -82,11 +87,6 @@ namespace Nemo.Collections
             return this;
         }
 
-        public IAsyncEnumerator<T> GetEnumerator()
-        {
-            return new EagerLoadEnumeratorAsync(GetEnumeratorAsync);
-        }
-
         private class EagerLoadEnumeratorAsync : IAsyncEnumerator<T>
         {
             private readonly Func<Task<IEnumerator<T>>> _loader;
@@ -104,7 +104,13 @@ namespace Nemo.Collections
 
             }
 
-            public async Task<bool> MoveNext(CancellationToken cancellationToken)
+            public ValueTask DisposeAsync()
+            {
+                _internal.Dispose();
+                return new ValueTask(Task.CompletedTask);
+            }
+
+            public async ValueTask<bool> MoveNextAsync()
             {
                 if (_internal == null)
                 {

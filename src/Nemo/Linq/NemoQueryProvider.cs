@@ -62,7 +62,7 @@ namespace Nemo.Linq
 
         private static readonly MethodInfo ToEnumerableAsyncMethod = typeof(ObjectFactory).GetMethod("ToEnumerableAsync");
 
-        public async Task<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken token)
+        public async ValueTask<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken token)
         {
             var async = NemoQueryContext.Execute(expression, _connection, true);
             if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))

@@ -13,6 +13,11 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Nemo.Configuration.Mapping;
 using Nemo.Attributes.Converters;
+using Nemo.Extensions;
+using System.Linq;
+using Nemo.Reflection;
+using System.Collections;
+using Nemo.Collections;
 
 namespace NemoTest
 {
@@ -56,6 +61,7 @@ namespace NemoTest
     public class CustomerOrderMapper
     {
         public ICustomer _current;
+
         public ICustomer Map(ICustomer c, IOrder o)
         {
             // Terminating call.  Since we can return null from this function

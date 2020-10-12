@@ -48,9 +48,9 @@ namespace Nemo.Linq
         {
         }
 
-        public IAsyncEnumerator<T> GetEnumerator()
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            return Provider.ExecuteAsync<T>(Expression, _cancellationToken).ToAsyncEnumerable().GetEnumerator();
+            return Provider.ExecuteAsync<T>(Expression, _cancellationToken).AsTask().ToAsyncEnumerable().GetAsyncEnumerator();
         }
 
         public Type ElementType
