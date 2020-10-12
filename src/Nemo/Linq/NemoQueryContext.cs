@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Nemo.Collections.Extensions;
 using Nemo.Reflection;
@@ -45,7 +46,9 @@ namespace Nemo.Linq
                         break;
                     case "First":
                     case "FirstOrDefault":
-                        selectOption = pair.Key == "First" ? SelectOption.First : SelectOption.FirstOrDefault;
+                    case "FirstAsync":
+                    case "FirstOrDefaultAsync":
+                        selectOption = pair.Key == "First" || pair.Key == "FirstAsync" ? SelectOption.First : SelectOption.FirstOrDefault;
                         criteria = pair.Value as LambdaExpression;
                         break;
                     default:
@@ -109,7 +112,7 @@ namespace Nemo.Linq
 
                 var returnType = methodCall.Method.ReturnType;
 
-                if (async && typeof(Task).IsAssignableFrom(returnType))
+                if (async && returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(ValueTask<>))
                 {
                     returnType = returnType.GetGenericArguments()[0];
                 }
@@ -122,7 +125,7 @@ namespace Nemo.Linq
                 var method = methodCall.Method.Name;
                 if (methodCall.Arguments[0].NodeType == ExpressionType.Constant)
                 {
-                    if (type == null && (method == "First" || method == "FirstOrDefault"))
+                    if (type == null && ((!async && method == "First") || (!async && method == "FirstOrDefault") || (async && method == "FirstAsync") || (async && method == "FirstOrDefaultAsync")))
                     {
                         type = returnType;
                     }
@@ -143,7 +146,7 @@ namespace Nemo.Linq
                                 var count = args.Keys.Count(k => k == method);
                                 args[method + "." + count] = lambda;
                             }
-                            else if (method != "First" && method != "FirstOrDefault")
+                            else if (method != "First" && method != "FirstOrDefault" && method != "FirstAsync" && method != "FirstOrDefaultAsync")
                             {
                                 args[method] = lambda;
                             }
@@ -155,10 +158,18 @@ namespace Nemo.Linq
                             {
                                 var value = constantExpression.Value;
                                 args[method] = value;
+
+                                if (value is CancellationToken && (async && method == "FirstAsync") || (async && method == "FirstOrDefaultAsync"))
+                                {
+                                    if (async && type == null)
+                                    {
+                                        type = returnType;
+                                    }
+                                }
                             }
                         }
                     }
-                    else if (method == "First" || method == "FirstOrDefault")
+                    else if ((!async && method == "First") || (!async && method == "FirstOrDefault") || (async && method == "FirstAsync") || (async && method == "FirstOrDefaultAsync"))
                     {
                         args[method] = null;
                         if (async && type == null)

@@ -254,7 +254,7 @@ namespace Nemo.Collections
                 // By convention each relation should end with the name of the property prefixed with underscore
                 var relation = relations.FirstOrDefault(r => r.Name.EndsWith("_" + property.Key.Name));
 
-                if (relation == null) continue;
+                if (relation == null || !relation.IsValid()) continue;
 
                 var items = set[relation.To.Index].Where(item => relation.To.Properties.Zip(relation.From.Properties, (to, from) => new { To = to, From = from }).All(p => object.Equals(item.Property(p.To.PropertyName), primaryKey[p.From.PropertyName]))).ToList();
                 
@@ -362,6 +362,11 @@ namespace Nemo.Collections
             public string Name { get; set; }
             public ObjectVertex From { get; set; }
             public ObjectVertex To { get; set; }
+
+            public bool IsValid()
+            {
+                return From != null && To != null && From.Index >= 0 && To.Index >= 0;
+            }
         }
         
         private class ObjectVertex

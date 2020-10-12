@@ -369,7 +369,7 @@ namespace Nemo
             var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin }, new[] { typeof(T), typeof(T1) },
-                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached)).Aggregate<T>(), predicate, provider, selectOption);
 
             return result;
         }
@@ -398,7 +398,7 @@ namespace Nemo
             var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2 }, new[] { typeof(T), typeof(T1), typeof(T2) },
-                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached)).Aggregate<T>(), predicate, provider, selectOption);
 
             return result;
         }
@@ -429,7 +429,7 @@ namespace Nemo
             var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) },
-                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached)).Aggregate<T>(), predicate, provider, selectOption);
 
             return result;
         }
@@ -462,7 +462,7 @@ namespace Nemo
             var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3, sqlJoin4 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) },
-              (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached), predicate, provider, selectOption);
+              (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached)).Aggregate<T>(), predicate, provider, selectOption);
 
             return result;
         }
