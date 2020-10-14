@@ -77,12 +77,11 @@ namespace NemoTest
             // Mapping to a legacy object
             var mapped_legacy = ObjectFactory.Map<PersonLegacy, IPerson>(person_legacy);
 
-            // Mapping to an anonymous object
-            try
-            {
-                var mapped_anonymous = ObjectFactory.Map<IPerson>(person_anonymous);
-            }
-            catch { }
+            // Mapping from an anonymous object uses reflection
+            var mapped_anonymous_null = ObjectFactory.Map<IPerson>(person_anonymous);
+
+            // Mapping from an anonymous object via binding
+            var mapped_anonymous = ObjectFactory.Map<IPerson>(ObjectFactory.Bind<IPersonReadOnly>(person_anonymous));
 
             // Dynamic select
             var selected_customers_10 = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();

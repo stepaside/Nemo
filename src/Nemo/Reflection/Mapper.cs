@@ -30,7 +30,7 @@ namespace Nemo.Reflection
 
             var entityMap = MappingFactory.GetEntityMap(targetType);
 
-            var matches = sourceProperties.CrossJoin(targetProperties).Where(t => t.Item2.Name == MappingFactory.GetPropertyOrColumnName(t.Item3, ignoreMappings, entityMap, false)
+            var matches = sourceProperties.CrossJoin(targetProperties).Where(t => (t.Item2.Name == t.Item3.Name || t.Item2.Name == MappingFactory.GetPropertyOrColumnName(t.Item3, ignoreMappings, entityMap, false))
                                                                                     && t.Item2.PropertyType == t.Item3.PropertyType
                                                                                     && t.Item2.PropertyType.IsPublic
                                                                                     && t.Item3.PropertyType.IsPublic

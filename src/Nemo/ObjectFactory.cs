@@ -13,6 +13,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -82,6 +83,25 @@ namespace Nemo
 
         private static readonly ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?> MapMethods = new ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?>();
 
+        private static void MapAnonymous(object source, object target)
+        {
+            if (source == null || target == null) return;
+
+            var targetType = target.GetType();
+            var entityMap = MappingFactory.GetEntityMap(targetType); 
+            var matches = TypeDescriptor.GetProperties(source).OfType<PropertyDescriptor>()
+                            .CrossJoin(Reflector.GetAllProperties(targetType).Where(p => p.CanWrite))
+                            .Where(t => (t.Item2.Name == t.Item3.Name || t.Item2.Name == MappingFactory.GetPropertyOrColumnName(t.Item3, false, entityMap, false)) 
+                                        && t.Item2.PropertyType == t.Item3.PropertyType 
+                                        && t.Item3.PropertyType.IsPublic);
+            
+            foreach (var match in matches)
+            {
+                var value = match.Item2.GetValue(source);
+                match.Item3.SetValue(target, value);
+            }
+        }
+
         public static object Map(object source, Type targetType, bool ignoreMappings = false)
         {
             return Map(source, targetType, targetType.IsInterface, ignoreMappings);
@@ -106,7 +126,12 @@ namespace Nemo
                 return null;
             });
 
-            if (genericMapMethodHandle == null) return null;
+            if (genericMapMethodHandle == null)
+            {
+                var target = Create(targetType);
+                MapAnonymous(source, target);
+                return target;
+            }
 
             var mapDelegate = Reflector.Method.CreateDelegate(genericMapMethodHandle.Value);
             return mapDelegate(null, new[] { source, isInterface, ignoreMappings });
