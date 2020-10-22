@@ -17,7 +17,7 @@ namespace Nemo.Serialization
             var output = new StringBuilder(1024);
             using (var writer = new StringWriter(output))
             {
-                JsonSerializationWriter.WriteObject(dataEntity, null, writer);
+                new JsonSerializationWriter().WriteObject(dataEntity, null, writer);
             }
             return output.ToString();
         }
@@ -25,7 +25,7 @@ namespace Nemo.Serialization
         public static void ToJson<T>(this T dataEntity, TextWriter writer)
             where T : class
         {
-            JsonSerializationWriter.WriteObject(dataEntity, null, writer);
+            new JsonSerializationWriter().WriteObject(dataEntity, null, writer);
         }
 
         public static string ToJson<T>(this IEnumerable<T> dataEntitys)
@@ -34,7 +34,7 @@ namespace Nemo.Serialization
             var output = new StringBuilder(1024);
             using (var writer = new StringWriter(output))
             {
-                JsonSerializationWriter.WriteObject(dataEntitys.ToList(), null, writer);
+                new JsonSerializationWriter().WriteObject(dataEntitys.ToList(), null, writer);
             }
             return output.ToString();
         }
@@ -42,7 +42,7 @@ namespace Nemo.Serialization
         public static void ToJson<T>(this IEnumerable<T> dataEntitys, TextWriter writer)
             where T : class
         {
-            JsonSerializationWriter.WriteObject(dataEntitys.ToList(), null, writer);
+            new JsonSerializationWriter().WriteObject(dataEntitys.ToList(), null, writer);
         }
 
         public static T FromJson<T>(this string json)

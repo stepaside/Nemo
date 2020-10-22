@@ -42,7 +42,7 @@ namespace Nemo.UnitOfWork
                             transaction = connection.BeginTransaction();
                         }
 
-                        var changes = CompareObjects((IDataEntity)dataEntity, (IDataEntity)dataEntity.Old());
+                        var changes = CompareObjects(dataEntity, dataEntity.Old());
                         var statement = GetCommitStatement(changes, connection);
                         if (!string.IsNullOrEmpty(statement.Item1))
                         {
@@ -90,7 +90,7 @@ namespace Nemo.UnitOfWork
                         {
                             transaction = connection.BeginTransaction();
                         }
-                        var changes = CompareObjects((IDataEntity)dataEntity, (IDataEntity)dataEntity.Old());
+                        var changes = CompareObjects(dataEntity, dataEntity.Old());
                         var statement = GetCommitStatement(changes, connection);
                         Console.WriteLine(statement.Item1);
 
@@ -187,7 +187,7 @@ namespace Nemo.UnitOfWork
         public static void Cascade<T>(this T dataEntity, string propertyName, object propertyValue)
             where T : class
         {
-            Cascade((IDataEntity)dataEntity, propertyName, propertyValue);
+            Cascade((object)dataEntity, propertyName, propertyValue);
         }
 
         private static void Cascade(object dataEntity, string propertyName, object propertyValue)
@@ -225,7 +225,7 @@ namespace Nemo.UnitOfWork
                 var childProperty = Reflector.GetProperty(childObject.GetType(), propertyName);
                 if (childProperty != null)
                 {
-                    ((IDataEntity)childObject).Property(propertyName, propertyValue);
+                    childObject.Property(propertyName, propertyValue);
                 }
                 Cascade(childObject, propertyName, propertyValue);
             }
@@ -666,7 +666,7 @@ namespace Nemo.UnitOfWork
                 var primaryKey = new List<Param>();
                 foreach (var primaryKeyMap in propertyMap.Values.Where(p => p.Value.IsPrimaryKey))
                 {
-                    var value = ((IDataEntity)dirtyNode.Value).Property(primaryKeyMap.Key.Name);
+                    var value = dirtyNode.Value.Property(primaryKeyMap.Key.Name);
 
                     var parameterName = primaryKeyMap.Key.Name;
                     if (primaryKeyMap.Value != null && !string.IsNullOrEmpty(primaryKeyMap.Value.ParameterName))

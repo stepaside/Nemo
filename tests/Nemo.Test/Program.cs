@@ -155,22 +155,25 @@ namespace NemoTest
             var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault(); // ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
             var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>().ToList();
 
-            //// UnitOfWork example
-            //using (ObjectScope.New(customer, autoCommit: false))
-            //{
-            //    customer.CompanyName += "Test";
-            //    customer.Orders[0].ShipPostalCode = "11111";
-            //    customer.Orders.RemoveAt(1);
+            // UnitOfWork example
+            //customer.Orders.Do(o => o.Customer = null).Consume();
+            using (ObjectScope.New(customer, autoCommit: false))
+            {
+                customer.CompanyName += "Test";
+                customer.Orders[0].ShipPostalCode = "11111";
+                customer.Orders.RemoveAt(1);
 
-            //    var o = ObjectFactory.Create<Order>();
-            //    o.CustomerId = customer.Id;
-            //    o.ShipPostalCode = "19115";
-            //    o.GenerateKey();
-            //    customer.Orders.Add(o);
+                var o = ObjectFactory.Create<Order>();
+                o.CustomerId = customer.Id;
+                o.ShipPostalCode = "19115";
+                o.GenerateKey();
+                customer.Orders.Add(o);
 
-            //    //customer.Rollback();
-            //    customer.Commit();
-            //}
+                //var previos = customer.Old();
+
+                //customer_uow.Rollback();
+                customer.Commit();
+            }
 
             //// UnitOfWork example: manual change tracking
             //using (new ObjectScope(customer, mode: ChangeTrackingMode.Manual))

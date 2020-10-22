@@ -117,8 +117,44 @@ namespace Nemo.Serialization
                 var lastState = states.Last;
                 var currentValue = lastState.Value;
                 var currentMap = currentValue.PropertyMap;
-                ReflectedProperty property;
-                if (currentMap != null && currentMap.TryGetValue(name, out property))
+                if (currentValue.ElementType != null)
+                {
+                    if (currentValue.IsSimple)
+                    {
+                        var value = ReadValue(reader, currentValue.ElementType, name);
+                        if (currentValue.List != null)
+                        {
+                            currentValue.List.Add(value);
+                        }
+                        else
+                        {
+                            currentValue.Value = value;
+                        }
+                        if (reader.NodeType != XmlNodeType.EndElement)
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        if (reader.HasAttributes)
+                        {
+                            currentValue.ElementType = Type.GetType(reader.GetAttribute("_.type") ?? "", false) ?? currentValue.ElementType;
+                            currentValue.PropertyMap = Reflector.GetPropertyNameMap(currentValue.ElementType);
+                        }
+                        item = ObjectFactory.Create(currentValue.ElementType);
+                        if (currentValue.List != null)
+                        {
+                            currentValue.List.Add(item);
+                        }
+                        else
+                        {
+                            currentValue.Value = item;
+                        }
+                        states.AddLast(new SerializationReaderState { Name = name, Item = item, PropertyMap = currentValue.PropertyMap });
+                    }
+                } 
+                else if (currentMap != null && currentMap.TryGetValue(name, out var property))
                 {
                     if (property.IsDataEntity)
                     {
@@ -177,44 +213,7 @@ namespace Nemo.Serialization
                             continue;
                         }
                     }
-                }
-                else if (currentValue.ElementType != null)
-                {
-                    if (currentValue.IsSimple)
-                    {
-                        var value = ReadValue(reader, currentValue.ElementType, name);
-                        if (currentValue.List != null)
-                        {
-                            currentValue.List.Add(value);
-                        }
-                        else
-                        {
-                            currentValue.Value = value;
-                        }
-                        if (reader.NodeType != XmlNodeType.EndElement)
-                        {
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        if (reader.HasAttributes)
-                        {
-                            currentValue.ElementType = Type.GetType(reader.GetAttribute("_.type") ?? "", false) ?? currentValue.ElementType;
-                            currentValue.PropertyMap = Reflector.GetPropertyNameMap(currentValue.ElementType);
-                        }
-                        item = ObjectFactory.Create(currentValue.ElementType);
-                        if (currentValue.List != null)
-                        {
-                            currentValue.List.Add(item);
-                        }
-                        else
-                        {
-                            currentValue.Value = item;
-                        }
-                        states.AddLast(new SerializationReaderState { Name = name, Item = item, PropertyMap = currentValue.PropertyMap });
-                    }
-                }
+                } 
 
                 if (reader.NodeType == XmlNodeType.EndElement)
                 {

@@ -37,6 +37,7 @@ namespace Nemo.Serialization
         private readonly bool _includePropertyNames;
         private readonly Stream _stream;
         private readonly Encoding _encoding;
+        private readonly Stack<object> _path;
 
         private SerializationWriter(Stream stream, SerializationMode mode, Encoding encoding)
         {
@@ -44,6 +45,7 @@ namespace Nemo.Serialization
             _encoding = encoding ?? new UTF8Encoding();
             _serializeAll = (mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
+            _path = new Stack<object>();
             Write((byte)mode);
         }
 
@@ -392,8 +394,8 @@ namespace Nemo.Serialization
         public void WriteTypeMarker(object value, IDictionary<Type, int> typeMap)
         {
             if (typeMap == null || value == null) return;
-            int index;
-            if (typeMap.TryGetValue(value.GetType(), out index))
+            
+            if (typeMap.TryGetValue(value.GetType(), out var index))
             {
                 Write(index);
             }
@@ -406,7 +408,7 @@ namespace Nemo.Serialization
 
         public void WriteObject(object value, ObjectTypeCode typeCode, IDictionary<Type, int> typeMap)
         {
-            if (value == null)
+            if (value == null || _path.Any(p => Equals(p, value)))
             {
                 Write((byte)TypeCode.Empty);
             }
@@ -481,17 +483,19 @@ namespace Nemo.Serialization
                     case ObjectTypeCode.Object:
                     {
                         var serializer = CreateDelegate(value.GetType());
+                        _path.Push(value);
                         serializer(this, new[] { value }, 1, null);
-                    }
+                        _path.Pop();
                         break;
+                    }
 
                     case ObjectTypeCode.ObjectList:
                     {
                         var items = (IList)value;
                         var serializer = CreateDelegate(value.GetType());
                         serializer(this, items, items.Count, null);
-                    }
                         break;
+                    }
 
                     case ObjectTypeCode.PolymorphicObjectList:
                     {
@@ -505,15 +509,15 @@ namespace Nemo.Serialization
                             WriteTypeMarker(item, map);
                             WriteObject(item, ObjectTypeCode.Object, map);
                         }
-                    }
                         break;
+                    }
 
                     case ObjectTypeCode.SimpleList:
                     {
                         var items = (IList)value;
                         WriteList(items);
-                    }
                         break;
+                    }
 
                     case ObjectTypeCode.ByteArray:
                         Write((byte[])value);

@@ -15,18 +15,20 @@ using System.Xml;
 
 namespace Nemo.Serialization
 {
-    public static class JsonSerializationWriter
+    public class JsonSerializationWriter
     {
-        internal delegate void JsonObjectSerializer(object values, TextWriter output, bool compact);
+        internal delegate void JsonObjectSerializer(JsonSerializationWriter writer, object values, TextWriter output, bool compact);
 
         private static readonly ConcurrentDictionary<Tuple<string, bool>, JsonObjectSerializer> Serializers = new ConcurrentDictionary<Tuple<string, bool>, JsonObjectSerializer>();
 
-        public static void Write(string value, TextWriter output)
+        private readonly Stack<object> _path = new Stack<object>();
+
+        public void Write(string value, TextWriter output)
         {
             output.Write(value);
         }
 
-        private static void WriteString(string value, TextWriter output)
+        private void WriteString(string value, TextWriter output)
         {
             var hexSeqBuffer = new char[4];
             var len = value.Length;
@@ -79,7 +81,7 @@ namespace Nemo.Serialization
             }
         }
 
-        internal static void WriteList(IList items, TextWriter output)
+        internal void WriteList(IList items, TextWriter output)
         {
             var lastIndex = items.Count - 1;
             for (int i = 0; i < items.Count; i++)
@@ -88,12 +90,12 @@ namespace Nemo.Serialization
             }
         }
 
-        internal static void WriteList<T>(IList<T> items, TextWriter output)
+        internal void WriteList<T>(IList<T> items, TextWriter output)
         {
             WriteList((IList)items, output);
         }
 
-        internal static void WriteDictionary(IDictionary map, TextWriter output)
+        internal void WriteDictionary(IDictionary map, TextWriter output)
         {
             var lastIndex = map.Count - 1;
             var index = 0;
@@ -104,19 +106,19 @@ namespace Nemo.Serialization
             }
         }
 
-        internal static void WriteDictionary<T>(IDictionary<string, T> map, TextWriter output)
+        internal void WriteDictionary<T>(IDictionary<string, T> map, TextWriter output)
         {
             WriteDictionary((IDictionary)map, output);
         }
 
-        public static void WriteObject(object value, string name, TextWriter output, bool hasMore = false, bool compact = true)
+        public void WriteObject(object value, string name, TextWriter output, bool hasMore = false, bool compact = true)
         {
             if (value != null)
             {
                 var objectType = value.GetType();
                 var typeCode = Reflector.GetObjectTypeCode(objectType);
                 var isText = false;
-                if (typeCode != ObjectTypeCode.DBNull)
+                if (typeCode != ObjectTypeCode.DBNull && !_path.Any(p => Equals(p, value)))
                 {
                     string jsonValue = null;
                     switch (typeCode)
@@ -180,7 +182,7 @@ namespace Nemo.Serialization
                             {
                                 var elementType = list[i].GetType();
                                 var serializer = CreateDelegate(elementType, isPolymorphicList);
-                                serializer(list[i], output, compact);
+                                serializer(this, list[i], output, compact);
                                 if (i < list.Count - 1)
                                 {
                                     Write(",", output);
@@ -208,7 +210,9 @@ namespace Nemo.Serialization
                         case ObjectTypeCode.Object:
                         {
                             var serializer = CreateDelegate(objectType);
-                            serializer(value, output, compact);
+                            _path.Push(value);
+                            serializer(this, value, output, compact);
+                            _path.Pop();
                             if (hasMore)
                             {
                                 Write(",", output);
@@ -268,7 +272,7 @@ namespace Nemo.Serialization
 
         private static JsonObjectSerializer GenerateDelegate(string key, Type objectType, bool isPolymorphic)
         {
-            var method = new DynamicMethod("JsonSerialize_" + key, null, new[] { typeof(object), typeof(TextWriter), typeof(bool) }, typeof(JsonSerializationWriter).Module);
+            var method = new DynamicMethod("JsonSerialize_" + key, null, new[] { typeof(JsonSerializationWriter), typeof(object), typeof(TextWriter), typeof(bool) }, typeof(JsonSerializationWriter).Module);
             var il = method.GetILGenerator();
 
             var writeObject = typeof(JsonSerializationWriter).GetMethod("WriteObject");
@@ -282,36 +286,40 @@ namespace Nemo.Serialization
 
             var properties = Reflector.GetPropertyMap(interfaceType).Where(p => p.Key.CanRead && p.Key.CanWrite && p.Key.Name != "Indexer" && !p.Key.GetCustomAttributes(typeof(DoNotSerializeAttribute), false).Any()).ToArray();
 
+            il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldstr, "{");
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Call, write);
+            il.Emit(OpCodes.Ldarg_2);
+            il.Emit(OpCodes.Callvirt, write);
 
             var index = 0;
 
             if (isPolymorphic)
             {
+                il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldstr, string.Format("\"$type\":\"{0},{1}\",", objectType.FullName, objectType.Assembly.GetName().Name));
-                il.Emit(OpCodes.Ldarg_1);
-                il.Emit(OpCodes.Call, write);
+                il.Emit(OpCodes.Ldarg_2);
+                il.Emit(OpCodes.Callvirt, write);
             }
 
             foreach (var property in properties)
             {
                 // Write property value
                 il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
                 il.EmitCastToReference(interfaceType);
                 il.EmitCall(OpCodes.Callvirt, property.Key.GetGetMethod(), null);
                 il.BoxIfNeeded(property.Key.PropertyType);
                 il.Emit(OpCodes.Ldstr, property.Key.Name);
-                il.Emit(OpCodes.Ldarg_1);
-                il.Emit(++index == properties.Length ? OpCodes.Ldc_I4_0 : OpCodes.Ldc_I4_1);
                 il.Emit(OpCodes.Ldarg_2);
-                il.Emit(OpCodes.Call, writeObject);
+                il.Emit(++index == properties.Length ? OpCodes.Ldc_I4_0 : OpCodes.Ldc_I4_1);
+                il.Emit(OpCodes.Ldarg_3);
+                il.Emit(OpCodes.Callvirt, writeObject);
             }
 
+            il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldstr, "}");
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Call, write);
+            il.Emit(OpCodes.Ldarg_2);
+            il.Emit(OpCodes.Callvirt, write);
 
             il.Emit(OpCodes.Ret);
 

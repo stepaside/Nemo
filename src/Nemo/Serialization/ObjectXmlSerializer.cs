@@ -31,7 +31,7 @@ namespace Nemo.Serialization
             where T : class
         {
             var documentElementName = documentElement ?? Xml.GetElementNameFromType<T>();
-            XmlSerializationWriter.WriteObject(dataEntity, documentElementName, output, addSchemaDeclaration);
+            new XmlSerializationWriter().WriteObject(dataEntity, documentElementName, output, addSchemaDeclaration);
         }
 
         private static string ToXml<T>(this T dataEntity, string documentElement, bool addSchemaDeclaration)

@@ -183,6 +183,7 @@ namespace NemoTest
     public class Customer 
     {
         public Customer() { }
+
         public Customer(string id, string companyName) 
         {
             Id = id;
@@ -213,7 +214,7 @@ namespace NemoTest
     
     public class Order 
     {
-        [PrimaryKey, Key]
+        [PrimaryKey, Generate.Using(typeof(UniqueNegativeNumberGenerator)), Key]
         public int OrderId
         {
             get;

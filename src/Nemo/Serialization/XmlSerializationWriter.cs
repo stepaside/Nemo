@@ -15,13 +15,15 @@ using System.Xml.Serialization;
 
 namespace Nemo.Serialization
 {
-    public static class XmlSerializationWriter
+    public class XmlSerializationWriter
     {
-        internal delegate void XmlObjectSerializer(object value, TextWriter output, bool addSchemaDeclaration);
+        internal delegate void XmlObjectSerializer(XmlSerializationWriter writer, object value, TextWriter output, bool addSchemaDeclaration);
 
         private static readonly ConcurrentDictionary<Tuple<string, bool>, XmlObjectSerializer> Serializers = new ConcurrentDictionary<Tuple<string, bool>, XmlObjectSerializer>();
 
-        public static void WriteStartElement(string name, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
+        private readonly Stack<object> _path = new Stack<object>();
+
+        public void WriteStartElement(string name, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
         {
             output.Write("<{0}", name);
             if (addSchemaDeclaration)
@@ -38,12 +40,12 @@ namespace Nemo.Serialization
             output.Write(">");
         }
 
-        public static void WriteEndElement(string name, TextWriter output)
+        public void WriteEndElement(string name, TextWriter output)
         {
             output.Write("</{0}>", name);
         }
 
-        public static void WriteEmptyElement(string name, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
+        public void WriteEmptyElement(string name, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
         {
             output.Write("<{0}", name);
             if (addSchemaDeclaration)
@@ -60,7 +62,7 @@ namespace Nemo.Serialization
             output.Write(" />");
         }
 
-        public static void WriteAttribute(string name, string value, TextWriter output)
+        public void WriteAttribute(string name, string value, TextWriter output)
         {
             if (!string.IsNullOrEmpty(value))
             {
@@ -68,7 +70,7 @@ namespace Nemo.Serialization
             }
         }
 
-        public static void WriteElement(string name, string value, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
+        public void WriteElement(string name, string value, TextWriter output, bool addSchemaDeclaration, IDictionary<string, string> attributes)
         {
             if (!string.IsNullOrEmpty(value))
             {
@@ -78,7 +80,7 @@ namespace Nemo.Serialization
             }
         }
 
-        public static void Write(string value, TextWriter output)
+        public void Write(string value, TextWriter output)
         {
             if (!string.IsNullOrEmpty(value))
             {
@@ -86,7 +88,7 @@ namespace Nemo.Serialization
             }
         }
 
-        public static void WriteList(IList items, bool isSimpleList, TextWriter output)
+        public void WriteList(IList items, bool isSimpleList, TextWriter output)
         {
             string name = null;
             if (isSimpleList && items.Count > 0)
@@ -107,12 +109,12 @@ namespace Nemo.Serialization
             }
         }
 
-        public static void WriteList<T>(IList<T> items, bool isSimpleList, TextWriter output)
+        public void WriteList<T>(IList<T> items, bool isSimpleList, TextWriter output)
         {
             WriteList((IList)items, isSimpleList, output);
         }
 
-        public static void WriteDictionary<T, U>(IDictionary<T, U> map, string name, TextWriter output)
+        public void WriteDictionary<T, U>(IDictionary<T, U> map, string name, TextWriter output)
         {
             foreach (var pair in map)
             {
@@ -121,9 +123,9 @@ namespace Nemo.Serialization
             }
         }
 
-        public static void WriteObject(object value, string name, TextWriter output, bool addSchemaDeclaration = true, IDictionary<string, string> attributes = null, Type objectType = null)
+        public void WriteObject(object value, string name, TextWriter output, bool addSchemaDeclaration = true, IDictionary<string, string> attributes = null, Type objectType = null)
         {
-            if (value != null)
+            if (value != null && !_path.Any(p => Equals(p, value)))
             {
                 objectType = objectType ?? value.GetType();
                 var typeCode = Type.GetTypeCode(objectType);
@@ -188,7 +190,9 @@ namespace Nemo.Serialization
                                             var elementType = items[i].GetType();
 
                                             var serializer = CreateDelegate(elementType, isPolymorphicList);
-                                            serializer(items[i], output, false);
+                                            _path.Push(items[i]);
+                                            serializer(this, items[i], output, false);
+                                            _path.Pop();
                                         }
                                     }
                                     else
@@ -200,7 +204,9 @@ namespace Nemo.Serialization
                                 else
                                 {
                                     var serializer = CreateDelegate(objectType);
-                                    serializer(value, output, addSchemaDeclaration);
+                                    _path.Push(value);
+                                    serializer(this, value, output, addSchemaDeclaration);
+                                    _path.Pop();
                                 }
                             }
                             break;
@@ -279,7 +285,7 @@ namespace Nemo.Serialization
 
         private static XmlObjectSerializer GenerateDelegate(string key, Type objectType, bool isPolymorphic)
         {
-            var method = new DynamicMethod("XmlSerialize_" + key, null, new[] { typeof(object), typeof(TextWriter), typeof(bool) }, typeof(XmlSerializationWriter).Module);
+            var method = new DynamicMethod("XmlSerialize_" + key, null, new[] { typeof(XmlSerializationWriter), typeof(object), typeof(TextWriter), typeof(bool) }, typeof(XmlSerializationWriter).Module);
             var il = method.GetILGenerator();
 
             var writeObject = typeof(XmlSerializationWriter).GetMethod("WriteObject");
@@ -325,35 +331,38 @@ namespace Nemo.Serialization
                     il.BoxIfNeeded(property.Value.PropertyType);
                     il.Emit(OpCodes.Ldtoken, property.Value.PropertyType);
                     il.Emit(OpCodes.Call, getTypeFromHandle);
-                    il.Emit(OpCodes.Call, getXmlValue);
+                    il.Emit(OpCodes.Callvirt, getXmlValue);
                     il.EmitCall(OpCodes.Callvirt, addItem, null);
                 }
             }
 
+            il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldstr, elementName);
-            il.Emit(OpCodes.Ldarg_1);
             il.Emit(OpCodes.Ldarg_2);
+            il.Emit(OpCodes.Ldarg_3);
             il.Emit(properties.Item1.Any() || isPolymorphic ? OpCodes.Ldloc_0 : OpCodes.Ldnull);
-            il.Emit(OpCodes.Call, writeStart);
+            il.Emit(OpCodes.Callvirt, writeStart);
 
             foreach (var property in properties.Item2)
             {
                 // Write property value
                 il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldarg_1);
                 il.EmitCastToReference(interfaceType);
                 il.EmitCall(OpCodes.Callvirt, property.Key.GetGetMethod(), null);
                 il.BoxIfNeeded(property.Key.PropertyType);
                 il.Emit(OpCodes.Ldstr, Xml.GetElementName(property.Key, property.Value.IsSimpleList));
-                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_2);
                 il.Emit(OpCodes.Ldc_I4_0);
                 il.Emit(properties.Item1.Any() || isPolymorphic ? OpCodes.Ldloc_0 : OpCodes.Ldnull);
                 il.Emit(OpCodes.Ldtoken, property.Value.PropertyType);
                 il.Emit(OpCodes.Call, getTypeFromHandle);
-                il.Emit(OpCodes.Call, writeObject);
+                il.Emit(OpCodes.Callvirt, writeObject);
             }
 
+            il.Emit(OpCodes.Ldarg_0);
             il.Emit(OpCodes.Ldstr, elementName);
-            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ldarg_2);
             il.Emit(OpCodes.Call, writeEnd);
 
             il.Emit(OpCodes.Ret);

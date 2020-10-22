@@ -8,10 +8,7 @@ namespace Nemo.UnitOfWork
 {
     internal class ChangeNode
     {
-        private readonly List<ChangeNode> _nodes = new List<ChangeNode>();
         private ObjectState? _objectState;
-        private readonly List<string> _listProperties = new List<string>();
-        private readonly List<string> _objectProperties = new List<string>();
 
         internal Type Type
         {
@@ -50,7 +47,7 @@ namespace Nemo.UnitOfWork
                 if (!_objectState.HasValue)
                 {
                     var stateCounts = new Dictionary<ObjectState, int>();
-                    foreach (var node in _nodes)
+                    foreach (var node in Nodes)
                     {
                         if (!stateCounts.ContainsKey(node.ObjectState))
                         {
@@ -82,29 +79,11 @@ namespace Nemo.UnitOfWork
             }
         }
 
-        internal List<string> ListProperties
-        {
-            get
-            {
-                return _listProperties;
-            }
-        }
+        internal List<string> ListProperties { get; } = new List<string>();
 
-        internal List<string> ObjectProperties
-        {
-            get
-            {
-                return _objectProperties;
-            }
-        }
+        internal List<string> ObjectProperties { get; } = new List<string>();
 
-        internal List<ChangeNode> Nodes
-        {
-            get
-            {
-                return _nodes;
-            }
-        }
+        internal List<ChangeNode> Nodes { get; } = new List<ChangeNode>();
 
         internal ChangeNode Parent
         {
@@ -116,7 +95,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                var parent = this.Parent;
+                var parent = Parent;
                 while (parent != null)
                 {
                     if (parent.IsObject)
@@ -133,7 +112,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return this.Parent == null;
+                return Parent == null;
             }
         }
 
@@ -141,7 +120,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return this.Parent != null && this.Count == 0;
+                return Parent != null && Count == 0;
             }
         }
 
@@ -149,7 +128,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return this.Value == null && this.ObjectState == ObjectState.Clean;
+                return Value == null && ObjectState == ObjectState.Clean;
             }
         }
 
@@ -157,8 +136,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return this.IsLeaf
-                    && (Reflector.IsSimpleType(this.Value.GetType())/* || Reflector.IsXmlDocument(this.Value)*/);
+                return IsLeaf && Value != null && Reflector.IsSimpleType(Value.GetType());
             }
         }
 
@@ -166,7 +144,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return Reflector.IsDataEntity(this.Value);
+                return Reflector.IsDataEntity(Value) || (Value != null && !Reflector.IsSimpleType(Value.GetType()));
             }
         }
 
@@ -174,7 +152,7 @@ namespace Nemo.UnitOfWork
         {
             get
             {
-                return this.Nodes.Count;
+                return Nodes.Count;
             }
         }
     }
