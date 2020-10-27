@@ -325,13 +325,13 @@ namespace Nemo.Serialization
                 {
                     il.Emit(OpCodes.Ldloc_0);
                     il.Emit(OpCodes.Ldstr, property.Value.PropertyName);
-                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldarg_1);
                     il.EmitCastToReference(interfaceType);
                     il.EmitCall(OpCodes.Callvirt, property.Key.GetGetMethod(), null);
                     il.BoxIfNeeded(property.Value.PropertyType);
                     il.Emit(OpCodes.Ldtoken, property.Value.PropertyType);
                     il.Emit(OpCodes.Call, getTypeFromHandle);
-                    il.Emit(OpCodes.Callvirt, getXmlValue);
+                    il.Emit(OpCodes.Call, getXmlValue);
                     il.EmitCall(OpCodes.Callvirt, addItem, null);
                 }
             }
