@@ -29,6 +29,6 @@ Nemo
     * Asynchronous programming
       * Async methods
       * Async LINQ Provider
- 8. Targeting .Net 4.0 and higher
+ 8. Targeting .Net 4.7.2 and .Net Standard 2.0
 
 Install [NuGet package](http://nuget.org/packages/Nemo)
