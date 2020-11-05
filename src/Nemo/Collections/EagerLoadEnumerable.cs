@@ -5,6 +5,7 @@ using Nemo.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Data.Common;
 
 namespace Nemo.Collections
 {
@@ -14,31 +15,33 @@ namespace Nemo.Collections
         private readonly Dictionary<string, Type> _sqlMap;
         private readonly List<string> _sqlOrder;
         private Func<string, IList<Type>, IEnumerable<T>> _load;
-        private readonly Expression<Func<T, bool>> _predicate;
-        private readonly DialectProvider _provider;
-        private readonly SelectOption _selectOption;
 
-        public EagerLoadEnumerable(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, IEnumerable<T>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption)
+        public EagerLoadEnumerable(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, IEnumerable<T>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount)
         {
             _sqlOrder = sql.ToList();
             _sqlMap = _sqlOrder.Zip(types, (s, t) => new { Key = s, Value = t }).ToDictionary(t => t.Key, t => t.Value);
             _load = load;
-            _predicate = predicate;
-            _provider = provider;
-            _selectOption = selectOption;
+            Predicate = predicate;
+            Provider = provider;
+            SelectOption = selectOption;
+            ConnectionName = connectionName;
+            Connection = connection;
+            Page = page;
+            PageSize = pageSize;
+            SkipCount = skipCount;
         }
 
         public IEnumerator<T> GetEnumerator()
         {
             var types = _sqlMap.Arrange(_sqlOrder, t => t.Key).Select(t => t.Value).ToArray();
             var result = _load(_sqlOrder.ToDelimitedString("; "), types);
-            
-            if (_selectOption == SelectOption.First)
+
+            if (SelectOption == SelectOption.First)
             {
                 return new List<T> { result.First() }.GetEnumerator();
             }
 
-            if (_selectOption != SelectOption.FirstOrDefault)
+            if (SelectOption != SelectOption.FirstOrDefault)
             {
                 return result.GetEnumerator();
             }
@@ -52,20 +55,21 @@ namespace Nemo.Collections
             return GetEnumerator();
         }
 
-        internal Expression<Func<T, bool>> Predicate
-        {
-            get { return _predicate; }
-        }
+        internal Expression<Func<T, bool>> Predicate { get; }
 
-        internal DialectProvider Provider
-        {
-            get { return _provider; }
-        }
+        internal DialectProvider Provider { get; }
 
-        internal SelectOption SelectOption
-        {
-            get { return _selectOption; }
-        }
+        internal SelectOption SelectOption { get; }
+
+        internal string ConnectionName { get; }
+
+        internal DbConnection Connection { get; }
+
+        internal int Page { get; }
+
+        internal int PageSize { get; }
+
+        public int SkipCount { get; }
 
         public IEnumerable<T> Union(IEnumerable<T> other)
         {

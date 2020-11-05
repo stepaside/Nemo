@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
@@ -17,18 +18,20 @@ namespace Nemo.Collections
         private readonly Dictionary<string, Type> _sqlMap;
         private readonly List<string> _sqlOrder;
         private Func<string, IList<Type>, Task<IEnumerable<T>>> _load;
-        private readonly Expression<Func<T, bool>> _predicate;
-        private readonly DialectProvider _provider;
-        private readonly SelectOption _selectOption;
-
-        public EagerLoadEnumerableAsync(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, Task<IEnumerable<T>>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption)
+       
+        public EagerLoadEnumerableAsync(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, Task<IEnumerable<T>>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount)
         {
             _sqlOrder = sql.ToList();
             _sqlMap = _sqlOrder.Zip(types, (s, t) => new { Key = s, Value = t }).ToDictionary(t => t.Key, t => t.Value);
             _load = load;
-            _predicate = predicate;
-            _provider = provider;
-            _selectOption = selectOption;
+            Predicate = predicate;
+            Provider = provider;
+            SelectOption = selectOption;
+            ConnectionName = connectionName;
+            Connection = connection;
+            Page = page;
+            PageSize = pageSize;
+            SkipCount = skipCount;
         }
 
         internal async Task<IEnumerator<T>> GetEnumeratorAsync()
@@ -42,12 +45,12 @@ namespace Nemo.Collections
                 result = multiresult.Aggregate<T>();
             }
 
-            if (_selectOption == SelectOption.First)
+            if (SelectOption == SelectOption.First)
             {
                 return new List<T> { result.First() }.GetEnumerator();
             }
 
-            if (_selectOption != SelectOption.FirstOrDefault)
+            if (SelectOption != SelectOption.FirstOrDefault)
             {
                 return result.GetEnumerator();
             }
@@ -61,20 +64,21 @@ namespace Nemo.Collections
             return new EagerLoadEnumeratorAsync(GetEnumeratorAsync);
         }
 
-        internal Expression<Func<T, bool>> Predicate
-        {
-            get { return _predicate; }
-        }
+        internal Expression<Func<T, bool>> Predicate { get; }
 
-        internal DialectProvider Provider
-        {
-            get { return _provider; }
-        }
+        internal DialectProvider Provider { get; }
 
-        internal SelectOption SelectOption
-        {
-            get { return _selectOption; }
-        }
+        internal SelectOption SelectOption { get; }
+
+        internal string ConnectionName { get; }
+
+        internal DbConnection Connection { get; }
+
+        internal int Page { get; }
+
+        internal int PageSize { get; }
+
+        public int SkipCount { get; }
 
         public EagerLoadEnumerableAsync<T> Union(EagerLoadEnumerableAsync<T> other)
         {

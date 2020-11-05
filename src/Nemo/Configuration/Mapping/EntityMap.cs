@@ -15,6 +15,7 @@ namespace Nemo.Configuration.Mapping
         protected EntityMap()
         {
             _properties = new Dictionary<string, IPropertyMap>();
+            TableName = ObjectFactory.GetUnmappedTableName(typeof(T));
         }
 
         public PropertyMap<T, U> Property<U>(Expression<Func<T, U>> selector)

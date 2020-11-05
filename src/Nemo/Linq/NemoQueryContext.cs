@@ -94,7 +94,7 @@ namespace Nemo.Linq
             }
 
             return (async ? SelectAsyncMethod : SelectMethod).MakeGenericMethod(type)
-                .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset / limit + 1 : 0, limit, null, selectOption, orderByArray });
+                .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset / limit + 1 : 0, limit, offset, null, selectOption, orderByArray });
         }
 
         private static Type Prepare(Expression expression, IDictionary<string, object> args, bool async)

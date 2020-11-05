@@ -18,8 +18,12 @@ namespace Nemo.Data
     internal static class SqlBuilder
     {
         private const string SqlSelectPagingFormatRowNumber = "SELECT {6} FROM (SELECT ROW_NUMBER() OVER (ORDER BY {2}) AS __row, {1} FROM {0}{3}) AS t WHERE __row > {4} AND __row <= {5}";
+        private const string SqlSelectSkipFormatRowNumber = "SELECT {5} FROM (SELECT ROW_NUMBER() OVER (ORDER BY {2}) AS __row, {1} FROM {0}{3}) AS t WHERE __row > {4}";
         private const string SqlSelectPagingFormatMssqlLegacy = "SELECT * FROM (SELECT TOP {5} * FROM (SELECT TOP {6} {1} FROM {0}{4} ORDER BY {2}) AS __t1 ORDER BY {3}) as __t2 ORDER BY {2}";
-		private const string SqlSelectPagingFormat = "SELECT {1} FROM {0}{2}{3} LIMIT {4} OFFSET {5}";
+        private const string SqlSelectPagingWithOrderByFormat = "SELECT {1} FROM {0}{2} ORDER BY {3} OFFSET {4} ROWS FETCH NEXT {5} ROWS ONLY";
+        private const string SqlSelectSkipWithOrderByFormat = "SELECT {1} FROM {0}{2} ORDER BY {3} OFFSET {4} ROWS";
+        private const string SqlSelectPagingFormat = "SELECT {1} FROM {0}{2}{3} LIMIT {4} OFFSET {5}";
+        private const string SqlSelectSkipFormat = "SELECT {1} FROM {0}{2}{3} OFFSET {4}";
         private const string SqlSelectFirstFormatMssql = "SELECT TOP 1 * FROM ({0}) __t";
         private const string SqlSelectFirstFormatOracle = "SELECT * FROM ({0}) __t WHERE rownum = 1";
         private const string SqlSelectFirstFormat = "SELECT * FROM ({0}) __t LIMIT 1";
@@ -115,7 +119,7 @@ namespace Nemo.Data
 
         internal static string GetSelectStatement<T, T1, T2, T3, T4>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1,
             Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
-            int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+            int page, int pageSize, int skipCount, bool first,  DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -187,20 +191,26 @@ namespace Nemo.Data
                 whereClause = string.Format(SqlWhereFormat, expression);
             }
 
-            if (page > 0 && pageSize > 0)
+            if (skipCount > 0 || (page > 0 && pageSize > 0))
             {
                 if (dialect is SqlServerLegacyDialectProvider)
                 {
                     if (orderBy.Length == 0)
                     {
-
                         var primaryKeyAscending = mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
                             .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " ASC")
                             .ToDelimitedString(",");
                         var primaryKeyDescending = mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
                             .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " DESC")
                             .ToDelimitedString(",");
-                        sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, primaryKeyAscending, primaryKeyDescending, whereClause, pageSize, page * pageSize);
+                        if (page > 0 && pageSize > 0)
+                        {
+                            sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, primaryKeyAscending, primaryKeyDescending, whereClause, pageSize, page * pageSize);
+                        }
+                        else
+                        {
+                            throw new NotSupportedException();
+                        }
                     }
                     else
                     {
@@ -214,7 +224,14 @@ namespace Nemo.Data
                         }
                         sort.Length -= 2;
                         sortReverse.Length -= 2;
-                        sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, sort, sortReverse, whereClause, pageSize, page * pageSize);
+                        if (page > 0 && pageSize > 0)
+                        {
+                            sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, sort, sortReverse, whereClause, pageSize, page * pageSize);
+                        }
+                        else
+                        {
+                            throw new NotSupportedException();
+                        }
                     }
                 }
                 else if (dialect is SqlServerDialectProvider || dialect is OracleDialectProvider)
@@ -228,7 +245,14 @@ namespace Nemo.Data
                             mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
                                 .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter)
                                 .ToDelimitedString(",");
-                        sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, primaryKey, whereClause, (page - 1) * pageSize, page * pageSize, selectionWithoutAlias);
+                        if (page > 0 && pageSize > 0)
+                        {
+                            sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, primaryKey, whereClause, (page - 1) * pageSize, page * pageSize, selectionWithoutAlias);
+                        }
+                        else
+                        {
+                            sql = string.Format(SqlSelectSkipFormatRowNumber, tableName, selection, primaryKey, whereClause, skipCount, selectionWithoutAlias);
+                        }
                     }
                     else
                     {
@@ -239,7 +263,50 @@ namespace Nemo.Data
                             sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
-                        sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, sort, whereClause, (page - 1) * pageSize, page * pageSize, selectionWithoutAlias);
+                        if (page > 0 && pageSize > 0)
+                        {
+                            sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, sort, whereClause, (page - 1) * pageSize, page * pageSize, selectionWithoutAlias);
+                        }
+                        else
+                        {
+                            sql = string.Format(SqlSelectSkipFormatRowNumber, tableName, selection, sort, whereClause, skipCount, selectionWithoutAlias);
+                        }
+                    }
+                }
+                else if (dialect is SqlServerLatestDialectProvider)
+                {
+                    if (orderBy.Length == 0)
+                    {
+                        var primaryKey =
+                            mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
+                                .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter)
+                                .ToDelimitedString(",");
+                        if (page > 0 && pageSize > 0)
+                        {
+                            sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, primaryKey, whereClause, (page - 1) * pageSize, pageSize);
+                        }
+                        else
+                        {
+                            sql = string.Format(SqlSelectSkipWithOrderByFormat, tableName, selection, whereClause, primaryKey, skipCount);
+                        }
+                    }
+                    else
+                    {
+                        var sort = new StringBuilder();
+                        foreach (var o in orderBy)
+                        {
+                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                            sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
+                        }
+                        sort.Length -= 2;
+                        if (page > 0 && pageSize > 0)
+                        {
+                            sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, sort, (page - 1) * pageSize, pageSize);
+                        }
+                        else
+                        {
+                            sql = string.Format(SqlSelectSkipWithOrderByFormat, tableName, selection, whereClause, sort, skipCount);
+                        }
                     }
                 }
                 else
@@ -256,7 +323,14 @@ namespace Nemo.Data
                         sort.Length -= 2;
 						orderByClause = sort.ToString();
                     }
-					sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, pageSize, (page - 1) * pageSize);
+                    if (page > 0 && pageSize > 0)
+                    {
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, pageSize, (page - 1) * pageSize);
+                    }
+                    else
+                    {
+                        sql = string.Format(SqlSelectSkipFormat, tableName, selection, whereClause, orderByClause, skipCount);
+                    }
                 }
             }
             else
@@ -294,34 +368,34 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+        internal static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
         {
-            return GetSelectStatement<T, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, null, null, null, null, page, pageSize, first, dialect, orderBy);
+            return GetSelectStatement<T, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, null, null, null, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join, int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+        internal static string GetSelectStatement<T, T1>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
         {
-            return GetSelectStatement<T, T1, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join, null, null, null, page, pageSize, first, dialect, orderBy);
+            return GetSelectStatement<T, T1, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join, null, null, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1, T2>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+        internal static string GetSelectStatement<T, T1, T2>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
         {
-            return GetSelectStatement<T, T1, T2, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join1, join2, null, null, page, pageSize, first, dialect, orderBy);
+            return GetSelectStatement<T, T1, T2, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join1, join2, null, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1, T2, T3>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, int page, int pageSize, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+        internal static string GetSelectStatement<T, T1, T2, T3>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
             where T3 : class
         {
-            return GetSelectStatement<T, T1, T2, T3, ObjectFactory.Fake>(predicate, join1, join2, join3, null, page, pageSize, first, dialect, orderBy);
+            return GetSelectStatement<T, T1, T2, T3, ObjectFactory.Fake>(predicate, join1, join2, join3, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
         internal static string GetSelectCountStatement<T>(Expression<Func<T, bool>> predicate, DialectProvider dialect)

@@ -56,7 +56,10 @@ namespace Nemo
             set
             {
                 _transaction = value;
-                Connection = _transaction.Connection;
+                if (_transaction?.Connection != null)
+                {
+                    Connection = _transaction.Connection;
+                }
             }
         }
         

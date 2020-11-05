@@ -8,6 +8,11 @@ using Nemo.Reflection;
 
 namespace Nemo.Data
 {
+    public class SqlServerLatestDialectProvider : SqlServerDialectProvider
+    {
+        public static new SqlServerLatestDialectProvider Instance = new SqlServerLatestDialectProvider();
+    }
+
     public class SqlServerDialectProvider : DialectProvider
     {
         public static SqlServerDialectProvider Instance = new SqlServerDialectProvider();
