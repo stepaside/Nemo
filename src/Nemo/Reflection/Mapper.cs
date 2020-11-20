@@ -126,16 +126,9 @@ namespace Nemo.Reflection
                         return Tuple.Create(typeof(DBNullableTypeConverter<>).MakeGenericType(propertyType), interfaceType);
                     }
                 }
-                else if (property.IsSimpleType)
+                else if (property.IsSimpleType && property.PropertyType.IsEnum)
                 {
-                    if (property.PropertyType.IsEnum)
-                    {
-                        return Tuple.Create(typeof(EnumConverter<>).MakeGenericType(property.PropertyType), interfaceType);
-                    }
-                    else
-                    {
-                        return Tuple.Create(typeof(SimpleTypeConverter<>).MakeGenericType(property.PropertyType), interfaceType);
-                    }
+                    return Tuple.Create(typeof(EnumConverter<>).MakeGenericType(property.PropertyType), interfaceType);
                 }
                 else if (property.PropertyType == typeof(byte[]))
                 {
