@@ -54,6 +54,8 @@ namespace Nemo.Configuration
 
         public ILogProvider LogProvider { get; private set; }
 
+        public bool AutoTypeCoercion { get; private set; }
+
 #if NETSTANDARD
         public IConfigurationRoot SystemConfiguration { get; private set; }
 #endif
@@ -157,6 +159,12 @@ namespace Nemo.Configuration
             return this;
         }
 
+        public IConfiguration SetAutoTypeCoercion(bool value)
+        {
+            AutoTypeCoercion = value;
+            return this;
+        }
+
 #if NETSTANDARD
         public IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration)
         {
@@ -198,6 +206,8 @@ namespace Nemo.Configuration
             mergedConfig.SetHiLoTableName(_hiLoTableName ?? configuration.HiLoTableName);
 
             mergedConfig.SetLogProvider(LogProvider ?? configuration.LogProvider);
+
+            mergedConfig.SetAutoTypeCoercion(AutoTypeCoercion || configuration.AutoTypeCoercion);
 
 #if NETSTANDARD
             mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);

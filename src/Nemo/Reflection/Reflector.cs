@@ -503,6 +503,18 @@ namespace Nemo.Reflection
             return Type.GetType(typeName, false, true);
         }
 
+        public static Type GetRecusrsiveElementType(Type collectionType)
+        {
+            var current = GetElementType(collectionType);
+            var elementType = current;
+            while (current != null)
+            {
+                elementType = current;
+                current = GetElementType(elementType);
+            }
+            return elementType;
+        }
+
         public static Type GetElementType(Type collectionType)
         {
             var ienum = FindEnumerable(collectionType);

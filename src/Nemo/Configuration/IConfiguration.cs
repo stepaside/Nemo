@@ -24,6 +24,7 @@ namespace Nemo.Configuration
         ILogProvider LogProvider { get; }
         IExecutionContext ExecutionContext { get; }
         string HiLoTableName { get; }
+        bool AutoTypeCoercion { get; }
 #if NETSTANDARD
         IConfigurationRoot SystemConfiguration { get; }
 #endif
@@ -43,6 +44,7 @@ namespace Nemo.Configuration
         IConfiguration SetExecutionContext(IExecutionContext value);
         IConfiguration SetHiLoTableName(string value);
         IConfiguration SetLogProvider(ILogProvider value);
+        IConfiguration SetAutoTypeCoercion(bool value);
 #if NETSTANDARD
         IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration);
 #endif

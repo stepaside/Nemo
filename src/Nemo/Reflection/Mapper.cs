@@ -1,8 +1,10 @@
 ﻿using Nemo.Attributes.Converters;
 using Nemo.Collections.Extensions;
+using Nemo.Configuration;
 using Nemo.Configuration.Mapping;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
 
@@ -68,6 +70,7 @@ namespace Nemo.Reflection
                 var typeConverter = MappingFactory.GetTypeConverter(getItem.ReturnType, match.Key, entityMap);
 
                 if (match.Value.IsSimpleList && typeConverter == null) continue;
+                typeConverter = MatchTypeConverter(targetType, match.Value, getItem.ReturnType, typeConverter);
 
                 il.Emit(OpCodes.Ldarg_1);
                 if (typeConverter.Item1 != null)
@@ -75,6 +78,7 @@ namespace Nemo.Reflection
                     //	New the converter
                     il.Emit(OpCodes.Newobj, typeConverter.Item1.GetConstructor(Type.EmptyTypes));
                 }
+
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldstr, MappingFactory.GetPropertyOrColumnName(match.Key, ignoreMappings, entityMap, true));
                 il.Emit(OpCodes.Callvirt, getItem);
@@ -93,6 +97,52 @@ namespace Nemo.Reflection
 
             var mapper = (PropertyMapper)method.CreateDelegate(typeof(PropertyMapper));
             return mapper;
+        }
+
+        private static Tuple<Type, Type> MatchTypeConverter(Type targetType, ReflectedProperty property, Type fromType, Tuple<Type, Type> typeConverter)
+        {
+            if (typeConverter.Item1 == null && (ConfigurationFactory.Get(targetType)?.AutoTypeCoercion).GetValueOrDefault())
+            {
+                var interfaceType = typeConverter.Item2;
+                if (interfaceType == null)
+                {
+                    interfaceType = TypeConverterAttribute.GetExpectedConverterInterfaceType(fromType, property.PropertyType);
+                }
+
+                if (property.PropertyType == typeof(string))
+                {
+                    return Tuple.Create(typeof(DBNullableStringConverter), interfaceType);
+                }
+                else if (property.IsNullableType)
+                {
+                    if (property.PropertyType.IsEnum)
+                    {
+                        var propertyType = property.PropertyType.GetEnumUnderlyingType();
+                        return Tuple.Create(typeof(NullableEnumConverter<>).MakeGenericType(propertyType), interfaceType);
+                    }
+                    else
+                    {
+                        var propertyType = Nullable.GetUnderlyingType(property.PropertyType);
+                        return Tuple.Create(typeof(DBNullableTypeConverter<>).MakeGenericType(propertyType), interfaceType);
+                    }
+                }
+                else if (property.IsSimpleType)
+                {
+                    if (property.PropertyType.IsEnum)
+                    {
+                        return Tuple.Create(typeof(EnumConverter<>).MakeGenericType(property.PropertyType), interfaceType);
+                    }
+                    else
+                    {
+                        return Tuple.Create(typeof(SimpleTypeConverter<>).MakeGenericType(property.PropertyType), interfaceType);
+                    }
+                }
+                else if (property.PropertyType == typeof(byte[]))
+                {
+                    return Tuple.Create(typeof(DBNullableByteArrayConverter).MakeGenericType(property.PropertyType), interfaceType);
+                }
+            }
+            return typeConverter;
         }
     }
 }
