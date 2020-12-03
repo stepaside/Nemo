@@ -90,6 +90,7 @@ namespace Nemo.Data
             {
                 tableName = tableName.Substring(1);
             }
+            tableName = dialect.IdentifierEscapeStartCharacter + tableName + dialect.IdentifierEscapeEndCharacter;
 
             AllTables.TryAdd(Tuple.Create(objectType, dialect), tableName);
 
