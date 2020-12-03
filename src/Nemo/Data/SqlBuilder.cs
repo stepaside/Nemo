@@ -404,7 +404,6 @@ namespace Nemo.Data
             const string aliasRoot = "r";
             var tableName = GetTableNameForSql(typeof(T), dialect) + " " + aliasRoot;
 
-            var sql = string.Empty;
             var whereClause = string.Empty;
             if (predicate != null)
             {
@@ -414,7 +413,7 @@ namespace Nemo.Data
                 whereClause = string.Format(SqlWhereFormat, expression);
             }
 
-            sql = string.Format(SqlSelectCountFormat, tableName) + whereClause;
+            var sql = string.Format(SqlSelectCountFormat, tableName) + whereClause;
             return sql;
         }
 
