@@ -15,7 +15,7 @@ namespace Nemo.Linq
     {
         private readonly NemoQueryProvider _provider;
         private readonly Expression _expression;
-
+        
         public NemoQueryable(DbConnection connection = null)
         {
             _provider = new NemoQueryProvider(connection);
@@ -46,7 +46,8 @@ namespace Nemo.Linq
             get { return typeof(T); }
         }
 
-        public Expression Expression {
+        public Expression Expression 
+        {
             get
             {
                 return _expression;

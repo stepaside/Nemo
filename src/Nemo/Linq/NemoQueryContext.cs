@@ -103,14 +103,19 @@ namespace Nemo.Linq
             while (true)
             {
                 // The expression must represent a query over the data source. 
-                if (!IsQueryOverDataSource(expression))
+                if (!IsQueryOverDataSource(expression, out var queryable))
                 {
                     throw new InvalidProgramException("Invalid query specified.");
                 }
-                
+
+                if (queryable != null)
+                {
+                    return queryable.ElementType;
+                }
+
                 var methodCall = (MethodCallExpression)expression;
 
-                var returnType = methodCall.Method.ReturnType;
+                Type returnType = methodCall.Method.ReturnType;
 
                 if (async && returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(ValueTask<>))
                 {
@@ -186,11 +191,20 @@ namespace Nemo.Linq
             return type;
         }
 
-        private static bool IsQueryOverDataSource(Expression expression)
+        private static bool IsQueryOverDataSource(Expression expression, out IQueryable queryable)
         {
             // If expression represents an unqueried IQueryable data source instance, 
             // expression is of type ConstantExpression, not MethodCallExpression. 
-            return (expression is MethodCallExpression);
+            queryable = null;
+            if (expression is MethodCallExpression) return true;
+                
+            if (expression is ConstantExpression constantExpression && constantExpression.Value is IQueryable query)
+            {
+                queryable = query;
+                return true;
+            }
+
+            return false;
         }
     }
 }
