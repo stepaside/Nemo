@@ -182,9 +182,9 @@ namespace Nemo.Reflection
 
         public int Position { get; private set; }
 
-        internal int KeyPosition { get; set; }
+        public int KeyPosition { get; internal set; }
 
-        internal int RefPosition { get; set; }
+        public int RefPosition { get; internal set; }
 
         internal bool IsBinary { get; set; }
 
