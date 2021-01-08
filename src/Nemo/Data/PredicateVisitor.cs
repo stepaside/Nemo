@@ -213,10 +213,9 @@ namespace Nemo.Data
             {
                 return "null";
             }
-            if (c.Value is bool)
+            if (c.Value is bool value)
             {
-                var o = GetQuotedValue(c.Value, c.Value.GetType());
-                return string.Format("({0}={1})", GetQuotedTrueValue(), o);
+                return value ? "(1=1)" : "(1=0)";
             }
             return GetQuotedValue(c.Value, c.Value.GetType());
         }
@@ -484,6 +483,11 @@ namespace Nemo.Data
             if (fieldType == typeof(decimal))
             {
                 return ((decimal)value).ToString(CultureInfo.InvariantCulture);
+            }
+
+            if (fieldType == typeof(bool))
+            {
+                return $"'{value}'";
             }
 
             return !Reflector.IsNumeric(fieldType) ? "'" + EscapeParam(value) + "'" : value.ToString();

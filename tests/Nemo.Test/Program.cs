@@ -95,6 +95,8 @@ namespace NemoTest
                                         orderby c.Id ascending
                                         select c).Take(10).Skip(selected_customers_A_count).ToList();
 
+            var allCustomers = new NemoQueryable<Customer>().Where(t => true).ToList();
+
             var linqCustomer = new NemoQueryable<Customer>().FirstOrDefault(c => c.Id == "ALFKI");
 
             var linqCustomersAsync = new NemoQueryableAsync<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefaultAsync().Result;
