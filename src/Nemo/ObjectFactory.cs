@@ -1172,6 +1172,10 @@ namespace Nemo
 
                         dbParam.DbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
                     }
+                    else if (parameter.DbType != null)
+                    {
+                        dbParam.DbType = parameter.DbType.Value;
+                    }
 
                     if (dbParam.Direction == ParameterDirection.Output)
                     {
