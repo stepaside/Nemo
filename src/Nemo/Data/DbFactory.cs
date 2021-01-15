@@ -20,6 +20,7 @@ namespace Nemo.Data
         public const string ProviderInvariantSqlite = "System.Data.SQLite";
         public const string ProviderInvariantOracle = "Oracle.DataAccess.Client";
         public const string ProviderInvariantPostgres = "Npgsql";
+        public const string ProviderInvariantSqlCore = "Microsoft.Data.SqlClient";
 
         private static string GetDefaultConnectionName(Type objectType)
         {
@@ -258,6 +259,11 @@ namespace Nemo.Data
                 return ProviderInvariantSql;
             }
 
+            if (connectionType == "microsoft.data.sqlclient.sqlconnection")
+            {
+                return ProviderInvariantSqlCore;
+            }
+
             if (connectionType == "system.data.sqlite.sqliteconnection" || connectionType == "microsoft.data.sqlite.sqliteconnection")
             {
                 return ProviderInvariantSqlite;
@@ -295,6 +301,11 @@ namespace Nemo.Data
                 return GetDbProviderFactory(DataAccessProviderTypes.SqlServer);
             }
 
+            if (providerName == "microsoft.data.sqlclient")
+            {
+                return GetDbProviderFactory(DataAccessProviderTypes.SqlServerCore);
+            }
+
             if (providerName == "system.data.sqlite" || providerName == "microsoft.data.sqlite")
             {
                 return GetDbProviderFactory(DataAccessProviderTypes.SqLite);
@@ -323,6 +334,11 @@ namespace Nemo.Data
             if (type == DataAccessProviderTypes.SqlServer)
             {
                 return SqlClientFactory.Instance; // this library has a ref to SqlClient so this works
+            }
+
+            if (type == DataAccessProviderTypes.SqlServerCore)
+            {
+                return GetDbProviderFactory("Microsoft.Data.SqlClient.SqlClientFactory", "Microsoft.Data.SqlClient");
             }
 
             if (type == DataAccessProviderTypes.SqLite)

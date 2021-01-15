@@ -48,6 +48,8 @@ namespace Nemo.Data
                     var isLatest = version.Major >= 11;
                     return isLegacy ? SqlServerLegacyDialectProvider.Instance : (isLatest ? SqlServerLatestDialectProvider.Instance : SqlServerDialectProvider.Instance);
                 }
+                case DbFactory.ProviderInvariantSqlCore:
+                    return SqlServerLatestDialectProvider.Instance;
                 case DbFactory.ProviderInvariantMysql:
                     return MySqlDialectProvider.Instance;
                 case DbFactory.ProviderInvariantSqlite:
