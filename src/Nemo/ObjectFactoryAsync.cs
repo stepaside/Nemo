@@ -352,7 +352,7 @@ namespace Nemo
                     }
                     else
                     {
-                        result = result.AsStream();
+                        result = result.AsStream() ?? Enumerable.Empty<TResult>();
                     }
                 }
 
@@ -384,7 +384,7 @@ namespace Nemo
 
             var response = connection != null
                 ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema)
-                : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
+                : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema);
 
             if (config == null)
             {
@@ -780,7 +780,7 @@ namespace Nemo
             return response;
         }
 
-        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null)
+        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings")
         {
             var rootType = types?[0];
 
