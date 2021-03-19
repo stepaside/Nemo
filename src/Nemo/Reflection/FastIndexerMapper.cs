@@ -9,7 +9,23 @@ namespace Nemo.Reflection
     {
         static FastIndexerMapper()
         {
-            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, false);
+            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, false, true);
+        }
+
+        internal static void Map(T1 source, T2 target)
+        {
+            IndexerMapper(source, target);
+        }
+
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly Mapper.PropertyMapper IndexerMapper;
+    }
+
+    internal class FastStrictIndexerMapper<T1, T2>
+    {
+        static FastStrictIndexerMapper()
+        {
+            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, false, false);
         }
 
         internal static void Map(T1 source, T2 target)
@@ -25,7 +41,23 @@ namespace Nemo.Reflection
     {
         static FastExactIndexerMapper()
         {
-            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, true);
+            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, true, true);
+        }
+
+        internal static void Map(T1 source, T2 target)
+        {
+            IndexerMapper(source, target);
+        }
+
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly Mapper.PropertyMapper IndexerMapper;
+    }
+
+    internal class FastStrictExactIndexerMapper<T1, T2>
+    {
+        static FastStrictExactIndexerMapper()
+        {
+            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, true, false);
         }
 
         internal static void Map(T1 source, T2 target)

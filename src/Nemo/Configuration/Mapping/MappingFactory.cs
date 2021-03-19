@@ -7,6 +7,8 @@ using Nemo.Attributes.Converters;
 using Nemo.Reflection;
 using System.Reflection;
 using Nemo.Attributes;
+using System.Data;
+using Nemo.Fn;
 
 namespace Nemo.Configuration.Mapping
 {
@@ -112,6 +114,49 @@ namespace Nemo.Configuration.Mapping
             }
 
             return TypeConverterAttribute.GetTypeConverter(fromType, property);
+        }
+
+        internal static object GetItem(IDictionary<string, object> source, string name)
+        {
+            if (source != null && source.TryGetValue(name, out var value))
+            {
+                return value;
+            }
+
+            return null;
+        }
+
+        internal static object GetItem(DataRow source, string name)
+        {
+            if (source != null && source.Table != null && source.Table.Columns != null && source.Table.Columns.Contains(name))
+            {
+                return source[name];
+            }
+
+            return null;
+        }
+
+        internal static object GetItem(IDataRecord source, string name)
+        {
+
+            if (source != null)
+            {
+                try
+                {
+                    return source[name];
+                }
+                catch (IndexOutOfRangeException)
+                {
+
+                }
+            }
+
+            return null;
+        }
+
+        internal static bool IsIndexer<TSource>(TSource source) where TSource : class
+        {
+            return source is IDictionary<string, object> || (source is IDataRecord) || source is DataRow;
         }
     }
 }

@@ -156,23 +156,23 @@ namespace Nemo
             where TResult : class
             where TSource : class
         {
-            var indexer = source is IDictionary<string, object> || (source is IDataRecord) || source is DataRow;
+            var indexer = MappingFactory.IsIndexer(source);
 
             if (indexer)
             {
                 if (ignoreMappings)
                 {
-                    FastExactIndexerMapper<TSource, TResult>.Map(source, target);
+                    FastStrictExactIndexerMapper<TSource, TResult>.Map(source, target);
                 }
                 else
                 {
                     if (source is IDataRecord record)
                     {
-                       FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
+                        FastStrictIndexerMapper<IDataRecord, TResult>.Map(record, target);
                     }
                     else
                     {
-                        FastIndexerMapper<TSource, TResult>.Map(source, target);
+                        FastStrictIndexerMapper<TSource, TResult>.Map(source, target);
                     }
                 }
             }
@@ -195,11 +195,11 @@ namespace Nemo
         {
             if (ignoreMappings)
             {
-                FastExactIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
+                FastStrictExactIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
             }
             else
             {
-                FastIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
+                FastStrictIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
             }
             return target;
         }
@@ -209,11 +209,11 @@ namespace Nemo
         {
             if (ignoreMappings)
             {
-                FastExactIndexerMapper<DataRow, T>.Map(source, target);
+                FastStrictExactIndexerMapper<DataRow, T>.Map(source, target);
             }
             else
             {
-                FastIndexerMapper<DataRow, T>.Map(source, target);
+                FastStrictIndexerMapper<DataRow, T>.Map(source, target);
             }
             return target;
         }
@@ -223,11 +223,11 @@ namespace Nemo
         {
             if (ignoreMappings)
             {
-                FastExactIndexerMapper<IDataRecord, T>.Map(source, target);
+                FastStrictExactIndexerMapper<IDataRecord, T>.Map(source, target);
             }
             else
             {
-                FastIndexerMapper<IDataRecord, T>.Map(source, target);
+                FastStrictIndexerMapper<IDataRecord, T>.Map(source, target);
             }
             return target;
         }
