@@ -74,7 +74,7 @@ namespace Nemo.Attributes.Converters
 			{
 				if (fromType != toType && fromType.IsAssignableFrom(toType))
 				{
-					throw new TypeConverterException(string.Format("No type converter were enforced, but there should be one from type {0} to type {1}.", fromType.FullName, toType.FullName));
+					throw new TypeConverterException($"No type converter were enforced, but there should be one from type {fromType.FullName} to type {toType.FullName}.");
 				}
 			}
 			else
@@ -84,15 +84,15 @@ namespace Nemo.Attributes.Converters
 
                 if (converterType.IsAbstract)
 				{
-                    throw new TypeConverterException(string.Format("Can't use {0} as a converter because it is abstract.", converterType.FullName));
+                    throw new TypeConverterException($"Can't use {converterType.FullName} as a converter because it is abstract.");
 				}
                 if (converterType.GetConstructor(Type.EmptyTypes) == null)
 				{
-                    throw new TypeConverterException(string.Format("Can't use {0} as a converter because it doesn't have a default constructor.", converterType.FullName));
+                    throw new TypeConverterException($"Can't use {converterType.FullName} as a converter because it doesn't have a default constructor.");
 				}
 				if (Array.IndexOf(converterIntefaces, expectedInterfaceType) == -1)
 				{
-                    throw new TypeConverterException(string.Format("Can't use {0} as a converter because it doesn't implement {1}.", converterType.FullName, expectedInterfaceType));
+                    throw new TypeConverterException($"Can't use {converterType.FullName} as a converter because it doesn't implement {expectedInterfaceType.FullName}.");
 				}
 			}
 		}
@@ -115,15 +115,15 @@ namespace Nemo.Attributes.Converters
 
 			if (interfaceType1 == null)
 			{
-				throw new TypeConverterException(string.Format("Can't use type {0} for type converter:  it isn't a type converter.", typeConverterType1.FullName));
+				throw new TypeConverterException($"Can't use type {typeConverterType1.FullName} for type converter:  it isn't a type converter.");
 			}
 			if (interfaceType2 == null)
 			{
-				throw new TypeConverterException(string.Format("Can't use type {0} for type converter:  it isn't a type converter.", typeConverterType2.FullName));
+				throw new TypeConverterException($"Can't use type {typeConverterType2.FullName} for type converter:  it isn't a type converter.");
 			}
 			if (interfaceType1.GetGenericArguments()[1] != interfaceType2.GetGenericArguments()[0])
 			{
-				throw new TypeConverterException(string.Format("Can't compose the following two type converters:  {0} & {1}.", typeConverterType1.FullName, typeConverterType2.FullName));
+				throw new TypeConverterException($"Can't compose the following two type converters:  {typeConverterType1.FullName} & {typeConverterType2.FullName}.");
 			}
 
 			var from = interfaceType1.GetGenericArguments()[0];

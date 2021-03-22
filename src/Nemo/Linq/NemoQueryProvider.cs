@@ -71,7 +71,7 @@ namespace Nemo.Linq
                 if (typeof(IList).IsAssignableFrom(typeof(TResult)))
                 {
                     var task = (Task)ToEnumerableAsyncMethod.MakeGenericMethod(type).Invoke(null, new object[] { async });
-                    await task;
+                    await task.ConfigureAwait(false);
                     var items = (IEnumerable)typeof(Task<>).MakeGenericType(typeof(IEnumerable<>).MakeGenericType(type)).GetProperty("Result").GetGetMethod().Invoke(task, null);
                     var list = List.Create(type);
                     foreach (var item in items)
@@ -88,12 +88,12 @@ namespace Nemo.Linq
                 else
                 {
                     var task = (Task<TResult>)ToEnumerableAsyncMethod.MakeGenericMethod(type).Invoke(null, new object[] { async });
-                    return await task;
+                    return await task.ConfigureAwait(false);
                 }
             }
             else
             {
-                return await ((IAsyncEnumerable<TResult>)async).FirstOrDefaultAsync();
+                return await ((IAsyncEnumerable<TResult>)async).FirstOrDefaultAsync().ConfigureAwait(false);
             }
         }
     }

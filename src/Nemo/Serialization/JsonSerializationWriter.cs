@@ -164,7 +164,7 @@ namespace Nemo.Serialization
                             break;
                         case ObjectTypeCode.ObjectMap:
                             var map = (IDictionary)value;
-                            Write(name != null ? string.Format("\"{0}\":{{", name) : "{", output);
+                            Write(name != null ? $"\"{name}\":{{" : "{", output);
                             WriteDictionary(map, output);
                             Write("}", output);
                             if (hasMore)
@@ -176,7 +176,7 @@ namespace Nemo.Serialization
                         case ObjectTypeCode.PolymorphicObjectList:
                         {
                             var list = (IList)value;
-                            Write(name != null ? string.Format("\"{0}\":[", name) : "[", output);
+                            Write(name != null ? $"\"{name}\":[" : "[", output);
                             var isPolymorphicList = typeCode == ObjectTypeCode.PolymorphicObjectList;
                             for (var i = 0; i < list.Count; i++)
                             {
@@ -198,7 +198,7 @@ namespace Nemo.Serialization
                         case ObjectTypeCode.SimpleList:
                         {
                             var list = (IList)value;
-                            Write(name != null ? string.Format("\"{0}\":[", name) : "[", output);
+                            Write(name != null ? $"\"{name}\":[" : "[", output);
                             WriteList(list, output);
                             Write("]", output);
                             if (hasMore)
@@ -225,7 +225,7 @@ namespace Nemo.Serialization
                     {
                         if (name != null)
                         {
-                            Write(string.Format("\"{0}\":", name), output);
+                            Write($"\"{name}\":", output);
                         }
 
                         if (isText)
@@ -256,7 +256,7 @@ namespace Nemo.Serialization
             }
             else if (!compact && !string.IsNullOrEmpty(name))
             {
-                Write(string.Format("\"{0}\":null", name), output);
+                Write($"\"{name}\":null", output);
                 if (hasMore)
                 {
                     Write(",", output);
@@ -296,7 +296,7 @@ namespace Nemo.Serialization
             if (isPolymorphic)
             {
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldstr, string.Format("\"$type\":\"{0},{1}\",", objectType.FullName, objectType.Assembly.GetName().Name));
+                il.Emit(OpCodes.Ldstr, $"\"$type\":\"{objectType.FullName},{objectType.Assembly.GetName().Name}\"");
                 il.Emit(OpCodes.Ldarg_2);
                 il.Emit(OpCodes.Callvirt, write);
             }

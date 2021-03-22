@@ -163,7 +163,7 @@ namespace System.Data
             {
                 if (DBNull.Value == value)
                 {
-                    throw DataSetUtil.InvalidCast(string.Format("Cannot cast DBNull. Value to type '{0}'. Please use a nullable type.", typeof(T).ToString()));
+                    throw DataSetUtil.InvalidCast($"Cannot cast DBNull. Value to type '{typeof(T).FullName}'. Please use a nullable type.");
                 }
                 return (T)value;
             }

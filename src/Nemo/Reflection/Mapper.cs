@@ -14,17 +14,17 @@ namespace Nemo.Reflection
     public static class Mapper
     {
         public delegate void PropertyMapper(object source, object target);
-        private static readonly ConcurrentDictionary<Tuple<Type, Type, bool, bool, bool>, PropertyMapper> Mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool, bool>, PropertyMapper>();
+        private static readonly ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper> Mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper>();
         private static readonly Dictionary<Type, MethodInfo> GetItemMethods = typeof(MappingFactory).GetMethods(BindingFlags.Static | BindingFlags.NonPublic).Where(m => m.Name == "GetItem").ToDictionary(m => m.GetParameters()[0].ParameterType, m => m);
 
-        internal static PropertyMapper CreateDelegate(Type sourceType, Type targetType, bool indexer, bool ignoreMappings, bool ignoreMissingColumns)
+        internal static PropertyMapper CreateDelegate(Type sourceType, Type targetType, bool indexer, bool strict)
         {
-            var key = Tuple.Create(sourceType, targetType, indexer, ignoreMappings, ignoreMissingColumns);
-            var mapper = Mappers.GetOrAdd(key, t => t.Item3 ? GenerateIndexerDelegate(t.Item1, t.Item2, t.Item4, t.Item5) : GenerateDelegate(t.Item1, t.Item2, t.Item4));
+            var key = Tuple.Create(sourceType, targetType, indexer, strict);
+            var mapper = Mappers.GetOrAdd(key, t => t.Item3 ? GenerateIndexerDelegate(t.Item1, t.Item2, t.Item4) : GenerateDelegate(t.Item1, t.Item2, t.Item4));
             return mapper;
         }
 
-        private static PropertyMapper GenerateDelegate(Type sourceType, Type targetType, bool ignoreMappings)
+        private static PropertyMapper GenerateDelegate(Type sourceType, Type targetType, bool strict)
         {
             var method = new DynamicMethod("Map_" + sourceType.FullName + "_" + targetType.FullName, null, new[] { typeof(object), typeof(object) });
             var il = method.GetILGenerator();
@@ -34,7 +34,7 @@ namespace Nemo.Reflection
 
             var entityMap = MappingFactory.GetEntityMap(targetType);
 
-            var matches = sourceProperties.CrossJoin(targetProperties).Where(t => (t.Item2.Name == t.Item3.Name || t.Item2.Name == MappingFactory.GetPropertyOrColumnName(t.Item3, ignoreMappings, entityMap, false))
+            var matches = sourceProperties.CrossJoin(targetProperties).Where(t => (t.Item2.Name == t.Item3.Name || t.Item2.Name == MappingFactory.GetPropertyOrColumnName(t.Item3, !strict, entityMap, false))
                                                                                     && t.Item2.PropertyType == t.Item3.PropertyType
                                                                                     && t.Item2.PropertyType.IsPublic
                                                                                     && t.Item3.PropertyType.IsPublic
@@ -56,7 +56,7 @@ namespace Nemo.Reflection
             return mapper;
         }
 
-        private static PropertyMapper GenerateIndexerDelegate(Type indexerType, Type targetType, bool ignoreMappings, bool ignoreMissingColumns)
+        private static PropertyMapper GenerateIndexerDelegate(Type indexerType, Type targetType, bool strict)
         {
             var method = new DynamicMethod("Map_" + indexerType.FullName + "_" + targetType.FullName, null, new[] { typeof(object), typeof(object) }, typeof(Mapper).Module);
             var il = method.GetILGenerator();
@@ -64,10 +64,10 @@ namespace Nemo.Reflection
             var targetProperties = Reflector.GetPropertyMap(targetType);
             var entityMap = MappingFactory.GetEntityMap(targetType);
 
-            if (!ignoreMissingColumns || !GetItemMethods.TryGetValue(indexerType, out var getItem) || getItem == null)
+            if (strict || !GetItemMethods.TryGetValue(indexerType, out var getItem) || getItem == null)
             {
                 getItem = indexerType.GetMethod("get_Item", new[] { typeof(string) });
-                ignoreMissingColumns = false;
+                strict = true;
             }
 
             var matches = targetProperties.Where(t => t.Value.IsSelectable && t.Key.PropertyType.IsPublic && t.Key.CanWrite && (t.Value.IsSimpleList || t.Value.IsSimpleType || t.Value.IsBinary));
@@ -86,14 +86,14 @@ namespace Nemo.Reflection
                 }
 
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldstr, MappingFactory.GetPropertyOrColumnName(match.Key, ignoreMappings, entityMap, true));
-                if (ignoreMissingColumns)
+                il.Emit(OpCodes.Ldstr, MappingFactory.GetPropertyOrColumnName(match.Key, false, entityMap, true));
+                if (strict)
                 {
-                    il.Emit(OpCodes.Call, getItem);
+                    il.Emit(OpCodes.Callvirt, getItem);
                 }
                 else
                 {
-                    il.Emit(OpCodes.Callvirt, getItem);
+                    il.Emit(OpCodes.Call, getItem);
                 }
                 if (typeConverter.Item1 == null)
                 {

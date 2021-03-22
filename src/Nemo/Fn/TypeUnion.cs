@@ -35,7 +35,7 @@ namespace Nemo.Fn
         {
             if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
+                throw new Exception($"TypeUnion: Cannot cast from {UnionType.Name} to {typeof(T).Name}");
             }
             return (T)((ITypeUnion)this).GetObject();
         }
@@ -83,7 +83,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return $"{GetType().Name}->{UnionType.Name}:{((ITypeUnion)this).GetObject()}";
         }
 
         #endregion
@@ -115,7 +115,7 @@ namespace Nemo.Fn
         {
             if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
+                throw new Exception($"TypeUnion: Cannot cast from {UnionType.Name} to {typeof(T).Name}");
             }
             return (T)((ITypeUnion)this).GetObject();
         }
@@ -167,7 +167,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return $"{GetType().Name}->{UnionType.Name}:{((ITypeUnion)this).GetObject()}";
         }
 
         #endregion
@@ -205,7 +205,7 @@ namespace Nemo.Fn
         {
             if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
+                throw new Exception($"TypeUnion: Cannot cast from {UnionType.Name} to {typeof(T).Name}");
             }
             return (T)((ITypeUnion)this).GetObject();
         }
@@ -261,7 +261,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return $"{GetType().Name}->{UnionType.Name}:{((ITypeUnion)this).GetObject()}";
         }
 
         #endregion
@@ -305,7 +305,7 @@ namespace Nemo.Fn
         {
             if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
+                throw new Exception($"TypeUnion: Cannot cast from {UnionType.Name} to {typeof(T).Name}");
             }
             return (T)((ITypeUnion)this).GetObject();
         }
@@ -364,7 +364,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return $"{GetType().Name}->{UnionType.Name}:{((ITypeUnion)this).GetObject()}";
         }
 
         #endregion
@@ -414,7 +414,7 @@ namespace Nemo.Fn
         {
             if (!Is<T>())
             {
-                throw new Exception(string.Format("TypeUnion: Cannot cast from {0} to {1}", UnionType.Name, typeof(T).Name));
+                throw new Exception($"TypeUnion: Cannot cast from {UnionType.Name} to {typeof(T).Name}");
             }
             return (T)((ITypeUnion)this).GetObject();
         }
@@ -477,7 +477,7 @@ namespace Nemo.Fn
 
         public override string ToString()
         {
-            return string.Format("{0}->{1}:{2}", GetType().Name, UnionType.Name, ((ITypeUnion)this).GetObject());
+            return $"{GetType().Name}->{UnionType.Name}:{((ITypeUnion)this).GetObject()}";
         }
 
         #endregion

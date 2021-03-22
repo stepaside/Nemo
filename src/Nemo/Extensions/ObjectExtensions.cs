@@ -160,7 +160,7 @@ namespace Nemo.Extensions
         {
             var parameters = GetLoadParameters(dataEntity);
 
-            var retrievedObject = (await ObjectFactory.RetrieveAsync<T>(parameters: parameters)).FirstOrDefault();
+            var retrievedObject = (await ObjectFactory.RetrieveAsync<T>(parameters: parameters).ConfigureAwait(false)).FirstOrDefault();
 
             HandleLoad(dataEntity, retrievedObject);
         }
@@ -217,7 +217,7 @@ namespace Nemo.Extensions
         {
             GetInsertParameters(dataEntity, additionalParameters, out var propertyMap, out var identityProperty, out var parameters);
             
-            var response = await ObjectFactory.InsertAsync<T>(parameters);
+            var response = await ObjectFactory.InsertAsync<T>(parameters).ConfigureAwait(false);
 
             return HandleInsert(dataEntity, parameters, identityProperty, propertyMap, response);
         }
@@ -328,7 +328,7 @@ namespace Nemo.Extensions
             Param[] parameters;
             var supportsChangeTracking = GetUpdateParameters(dataEntity, additionalParameters, out propertyMap, out outputProperties, out parameters);
 
-            var response = await ObjectFactory.UpdateAsync<T>(parameters);
+            var response = await ObjectFactory.UpdateAsync<T>(parameters).ConfigureAwait(false);
 
             return HandleUpdate(dataEntity, outputProperties, propertyMap, parameters, supportsChangeTracking, response);
         }
@@ -420,7 +420,7 @@ namespace Nemo.Extensions
         {
             var parameters = GetDeleteParameters(dataEntity);
 
-            var response = await ObjectFactory.DeleteAsync<T>(parameters);
+            var response = await ObjectFactory.DeleteAsync<T>(parameters).ConfigureAwait(false);
 
             return HandleDelete(dataEntity, response, false);
         }
@@ -446,7 +446,7 @@ namespace Nemo.Extensions
         {
             var parameters = GetDeleteParameters(dataEntity);
 
-            var response = await ObjectFactory.DestroyAsync<T>(parameters);
+            var response = await ObjectFactory.DestroyAsync<T>(parameters).ConfigureAwait(false);
 
             return HandleDelete(dataEntity, response, true);
         }
@@ -727,7 +727,7 @@ namespace Nemo.Extensions
         public static string ComputeHash<T>(this T dataEntity)
             where T : class
         {
-            var hash = Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", dataEntity.GetPrimaryKey().Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(dataEntity.GetPrimaryKey().Select(p => $"{p.Key}={p.Value}").ToDelimitedString(",")));
             var type = typeof(T);
             if (type == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
             {
@@ -742,7 +742,7 @@ namespace Nemo.Extensions
 
         internal static string ComputeHash(this SortedDictionary<string, object> values, Type objectType)
         {
-            var hash = Hash.Compute(Encoding.UTF8.GetBytes(string.Join(",", values.Select(p => string.Format("{0}={1}", p.Key, p.Value)))));
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(values.Select(p => $"{p.Key}={p.Value}").ToDelimitedString(",")));
             if (objectType == typeof(object) && Reflector.IsEmitted(objectType))
             {
                 objectType = Reflector.GetInterface(objectType);

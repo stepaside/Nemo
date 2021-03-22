@@ -18,7 +18,7 @@ namespace Nemo.Extensions
         {
             source.ThrowIfNull("source");
 
-            delimiter = delimiter ?? CultureInfo.CurrentCulture.TextInfo.ListSeparator;
+            delimiter ??= CultureInfo.CurrentCulture.TextInfo.ListSeparator;
 
             var sb = new StringBuilder();
             foreach (var value in source)

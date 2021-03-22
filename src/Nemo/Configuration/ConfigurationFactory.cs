@@ -53,7 +53,7 @@ namespace Nemo.Configuration
             var globalConfig = DefaultConfiguration;
             var configurationKey = type.FullName + "/Configuration";
             var config = (IConfiguration)globalConfig.ExecutionContext.Get(configurationKey);
-            return config != null ? config.Merge(globalConfig) : globalConfig;
+            return config ?? globalConfig;
         }
 
         public static void Set<T>(IConfiguration configuration)
@@ -64,8 +64,11 @@ namespace Nemo.Configuration
 
         public static void Set(Type type, IConfiguration configuration)
         {
+            if (configuration == null) return;
+
+            var globalConfig = DefaultConfiguration;
             var configurationKey = type.FullName + "/Configuration";
-            DefaultConfiguration.ExecutionContext.Set(configurationKey, configuration);
+            globalConfig.ExecutionContext.Set(configurationKey, configuration.Merge(globalConfig));
         }
 
     }

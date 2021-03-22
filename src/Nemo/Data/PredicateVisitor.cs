@@ -85,7 +85,7 @@ namespace Nemo.Data
                 if (m.Expression != null)
                 {
                     var r = VisitMemberAccess<T>(m, dialect, alias);
-                    return string.Format("{0}={1}", r, GetQuotedTrueValue());
+                    return $"{r}={GetQuotedTrueValue()}";
                 }
             }
             return Visit<T>(lambda.Body, dialect, alias);
@@ -101,7 +101,7 @@ namespace Nemo.Data
                 if (m != null && m.Expression != null)
                 {
                     string r = VisitMemberAccess<T>(m, dialect, alias);
-                    left = string.Format("{0}={1}", r, GetQuotedTrueValue());
+                    left = $"{r}={GetQuotedTrueValue()}";
                 }
                 else
                 {
@@ -111,7 +111,7 @@ namespace Nemo.Data
                 if (m != null && m.Expression != null)
                 {
                     string r = VisitMemberAccess<T>(m, dialect, alias);
-                    right = string.Format("{0}={1}", r, GetQuotedTrueValue());
+                    right = $"{r}={GetQuotedTrueValue()}";
                 }
                 else
                 {
@@ -140,7 +140,7 @@ namespace Nemo.Data
             {
                 case "MOD":
                 case "COALESCE":
-                    return string.Format("{0}({1},{2})", operand, left, right);
+                    return $"{operand}({left},{right})";
                 default:
                     return left + " " + operand + " " + right;
             }
@@ -166,10 +166,10 @@ namespace Nemo.Data
                 var parentPropertyMap = Reflector.GetPropertyMap(typeof(T));
                 var whereClause =
                     parentPropertyMap.Where(p => p.Value.IsPrimaryKey)
-                        .Select(p => string.Format("{3}.{0}{2}{1} = {0}{4}{1}.{0}{2}{1}", dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter, p.Value.MappedColumnName, alias ?? (dialect.IdentifierEscapeStartCharacter + parentTable + dialect.IdentifierEscapeEndCharacter), childTable))
+                        .Select(p => $"{alias ?? (dialect.IdentifierEscapeStartCharacter + parentTable + dialect.IdentifierEscapeEndCharacter)}.{dialect.IdentifierEscapeStartCharacter}{p.Value.MappedColumnName}{dialect.IdentifierEscapeEndCharacter} = {dialect.IdentifierEscapeStartCharacter}{childTable}{dialect.IdentifierEscapeEndCharacter}.{dialect.IdentifierEscapeStartCharacter}{p.Value.MappedColumnName}{dialect.IdentifierEscapeEndCharacter}")
                         .ToDelimitedString(" AND ");
 
-                return string.Format("(SELECT COUNT(*) FROM {0}{1}{2} WHERE {3})", dialect.IdentifierEscapeStartCharacter, childTable, dialect.IdentifierEscapeEndCharacter, whereClause);
+                return $"(SELECT COUNT(*) FROM {dialect.IdentifierEscapeStartCharacter}{childTable}{dialect.IdentifierEscapeEndCharacter} WHERE {whereClause})";
             }
 
             var member = Expression.Convert(m, typeof(object));
@@ -250,33 +250,30 @@ namespace Nemo.Data
             switch (m.Method.Name)
             {
                 case "ToUpper":
-                    return string.Format("upper({0})", r);
+                    return $"upper({r})";
                 case "ToLower":
-                    return string.Format("lower({0})", r);
+                    return $"lower({r})";
                 case "StartsWith":
-                    return string.Format("upper({0}) like '{1}%' ", r, RemoveQuote(args[0].ToString()).ToUpper());
+                    return $"upper({r}) like '{RemoveQuote(args[0].ToString()).ToUpper()}%' ";
                 case "EndsWith":
-                    return string.Format("upper({0}) like '%{1}'", r, RemoveQuote(args[0].ToString()).ToUpper());
+                    return $"upper({r}) like '%{RemoveQuote(args[0].ToString()).ToUpper()}'";
                 case "Contains":
-                    return string.Format("upper({0}) like '%{1}%'", r, RemoveQuote(args[0].ToString()).ToUpper());
+                    return $"upper({r}) like '%{RemoveQuote(args[0].ToString()).ToUpper()}%'";
                 case "Substring":
-                    var startIndex = Int32.Parse(args[0].ToString()) + 1;
+                    var startIndex = int.Parse(args[0].ToString()) + 1;
                     if (args.Count == 2)
                     {
-                        var length = Int32.Parse(args[1].ToString());
-                        return string.Format(dialect.SubstringFunction + "({0}, {1}, {2})", r, startIndex, length);
+                        var length = int.Parse(args[1].ToString());
+                        return dialect.SubstringFunction + $"({r}, {startIndex}, {length})";
                     }
-                    return string.Format(dialect.SubstringFunction + "({0}, {1})", r, startIndex);
+                    return dialect.SubstringFunction + $"({r}, {startIndex})";
                 case "Round":
                 case "Floor":
                 case "Ceiling":
                 case "Coalesce":
                 case "Abs":
                 case "Sum":
-                    return string.Format("{0}({1}{2})",
-                    m.Method.Name,
-                    r,
-                    args.Count == 1 ? string.Format(",{0}", args[0]) : "");
+                    return $"{m.Method.Name}({r}{(args.Count == 1 ? string.Format(",{0}", args[0]) : "")})";
                 case "Concat":
                     if (dialect.StringConcatenationFunction != null)
                     {
@@ -292,7 +289,7 @@ namespace Nemo.Data
                             }
                         }
                         s.Append(")");
-                        return string.Format("{0}{1}", r, s);
+                        return $"{r}{s}";
 
                     }
                     else
@@ -302,7 +299,7 @@ namespace Nemo.Data
                         {
                             s.AppendFormat(" {0} {1}", dialect.StringConcatenationOperator, e);
                         }
-                        return string.Format("{0}{1}", r, s);
+                        return $"{r}{s}";
                     }
                 case "In":
 
@@ -329,11 +326,11 @@ namespace Nemo.Data
                         }
                     }
 
-                    return string.Format("{0} {1} ({2})", r, m.Method.Name, sIn);
+                    return $"{r} {m.Method.Name} ({sIn})";
                 case "Desc":
-                    return string.Format("{0} DESC", r);
+                    return $"{r} DESC";
                 case "As":
-                    return string.Format("{0} As [{1}]", r, RemoveQuote(args[0].ToString()));
+                    return $"{r} As [{RemoveQuote(args[0].ToString())}]";
                 case "ToString":
                     return r.ToString();
                 default:
@@ -342,7 +339,7 @@ namespace Nemo.Data
                     {
                         s2.AppendFormat(",{0}", GetQuotedValue(e, e.GetType()));
                     }
-                    return string.Format("{0}({1}{2})", m.Method.Name, r, s2);
+                    return $"{m.Method.Name}({r}{s2})";
             }
         }
 
@@ -433,12 +430,12 @@ namespace Nemo.Data
         private static string GetTrueExpression()
         {
             var o = GetQuotedTrueValue();
-            return string.Format("({0}={1})", o, o);
+            return $"({o}={o})";
         }
 
         private static string GetFalseExpression()
         {
-            return string.Format("({0}={1})", GetQuotedTrueValue(), GetQuotedFalseValue());
+            return $"({GetQuotedTrueValue()}={GetQuotedFalseValue()})";
         }
 
         private static bool IsTrueExpression(string exp)

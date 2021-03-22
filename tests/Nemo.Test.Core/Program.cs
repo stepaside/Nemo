@@ -26,11 +26,12 @@ namespace NemoTest
 
             ConfigurationFactory.Configure()
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
-                .SetDefaultMaterializationMode(MaterializationMode.Partial)
+                .SetDefaultMaterializationMode(MaterializationMode.Exact)
                 .SetDefaultCacheRepresentation(CacheRepresentation.None)
                 .SetDefaultSerializationMode(SerializationMode.Compact)
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
+                .SetAutoTypeCoercion(true)
                 .SetLogging(false)
                 .SetSystemConfiguration(config);
 
@@ -41,16 +42,19 @@ namespace NemoTest
             //var selected_customers_A_count = ObjectFactory.Count<Customer>(c => c.CompanyName.StartsWith("A"));
             //var linqCustomersAsync = new NemoQueryableAsync<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefault().Result;
 
+            RunRetrieve(500, true);
             RunRetrieve(500, false);
+            RunSelect(500, true);
             RunSelect(500, false);
             RunNative(500);
-            RunEF(500);
+            RunEF(500, true);
+            RunEF(500, false);
             RunExecute(500);
             RunDapper(500);
             RunNativeWithMapper(500);
         }
 
-        private static void RunEF(int count)
+        private static void RunEF(int count, bool reuseContext)
         {
             // Warm-up
             using (var context = new EFContext())
@@ -62,20 +66,38 @@ namespace NemoTest
 
             var timer = new Stopwatch();
 
-            using (var context = new EFContext())
+            if (reuseContext)
             {
-                context.ChangeTracker.AutoDetectChangesEnabled = false;
-                context.ChangeTracker.QueryTrackingBehavior = Microsoft.EntityFrameworkCore.QueryTrackingBehavior.NoTracking;
+                using (var context = new EFContext())
+                {
+                    context.ChangeTracker.AutoDetectChangesEnabled = false;
+                    context.ChangeTracker.QueryTrackingBehavior = Microsoft.EntityFrameworkCore.QueryTrackingBehavior.NoTracking;
 
-                timer.Start();
+                    for (var i = 0; i < count; i++)
+                    {
+                        timer.Start();
+                        var customer = context.Customers.ToList();//FirstOrDefault(c => c.Id == "ALFKI");
+                        timer.Stop();
+                    }
+                }
+            }
+            else
+            {
                 for (var i = 0; i < count; i++)
                 {
-                    var customer = context.Customers.ToList();//FirstOrDefault(c => c.Id == "ALFKI");
+                    using (var context = new EFContext())
+                    {
+                        context.ChangeTracker.AutoDetectChangesEnabled = false;
+                        context.ChangeTracker.QueryTrackingBehavior = Microsoft.EntityFrameworkCore.QueryTrackingBehavior.NoTracking;
+
+                        timer.Start();
+                        var customer = context.Customers.ToList();//FirstOrDefault(c => c.Id == "ALFKI");
+                        timer.Stop();
+                    }
                 }
-                timer.Stop();
             }
 
-            Console.WriteLine("Entity Framework: " + timer.Elapsed.TotalMilliseconds);
+            Console.WriteLine($"Entity Framework{(reuseContext ? " (re-using DB context)" : "")}: {timer.Elapsed.TotalMilliseconds}");
         }
 
         private static void RunNativeWithMapper(int count)
@@ -262,12 +284,12 @@ namespace NemoTest
 
             connection.Open();
             // Warm-up
-            var result = connection.Query<Customer>(sql, new { CustomerID = "ALFKI" }, buffered: false).ToList();
+            var result = connection.Query<Customer>(sql, null /*new { CustomerID = "ALFKI" }*/, buffered: false).ToList();
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = connection.Query<Customer>(sql, new { CustomerID = "ALFKI" }, buffered: false).ToList();
+                result = connection.Query<Customer>(sql, null /*new { CustomerID = "ALFKI" }*/, buffered: false).ToList();
             }
             timer.Stop();
 

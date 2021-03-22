@@ -59,7 +59,7 @@ namespace Nemo
 
         internal static ArgumentOutOfRangeException InvalidEnumerationValue(Type type, int value)
         {
-            return ArgumentOutOfRange(string.Format("The {0} enumeration value, {1}, is not valid.", type.Name, value.ToString(System.Globalization.CultureInfo.InvariantCulture)), type.Name);
+            return ArgumentOutOfRange($"The {type.Name} enumeration value, {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}, is not valid.", type.Name);
         }
 
         internal static ArgumentOutOfRangeException InvalidDataRowState(DataRowState value)

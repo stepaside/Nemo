@@ -39,6 +39,7 @@ namespace NemoTest
                 .SetDefaultSerializationMode(SerializationMode.Compact)
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
+                .SetAutoTypeCoercion(true)
                 .SetLogging(false);
 
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };

@@ -14,7 +14,7 @@ namespace Nemo.Validation
 
         public override string ToString()
         {
-            return this.SelectMany(k => k.Value).OrderBy(e => e.PropertyName).Select(e => string.Format("{0}: {1}", e.PropertyName, e.ErrorMessage)).ToDelimitedString("\n\r");
+            return this.SelectMany(k => k.Value).OrderBy(e => e.PropertyName).Select(e => $"{e.PropertyName}: {e.ErrorMessage}").ToDelimitedString("\n\r");
         }
     }
 }

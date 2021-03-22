@@ -102,17 +102,22 @@ namespace Nemo
             }
         }
 
-        public static object Map(object source, Type targetType, bool ignoreMappings = false)
+        public static object Map(object source, Type targetType)
         {
-            return Map(source, targetType, targetType.IsInterface, ignoreMappings);
+            return Map(source, targetType, ConfigurationFactory.Get(targetType).DefaultMaterializationMode == MaterializationMode.Exact);
         }
 
-        internal static object Map(object source, Type targetType, bool isInterface, bool ignoreMappings)
+        public static object Map(object source, Type targetType, bool strict)
+        {
+            return Map(source, targetType, targetType.IsInterface, strict);
+        }
+
+        internal static object Map(object source, Type targetType, bool isInterface, bool strict)
         {
             if (source == null) return null;
 
             var instanceType = source.GetType();
-            var key = Tuple.Create(instanceType, targetType, ignoreMappings);
+            var key = Tuple.Create(instanceType, targetType, false);
             var genericMapMethodHandle = MapMethods.GetOrAdd(key, t =>
             {
                 if (!Reflector.IsAnonymousType(instanceType))
@@ -134,25 +139,39 @@ namespace Nemo
             }
 
             var mapDelegate = Reflector.Method.CreateDelegate(genericMapMethodHandle.Value);
-            return mapDelegate(null, new[] { source, isInterface, ignoreMappings });
+            return mapDelegate(null, new[] { source, isInterface, strict });
         }
 
-        internal static TResult Map<TSource, TResult>(TSource source, bool isInterface, bool ignoreMappings)
+        internal static TResult Map<TSource, TResult>(TSource source, bool isInterface, bool strict)
             where TResult : class
             where TSource : class
         {
             var target = Create<TResult>(isInterface);
-            return Map(source, target, ignoreMappings);
+            return Map(source, target, strict);
         }
 
-        public static TResult Map<TSource, TResult>(TSource source, bool ignoreMappings = false)
+        public static TResult Map<TSource, TResult>(TSource source)
             where TResult : class
             where TSource : class
         {
-            return Map<TSource, TResult>(source, typeof(TResult).IsInterface, ignoreMappings);
+            return Map<TSource, TResult>(source, ConfigurationFactory.Get<TResult>().DefaultMaterializationMode == MaterializationMode.Exact);
         }
 
-        public static TResult Map<TSource, TResult>(TSource source, TResult target, bool ignoreMappings = false)
+        public static TResult Map<TSource, TResult>(TSource source, bool strict)
+            where TResult : class
+            where TSource : class
+        {
+            return Map<TSource, TResult>(source, typeof(TResult).IsInterface, strict);
+        }
+
+        public static TResult Map<TSource, TResult>(TSource source, TResult target)
+             where TResult : class
+            where TSource : class
+        {
+            return Map(source, target, ConfigurationFactory.Get<TResult>().DefaultMaterializationMode == MaterializationMode.Exact);
+        }
+
+        public static TResult Map<TSource, TResult>(TSource source, TResult target, bool strict)
             where TResult : class
             where TSource : class
         {
@@ -160,11 +179,7 @@ namespace Nemo
 
             if (indexer)
             {
-                if (ignoreMappings)
-                {
-                    FastStrictExactIndexerMapper<TSource, TResult>.Map(source, target);
-                }
-                else
+                if (strict)
                 {
                     if (source is IDataRecord record)
                     {
@@ -175,12 +190,23 @@ namespace Nemo
                         FastStrictIndexerMapper<TSource, TResult>.Map(source, target);
                     }
                 }
+                else
+                {
+                    if (source is IDataRecord record)
+                    {
+                        FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
+                    }
+                    else
+                    {
+                        FastIndexerMapper<TSource, TResult>.Map(source, target);
+                    }
+                }
             }
             else
             {
-                if (ignoreMappings)
+                if (strict)
                 {
-                    FastExactMapper<TSource, TResult>.Map(source, target);
+                    FastStrictMapper<TSource, TResult>.Map(source, target);
                 }
                 else
                 {
@@ -190,44 +216,62 @@ namespace Nemo
             return target;
         }
 
-        public static T Map<T>(IDictionary<string, object> source, T target, bool ignoreMappings = false)
+        public static T Map<T>(IDictionary<string, object> source, T target)
             where T : class
         {
-            if (ignoreMappings)
-            {
-                FastStrictExactIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
-            }
-            else
+            return Map(source, target, ConfigurationFactory.Get<T>().DefaultMaterializationMode == MaterializationMode.Exact);
+        }
+
+        public static T Map<T>(IDictionary<string, object> source, T target, bool strict)
+            where T : class
+        {
+            if (strict)
             {
                 FastStrictIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
             }
+            else
+            {
+                FastIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
+            }
             return target;
         }
 
-        public static T Map<T>(DataRow source, T target, bool ignoreMappings = false)
+        public static T Map<T>(DataRow source, T target)
+           where T : class
+        {
+            return Map(source, target, ConfigurationFactory.Get<T>().DefaultMaterializationMode == MaterializationMode.Exact);
+        }
+
+        public static T Map<T>(DataRow source, T target, bool strict)
             where T : class
         {
-            if (ignoreMappings)
-            {
-                FastStrictExactIndexerMapper<DataRow, T>.Map(source, target);
-            }
-            else
+            if (strict)
             {
                 FastStrictIndexerMapper<DataRow, T>.Map(source, target);
             }
+            else
+            {
+                FastIndexerMapper<DataRow, T>.Map(source, target);
+            }
             return target;
         }
 
-        public static T Map<T>(IDataReader source, T target, bool ignoreMappings = false)
+        public static T Map<T>(IDataReader source, T target)
+           where T : class
+        {
+            return Map(source, target, ConfigurationFactory.Get<T>().DefaultMaterializationMode == MaterializationMode.Exact);
+        }
+
+        public static T Map<T>(IDataReader source, T target, bool strict)
             where T : class
         {
-            if (ignoreMappings)
+            if (strict)
             {
-                FastStrictExactIndexerMapper<IDataRecord, T>.Map(source, target);
+                FastStrictIndexerMapper<IDataRecord, T>.Map(source, target);
             }
             else
             {
-                FastStrictIndexerMapper<IDataRecord, T>.Map(source, target);
+                FastIndexerMapper<IDataRecord, T>.Map(source, target);
             }
             return target;
         }
@@ -237,12 +281,18 @@ namespace Nemo
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="source"></param>
-        /// <param name="ignoreMappings"></param>
+        /// <param name="strict"></param>
         /// <returns></returns>
-        public static T Map<T>(object source, bool ignoreMappings = false)
+        public static T Map<T>(object source, bool strict)
             where T : class
         {
-            return (T)Map(source, typeof(T), ignoreMappings);
+            return (T)Map(source, typeof(T), strict);
+        }
+
+        public static T Map<T>(object source)
+            where T : class
+        {
+            return Map<T>(source, ConfigurationFactory.Get<T>().DefaultMaterializationMode == MaterializationMode.Exact);
         }
 
         #endregion
@@ -1323,7 +1373,7 @@ namespace Nemo
                 case IList<T> genericList:
                     return genericList;
                 case IList list:
-                    return list.Cast<object>().Select(i => mode == MaterializationMode.Exact ? Map<T>(i) : Bind<T>(i));
+                    return list.Cast<object>().Select(i => mode == MaterializationMode.Exact ? Map<T>(i, true) : Bind<T>(i));
             }
 
             return Bind<T>(value).Return();
@@ -1481,7 +1531,7 @@ namespace Nemo
                     if (!isInterface || mode == MaterializationMode.Exact)
                     {
                         var item = Create<T>(isInterface);
-                        Map(reader, item);
+                        Map(reader, item, mode == MaterializationMode.Exact);
 
                         if (map != null)
                         {
@@ -1492,7 +1542,7 @@ namespace Nemo
                                 var identity = CreateIdentity(types[i], reader);
                                 if (!references.TryGetValue(identity, out var reference))
                                 {
-                                    reference = Map((object)reader, types[i]);
+                                    reference = Map((object)reader, types[i], mode == MaterializationMode.Exact);
                                     references.Add(identity, reference);
                                 }
                                 args[i] = reference;
@@ -1595,7 +1645,7 @@ namespace Nemo
                     {
                         if (!isInterface || mode == MaterializationMode.Exact)
                         {
-                            var item = Map(reader, types[resultIndex], isInterface, false);
+                            var item = Map((object)reader, types[resultIndex], mode == MaterializationMode.Exact);
                             TrySetObjectState(item);
                             yield return TypeUnion.Create(types, item);
                         }

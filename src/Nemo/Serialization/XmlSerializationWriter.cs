@@ -317,7 +317,7 @@ namespace Nemo.Serialization
                 {
                     il.Emit(OpCodes.Ldloc_0);
                     il.Emit(OpCodes.Ldstr, "_.type");
-                    il.Emit(OpCodes.Ldstr, SecurityElement.Escape(string.Format("{0},{1}", objectType.FullName, objectType.Assembly.GetName().Name)));
+                    il.Emit(OpCodes.Ldstr, $"{objectType.FullName},{objectType.Assembly.GetName().Name}");
                     il.EmitCall(OpCodes.Callvirt, addItem, null);
                 }
 

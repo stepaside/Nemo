@@ -101,7 +101,7 @@ namespace Nemo.Utilities
                     {
                         nillable = true;
                     }
-                    schemaXml.AppendFormat("<xs:element minOccurs=\"0\" maxOccurs=\"{4}\" name=\"{0}\"{2}{3}type=\"{1}\" />", property.Value.PropertyName, Reflector.ClrToXmlType(propertyType), nillable ? " nillable=\"true\" " : " ", simpleCollection ? string.Format(" msdata:DataType=\"{0}\" ", property.Key.PropertyType.AssemblyQualifiedName) : string.Empty, "1");
+                    schemaXml.AppendFormat("<xs:element minOccurs=\"0\" maxOccurs=\"{4}\" name=\"{0}\"{2}{3}type=\"{1}\" />", property.Value.PropertyName, Reflector.ClrToXmlType(propertyType), nillable ? " nillable=\"true\" " : " ", simpleCollection ? $" msdata:DataType=\"{property.Key.PropertyType.AssemblyQualifiedName}\" " : string.Empty, "1");
                 }
 
                 schemaXml.Append("</xs:sequence></xs:complexType>");

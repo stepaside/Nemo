@@ -33,7 +33,7 @@ namespace Nemo
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
             var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName));
-            return await RetrieveScalarAsync<int>(sql, connection: connection);
+            return await RetrieveScalarAsync<int>(sql, connection: connection).ConfigureAwait(false);
         }
 
         #endregion
@@ -269,8 +269,8 @@ namespace Nemo
             where T : struct
         {
             var response = connection != null
-                ? await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema)
-                : await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema);
+                ? await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema).ConfigureAwait(false)
+                : await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema).ConfigureAwait(false);
 
             var value = response.Value;
             if (value == null)
@@ -338,7 +338,7 @@ namespace Nemo
                 Log.Capture(() => $"Not found in L1 cache: {queryKey}");
             }
 
-            result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap);
+            result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap).ConfigureAwait(false);
 
             if (queryKey != null)
             {
@@ -383,8 +383,8 @@ namespace Nemo
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
             var response = connection != null
-                ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema)
-                : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema);
+                ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema).ConfigureAwait(false)
+                : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema).ConfigureAwait(false);
 
             if (config == null)
             {
@@ -472,7 +472,7 @@ namespace Nemo
                         break;
                 }
             }
-            return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
+            return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config).ConfigureAwait(false);
         }
 
         public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
@@ -482,7 +482,7 @@ namespace Nemo
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
         }
 
         public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
@@ -491,7 +491,7 @@ namespace Nemo
             where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
         }
 
         public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
@@ -499,7 +499,7 @@ namespace Nemo
             where TResult : class
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
-            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
+            return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
         }
 
         public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
@@ -525,7 +525,7 @@ namespace Nemo
                         break;
                 }
             }
-            return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
+            return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config).ConfigureAwait(false);
         }
 
         #endregion
@@ -573,7 +573,7 @@ namespace Nemo
                 var requests = BuildBatchInsert(items, transaction, captureException, propertyMap, provider);
                 foreach (var request in requests)
                 {
-                    var response = await ExecuteAsync<T>(request);
+                    var response = await ExecuteAsync<T>(request).ConfigureAwait(false);
                     if (!response.HasErrors)
                     {
                         count += response.RecordsAffected;
@@ -605,7 +605,7 @@ namespace Nemo
         public static async Task<OperationResponse> InsertAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return await InsertAsync<T>(parameters.GetParameters(typeof(T), OperationInsert), connectionName, captureException, schema, connection, config);
+            return await InsertAsync<T>(parameters.GetParameters(typeof(T), OperationInsert), connectionName, captureException, schema, connection, config).ConfigureAwait(false);
         }
 
         public static async Task<OperationResponse> InsertAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
@@ -629,14 +629,14 @@ namespace Nemo
                 request.OperationType = OperationType.StoredProcedure;
                 request.SchemaName = schema;
             }
-            var response = await ExecuteAsync<T>(request);
+            var response = await ExecuteAsync<T>(request).ConfigureAwait(false);
             return response;
         }
 
         public static async Task<OperationResponse> UpdateAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return await UpdateAsync<T>(parameters.GetParameters(typeof(T), OperationUpdate), connectionName, captureException, schema, connection, config);
+            return await UpdateAsync<T>(parameters.GetParameters(typeof(T), OperationUpdate), connectionName, captureException, schema, connection, config).ConfigureAwait(false);
         }
 
         public static async Task<OperationResponse> UpdateAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
@@ -679,14 +679,14 @@ namespace Nemo
                 request.OperationType = OperationType.StoredProcedure;
                 request.SchemaName = schema;
             }
-            var response = await ExecuteAsync<T>(request);
+            var response = await ExecuteAsync<T>(request).ConfigureAwait(false);
             return response;
         }
 
         public static async Task<OperationResponse> DeleteAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return await DeleteAsync<T>(parameters.GetParameters(typeof(T), OperationDelete), connectionName, captureException, schema, connection, config);
+            return await DeleteAsync<T>(parameters.GetParameters(typeof(T), OperationDelete), connectionName, captureException, schema, connection, config).ConfigureAwait(false);
         }
 
         public static async Task<OperationResponse> DeleteAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
@@ -745,14 +745,14 @@ namespace Nemo
                 request.OperationType = OperationType.StoredProcedure;
                 request.SchemaName = schema;
             }
-            var response = await ExecuteAsync<T>(request);
+            var response = await ExecuteAsync<T>(request).ConfigureAwait(false);
             return response;
         }
 
         public static async Task<OperationResponse> DestroyAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return await DestroyAsync<T>(parameters.GetParameters(typeof(T), OperationDestroy), connectionName, captureException, schema, connection, config);
+            return await DestroyAsync<T>(parameters.GetParameters(typeof(T), OperationDestroy), connectionName, captureException, schema, connection, config).ConfigureAwait(false);
         }
 
         public static async Task<OperationResponse> DestroyAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
@@ -776,7 +776,7 @@ namespace Nemo
                 request.OperationType = OperationType.StoredProcedure;
                 request.SchemaName = schema;
             }
-            var response = await ExecuteAsync<T>(request);
+            var response = await ExecuteAsync<T>(request).ConfigureAwait(false);
             return response;
         }
 
@@ -950,8 +950,8 @@ namespace Nemo
             var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, ConfigurationFactory.Get<T>());
 
             var response = request.Connection != null
-                ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName)
-                : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName);
+                ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName).ConfigureAwait(false)
+                : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName).ConfigureAwait(false);
             return response;
         }
 

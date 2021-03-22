@@ -384,7 +384,7 @@ namespace Nemo.Data
                 return GetDbProviderFactory(DataAccessProviderTypes.PostgreSql);
             }
 
-            throw new NotSupportedException(string.Format("Unsupported Provider Factory specified: {0}", providerName));
+            throw new NotSupportedException($"Unsupported Provider Factory specified: {providerName}");
         }
 
         public static DbProviderFactory GetDbProviderFactory(DataAccessProviderTypes type)
@@ -419,7 +419,7 @@ namespace Nemo.Data
                 return GetDbProviderFactory("Oracle.DataAccess.Client.OracleClientFactory", "Oracle.DataAccess");
             }
 
-            throw new NotSupportedException(string.Format("Unsupported Provider Factory specified: {0}", type.ToString()));
+            throw new NotSupportedException($"Unsupported Provider Factory specified: {type}");
         }
 
         public static DbProviderFactory GetDbProviderFactory(string dbProviderFactoryTypename, string assemblyName)
@@ -436,7 +436,7 @@ namespace Nemo.Data
 
             if (instance == null)
             {
-                throw new InvalidOperationException(string.Format("Unable to retrieve DbProviderFactory for: {0}", dbProviderFactoryTypename));
+                throw new InvalidOperationException($"Unable to retrieve DbProviderFactory for: {dbProviderFactoryTypename}");
             }
 
             return instance as DbProviderFactory;
