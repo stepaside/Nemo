@@ -1,6 +1,4 @@
-﻿#if NETSTANDARD
-using Microsoft.Extensions.Configuration;
-#endif
+﻿using Microsoft.Extensions.Configuration;
 using Nemo.Logging;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
@@ -25,9 +23,7 @@ namespace Nemo.Configuration
         IExecutionContext ExecutionContext { get; }
         string HiLoTableName { get; }
         bool AutoTypeCoercion { get; }
-#if NETSTANDARD
         IConfigurationRoot SystemConfiguration { get; }
-#endif
 
         IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value);
         IConfiguration SetLogging(bool value);
@@ -45,9 +41,7 @@ namespace Nemo.Configuration
         IConfiguration SetHiLoTableName(string value);
         IConfiguration SetLogProvider(ILogProvider value);
         IConfiguration SetAutoTypeCoercion(bool value);
-#if NETSTANDARD
         IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration);
-#endif
         IConfiguration Merge(IConfiguration configuration);
     }
 }

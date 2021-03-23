@@ -4,9 +4,7 @@ using Nemo.UnitOfWork;
 using Nemo.Utilities;
 using System;
 using Nemo.Logging;
-#if NETSTANDARD
 using Microsoft.Extensions.Configuration;
-#endif
 
 namespace Nemo.Configuration
 {
@@ -56,9 +54,7 @@ namespace Nemo.Configuration
 
         public bool AutoTypeCoercion { get; private set; }
 
-#if NETSTANDARD
         public IConfigurationRoot SystemConfiguration { get; private set; }
-#endif
 
         public IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value)
         {
@@ -165,13 +161,11 @@ namespace Nemo.Configuration
             return this;
         }
 
-#if NETSTANDARD
         public IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration)
         {
             SystemConfiguration = systemConfiguration;
             return this;
         }
-#endif
 
         public IConfiguration Merge(IConfiguration configuration)
         {
@@ -209,9 +203,7 @@ namespace Nemo.Configuration
 
             mergedConfig.SetAutoTypeCoercion(AutoTypeCoercion || configuration.AutoTypeCoercion);
 
-#if NETSTANDARD
             mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);
-#endif
 
             return mergedConfig;
         }
