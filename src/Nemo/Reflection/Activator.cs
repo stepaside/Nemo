@@ -28,7 +28,7 @@ namespace Nemo.Reflection
                 .Select(t => BitConverter.GetBytes(t.GetHashCode()))
                 .Run((i, b) => Buffer.BlockCopy(b, 0, data, i * sizeof(int), b.Length));
             var key = Hash.Compute(data);
-            return ActivatorCache.GetOrAdd(key, (Func<uint, ObjectActivator>)(k => GenerateDelegate(type, types)));
+            return ActivatorCache.GetOrAdd(key, k => GenerateDelegate(type, types));
         }
 
         private static ObjectActivator GenerateDelegate(Type type, params Type[] types)

@@ -22,7 +22,7 @@ namespace Nemo.Reflection
             private static FastInvoker GenerateDelegate(RuntimeMethodHandle methodHandle)
             {
                 var methodInfo = (MethodInfo)MethodBase.GetMethodFromHandle(methodHandle);
-                var dynamicMethod = new DynamicMethod(string.Empty, typeof(object), new[] { typeof(object), typeof(object[]) }, methodInfo.DeclaringType.Module);
+                var dynamicMethod = new DynamicMethod(string.Empty, typeof(object), new[] { typeof(object), typeof(object[]) }, methodInfo.DeclaringType.Module, true);
                 var il = dynamicMethod.GetILGenerator();            
                 var ps = methodInfo.GetParameters();
                 var paramTypes = new Type[ps.Length];

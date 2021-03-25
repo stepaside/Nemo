@@ -147,7 +147,7 @@ namespace Nemo.UnitOfWork
             if (context == null) return false;
 
             var oldObject = dataEntity.Old();
-            ObjectFactory.Map(oldObject, dataEntity, true);
+            ObjectFactory.Map(oldObject, dataEntity);
             context.Cleanup();
             return true;
         }

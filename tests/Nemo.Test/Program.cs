@@ -45,6 +45,8 @@ namespace NemoTest
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
 
+            var dict = person_anonymous.ToDictionary();
+
             var company = new Company { Name = "Test Company" };
             company.Contacts.Add(new Manager { Name = "Manager 1", HireDate = new DateTime(1990, 12, 20) });
             company.Contacts.Add(new Manager { Name = "Manager 2", HireDate = new DateTime(1990, 12, 20) });
@@ -89,6 +91,15 @@ namespace NemoTest
             //var selected_customers_10_repeat = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
             var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
 
+            var max1 = ObjectFactory.Max<Order, int>(o => o.OrderId, o => o.CustomerId == "ALFKI");
+            var max2 = new NemoQueryable<Order>().Max(o => o.OrderId);
+            var max3 = new NemoQueryable<Order>().Where(o => o.CustomerId == "ALFKI").Max(o => o.OrderId);
+
+            var maxAsync = new NemoQueryableAsync<Order>().MaxAsync(o => o.OrderId).Result;
+
+            var count1 = new NemoQueryable<Customer>().Count(c => c.Id == "ALFKI");
+            var count2 = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Count();
+
             var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
             var linqCustomers = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
             var linqCustomersQuery = (from c in new NemoQueryable<Customer>()
@@ -107,7 +118,7 @@ namespace NemoTest
             var selected_customers_and_orders_include = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0).Include<ICustomer, IOrder>((c, o) => c.Id == o.CustomerId).ToList();
 
             // Simple retrieve with dynamic parameters
-            var retrieve_customer_dyn = ObjectFactory.Retrieve<Customer>(parameters: new ParamList { CustomerID => "ALFKI" }).FirstOrDefault();
+            var retrieve_customer_dyn = ObjectFactory.Retrieve<Customer>(parameters: new { CustomerID = "ALFKI" }).FirstOrDefault();
 
             // Simple retrieve with actual parameters
             var retrieve_customer = ObjectFactory.Retrieve<ICustomer>(parameters: new[] { new Param { Name = "CustomerID", Value = "ALFKI" } }).FirstOrDefault();

@@ -116,34 +116,43 @@ namespace Nemo.Configuration.Mapping
             return TypeConverterAttribute.GetTypeConverter(fromType, property);
         }
 
-        internal static object GetItem(IDictionary<string, object> source, string name)
+        internal static object GetItem(IDictionary<string, object> source, string name, object defaultValue)
         {
             if (source != null && source.TryGetValue(name, out var value))
             {
-                return value;
+                return value ?? defaultValue;
             }
 
-            return null;
+            return defaultValue;
         }
 
-        internal static object GetItem(DataRow source, string name)
+        internal static object GetItem(DataRow source, string name, object defaultValue)
         {
             if (source != null && source.Table != null && source.Table.Columns != null && source.Table.Columns.Contains(name))
             {
-                return source[name];
+                return source[name] ?? defaultValue;
             }
 
-            return null;
+            return defaultValue;
         }
 
-        internal static object GetItem(IDataRecord source, string name)
+        internal static object GetItem(IDataRecord source, string name, object defaultValue)
         {
-
             if (source != null)
             {
+                if (source is WrappedRecord record)
+                {
+                    return record[name] ?? defaultValue;
+                }
+
+                if (source is WrappedReader reader)
+                {
+                    return reader[name] ?? defaultValue;
+                }
+
                 try
                 {
-                    return source[name];
+                    return source[name] ?? defaultValue;
                 }
                 catch (IndexOutOfRangeException)
                 {
@@ -151,12 +160,26 @@ namespace Nemo.Configuration.Mapping
                 }
             }
 
-            return null;
+            return defaultValue;
         }
 
-        internal static bool IsIndexer<TSource>(TSource source) where TSource : class
+        internal static bool IsIndexer<TSource>(TSource source) 
+            where TSource : class
         {
             return source is IDictionary<string, object> || (source is IDataRecord) || source is DataRow;
+        }
+
+        internal static Type GetIndexerType(object source)
+        {
+            if (source is IDictionary<string, object>)
+            {
+                return typeof(IDictionary<string, object>);
+            }
+            if (source is IDataRecord)
+            {
+                return typeof(IDataRecord);
+            }
+            return typeof(DataRow);
         }
     }
 }

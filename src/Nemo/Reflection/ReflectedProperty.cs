@@ -196,5 +196,10 @@ namespace Nemo.Reflection
         {
             Converter = Converter == null ? typeConverter : TypeConverterAttribute.ComposeConverters(Converter, typeConverter);
         }
+
+        public override string ToString()
+        {
+            return $"{MappedPropertyName} => {MappedColumnName}";
+        }
     }
 }

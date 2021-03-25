@@ -191,7 +191,7 @@ namespace Nemo.Extensions
             where T : class
         {
             if (retrievedObject == null) return;
-            ObjectFactory.Map(retrievedObject, dataEntity, true);
+            ObjectFactory.Map(retrievedObject, dataEntity);
             ObjectFactory.TrySetObjectState(dataEntity);
         }
 

@@ -29,6 +29,7 @@ namespace Nemo.Data
         private const string SqlSelectFirstFormat = "SELECT * FROM ({0}) __t LIMIT 1";
         private const string SqlSelectFormat = "SELECT {1} FROM {0}";
         private const string SqlSelectCountFormat = "SELECT COUNT(*) FROM {0}";
+        private const string SqlSelectAggregateFormat = "SELECT {0}({1}) FROM {2}";
         private const string SqlWhereFormat = " WHERE {0}";
         private const string SqlInnerJoinClauseFormat = " INNER JOIN {0} ON {1} {2} {3}";
         private const string SqlInnerJoinFormat = "{0} INNER JOIN {1} ON {2} {3} {4}";
@@ -414,6 +415,29 @@ namespace Nemo.Data
             }
 
             var sql = string.Format(SqlSelectCountFormat, tableName) + whereClause;
+            return sql;
+        }
+
+        internal static string GetSelectAggregationStatement<T, TColumn>(string aggregateName, Expression<Func<T, TColumn>> projection, Expression<Func<T, bool>> predicate, DialectProvider dialect)
+        {
+            const string aliasRoot = "r";
+            var tableName = GetTableNameForSql(typeof(T), dialect) + " " + aliasRoot;
+
+            var whereClause = string.Empty;
+            if (predicate != null)
+            {
+                var evaluated = Evaluator.PartialEval(predicate);
+                evaluated = LocalCollectionExpander.Rewrite(evaluated);
+                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot);
+                whereClause = string.Format(SqlWhereFormat, expression);
+            }
+
+            var memberExpression = (MemberExpression)projection.Body;
+            var parentPropertyMap = Reflector.GetPropertyMap(typeof(T));
+            parentPropertyMap.TryGetValue((PropertyInfo)memberExpression.Member, out var property);
+            var columnName = property != null ? property.MappedColumnName : memberExpression.Member.Name;
+
+            var sql = string.Format(SqlSelectAggregateFormat, aggregateName, dialect.IdentifierEscapeStartCharacter + columnName + dialect.IdentifierEscapeEndCharacter, tableName) + whereClause;
             return sql;
         }
 

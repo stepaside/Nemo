@@ -9,23 +9,7 @@ namespace Nemo.Reflection
     {
         static FastMapper()
         {
-            InstanceMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), false, false); 
-        }
-
-        internal static void Map(T1 source, T2 target)
-        {
-            InstanceMapper(source, target);
-        }
-
-        // ReSharper disable once StaticMemberInGenericType
-        private static readonly Mapper.PropertyMapper InstanceMapper;
-    }
-
-    internal class FastStrictMapper<T1, T2>
-    {
-        static FastStrictMapper()
-        {
-            InstanceMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), false, true);
+            InstanceMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), false); 
         }
 
         internal static void Map(T1 source, T2 target)

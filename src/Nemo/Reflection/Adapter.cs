@@ -58,9 +58,8 @@ namespace Nemo.Reflection
             return activator(value);
         }
 
-        internal static ObjectActivator InternalBind<T>(Type objectType)
+        internal static ObjectActivator InternalBind(Type interfaceType, Type objectType)
         {
-            var interfaceType = typeof(T);
             var key = Tuple.Create(objectType, interfaceType, "Adapter");
             var type = Types.GetOrAdd(key, n =>
             {
@@ -82,9 +81,13 @@ namespace Nemo.Reflection
             return activator;
         }
 
-        internal static ObjectActivator InternalGuard<T>()
+        internal static ObjectActivator InternalBind<T>(Type objectType)
         {
-            var interfaceType = typeof(T);
+            return InternalBind(typeof(T), objectType);
+        }
+
+        internal static ObjectActivator InternalGuard(Type interfaceType)
+        {
             var key = Tuple.Create(interfaceType, interfaceType, "Guard");
             var type = Types.GetOrAdd(key, n =>
             {
@@ -105,9 +108,13 @@ namespace Nemo.Reflection
             return activator;
         }
 
-        internal static ObjectActivator InternalImplement<T>()
+        internal static ObjectActivator InternalGuard<T>()
         {
-            var interfaceType = typeof(T);
+            return InternalGuard(typeof(T));
+        }
+
+        internal static ObjectActivator InternalImplement(Type interfaceType)
+        {
             var key = Tuple.Create(interfaceType, interfaceType, "Implementation");
             var type = Types.GetOrAdd(key, n =>
             {
@@ -126,6 +133,11 @@ namespace Nemo.Reflection
 
             var activator = Activator.CreateDelegate(type);
             return activator;
+        }
+
+        internal static ObjectActivator InternalImplement<T>()
+        {
+            return InternalImplement(typeof(T));            
         }
 
         internal static ObjectActivator InternalWrap(Type objectType, Type interfaceType, bool ignoreMappings, bool fullIndexer)

@@ -208,10 +208,12 @@ namespace NemoTest
         public string Id { get; set; }
         public string CompanyName { get; set; }
         public IList<Order> Orders { get; set; }
+        public int SomeField { get; set; }
         //public List<int> ListTest { get; set; }
         //public Dictionary<int, string> MapTest { get; set; }   
     }
-    
+
+    [Nemo.Attributes.Table("Orders")]
     public class Order 
     {
         [PrimaryKey, Generate.Using(typeof(UniqueNegativeNumberGenerator)), Key]

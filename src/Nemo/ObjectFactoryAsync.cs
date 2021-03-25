@@ -21,10 +21,23 @@ namespace Nemo
 {
     public static partial class ObjectFactory
     {
-        #region Count Methods
+        #region Aggregate Methods
 
-        public static async Task<int> CountAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+        public static Task<int> CountAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
             where T : class
+        {
+            return CountAsync<T, int>(predicate, connectionName, connection);
+        }
+
+        public static Task<long> LongCountAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+            where T : class
+        {
+            return CountAsync<T, long>(predicate, connectionName, connection);
+        }
+
+        internal static Task<TResult> CountAsync<T, TResult>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+            where T : class
+            where TResult : struct
         {
             string providerName = null;
             if (connection == null)
@@ -33,7 +46,49 @@ namespace Nemo
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
             var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName));
-            return await RetrieveScalarAsync<int>(sql, connection: connection).ConfigureAwait(false);
+            return RetrieveScalarAsync<TResult>(sql, connection: connection);
+        }
+
+        public static Task<TResult> MaxAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            return AggregateAsync(AggregateNames.MAX, projection, predicate, connectionName, connection);
+        }
+
+        public static Task<TResult> MinAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            return AggregateAsync(AggregateNames.MIN, projection, predicate, connectionName, connection);
+        }
+
+        public static Task<TResult> SumAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            return AggregateAsync(AggregateNames.SUM, projection, predicate, connectionName, connection);
+        }
+
+        public static Task<TResult> AverageAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            return AggregateAsync(AggregateNames.AVG, projection, predicate, connectionName, connection);
+        }
+
+        internal static Task<TResult> AggregateAsync<T, TResult>(AggregateNames aggregateName, Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            string providerName = null;
+            if (connection == null)
+            {
+                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
+                connection = DbFactory.CreateConnection(connectionName, typeof(T));
+            }
+            var sql = SqlBuilder.GetSelectAggregationStatement(aggregateName.ToString(), projection, predicate, DialectFactory.GetProvider(connection, providerName));
+            return RetrieveScalarAsync<TResult>(sql, connection: connection);
         }
 
         #endregion
@@ -459,19 +514,7 @@ namespace Nemo
             
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            IList<Param> parameterList = null;
-            if (parameters != null)
-            {
-                switch (parameters)
-                {
-                    case ParamList list:
-                        parameterList = list.GetParameters(typeof(TResult), operation);
-                        break;
-                    case Param[] array:
-                        parameterList = array;
-                        break;
-                }
-            }
+            var parameterList = ExtractParameters<TResult>(operation, parameters);
             return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config).ConfigureAwait(false);
         }
 
@@ -512,19 +555,7 @@ namespace Nemo
             
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            IList<Param> parameterList = null;
-            if (parameters != null)
-            {
-                switch (parameters)
-                {
-                    case ParamList list:
-                        parameterList = list.GetParameters(typeof(T), operation);
-                        break;
-                    case Param[] array:
-                        parameterList = array;
-                        break;
-                }
-            }
+            var parameterList = ExtractParameters<T>(operation, parameters);
             return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config).ConfigureAwait(false);
         }
 

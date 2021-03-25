@@ -43,11 +43,12 @@ namespace Nemo.Linq
         public TResult Execute<TResult>(Expression expression)
         {
             var result = NemoQueryContext.Execute(expression, _connection);
-            if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
+            var typeName = result.GetType().Name;
+            if (typeName == "EagerLoadEnumerable`1"  && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
-                return (TResult)result;
+                return ((IEnumerable)result).OfType<TResult>().FirstOrDefault();
             }
-            return ((IEnumerable)result).OfType<TResult>().FirstOrDefault();
+            return (TResult)result;
         }
 
         public object Execute(Expression expression)
@@ -65,6 +66,7 @@ namespace Nemo.Linq
         public async ValueTask<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken token)
         {
             var async = NemoQueryContext.Execute(expression, _connection, true);
+            var typeName = async.GetType().Name;
             if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
                 var type = Reflector.GetElementType(typeof(TResult));
@@ -91,9 +93,13 @@ namespace Nemo.Linq
                     return await task.ConfigureAwait(false);
                 }
             }
-            else
+            else if (typeName == "EagerLoadEnumerableAsync`1" && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
                 return await ((IAsyncEnumerable<TResult>)async).FirstOrDefaultAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                return await ((Task<TResult>)async).ConfigureAwait(false);
             }
         }
     }

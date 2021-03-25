@@ -20,6 +20,23 @@ namespace Nemo
             Size = parameter.Size;
         }
 
+        public Param(IDataParameter parameter)
+        {
+            Name = parameter.ParameterName;
+            Direction = parameter.Direction;
+            Value = parameter.Value;
+            DbType = parameter.DbType;
+        }
+
+        public Param(IDbDataParameter parameter)
+        {
+            Name = parameter.ParameterName;
+            Direction = parameter.Direction;
+            Value = parameter.Value;
+            DbType = parameter.DbType;
+            Size = parameter.Size;
+        }
+
         public string Name { get; set; }
         public ParameterDirection Direction { get; set; }
         public object Value { get; set; }

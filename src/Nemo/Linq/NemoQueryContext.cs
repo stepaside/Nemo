@@ -16,6 +16,13 @@ namespace Nemo.Linq
         private static readonly MethodInfo SelectMethod = typeof(ObjectFactory).GetMethods().First(m => m.Name == "Select" && m.GetGenericArguments().Length == 1);
         private static readonly MethodInfo SelectAsyncMethod = typeof(ObjectFactory).GetMethods().First(m => m.Name == "SelectAsync" && m.GetGenericArguments().Length == 1);
 
+        private static readonly MethodInfo CountMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "Count" && m.GetGenericArguments().Length == 2);
+        private static readonly MethodInfo CountAsyncMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "CountAsync" && m.GetGenericArguments().Length == 2);
+        
+        private static readonly MethodInfo AggregateMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "Aggregate" && m.GetGenericArguments().Length == 2);
+        private static readonly MethodInfo AggregateAsyncMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "AggregateAsync" && m.GetGenericArguments().Length == 2);
+
+
         // Executes the expression tree that is passed to it. 
         internal static object Execute(Expression expression, DbConnection connection = null, bool async = false)
         {
@@ -29,7 +36,13 @@ namespace Nemo.Linq
             var limit = 0;
             var selectOption = SelectOption.All;
             LambdaExpression criteria = null;
+            LambdaExpression projection = null;
             var orderBy = new List<ISorting>();
+
+            var count = false;
+            var longCount = false;
+            var aggregate = false;
+            var aggregateName = string.Empty;
 
             foreach (var pair in args)
             {
@@ -50,6 +63,26 @@ namespace Nemo.Linq
                     case "FirstOrDefaultAsync":
                         selectOption = pair.Key == "First" || pair.Key == "FirstAsync" ? SelectOption.First : SelectOption.FirstOrDefault;
                         criteria = pair.Value as LambdaExpression;
+                        break;
+                    case "Count":
+                    case "LongCount":
+                    case "CountAsync":
+                    case "LongCountAsync":
+                        criteria = pair.Value as LambdaExpression;
+                        count = true;
+                        longCount = pair.Key.StartsWith("Long");
+                        break;
+                    case "Max":
+                    case "Min":
+                    case "Average":
+                    case "Sum":
+                    case "MaxAsync":
+                    case "MinAsync":
+                    case "AverageAsync":
+                    case "SumAsync":
+                        projection = pair.Value as LambdaExpression;
+                        aggregate = true;
+                        aggregateName = pair.Key;
                         break;
                     default:
                         if (pair.Key.StartsWith("OrderBy."))
@@ -93,9 +126,27 @@ namespace Nemo.Linq
                 orderByArray.SetValue(t, i);
             }
 
+            if (count)
+            {
+                return (async ? CountAsyncMethod : CountMethod).MakeGenericMethod(type, longCount ? typeof(long) : typeof(int))
+                    .Invoke(null, new object[] { criteria, null, connection });
+            }
+
+            if (aggregate)
+            {
+                var property = (PropertyInfo)(projection.Body as MemberExpression).Member;
+                return (async ? AggregateAsyncMethod : AggregateMethod).MakeGenericMethod(type, property.PropertyType)
+                   .Invoke(null, new object[] { Enum.Parse(typeof(ObjectFactory.AggregateNames), aggregateName.Replace("Async", ""), true), projection, criteria, null, connection });
+            }
+
             return (async ? SelectAsyncMethod : SelectMethod).MakeGenericMethod(type)
                 .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset / limit + 1 : 0, limit, offset, null, selectOption, orderByArray });
         }
+
+        private readonly static ISet<string> SupportedConsumeMethods = new HashSet<string>(new[] { "First", "FirstOrDefault" });
+        private readonly static ISet<string> SupportedAggregateMethods = new HashSet<string>(new[] { "Count", "LongCount", "Max", "Min", "Average", "Sum" });
+        private readonly static ISet<string> SupportedConsumeMethodsAsync = new HashSet<string>(new[] { "FirstAsync", "FirstOrDefaultAsync" });
+        private readonly static ISet<string> SupportedAggregateMethodsAsync = new HashSet<string>(new[] { "CountAsync", "LongCountAsync", "MaxAsync", "MinAsync", "AverageAsync", "SumAsync" });
 
         private static Type Prepare(Expression expression, IDictionary<string, object> args, bool async)
         {
@@ -130,11 +181,15 @@ namespace Nemo.Linq
                 var method = methodCall.Method.Name;
                 if (methodCall.Arguments[0].NodeType == ExpressionType.Constant)
                 {
-                    if (type == null && ((!async && method == "First") || (!async && method == "FirstOrDefault") || (async && method == "FirstAsync") || (async && method == "FirstOrDefaultAsync")))
+                    var lambda = (LambdaExpression)((UnaryExpression)(methodCall.Arguments[1])).Operand;
+                    if (type == null && ((!async && SupportedConsumeMethods.Contains(method)) || (async && SupportedConsumeMethodsAsync.Contains(method))))
                     {
                         type = returnType;
                     }
-                    var lambda = (LambdaExpression)((UnaryExpression)(methodCall.Arguments[1])).Operand;
+                    else if (type == null && ((!async && SupportedAggregateMethods.Contains(method)) || (async && SupportedAggregateMethodsAsync.Contains(method))))
+                    {
+                        type = lambda.Parameters[0].Type;
+                    }                   
                     args[method] = lambda;
                 }
                 else
@@ -174,7 +229,15 @@ namespace Nemo.Linq
                             }
                         }
                     }
-                    else if ((!async && method == "First") || (!async && method == "FirstOrDefault") || (async && method == "FirstAsync") || (async && method == "FirstOrDefaultAsync"))
+                    else if ((!async && SupportedConsumeMethods.Contains(method)) || (async && SupportedConsumeMethodsAsync.Contains(method)))
+                    {
+                        args[method] = null;
+                        if (async && type == null)
+                        {
+                            type = returnType;
+                        }
+                    }
+                    else if ((!async && SupportedAggregateMethods.Contains(method)) || (async && SupportedAggregateMethodsAsync.Contains(method)))
                     {
                         args[method] = null;
                         if (async && type == null)

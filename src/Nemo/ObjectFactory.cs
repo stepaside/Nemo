@@ -39,8 +39,6 @@ namespace Nemo
 
         #region Instantiation Methods
 
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle?> CreateMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle?>();
-
         public static T Create<T>()
             where T : class
         {
@@ -61,117 +59,49 @@ namespace Nemo
         {
             if (targetType == null) return null;
 
-            var genericCreateMethod = CreateMethods.GetOrAdd(targetType, type =>
-            {
-                var createMethod = typeof(ObjectFactory).GetMethods().FirstOrDefault(m => m.Name == "Create" && m.GetGenericArguments().Length == 1 && m.GetParameters().Length == 1);
-                if (createMethod != null)
-                {
-                    return createMethod.MakeGenericMethod(targetType).MethodHandle;
-                }
-                return null;
-            });
+            var value = targetType.IsInterface ? Adapter.InternalImplement(targetType)() : Reflection.Activator.CreateDelegate(targetType)();
 
-            if (genericCreateMethod == null) return null;
+            TrySetObjectState(value);
 
-            var mapDelegate = Reflector.Method.CreateDelegate(genericCreateMethod.Value);
-            return mapDelegate(null, new object[] { targetType.IsInterface });
+            return value;
         }
 
         #endregion
 
         #region Map Methods
 
-        private static readonly ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?> MapMethods = new ConcurrentDictionary<Tuple<Type, Type, bool>, RuntimeMethodHandle?>();
-
-        private static void MapAnonymous(object source, object target)
+        public static IDictionary<string, object> ToDictionary(this object source)
         {
-            if (source == null || target == null) return;
-
-            var targetType = target.GetType();
-            var entityMap = MappingFactory.GetEntityMap(targetType); 
-            var matches = TypeDescriptor.GetProperties(source).OfType<PropertyDescriptor>()
-                            .CrossJoin(Reflector.GetAllProperties(targetType).Where(p => p.CanWrite))
-                            .Where(t => (t.Item2.Name == t.Item3.Name || t.Item2.Name == MappingFactory.GetPropertyOrColumnName(t.Item3, false, entityMap, false)) 
-                                        && t.Item2.PropertyType == t.Item3.PropertyType 
-                                        && t.Item3.PropertyType.IsPublic);
-            
-            foreach (var match in matches)
-            {
-                var value = match.Item2.GetValue(source);
-                match.Item3.SetValue(target, value);
-            }
+            var mapper = Mapper.CreateDelegate(source.GetType());
+            var map = new Dictionary<string, object>();
+            mapper(source, map);
+            return map;
         }
 
         public static object Map(object source, Type targetType)
         {
-            return Map(source, targetType, ConfigurationFactory.Get(targetType).DefaultMaterializationMode == MaterializationMode.Exact);
-        }
-
-        public static object Map(object source, Type targetType, bool strict)
-        {
-            return Map(source, targetType, targetType.IsInterface, strict);
-        }
-
-        internal static object Map(object source, Type targetType, bool isInterface, bool strict)
-        {
             if (source == null) return null;
-
-            var instanceType = source.GetType();
-            var key = Tuple.Create(instanceType, targetType, false);
-            var genericMapMethodHandle = MapMethods.GetOrAdd(key, t =>
-            {
-                if (!Reflector.IsAnonymousType(instanceType))
-                {
-                    var mapMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).FirstOrDefault(m => m.Name == "Map" && m.GetGenericArguments().Length == 2 && m.GetParameters().Length == 3);
-                    if (mapMethod != null)
-                    {
-                        return mapMethod.MakeGenericMethod(t.Item1, t.Item2).MethodHandle;
-                    }
-                }
-                return null;
-            });
-
-            if (genericMapMethodHandle == null)
-            {
-                var target = Create(targetType);
-                MapAnonymous(source, target);
-                return target;
-            }
-
-            var mapDelegate = Reflector.Method.CreateDelegate(genericMapMethodHandle.Value);
-            return mapDelegate(null, new[] { source, isInterface, strict });
+            var target = Create(targetType);
+            var indexer = MappingFactory.IsIndexer(source);
+            Mapper.CreateDelegate(indexer ? MappingFactory.GetIndexerType(source) : source.GetType(), targetType, indexer)(source, target);            
+            return target;
         }
 
-        internal static TResult Map<TSource, TResult>(TSource source, bool isInterface, bool strict)
-            where TResult : class
-            where TSource : class
+        public static T Map<T>(object source)
+            where T : class
         {
-            var target = Create<TResult>(isInterface);
-            return Map(source, target, strict);
+            return (T)Map(source, typeof(T));
         }
 
         public static TResult Map<TSource, TResult>(TSource source)
             where TResult : class
             where TSource : class
         {
-            return Map<TSource, TResult>(source, ConfigurationFactory.Get<TResult>().DefaultMaterializationMode == MaterializationMode.Exact);
-        }
-
-        public static TResult Map<TSource, TResult>(TSource source, bool strict)
-            where TResult : class
-            where TSource : class
-        {
-            return Map<TSource, TResult>(source, typeof(TResult).IsInterface, strict);
-        }
+            var target = Create<TResult>(typeof(TResult).IsInterface);
+            return Map(source, target);
+        }   
 
         public static TResult Map<TSource, TResult>(TSource source, TResult target)
-             where TResult : class
-            where TSource : class
-        {
-            return Map(source, target, ConfigurationFactory.Get<TResult>().DefaultMaterializationMode == MaterializationMode.Exact);
-        }
-
-        public static TResult Map<TSource, TResult>(TSource source, TResult target, bool strict)
             where TResult : class
             where TSource : class
         {
@@ -179,120 +109,74 @@ namespace Nemo
 
             if (indexer)
             {
-                if (strict)
+                if (source is IDataRecord record)
                 {
-                    if (source is IDataRecord record)
-                    {
-                        FastStrictIndexerMapper<IDataRecord, TResult>.Map(record, target);
-                    }
-                    else
-                    {
-                        FastStrictIndexerMapper<TSource, TResult>.Map(source, target);
-                    }
+                    FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
                 }
                 else
                 {
-                    if (source is IDataRecord record)
-                    {
-                        FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
-                    }
-                    else
-                    {
-                        FastIndexerMapper<TSource, TResult>.Map(source, target);
-                    }
+                    FastIndexerMapper<TSource, TResult>.Map(source, target);
                 }
             }
             else
             {
-                if (strict)
-                {
-                    FastStrictMapper<TSource, TResult>.Map(source, target);
-                }
-                else
-                {
-                    FastMapper<TSource, TResult>.Map(source, target);
-                }
+                FastMapper<TSource, TResult>.Map(source, target);
             }
             return target;
         }
 
-        public static T Map<T>(IDictionary<string, object> source, T target)
+        public static T Map<T>(IDictionary<string, object> source)
             where T : class
         {
-            return Map(source, target, ConfigurationFactory.Get<T>().DefaultMaterializationMode == MaterializationMode.Exact);
-        }
-
-        public static T Map<T>(IDictionary<string, object> source, T target, bool strict)
-            where T : class
-        {
-            if (strict)
-            {
-                FastStrictIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
-            }
-            else
-            {
-                FastIndexerMapper<IDictionary<string, object>, T>.Map(source, target);
-            }
+            var target = Create<T>();
+            Map(source, target);
             return target;
         }
 
-        public static T Map<T>(DataRow source, T target)
-           where T : class
-        {
-            return Map(source, target, ConfigurationFactory.Get<T>().DefaultMaterializationMode == MaterializationMode.Exact);
-        }
-
-        public static T Map<T>(DataRow source, T target, bool strict)
+        public static void Map<T>(IDictionary<string, object> source, T target)
             where T : class
         {
-            if (strict)
-            {
-                FastStrictIndexerMapper<DataRow, T>.Map(source, target);
-            }
-            else
-            {
-                FastIndexerMapper<DataRow, T>.Map(source, target);
-            }
+            FastIndexerMapper<IDictionary<string, object>, T>.Map(source, target ?? throw new ArgumentNullException(nameof(target)));
+        }
+
+        public static T Map<T>(DataRow source)
+            where T : class
+        {
+            var target = Create<T>();
+            Map(source, target);
             return target;
         }
 
-        public static T Map<T>(IDataReader source, T target)
-           where T : class
-        {
-            return Map(source, target, ConfigurationFactory.Get<T>().DefaultMaterializationMode == MaterializationMode.Exact);
-        }
-
-        public static T Map<T>(IDataReader source, T target, bool strict)
+        public static void Map<T>(DataRow source, T target)
             where T : class
         {
-            if (strict)
-            {
-                FastStrictIndexerMapper<IDataRecord, T>.Map(source, target);
-            }
-            else
-            {
-                FastIndexerMapper<IDataRecord, T>.Map(source, target);
-            }
+            FastIndexerMapper<DataRow, T>.Map(source, target ?? throw new ArgumentNullException(nameof(target)));
+        }
+
+        public static T Map<T>(IDataReader source)
+            where T : class
+        {
+            return Map<T>((IDataRecord)source);
+        }
+
+        public static void Map<T>(IDataReader source, T target)
+            where T : class
+        {
+            Map((IDataRecord)source, target);
+        }
+
+        public static T Map<T>(IDataRecord source)
+            where T : class
+        {
+            var target = Create<T>();
+            Map(source, target);
             return target;
         }
 
-        /// <summary>
-        /// Maps values from source to target by copying object's properties
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="source"></param>
-        /// <param name="strict"></param>
-        /// <returns></returns>
-        public static T Map<T>(object source, bool strict)
+        public static void Map<T>(IDataRecord source, T target)
             where T : class
         {
-            return (T)Map(source, typeof(T), strict);
-        }
-
-        public static T Map<T>(object source)
-            where T : class
-        {
-            return Map<T>(source, ConfigurationFactory.Get<T>().DefaultMaterializationMode == MaterializationMode.Exact);
+            FastIndexerMapper<IDataRecord, T>.Map(source, target ?? throw new ArgumentNullException(nameof(target)));
         }
 
         #endregion
@@ -383,10 +267,23 @@ namespace Nemo
 
         #endregion
 
-        #region Count Methods
+        #region Aggregate Methods
 
         public static int Count<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
             where T : class
+        {
+            return Count<T, int>(predicate, connectionName, connection);
+        }
+
+        public static long LongCount<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+        {
+            return Count<T, long>(predicate, connectionName, connection);
+        }
+
+        internal static TResult Count<T, TResult>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+            where T : class
+            where TResult : struct
         {
             string providerName = null;
             if (connection == null)
@@ -395,7 +292,51 @@ namespace Nemo
                 connection = DbFactory.CreateConnection(connectionName, typeof(T));
             }
             var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName));
-            return RetrieveScalar<int>(sql, connection: connection);
+            return RetrieveScalar<TResult>(sql, connection: connection);
+        }
+
+        public static TResult Max<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            return Aggregate(AggregateNames.MAX, projection, predicate, connectionName, connection);
+        }
+
+        public static TResult Min<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            return Aggregate(AggregateNames.MIN, projection, predicate, connectionName, connection);
+        }
+
+        public static TResult Sum<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            return Aggregate(AggregateNames.SUM, projection, predicate, connectionName, connection);
+        }
+
+        public static TResult Average<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            return Aggregate(AggregateNames.AVG, projection, predicate, connectionName, connection);
+        }
+
+        internal enum AggregateNames { MAX, MIN, SUM, AVG }
+
+        internal static TResult Aggregate<T, TResult>(AggregateNames aggregateName, Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null)
+           where T : class
+           where TResult : struct
+        {
+            string providerName = null;
+            if (connection == null)
+            {
+                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
+                connection = DbFactory.CreateConnection(connectionName, typeof(T));
+            }
+            var sql = SqlBuilder.GetSelectAggregationStatement(aggregateName.ToString(), projection, predicate, DialectFactory.GetProvider(connection, providerName));
+            return RetrieveScalar<TResult>(sql, connection: connection);
         }
 
         #endregion
@@ -818,19 +759,7 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            IList<Param> parameterList = null;
-            if (parameters != null)
-            {
-                switch (parameters)
-                {
-                    case ParamList list:
-                        parameterList = list.GetParameters(typeof(TResult), operation);
-                        break;
-                    case Param[] array:
-                        parameterList = array;
-                        break;
-                }
-            }
+            var parameterList = ExtractParameters<TResult>(operation, parameters);
             return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
         }
 
@@ -868,9 +797,16 @@ namespace Nemo
             {
                 config = ConfigurationFactory.Get<T>();
             }
-            
+
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
+            var parameterList = ExtractParameters<T>(operation, parameters);
+            return RetrieveImplemenation<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
+        }
+
+        private static IList<Param> ExtractParameters<T>(string operation, object parameters) 
+            where T : class
+        {
             IList<Param> parameterList = null;
             if (parameters != null)
             {
@@ -882,9 +818,27 @@ namespace Nemo
                     case Param[] array:
                         parameterList = array;
                         break;
+                    case IDictionary<string, object> map:
+                        parameterList = map.Select(p => new Param { Name = p.Key, Value = p.Value }).ToArray();
+                        break;
+                    default:
+                        if (parameters is IList items)
+                        {
+                            var dbParameters = items.OfType<IDataParameter>().ToArray();
+                            if (dbParameters.Length == items.Count)
+                            {
+                                parameterList = dbParameters.Select(p => new Param(p)).ToArray();
+                            }
+                        }
+                        else if (Reflector.IsAnonymousType(parameters.GetType()))
+                        {
+                            parameterList = parameters.ToDictionary().Select(p => new Param { Name = p.Key, Value = p.Value }).ToArray();
+                        }
+                        break;
                 }
             }
-            return RetrieveImplemenation<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
+
+            return parameterList;
         }
 
         internal class Fake { }
@@ -1373,7 +1327,7 @@ namespace Nemo
                 case IList<T> genericList:
                     return genericList;
                 case IList list:
-                    return list.Cast<object>().Select(i => mode == MaterializationMode.Exact ? Map<T>(i, true) : Bind<T>(i));
+                    return list.Cast<object>().Select(i => mode == MaterializationMode.Exact ? Map<T>(i) : Bind<T>(i));
             }
 
             return Bind<T>(value).Return();
@@ -1412,7 +1366,7 @@ namespace Nemo
 
             if (result != null) return result;
 
-            var value = mode == MaterializationMode.Exact || !isInterface ? Map<DataRow, T>(row, isInterface) : Wrap<T>(GetSerializableDataRow(row));
+            var value = mode == MaterializationMode.Exact || !isInterface ? Map<T>(row) : Wrap<T>(GetSerializableDataRow(row));
             TrySetObjectState(value);
 
             // Write-through for identity map
@@ -1438,7 +1392,7 @@ namespace Nemo
                 }
             }
 
-            var value = mode == MaterializationMode.Exact || !isInterface ? Map((object)row, targetType, isInterface) : Wrap(GetSerializableDataRow(row), targetType);
+            var value = mode == MaterializationMode.Exact || !isInterface ? Map((object)row, targetType) : Wrap(GetSerializableDataRow(row), targetType);
             TrySetObjectState(value);
 
             // Write-through for identity map
@@ -1531,7 +1485,7 @@ namespace Nemo
                     if (!isInterface || mode == MaterializationMode.Exact)
                     {
                         var item = Create<T>(isInterface);
-                        Map(reader, item, mode == MaterializationMode.Exact);
+                        Map(reader, item);
 
                         if (map != null)
                         {
@@ -1542,7 +1496,7 @@ namespace Nemo
                                 var identity = CreateIdentity(types[i], reader);
                                 if (!references.TryGetValue(identity, out var reference))
                                 {
-                                    reference = Map((object)reader, types[i], mode == MaterializationMode.Exact);
+                                    reference = Map((object)reader, types[i]);
                                     references.Add(identity, reference);
                                 }
                                 args[i] = reference;
@@ -1640,19 +1594,19 @@ namespace Nemo
                 int resultIndex = 0;
                 do
                 {
-                    int count = reader.FieldCount;
+                    var columns = reader.GetColumns();
                     while (reader.Read())
                     {
                         if (!isInterface || mode == MaterializationMode.Exact)
                         {
-                            var item = Map((object)reader, types[resultIndex], mode == MaterializationMode.Exact);
+                            var item = Map((object)new WrappedReader(reader, columns), types[resultIndex]);
                             TrySetObjectState(item);
                             yield return TypeUnion.Create(types, item);
                         }
                         else
                         {
                             var bag = new Dictionary<string, object>();
-                            for (int index = 0; index < count; index++)
+                            for (int index = 0; index < columns.Count; index++)
                             {
                                 bag.Add(reader.GetName(index), reader.GetValue(index));
                             }
