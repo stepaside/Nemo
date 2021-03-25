@@ -1,5 +1,6 @@
 ﻿#if NETSTANDARD
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
@@ -9,72 +10,81 @@ namespace Nemo.Configuration
 {
     public static class ConnectionStringSettingsExtensions
     {
+        private static readonly ConcurrentDictionary<string, ConnectionStringSettingsCollection> ConnectionStringSettingsCollectionCache = new ConcurrentDictionary<string, ConnectionStringSettingsCollection>();
+        private static readonly ConcurrentDictionary<string, ConnectionStringSettings> ConnectionStringSettingsCache = new ConcurrentDictionary<string, ConnectionStringSettings>();
+
         public static ConnectionStringSettingsCollection ConnectionStrings(this IConfigurationRoot configuration, string section = "ConnectionStrings")
         {
-            var connectionStringCollection = configuration.GetSection(section).Get<ConnectionStringSettingsCollection>();
-            if (connectionStringCollection == null || connectionStringCollection.Count == 0 || connectionStringCollection.All(c => c.Name == null))
+            return ConnectionStringSettingsCollectionCache.GetOrAdd(section, key =>
             {
-                var connectionStrings = configuration.GetSection(section).Get<Dictionary<string, ConnectionStringSettings>>();
-                if (connectionStrings == null || connectionStrings.Count == 0)
+                var connectionStringCollection = configuration.GetSection(section).Get<ConnectionStringSettingsCollection>();
+                if (connectionStringCollection == null || connectionStringCollection.Count == 0 || connectionStringCollection.All(c => c.Name == null))
                 {
-                    var connectionStringMap = configuration.GetSection(section).Get<Dictionary<string, string>>();
-                    if (connectionStringMap == null || connectionStringMap.Count == 0)
+                    var connectionStrings = configuration.GetSection(section).Get<Dictionary<string, ConnectionStringSettings>>();
+                    if (connectionStrings == null || connectionStrings.Count == 0)
                     {
-                        return new ConnectionStringSettingsCollection();
+                        var connectionStringMap = configuration.GetSection(section).Get<Dictionary<string, string>>();
+                        if (connectionStringMap == null || connectionStringMap.Count == 0)
+                        {
+                            return new ConnectionStringSettingsCollection();
+                        }
+                        else
+                        {
+                            return new ConnectionStringSettingsCollection(connectionStringMap.Select(p => new ConnectionStringSettings { Name = p.Key, ConnectionString = p.Value }));
+                        }
                     }
                     else
                     {
-                        return new ConnectionStringSettingsCollection(connectionStringMap.Select(p => new ConnectionStringSettings { Name = p.Key, ConnectionString = p.Value }));
+                        return new ConnectionStringSettingsCollection(connectionStrings.Do(p => p.Value.Name = p.Key).Select(p => p.Value));
                     }
                 }
-                else
-                {
-                    return new ConnectionStringSettingsCollection(connectionStrings.Do(p => p.Value.Name = p.Key).Select(p => p.Value));
-                }
-            }
 
-            return connectionStringCollection;
+                return connectionStringCollection;
+            });
         }
 
         public static ConnectionStringSettings ConnectionString(this IConfigurationRoot configuration, string name, string section = "ConnectionStrings")
         {
-            ConnectionStringSettings connectionStringSettings;
-
-            var connectionStringCollection = configuration.GetSection(section).Get<ConnectionStringSettingsCollection>();
-            if (connectionStringCollection == null || connectionStringCollection.Count == 0 || connectionStringCollection.All(c => c.Name == null))
+            return ConnectionStringSettingsCache.GetOrAdd("${section}:{name}", key =>
             {
-                var connectionStrings = configuration.GetSection(section).Get<Dictionary<string, ConnectionStringSettings>>();
-                if (connectionStrings == null || connectionStrings.Count == 0)
+                ConnectionStringSettings connectionStringSettings;
+
+                var connectionStringCollection = configuration.GetSection(section).Get<ConnectionStringSettingsCollection>();
+                if (connectionStringCollection == null || connectionStringCollection.Count == 0 || connectionStringCollection.All(c => c.Name == null))
                 {
-                    var connectionStringMap = configuration.GetSection(section).Get<Dictionary<string, string>>();
-                    if (connectionStringMap == null || connectionStringMap.Count == 0)
+                    var connectionStrings = configuration.GetSection(section).Get<Dictionary<string, ConnectionStringSettings>>();
+                    if (connectionStrings == null || connectionStrings.Count == 0)
+                    {
+                        var connectionStringMap = configuration.GetSection(section).Get<Dictionary<string, string>>();
+                        if (connectionStringMap == null || connectionStringMap.Count == 0)
+                        {
+                            return null;
+                        }
+                        else if (!connectionStringMap.TryGetValue(name, out var connectionString))
+                        {
+                            return null;
+                        }
+                        else
+                        {
+                            connectionStringSettings = new ConnectionStringSettings { ConnectionString = connectionString, Name = name };
+                        }
+                    }
+                    else if (!connectionStrings.TryGetValue(name, out connectionStringSettings))
                     {
                         return null;
-                    }
-                    else if (!connectionStringMap.TryGetValue(name, out var connectionString))
-                    {
-                        return null;
-                    }
-                    else
-                    {
-                        connectionStringSettings = new ConnectionStringSettings { ConnectionString = connectionString, Name = name };
                     }
                 }
-                else if (!connectionStrings.TryGetValue(name, out connectionStringSettings))
+                else if (!connectionStringCollection.TryGetValue(name, out connectionStringSettings))
                 {
                     return null;
                 }
-            }
-            else if (!connectionStringCollection.TryGetValue(name, out connectionStringSettings))
-            {
-                return null;
-            }
 
-            if (connectionStringSettings.Name == null)
-            {
-                connectionStringSettings.Name = name;
-            }
-            return connectionStringSettings;
+                if (connectionStringSettings.Name == null)
+                {
+                    connectionStringSettings.Name = name;
+                }
+                return connectionStringSettings;
+            });
         }
     }
 }
