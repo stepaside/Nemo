@@ -72,7 +72,7 @@ namespace NemoTest
             var created_new = ObjectFactory.Create<Customer>();
 
             // Binding to a legacy object
-            var bound_legacy = ObjectFactory.Bind<PersonLegacy, IPerson>(person_legacy);
+            var bound_legacy = ObjectFactory.Bind<IPerson>(person_legacy);
 
             // Binding to an anonymous object
             var bound_anonymous = ObjectFactory.Bind<IPersonReadOnly>(person_anonymous);
@@ -537,9 +537,9 @@ namespace NemoTest
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             //const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
+            //var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
             const string sql = @"select CustomerID, CompanyName from Customers";
-            var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
-
+            
             connection.Open();
 
             // Warm-up
@@ -560,7 +560,7 @@ namespace NemoTest
         private static void RunSelect(int count)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
-            Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
+            //Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
 
             connection.Open();
 
@@ -589,14 +589,16 @@ namespace NemoTest
 
             connection.Open();
 
+            var parameters = new Param[] { new Param { Name = "CustomerId", Value = "ALFKI" } };
+
             // Warm-up
-            var result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+            var result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: parameters, connection: connection)).Aggregate<Customer>().FirstOrDefault();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: new ParamList { CustomerId => "ALFKI" }, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: parameters, connection: connection)).Aggregate<Customer>().FirstOrDefault();
             }
             timer.Stop();
             connection.Close();

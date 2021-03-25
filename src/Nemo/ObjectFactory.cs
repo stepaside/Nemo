@@ -183,54 +183,15 @@ namespace Nemo
 
         #region Bind Methods
 
-        private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle?> _bindMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle?>();
-
         /// <summary>
         /// Binds interface implementation to the existing object type.
         /// </summary>
-        /// <typeparam name="TSource"></typeparam>
-        /// <typeparam name="TResult"></typeparam>
-        /// <returns></returns>
-        public static TResult Bind<TSource, TResult>(TSource source)
-            where TResult : class
-            where TSource : class
-        {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            var target = Adapter.Bind<TResult>(source);
-            return target;
-        }
-
-        /// <summary>
-        /// Binds interface implementation to the existing object type. 
-        /// This method uses reflection to invoke generic implementation.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="source"></param>
-        /// <returns></returns>
         public static T Bind<T>(object source)
             where T : class
         {
-            if (source == null) return null;
-
-            var instanceType = source.GetType();
-            if (Reflector.IsAnonymousType(instanceType))
-            {
-                return Adapter.Bind<T>(source);
-            }
-            var genericBindMethod = _bindMethods.GetOrAdd(instanceType, type =>
-            {
-                var bindMethod = typeof(ObjectFactory).GetMethods().FirstOrDefault(m => m.Name == "Bind" && m.GetGenericArguments().Length == 2);
-                if (bindMethod != null)
-                {
-                    return bindMethod.MakeGenericMethod(type, typeof(T)).MethodHandle;
-                }
-                return null;
-            });
-
-            if (genericBindMethod == null) return null;
-
-            var bindDelegate = Reflector.Method.CreateDelegate(genericBindMethod.Value);
-            return (T)bindDelegate(null, new[] { source });
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            var target = Adapter.Bind<T>(source);
+            return target;
         }
 
         #endregion
@@ -242,27 +203,18 @@ namespace Nemo
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="map"></param>
-        /// <param name="ignoreMappings"></param>
-        /// <param name="includeAllProperties"></param>
+        /// <param name="simpleAndComplexProperties"></param>
         /// <returns></returns>
-        public static T Wrap<T>(IDictionary<string, object> map, bool ignoreMappings = false, bool includeAllProperties = false)
+        public static T Wrap<T>(IDictionary<string, object> map, bool simpleAndComplexProperties = false)
              where T : class
         {
-            ObjectActivator activator;
-            if (ignoreMappings)
-            {
-                activator = includeAllProperties ? FastExactComplexWrapper<T>.Instance : FastExactWrapper<T>.Instance;
-            }
-            else
-            {
-                activator = includeAllProperties ? FastComplexWrapper<T>.Instance : FastWrapper<T>.Instance;
-            }
-            return (T)activator(map);
+            var wrapper = simpleAndComplexProperties ? FastComplexWrapper<T>.Instance : FastWrapper<T>.Instance;
+            return (T)wrapper(map);
         }
 
-        public static object Wrap(IDictionary<string, object> value, Type targetType, bool ignoreMappings = false, bool includeAllProperties = false)
+        public static object Wrap(IDictionary<string, object> value, Type targetType, bool simpleAndComplexProperties = false)
         {
-            return Adapter.Wrap(value, targetType, ignoreMappings, includeAllProperties);
+            return Adapter.Wrap(value, targetType, simpleAndComplexProperties);
         }
 
         #endregion

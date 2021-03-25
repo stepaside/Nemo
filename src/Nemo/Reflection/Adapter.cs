@@ -48,13 +48,13 @@ namespace Nemo.Reflection
             return (T)activator();
         }
 
-        public static object Wrap(object value, Type interfaceType, bool ignoreMappings, bool includeAllProperties)
+        public static object Wrap(object value, Type interfaceType, bool includeAllProperties)
         {
             if (!interfaceType.IsInterface)
             {
                 throw new ArgumentException("The given type is not an interface.");
             }
-            var activator = InternalWrap(value.GetType(), interfaceType, ignoreMappings, includeAllProperties);
+            var activator = InternalWrap(value.GetType(), interfaceType, includeAllProperties);
             return activator(value);
         }
 
@@ -74,7 +74,7 @@ namespace Nemo.Reflection
                 var module = builder.DefineDynamicModule(name);
                 // create the type that is used to wrap the object given. This
                 // type will also implement the interface.
-                return CreateType(objectType, name, interfaceType, module, DynamicProxyType.Adapter, false);
+                return CreateType(objectType, name, interfaceType, module, DynamicProxyType.Adapter);
             });
 
             var activator = Activator.CreateDelegate(type, objectType);
@@ -101,7 +101,7 @@ namespace Nemo.Reflection
                 var module = builder.DefineDynamicModule(name);
                 // create the type that is used to wrap the object given. This
                 // type will also implement the interface.
-                return CreateType(interfaceType, name, interfaceType, module, DynamicProxyType.Guard, false);
+                return CreateType(interfaceType, name, interfaceType, module, DynamicProxyType.Guard);
             });
 
             var activator = Activator.CreateDelegate(type, interfaceType);
@@ -140,14 +140,10 @@ namespace Nemo.Reflection
             return InternalImplement(typeof(T));            
         }
 
-        internal static ObjectActivator InternalWrap(Type objectType, Type interfaceType, bool ignoreMappings, bool fullIndexer)
+        internal static ObjectActivator InternalWrap(Type objectType, Type interfaceType, bool simpleAndComplexProperties)
         {
             var suffix = "Wrap";
-            if (ignoreMappings)
-            {
-                suffix = String.Concat(suffix, "_Exact");
-            }
-            if (fullIndexer)
+            if (simpleAndComplexProperties)
             {
                 suffix = String.Concat(suffix, "_All");
             }
@@ -164,7 +160,7 @@ namespace Nemo.Reflection
                 var module = builder.DefineDynamicModule(name);
                 // create the type that is used to wrap the object given. This
                 // type will also implement the interface.
-                return CreateType(objectType, name, interfaceType, module, (fullIndexer ? DynamicProxyType.FullIndexer : DynamicProxyType.SimpleIndexer), ignoreMappings);
+                return CreateType(objectType, name, interfaceType, module, (simpleAndComplexProperties ? DynamicProxyType.FullIndexer : DynamicProxyType.SimpleIndexer));
             });
 
             var activator = Activator.CreateDelegate(type, objectType);
@@ -173,7 +169,7 @@ namespace Nemo.Reflection
 
         internal enum DynamicProxyType { Adapter, SimpleIndexer, FullIndexer, Guard, Implementation }
 
-        internal static Type CreateType(Type objectType, string typeName, Type interfaceType, ModuleBuilder module, DynamicProxyType proxyType, bool ignoreMappings)
+        internal static Type CreateType(Type objectType, string typeName, Type interfaceType, ModuleBuilder module, DynamicProxyType proxyType)
         {
             // create the type that is used to wrap the object into the interface.
             var typeBuilder = module.DefineType(typeName, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.AutoLayout | TypeAttributes.Sealed);
@@ -199,7 +195,7 @@ namespace Nemo.Reflection
                 DefineConstructor(objectType, typeBuilder, field);
 
                 // define properties for the type
-                DefineProperties(objectType, typeBuilder, field, interfaceType, proxyType, ignoreMappings);
+                DefineProperties(objectType, typeBuilder, field, interfaceType, proxyType);
             }
             else
             {
@@ -210,7 +206,7 @@ namespace Nemo.Reflection
                 DefineConstructor(objectType, typeBuilder, field);
 
                 // define properties for the type
-                DefineProperties(objectType, typeBuilder, field, interfaceType, proxyType, false);
+                DefineProperties(objectType, typeBuilder, field, interfaceType, proxyType);
 
                 // define some methods that are found on system.object as long as we do not create a guarded object
                 if (proxyType != DynamicProxyType.Guard)
@@ -245,7 +241,7 @@ namespace Nemo.Reflection
             typeBuilder.DefineDefaultConstructor(MethodAttributes.Public);
 
             // define properties for the type
-            DefineProperties(null, typeBuilder, null, interfaceType, DynamicProxyType.Implementation, false);
+            DefineProperties(null, typeBuilder, null, interfaceType, DynamicProxyType.Implementation);
 
             // create the final type. 
 #if NETSTANDARD
@@ -321,15 +317,15 @@ namespace Nemo.Reflection
             il.Emit(OpCodes.Ret);
         }
 
-        private static void DefineProperties(Type objectType, TypeBuilder typeBuilder, FieldInfo field, Type interfaceType, DynamicProxyType proxyType, bool ignoreMappings)
+        private static void DefineProperties(Type objectType, TypeBuilder typeBuilder, FieldInfo field, Type interfaceType, DynamicProxyType proxyType)
         {
             var entityMap = MappingFactory.GetEntityMap(interfaceType);
 
             foreach (var property in Reflector.GetAllProperties(interfaceType))
             {
                 // check if we can support the wrapping.
-                var propertyName = MappingFactory.GetPropertyOrColumnName(property, ignoreMappings, entityMap, false);
-                var objectProperty = objectType != null ? objectType.GetProperty(propertyName) : null;
+                var propertyName = MappingFactory.GetPropertyOrColumnName(property, false, entityMap, false);
+                var objectProperty = objectType?.GetProperty(propertyName);
 
                 if (objectProperty != null && ((property.CanRead && !objectProperty.CanRead) || (property.CanWrite && !objectProperty.CanWrite)))
                 {
@@ -341,17 +337,13 @@ namespace Nemo.Reflection
                     throw new InvalidCastException("Can't cast because property types do not match.");
 
                 // define the property.
-                if (proxyType == DynamicProxyType.FullIndexer)
+                if (proxyType == DynamicProxyType.FullIndexer || (proxyType == DynamicProxyType.SimpleIndexer && IsWrappable(property, entityMap)))
                 {
-                    DefineIndexerProperty(property, typeBuilder, field, objectType, ignoreMappings, entityMap);
-                }
-                else if (proxyType == DynamicProxyType.SimpleIndexer && IsWrappable(property, entityMap))
-                {
-                    DefineIndexerProperty(property, typeBuilder, field, objectType, ignoreMappings, entityMap);
+                    DefineIndexerProperty(property, typeBuilder, field, objectType, entityMap);
                 }
                 else if (proxyType == DynamicProxyType.Guard)
                 {
-                    DefineGuardedProperty(property, typeBuilder, field, objectType, ignoreMappings, entityMap);
+                    DefineGuardedProperty(property, typeBuilder, field, objectType, entityMap);
                 }
                 else if (objectProperty != null)
                 {
@@ -438,7 +430,7 @@ namespace Nemo.Reflection
             }
         }
 
-        private static void DefineIndexerProperty(PropertyInfo property, TypeBuilder typeBuilder, FieldInfo field, Type objectType, bool ignoreMappings, IEntityMap entityMap)
+        private static void DefineIndexerProperty(PropertyInfo property, TypeBuilder typeBuilder, FieldInfo field, Type objectType, IEntityMap entityMap)
         {
             // create the new property.
             var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.HasDefault, property.PropertyType, null);
@@ -446,7 +438,7 @@ namespace Nemo.Reflection
             // The property "set" and property "get" methods require a special set of attributes.
             //var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig | MethodAttributes.Virtual;
             const MethodAttributes getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
-            var columnName = MappingFactory.GetPropertyOrColumnName(property, ignoreMappings, entityMap, true);
+            var columnName = MappingFactory.GetPropertyOrColumnName(property, false, entityMap, true);
 
             // create the getter if we can read.
             if (property.CanRead)
@@ -533,7 +525,7 @@ namespace Nemo.Reflection
             }
         }
 
-        private static void DefineGuardedProperty(PropertyInfo property, TypeBuilder typeBuilder, FieldInfo field, Type objectType, bool ignoreMappings, IEntityMap entityMap)
+        private static void DefineGuardedProperty(PropertyInfo property, TypeBuilder typeBuilder, FieldInfo field, Type objectType, IEntityMap entityMap)
         {
             // create the new property.
             var propertyBuilder = typeBuilder.DefineProperty(property.Name, System.Reflection.PropertyAttributes.HasDefault, property.PropertyType, null);
@@ -541,7 +533,6 @@ namespace Nemo.Reflection
             // The property "set" and property "get" methods require a special set of attributes.
             //var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig | MethodAttributes.Virtual;
             var getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
-            var columnName = MappingFactory.GetPropertyOrColumnName(property, ignoreMappings, entityMap, true);
 
             // create the getter if we can read.
             if (property.CanRead)
@@ -554,8 +545,7 @@ namespace Nemo.Reflection
                 ILGenerator il = getMethod.GetILGenerator();
                                                
                 // directly call the inner object's get method of the property.
-                Type elementType;
-                if (Reflector.IsDataEntityList(property.PropertyType, out elementType))
+                if (Reflector.IsDataEntityList(property.PropertyType, out var elementType))
                 {
                     var isInterface = property.PropertyType.GetGenericTypeDefinition() == typeof(IList<>);
                     var asReadOnlyMethod = typeof(ObjectExtensions).GetMethods(BindingFlags.Public | BindingFlags.Static).Where(m => m.Name == "AsReadOnly").First(m => m.GetParameters()[0].ParameterType.Name == (isInterface ? "IList`1" : "List`1"));

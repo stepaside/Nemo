@@ -9,7 +9,7 @@ namespace Nemo.Reflection
     {
         static FastWrapper()
         {
-            Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), false, false);
+            Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), false);
         }
         internal static Activator.ObjectActivator Instance;
     }
@@ -18,27 +18,7 @@ namespace Nemo.Reflection
     {
         static FastComplexWrapper()
         {
-            Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), false, true);
-        }
-        // ReSharper disable once StaticMemberInGenericType
-        internal static readonly Activator.ObjectActivator Instance;
-    }
-
-    internal class FastExactWrapper<T>
-    {
-        static FastExactWrapper()
-        {
-            Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), true, false);
-        }
-        // ReSharper disable once StaticMemberInGenericType
-        internal static readonly Activator.ObjectActivator Instance;
-    }
-
-    internal class FastExactComplexWrapper<T>
-    {
-        static FastExactComplexWrapper()
-        {
-            Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), true, true);
+            Instance = Adapter.InternalWrap(typeof(IDictionary<string, object>), typeof(T), true);
         }
         // ReSharper disable once StaticMemberInGenericType
         internal static readonly Activator.ObjectActivator Instance;
