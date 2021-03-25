@@ -3,23 +3,22 @@ using System.Collections.Generic;
 
 namespace Nemo.Attributes.Converters
 {
-	public class EnumConverter<T> : ITypeConverter<string, T> 
-        where T : struct //	Should actually be an enum
+	public class EnumConverter<T> : ITypeConverter<object, T> 
+        where T : struct
 	{
 		#region ITypeConverter<object,T> Members
 		
-        T ITypeConverter<string, T>.ConvertForward(string from)
+        T ITypeConverter<object, T>.ConvertForward(object from)
 		{
-            T result;
-            if (!Enum.TryParse<T>(from, out result))
+            if (!Enum.TryParse<T>(Convert.ToString(from), out var result))
             {
-                result = default(T);
+                result = default;
             }
 
 			return result;
 		}
 
-		string ITypeConverter<string, T>.ConvertBackward(T to)
+		object ITypeConverter<object, T>.ConvertBackward(T to)
 		{
 			return to.ToString();
 		}

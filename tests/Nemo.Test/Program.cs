@@ -42,6 +42,9 @@ namespace NemoTest
                 .SetAutoTypeCoercion(true)
                 .SetLogging(false);
 
+            //// Simple retrieve with dynamic parameters
+            //var retrieve_customer_test = ObjectFactory.Retrieve<Customer>(parameters: new { CustomerID = "ALFKI" }).FirstOrDefault();
+
             var person_legacy = new PersonLegacy { person_id = 12345, name = "John Doe", DateOfBirth = new DateTime(1980, 1, 10) };
             var person_anonymous = new { person_id = 12345, name = "John Doe" };
 

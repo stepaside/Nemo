@@ -208,7 +208,17 @@ namespace NemoTest
         public string Id { get; set; }
         public string CompanyName { get; set; }
         public IList<Order> Orders { get; set; }
-        //public int SomeField { get; set; }
+        //public string SomeFieldText { get; set; }
+        //public double SomeFieldDouble { get; set; }
+        //public int SomeFieldInt { get; set; }
+        //public bool SomeFieldBool { get; set; }
+        //public long SomeFieldLong { get; set; }
+        //public decimal SomeFieldDecimal { get; set; }
+        //public DateTime SomeFielDate { get; set; }
+        //public TimeSpan SomeFielTime { get; set; }
+        //public TimeSpan? SomeFielNullTime { get; set; }
+        //public DateTime? SomeFielNullDate { get; set; }
+        //public ConsoleColor SomeFielEnum { get; set; }
         //public List<int> ListTest { get; set; }
         //public Dictionary<int, string> MapTest { get; set; }   
     }

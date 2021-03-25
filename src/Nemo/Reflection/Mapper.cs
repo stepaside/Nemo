@@ -73,6 +73,8 @@ namespace Nemo.Reflection
 
             var targetProperties = Reflector.GetPropertyMap(targetType);
             var entityMap = MappingFactory.GetEntityMap(targetType);
+            var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle");
+            var getDefaultValue = typeof(System.Activator).GetMethods().FirstOrDefault(m => m.Name == "CreateInstance" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(Type));
 
             var useIndexerMethod = true;
             if (!GetItemMethods.TryGetValue(indexerType, out var getItem) || getItem == null)
@@ -105,34 +107,45 @@ namespace Nemo.Reflection
                 else
                 {
                     var propertyType = match.Value.PropertyType;
-                    if (!propertyType.IsValueType || Reflector.IsNullableType(propertyType))
+                    if (propertyType.IsValueType)
                     {
-                        il.Emit(OpCodes.Ldnull);
-                    }
-                    else if (propertyType.IsPrimitive)
-                    {
-                        il.EmitFastInt(0);
-                        if (propertyType == typeof(long) || propertyType == typeof(ulong))
-                        {
-                            il.Emit(OpCodes.Conv_I8);
+                        var ctor = propertyType.GetConstructor(Type.EmptyTypes);
+                        if (ctor != null)
+                        { 
+                            il.Emit(OpCodes.Newobj, ctor);
+                            il.BoxIfNeeded(propertyType);
                         }
-                        il.BoxIfNeeded(propertyType);
-                    }
-                    else if (propertyType == typeof(decimal))
-                    {
-                        il.Emit(OpCodes.Ldsfld, typeof(decimal).GetField("Zero"));
-                        il.BoxIfNeeded(propertyType);
+                        else if (propertyType.IsPrimitive)
+                        {
+                            if (propertyType == typeof(double))
+                            {
+                                il.Emit(OpCodes.Ldc_R8, 0.0);
+                            }
+                            else if (propertyType == typeof(float))
+                            {
+                                il.Emit(OpCodes.Ldc_R4, 0.0f);
+                            }
+                            else
+                            {
+                                il.EmitFastInt(0);
+                                if (propertyType == typeof(long) || propertyType == typeof(ulong))
+                                {
+                                    il.Emit(OpCodes.Conv_I8);
+                                }
+                            }
+                            il.BoxIfNeeded(propertyType);
+                        }
+                        else
+                        {
+                            il.Emit(OpCodes.Ldtoken, propertyType); 
+                            il.Emit(OpCodes.Call, getTypeFromHandle);
+                            il.Emit(OpCodes.Call, getDefaultValue);
+                        }
                     }
                     else
                     {
-                        var local = il.DeclareLocal(propertyType);
-                        il.Emit(OpCodes.Ldarg, 0);
-                        il.Emit(OpCodes.Ldloca, local);
-                        il.Emit(OpCodes.Initobj, propertyType);
-                        il.Emit(OpCodes.Ldloc, local.LocalIndex);
-                        il.BoxIfNeeded(propertyType);
+                        il.Emit(OpCodes.Ldnull);
                     }
-                    
                     il.Emit(OpCodes.Call, getItem);
                 }
                 if (typeConverter.Item1 == null)
