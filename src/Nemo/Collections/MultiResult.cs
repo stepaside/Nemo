@@ -18,6 +18,7 @@ namespace Nemo.Collections
         IEnumerable<T> Retrieve<T>();
         bool Reset();
         bool IsCached { get; }
+        IConfiguration Configuration { get; }
     }
 
     [Serializable]
@@ -28,14 +29,16 @@ namespace Nemo.Collections
         private readonly IEnumerable<ITypeUnion> _source;
         private IEnumerator<ITypeUnion> _iter;
         private readonly bool _cached;
+        private readonly IConfiguration _config;
         private ITypeUnion _last;
 
-        public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
+        public MultiResult(IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
         {
             _cached = cached;
             if (cached)
             {
-                if (ConfigurationFactory.Get<T1>().DefaultCacheRepresentation == CacheRepresentation.List)
+                _config = config;
+                if ((config ?? ConfigurationFactory.Get<T1>()).DefaultCacheRepresentation == CacheRepresentation.List)
                 {
                     _source = source.ToList();
                 }
@@ -98,6 +101,8 @@ namespace Nemo.Collections
         }
 
         public bool IsCached => _cached;
+
+        public IConfiguration Configuration => _config;
     }
 
     [Serializable]
@@ -106,8 +111,8 @@ namespace Nemo.Collections
         where T2 : class
         where T3 : class
     {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
-            : base(source, cached)
+        public MultiResult(IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
+            : base(source, cached, config)
         { }
 
         public override Type[] AllTypes => new[] { typeof(T1), typeof(T2), typeof(T3) };
@@ -120,8 +125,8 @@ namespace Nemo.Collections
         where T3 : class
         where T4 : class
     {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
-            : base(source, cached)
+        public MultiResult(IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
+            : base(source, cached, config)
         { }
 
         public override Type[] AllTypes => new[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4) };
@@ -135,8 +140,8 @@ namespace Nemo.Collections
         where T4 : class
         where T5 : class
     {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool cached)
-            : base(source, cached)
+        public MultiResult(IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
+            : base(source, cached, config)
         { }
 
         public override Type[] AllTypes => new[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5) };
@@ -148,7 +153,7 @@ namespace Nemo.Collections
         private static readonly ConcurrentDictionary<TypeArray, List<MethodInfo>> _methods = new ConcurrentDictionary<TypeArray, List<MethodInfo>>();
         private static readonly ConcurrentDictionary<Type, List<ObjectRelation>> _relations = new ConcurrentDictionary<Type, List<ObjectRelation>>();
 
-        public static IMultiResult Create(IList<Type> types, IEnumerable<ITypeUnion> source, bool cached)
+        public static IMultiResult Create(IList<Type> types, IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
         {
             if (types == null || source == null) return null;
 
@@ -173,8 +178,8 @@ namespace Nemo.Collections
 
             var key = new TypeArray(types);
             var type = _types.GetOrAdd(key, t => genericType.MakeGenericType(t.Types is Type[] ? (Type[])t.Types : t.Types.ToArray()));
-            var activator = Reflection.Activator.CreateDelegate(type, typeof(IEnumerable<ITypeUnion>), typeof(bool));
-            var multiResult = (IMultiResult)activator(source, cached);
+            var activator = Reflection.Activator.CreateDelegate(type, typeof(IEnumerable<ITypeUnion>), typeof(bool), typeof(IConfiguration));
+            var multiResult = (IMultiResult)activator(source, cached, config);
             return multiResult;
         }
 
@@ -199,7 +204,7 @@ namespace Nemo.Collections
         public static IEnumerable<T> Aggregate<T>(this IMultiResult source)
             where T : class
         {
-            return source.Aggregate<T>(ConfigurationFactory.Get<T>());
+            return source.Aggregate<T>(source.Configuration ?? ConfigurationFactory.Get<T>());
         }
 
         public static IEnumerable<T> Aggregate<T>(this IMultiResult source, IConfiguration config)

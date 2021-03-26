@@ -1430,7 +1430,7 @@ namespace Nemo
                 case IDataReader reader:
                     if (map != null || types == null || types.Count == 1) return ConvertDataReader(reader, map, types, isInterface, config);
                     var multiResultItems = ConvertDataReaderMultiResult(reader, types, isInterface, config);
-                    return (IEnumerable<T>)MultiResult.Create(types, multiResultItems, cached);
+                    return (IEnumerable<T>)MultiResult.Create(types, multiResultItems, cached, config);
                 case DataSet dataSet:
                     return ConvertDataSet<T>(dataSet, isInterface, config, identityMap);
                 case DataTable dataTable:

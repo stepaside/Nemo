@@ -24,7 +24,7 @@ namespace NemoTest
         {
             var config = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
 
-            ConfigurationFactory.Configure()
+            var nemoConfig = ConfigurationFactory.Configure()
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
                 .SetDefaultMaterializationMode(MaterializationMode.Exact)
                 .SetDefaultCacheRepresentation(CacheRepresentation.None)
@@ -42,10 +42,10 @@ namespace NemoTest
             //var selected_customers_A_count = ObjectFactory.Count<Customer>(c => c.CompanyName.StartsWith("A"));
             //var linqCustomersAsync = new NemoQueryableAsync<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefault().Result;
 
-            RunRetrieve(500, true);
-            RunRetrieve(500, false);
-            RunSelect(500, true);
-            RunSelect(500, false);
+            RunRetrieve(500, true, nemoConfig);
+            RunRetrieve(500, false, nemoConfig);
+            RunSelect(500, true, nemoConfig);
+            RunSelect(500, false, nemoConfig);
             RunNative(500);
             RunEF(500, true);
             RunEF(500, false);
@@ -231,23 +231,22 @@ namespace NemoTest
             Console.WriteLine("Nemo.Execute:" + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunRetrieve(int count, bool cached)
+        private static void RunRetrieve(int count, bool cached, Nemo.Configuration.IConfiguration nemoConfig)
         {
             var connection = DbFactory.CreateConnection("DbConnection");
-            var config = ConfigurationFactory.Get<Customer>();
             const string sql = @"select CustomerID, CompanyName from Customers";
             //var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
 
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, /*parameters: parameters,*/ cached: cached, config: config).ToList();
+            var result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, /*parameters: parameters,*/ cached: cached, config: nemoConfig).ToList();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, /*parameters: parameters,*/ cached: cached, config: config).ToList();
+                result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, /*parameters: parameters,*/ cached: cached, config: nemoConfig).ToList();
             }
             timer.Stop();
             connection.Close();
@@ -255,7 +254,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Retrieve: " + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunSelect(int count, bool cached)
+        private static void RunSelect(int count, bool cached, Nemo.Configuration.IConfiguration nemoConfig)
         {
             var connection = DbFactory.CreateConnection("DbConnection");
             Expression<Func<Customer, bool>> predicate = c => c.Id == "ALFKI";
@@ -263,13 +262,13 @@ namespace NemoTest
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Select<Customer>(null, connection: connection, cached: cached).ToList();
+            var result = ObjectFactory.Select<Customer>(null, connection: connection, cached: cached, config: nemoConfig).ToList();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ObjectFactory.Select<Customer>(null, connection: connection, cached: cached).ToList();
+                result = ObjectFactory.Select<Customer>(null, connection: connection, cached: cached, config: nemoConfig).ToList();
             }
             timer.Stop();
             connection.Close();

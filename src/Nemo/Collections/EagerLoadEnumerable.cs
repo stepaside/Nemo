@@ -38,6 +38,12 @@ namespace Nemo.Collections
             var types = _sqlMap.Arrange(_sqlOrder, t => t.Key).Select(t => t.Value).ToArray();
             var result = _load(_sqlOrder.ToDelimitedString("; "), types);
 
+            var multiresult = result as IMultiResult;
+            if (multiresult != null)
+            {
+                result = multiresult.Aggregate<T>(Configuration);
+            }
+
             if (SelectOption == SelectOption.First)
             {
                 return new List<T> { result.First() }.GetEnumerator();

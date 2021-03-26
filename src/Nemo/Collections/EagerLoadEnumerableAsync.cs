@@ -44,7 +44,7 @@ namespace Nemo.Collections
             var multiresult = result as IMultiResult;
             if (multiresult != null)
             {
-                result = multiresult.Aggregate<T>();
+                result = multiresult.Aggregate<T>(Configuration);
             }
 
             if (SelectOption == SelectOption.First)

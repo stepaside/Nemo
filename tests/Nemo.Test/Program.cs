@@ -32,7 +32,7 @@ namespace NemoTest
     {
         static void Main(string[] args)
         {
-            ConfigurationFactory.Configure()
+            var nemoConfig = ConfigurationFactory.Configure()
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
                 .SetDefaultMaterializationMode(MaterializationMode.Partial)
                 .SetDefaultCacheRepresentation(CacheRepresentation.None)
@@ -251,10 +251,10 @@ namespace NemoTest
             RunNative(500);
             RunExecute(500);
             RunDapper(500);
-            RunRetrieve(500, false);
+            RunRetrieve(500, false, nemoConfig);
             RunNativeWithMapper(500);
-            RunSelect(500);
-            RunRetrieveComplex(500);
+            RunSelect(500, nemoConfig);
+            RunRetrieveComplex(500, nemoConfig);
 
             return;
 
@@ -536,7 +536,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Execute:" + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunRetrieve(int count, bool cached)
+        private static void RunRetrieve(int count, bool cached, IConfiguration config)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             //const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
@@ -546,13 +546,13 @@ namespace NemoTest
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, cached: cached).ToList();
+            var result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, cached: cached, config: config).ToList();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, cached: cached).ToList();
+                result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, cached: cached, config: config).ToList();
             }
             timer.Stop();
             connection.Close();
@@ -560,7 +560,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Retrieve: " + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunSelect(int count)
+        private static void RunSelect(int count, IConfiguration config)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             //Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
@@ -568,13 +568,13 @@ namespace NemoTest
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Select<Customer>(null, connection: connection).ToList();
+            var result = ObjectFactory.Select<Customer>(null, connection: connection, config: config).ToList();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ObjectFactory.Select<Customer>(null, connection: connection).ToList();
+                result = ObjectFactory.Select<Customer>(null, connection: connection, config: config).ToList();
             }
             timer.Stop();
             connection.Close();
@@ -582,7 +582,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Select: " + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunRetrieveComplex(int count)
+        private static void RunRetrieveComplex(int count, IConfiguration config)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             var sql = @"select * from Customers where CustomerID = @CustomerID; select * from Orders where CustomerID = @CustomerID; 
@@ -595,13 +595,13 @@ namespace NemoTest
             var parameters = new Param[] { new Param { Name = "CustomerId", Value = "ALFKI" } };
 
             // Warm-up
-            var result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: parameters, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+            var result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: parameters, connection: connection, config: config)).Aggregate<Customer>().FirstOrDefault();
 
             var timer = new Stopwatch();
             timer.Start();
             for (var i = 0; i < count; i++)
             {
-                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: parameters, connection: connection)).Aggregate<Customer>().FirstOrDefault();
+                result = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order, OrderProduct>(sql: sql, parameters: parameters, connection: connection, config: config)).Aggregate<Customer>().FirstOrDefault();
             }
             timer.Stop();
             connection.Close();
