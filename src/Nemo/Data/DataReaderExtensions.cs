@@ -48,10 +48,10 @@ namespace Nemo.Data
             return BuildEnumerable(source.Read, () => (IDataRecord)source);
         }
 
-        public static IEnumerable<T> AsEnumerable<T>(this IDataReader source)
+        public static IEnumerable<T> AsEnumerable<T>(this IDataReader source, bool autoTypeCoercion)
             where T : class
         {
-            return BuildEnumerable(source.Read, () => ObjectFactory.Map<IDataReader, T>(source));
+            return BuildEnumerable(source.Read, () => ObjectFactory.Map<IDataReader, T>(source, autoTypeCoercion));
         }
     }
 }

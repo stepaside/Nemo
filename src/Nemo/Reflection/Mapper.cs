@@ -16,15 +16,15 @@ namespace Nemo.Reflection
         public delegate void PropertyMapper(object source, object target);
         public delegate void DictionaryMapper(object source, IDictionary<string, object> target);
 
-        private static readonly ConcurrentDictionary<Tuple<Type, Type, bool>, PropertyMapper> Mappers = new ConcurrentDictionary<Tuple<Type, Type, bool>, PropertyMapper>();
+        private static readonly ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper> Mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper>();
         private static readonly ConcurrentDictionary<Type, DictionaryMapper> DictionaryMappers = new ConcurrentDictionary<Type, DictionaryMapper>();
 
         private static readonly Dictionary<Type, MethodInfo> GetItemMethods = typeof(MappingFactory).GetMethods(BindingFlags.Static | BindingFlags.NonPublic).Where(m => m.Name == "GetItem").ToDictionary(m => m.GetParameters()[0].ParameterType, m => m);
 
-        internal static PropertyMapper CreateDelegate(Type sourceType, Type targetType, bool indexer)
+        internal static PropertyMapper CreateDelegate(Type sourceType, Type targetType, bool indexer, bool autoTypeCoercion)
         {
-            var key = Tuple.Create(sourceType, targetType, indexer);
-            var mapper = Mappers.GetOrAdd(key, t => t.Item3 ? GenerateIndexerDelegate(t.Item1, t.Item2) : GenerateDelegate(t.Item1, t.Item2));
+            var key = Tuple.Create(sourceType, targetType, indexer, autoTypeCoercion);
+            var mapper = Mappers.GetOrAdd(key, t => t.Item3 ? GenerateIndexerDelegate(t.Item1, t.Item2, t.Item4) : GenerateDelegate(t.Item1, t.Item2));
             return mapper;
         }
 
@@ -66,7 +66,7 @@ namespace Nemo.Reflection
             return mapper;
         }
 
-        private static PropertyMapper GenerateIndexerDelegate(Type indexerType, Type targetType)
+        private static PropertyMapper GenerateIndexerDelegate(Type indexerType, Type targetType, bool autoTypeCoercion)
         {
             var method = new DynamicMethod("Map_" + indexerType.FullName + "_" + targetType.FullName, null, new[] { typeof(object), typeof(object) }, typeof(Mapper).Module);
             var il = method.GetILGenerator();
@@ -89,7 +89,7 @@ namespace Nemo.Reflection
                 var typeConverter = MappingFactory.GetTypeConverter(getItem.ReturnType, match.Key, entityMap);
 
                 if (match.Value.IsSimpleList && typeConverter == null) continue;
-                typeConverter = MatchTypeConverter(targetType, match.Value, getItem.ReturnType, typeConverter);
+                typeConverter = MatchTypeConverter(targetType, match.Value, getItem.ReturnType, typeConverter, autoTypeCoercion);
 
                 il.Emit(OpCodes.Ldarg_1);
                 if (typeConverter.Item1 != null)
@@ -187,9 +187,9 @@ namespace Nemo.Reflection
             return mapper;
         }
 
-        private static Tuple<Type, Type> MatchTypeConverter(Type targetType, ReflectedProperty property, Type fromType, Tuple<Type, Type> typeConverter)
+        private static Tuple<Type, Type> MatchTypeConverter(Type targetType, ReflectedProperty property, Type fromType, Tuple<Type, Type> typeConverter, bool autoTypeCoercion)
         {
-            if (typeConverter.Item1 == null && (ConfigurationFactory.Get(targetType)?.AutoTypeCoercion).GetValueOrDefault())
+            if (typeConverter.Item1 == null && autoTypeCoercion)
             {
                 var interfaceType = typeConverter.Item2;
                 if (interfaceType == null)

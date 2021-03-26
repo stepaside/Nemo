@@ -10,9 +10,9 @@ namespace Nemo
 {
     internal static class Identity
     {
-        internal static IIdentityMap Get(Type objectType)
+        internal static IIdentityMap Get(Type objectType, IConfiguration configuration)
         {
-            var executionContext = ConfigurationFactory.Get(objectType).ExecutionContext;
+            var executionContext = configuration?.ExecutionContext ?? ConfigurationFactory.Get(objectType).ExecutionContext;
             IIdentityMap identityMap;
             var identityMapKey = objectType.FullName + "/IdentityMap";
             if (!executionContext.Exists(identityMapKey))
@@ -27,10 +27,10 @@ namespace Nemo
             return identityMap;
         }
 
-        internal static IdentityMap<T> Get<T>()
+        internal static IdentityMap<T> Get<T>(IConfiguration configuration)
             where T : class
         {
-            var executionContext = ConfigurationFactory.Get<T>().ExecutionContext;
+            var executionContext = configuration?.ExecutionContext ?? ConfigurationFactory.Get<T>().ExecutionContext;
             IdentityMap<T> identityMap;
             var identityMapKey = typeof(T).FullName + "/IdentityMap";
             if (!executionContext.Exists(identityMapKey))

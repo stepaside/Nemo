@@ -15,7 +15,7 @@
     <AssemblyTitle>Nemo</AssemblyTitle>
     <AssemblyVersion>2.6.0</AssemblyVersion>
     <FileVersion>2.6.0</FileVersion>
-    <PackageVersion>2.6.0-beta.1.0.1</PackageVersion>
+    <PackageVersion>2.6.0-beta.1.0.2</PackageVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>
@@ -213,6 +213,7 @@
     <Compile Include="Reflection\FastActivator.cs" />
     <Compile Include="Reflection\FastImplementor.cs" />
     <Compile Include="Reflection\FastIndexerMapper.cs" />
+    <Compile Include="Reflection\FastIndexerMapperWithTypeCoercion.cs" />
     <Compile Include="Reflection\FastMapper.cs" />
     <Compile Include="Reflection\FastWrapper.cs" />
     <Compile Include="Reflection\Mapper.cs" />

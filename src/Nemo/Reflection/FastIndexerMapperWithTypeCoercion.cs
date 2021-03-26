@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Nemo.Reflection
+﻿namespace Nemo.Reflection
 {
-    internal class FastIndexerMapper<T1, T2>
+    internal class FastIndexerMapperWithTypeCoercion<T1, T2>
     {
-        static FastIndexerMapper()
+        static FastIndexerMapperWithTypeCoercion()
         {
-            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, false);
+            IndexerMapper = Mapper.CreateDelegate(typeof(T1), typeof(T2), true, true);
         }
 
         internal static void Map(T1 source, T2 target)

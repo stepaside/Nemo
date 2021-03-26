@@ -372,7 +372,7 @@ namespace Nemo
                 }
                 else
                 {
-                    identityMap = Identity.Get<TResult>();
+                    identityMap = Identity.Get<TResult>(config);
                     result = identityMap.GetIndex(queryKey);
                 }
 
@@ -445,9 +445,7 @@ namespace Nemo
             {
                 config = ConfigurationFactory.Get<T>();
             }
-            var mode = config.DefaultMaterializationMode;
-
-            var result = Translate(response, map, types, cached, mode, identityMap);
+            var result = Translate(response, map, types, config, identityMap);
             return result;
         }
 

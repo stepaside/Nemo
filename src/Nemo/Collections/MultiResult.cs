@@ -199,6 +199,12 @@ namespace Nemo.Collections
         public static IEnumerable<T> Aggregate<T>(this IMultiResult source)
             where T : class
         {
+            return source.Aggregate<T>(ConfigurationFactory.Get<T>());
+        }
+
+        public static IEnumerable<T> Aggregate<T>(this IMultiResult source, IConfiguration config)
+            where T : class
+        {
             var results = source.AsEnumerable().Select(s => s.ToList()).ToList();
             
             var relations = InferRelations(source.AllTypes).ToList();
@@ -207,7 +213,7 @@ namespace Nemo.Collections
 
             for (var i = 0; i < source.AllTypes.Length; i++)
             {
-                var identityMap = source.IsCached ? Identity.Get(source.AllTypes[i]) : null;
+                var identityMap = source.IsCached ? Identity.Get(source.AllTypes[i], config) : null;
                 var propertyKey = source.IsCached ? ObjectFactory.GetPrimaryKeyProperties(source.AllTypes[i]) : null;
                 var count = 0;
                 foreach (var item in results[i])
@@ -229,7 +235,7 @@ namespace Nemo.Collections
                         roots.Add((T)item);
                     }
 
-                    LoadRelatedData(item, source.AllTypes[i], relations, results, source.IsCached);
+                    LoadRelatedData(item, source.AllTypes[i], relations, results, source.IsCached, config);
 
                     identityMap.WriteThrough(item, hash);
                 }
@@ -243,7 +249,7 @@ namespace Nemo.Collections
             return roots;
         }
         
-        private static void LoadRelatedData(object value, Type objectType, List<ObjectRelation> relations, List<List<object>> set, bool cached)
+        private static void LoadRelatedData(object value, Type objectType, List<ObjectRelation> relations, List<List<object>> set, bool cached, IConfiguration config)
         {
             var propertyMap = Reflector.GetPropertyMap(objectType);
 
@@ -264,7 +270,7 @@ namespace Nemo.Collections
                 if (property.Value.IsDataEntity || property.Value.IsObject)
                 {
                     var propertyKey = cached ? ObjectFactory.GetPrimaryKeyProperties(property.Key.PropertyType) : null;
-                    var identityMap = cached ? Identity.Get(property.Key.PropertyType) : null;
+                    var identityMap = cached ? Identity.Get(property.Key.PropertyType, config) : null;
 
                     propertyValue = cached ? identityMap.GetEntityByKey<object, object>(items[0].GetKeySelector(propertyKey), out var hash) ?? items[0] : items[0];
 
@@ -277,7 +283,7 @@ namespace Nemo.Collections
                     {
                         var propertyKey = cached ? ObjectFactory.GetPrimaryKeyProperties(elementType) : null;;
                         var foreignKeys = Reflector.GetPropertyNameMap(elementType).Values.Where(p => p.PropertyType == objectType).ToArray();
-                        var identityMap = cached ? Identity.Get(elementType) : null;
+                        var identityMap = cached ? Identity.Get(elementType, config) : null;
 
                         IList list;
                         if (!property.Value.IsListInterface)
