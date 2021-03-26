@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Nemo.Collections;
+using Nemo.Configuration;
 using Nemo.Reflection;
 using Activator = System.Activator;
 
@@ -16,10 +17,12 @@ namespace Nemo.Linq
     public class NemoQueryProvider : IAsyncQueryProvider, IQueryProvider
     {
         private readonly DbConnection _connection;
+        private readonly IConfiguration _config;
 
-        public NemoQueryProvider(DbConnection connection = null)
+        public NemoQueryProvider(DbConnection connection = null, IConfiguration config = null)
         {
             _connection = connection;
+            _config = config;
         }
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
@@ -42,7 +45,7 @@ namespace Nemo.Linq
 
         public TResult Execute<TResult>(Expression expression)
         {
-            var result = NemoQueryContext.Execute(expression, _connection);
+            var result = NemoQueryContext.Execute(expression, _connection, config: _config);
             var typeName = result.GetType().Name;
             if (typeName == "EagerLoadEnumerable`1"  && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
@@ -53,7 +56,7 @@ namespace Nemo.Linq
 
         public object Execute(Expression expression)
         {
-            return NemoQueryContext.Execute(expression, _connection);
+            return NemoQueryContext.Execute(expression, _connection, config: _config);
         }
 
         IAsyncQueryable<TElement> IAsyncQueryProvider.CreateQuery<TElement>(Expression expression)
@@ -65,7 +68,7 @@ namespace Nemo.Linq
 
         public async ValueTask<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken token)
         {
-            var async = NemoQueryContext.Execute(expression, _connection, true);
+            var async = NemoQueryContext.Execute(expression, _connection, true, _config);
             var typeName = async.GetType().Name;
             if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {

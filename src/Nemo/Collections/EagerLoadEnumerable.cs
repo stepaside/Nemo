@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Data.Common;
+using Nemo.Configuration;
 
 namespace Nemo.Collections
 {
@@ -16,7 +17,7 @@ namespace Nemo.Collections
         private readonly List<string> _sqlOrder;
         private Func<string, IList<Type>, IEnumerable<T>> _load;
 
-        public EagerLoadEnumerable(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, IEnumerable<T>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount)
+        public EagerLoadEnumerable(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, IEnumerable<T>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount, IConfiguration config)
         {
             _sqlOrder = sql.ToList();
             _sqlMap = _sqlOrder.Zip(types, (s, t) => new { Key = s, Value = t }).ToDictionary(t => t.Key, t => t.Value);
@@ -29,6 +30,7 @@ namespace Nemo.Collections
             Page = page;
             PageSize = pageSize;
             SkipCount = skipCount;
+            Configuration = config;
         }
 
         public IEnumerator<T> GetEnumerator()
@@ -70,6 +72,8 @@ namespace Nemo.Collections
         internal int PageSize { get; }
 
         public int SkipCount { get; }
+
+        public IConfiguration Configuration { get; }
 
         public IEnumerable<T> Union(IEnumerable<T> other)
         {

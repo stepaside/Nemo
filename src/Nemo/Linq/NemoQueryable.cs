@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Nemo.Configuration;
 using Nemo.Extensions;
 
 namespace Nemo.Linq
@@ -16,9 +17,9 @@ namespace Nemo.Linq
         private readonly NemoQueryProvider _provider;
         private readonly Expression _expression;
         
-        public NemoQueryable(DbConnection connection = null)
+        public NemoQueryable(DbConnection connection = null, IConfiguration config = null)
         {
-            _provider = new NemoQueryProvider(connection);
+            _provider = new NemoQueryProvider(connection, config);
             _expression = Expression.Constant(this);
         }
 

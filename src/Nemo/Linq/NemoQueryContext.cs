@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Nemo.Collections.Extensions;
+using Nemo.Configuration;
 using Nemo.Reflection;
 
 namespace Nemo.Linq
@@ -24,7 +25,7 @@ namespace Nemo.Linq
 
 
         // Executes the expression tree that is passed to it. 
-        internal static object Execute(Expression expression, DbConnection connection = null, bool async = false)
+        internal static object Execute(Expression expression, DbConnection connection = null, bool async = false, IConfiguration config = null)
         {
             var args = new Dictionary<string, object>();
             var type = Prepare(expression, args, async);
@@ -140,7 +141,7 @@ namespace Nemo.Linq
             }
 
             return (async ? SelectAsyncMethod : SelectMethod).MakeGenericMethod(type)
-                .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset / limit + 1 : 0, limit, offset, null, selectOption, orderByArray });
+                .Invoke(null, new object[] { criteria, null, connection, limit > 0 ? offset / limit + 1 : 0, limit, offset, null, selectOption, config, orderByArray });
         }
 
         private readonly static ISet<string> SupportedConsumeMethods = new HashSet<string>(new[] { "First", "FirstOrDefault" });
