@@ -10,7 +10,29 @@ namespace Nemo.Attributes.Converters
 		
         T ITypeConverter<object, T>.ConvertForward(object from)
 		{
-            if (!Enum.TryParse<T>(Convert.ToString(from), out var result))
+			switch(from)
+            {
+				case T t:
+					return t;
+				case int i:
+					return (T)Enum.ToObject(typeof(T), i);
+				case long l:
+					return (T)Enum.ToObject(typeof(T), l);
+				case short s:
+					return (T)Enum.ToObject(typeof(T), s);
+				case ushort us:
+					return (T)Enum.ToObject(typeof(T), us);
+				case ulong ul:
+					return (T)Enum.ToObject(typeof(T), ul);
+				case uint ui:
+					return (T)Enum.ToObject(typeof(T), ui);
+				case byte b:
+					return (T)Enum.ToObject(typeof(T), b);
+				case sbyte sb:
+					return (T)Enum.ToObject(typeof(T), sb);
+			}
+
+			if (!Enum.TryParse<T>(Convert.ToString(from), out var result))
             {
                 result = default;
             }
@@ -20,7 +42,7 @@ namespace Nemo.Attributes.Converters
 
 		object ITypeConverter<object, T>.ConvertBackward(T to)
 		{
-			return to.ToString();
+			return to;
 		}
 		
         #endregion

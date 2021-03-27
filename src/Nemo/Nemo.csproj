@@ -15,7 +15,7 @@
     <AssemblyTitle>Nemo</AssemblyTitle>
     <AssemblyVersion>2.6.0</AssemblyVersion>
     <FileVersion>2.6.0</FileVersion>
-    <PackageVersion>2.6.0-beta.1.0.5</PackageVersion>
+    <PackageVersion>2.6.0-beta.1.0.6</PackageVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>
