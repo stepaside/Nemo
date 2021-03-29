@@ -6,13 +6,15 @@ using Nemo.Extensions;
 
 namespace Nemo.Collections
 {
-    internal class TypeArray : IEqualityComparer<IList<Type>>
+    internal class TypeArray : IEqualityComparer<TypeArray>
     {
         private readonly IList<Type> _types;
+        private readonly Lazy<int> _hashCode;
 
         public TypeArray(IList<Type> types)
         {
             _types = types;
+            _hashCode = new Lazy<int>(() => _types.Select(t => t.FullName).ToDelimitedString("|").GetHashCode(), true);
         }
 
         public IList<Type> Types
@@ -23,14 +25,14 @@ namespace Nemo.Collections
             }
         }
 
-        public bool Equals(IList<Type> x, IList<Type> y)
+        public bool Equals(TypeArray x, TypeArray y)
         {
-            return x.SequenceEqual(y, EqualityComparer<Type>.Default);
+            return (x._types?.SequenceEqual(y._types, EqualityComparer<Type>.Default)).GetValueOrDefault();
         }
 
-        public int GetHashCode(IList<Type> obj)
+        public int GetHashCode(TypeArray obj)
         {
-            return obj.Select(t => t.FullName).ToDelimitedString("::").GetHashCode();
+            return obj._hashCode.Value;
         }
     }
 }

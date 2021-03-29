@@ -5,7 +5,7 @@ namespace Nemo.Attributes.Converters
 	public class NullableEnumConverter<T> : ITypeConverter<object, T?>
 		where T : struct //	Should actually be an enum
 	{
-		private ITypeConverter<object, T> decoratedConverter = new EnumConverter<T>();
+		private readonly ITypeConverter<object, T> decoratedConverter = new EnumConverter<T>();
 
 		#region ITypeConverter<string,T?> Members
 

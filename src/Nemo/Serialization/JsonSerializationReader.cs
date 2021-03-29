@@ -33,7 +33,7 @@ namespace Nemo.Serialization
                 {
                     if (isPolymorphic)
                     {
-                        objectType = Type.GetType(current.Value.As<string>()) ?? objectType;
+                        objectType = Type.GetType(current.Value as string) ?? objectType;
                         current = current.NexSibling;
                     }
                     result = ObjectFactory.Create(objectType);
@@ -96,23 +96,23 @@ namespace Nemo.Serialization
                         {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
-                                result.Property(property.PropertyName, current.Value.As<bool>());
+                                result.Property(property.PropertyName, (bool)current.Value);
                             }
                             var list = result as IList;
                             if (list != null)
                             {
-                                list.Add(current.Value.As<bool>());
+                                list.Add(current.Value);
                             }
                             else
                             {
                                 var map = result as IDictionary;
                                 if (map != null)
                                 {
-                                    map.Add(current.Name, current.Value.As<bool>());
+                                    map.Add(current.Name, current.Value);
                                 }
                                 else
                                 {
-                                    result = current.Value.As<bool>();
+                                    result = current.Value;
                                 }
                             }
                             break;
@@ -121,7 +121,7 @@ namespace Nemo.Serialization
                         {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
-                                var value = current.Value.As<decimal>();
+                                var value = (decimal)current.Value;
                                 var typeCode = Type.GetTypeCode(property.PropertyType);
                                 checked
                                 {
@@ -141,7 +141,7 @@ namespace Nemo.Serialization
                             }
                             else
                             {
-                                var value = current.Value.As<decimal>();
+                                var value = (decimal)current.Value;
                                 var typeCode = Type.GetTypeCode(elementType ?? objectType);
                                 checked
                                 {
@@ -219,7 +219,7 @@ namespace Nemo.Serialization
                         {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
-                                var value = current.Value.As<long>();
+                                var value = (long)current.Value;
                                 var typeCode = Type.GetTypeCode(property.PropertyType);
                                 checked
                                 {
@@ -254,7 +254,7 @@ namespace Nemo.Serialization
                             }
                             else
                             {
-                                var value = current.Value.As<long>();
+                                var value = (long)current.Value;
                                 var typeCode = Type.GetTypeCode(elementType ?? objectType);
                                 checked
                                 {
@@ -437,39 +437,35 @@ namespace Nemo.Serialization
                         {
                             if (property != null && (root.Type == JsonType.Object || (listRoot != null && listRoot.Type == JsonType.Object)))
                             {
-                                var value = current.Value.As<string>();
+                                var value = (string)current.Value;
                                 if (property.PropertyType == typeof(string))
                                 {
                                     result.Property(property.PropertyName, value);
                                 }
                                 else if (property.PropertyType == typeof(DateTime))
                                 {
-                                    DateTime date;
-                                    if (DateTime.TryParse(value, out date))
+                                    if (DateTime.TryParse(value, out var date))
                                     {
                                         result.Property(property.PropertyName, date);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(TimeSpan))
                                 {
-                                    TimeSpan time;
-                                    if (TimeSpan.TryParse(value, out time))
+                                    if (TimeSpan.TryParse(value, out var time))
                                     {
                                         result.Property(property.PropertyName, time);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(DateTimeOffset))
                                 {
-                                    DateTimeOffset date;
-                                    if (DateTimeOffset.TryParse(value, out date))
+                                    if (DateTimeOffset.TryParse(value, out var date))
                                     {
                                         result.Property(property.PropertyName, date);
                                     }
                                 }
                                 else if (property.PropertyType == typeof(Guid))
                                 {
-                                    Guid guid;
-                                    if (Guid.TryParse(value, out guid))
+                                    if (Guid.TryParse(value, out var guid))
                                     {
                                         result.Property(property.PropertyName, guid);
                                     }
@@ -481,7 +477,7 @@ namespace Nemo.Serialization
                             }
                             else
                             {
-                                var value = current.Value.As<string>();
+                                var value = (string)current.Value;
                                 var type = elementType ?? objectType;
                                 if (type == typeof(string))
                                 {
@@ -505,8 +501,7 @@ namespace Nemo.Serialization
                                 }
                                 else if (type == typeof(DateTime))
                                 {
-                                    DateTime date;
-                                    if (DateTime.TryParse(value, out date))
+                                    if (DateTime.TryParse(value, out var date))
                                     {
                                         var list = result as IList;
                                         if (list != null)
@@ -529,8 +524,7 @@ namespace Nemo.Serialization
                                 }
                                 else if (type == typeof(TimeSpan))
                                 {
-                                    TimeSpan time;
-                                    if (TimeSpan.TryParse(value, out time))
+                                    if (TimeSpan.TryParse(value, out var time))
                                     {
                                         var list = result as IList;
                                         if (list != null)
@@ -553,8 +547,7 @@ namespace Nemo.Serialization
                                 }
                                 else if (type == typeof(DateTimeOffset))
                                 {
-                                    DateTimeOffset date;
-                                    if (DateTimeOffset.TryParse(value, out date))
+                                    if (DateTimeOffset.TryParse(value, out var date))
                                     {
                                         var list = result as IList;
                                         if (list != null)
@@ -577,8 +570,7 @@ namespace Nemo.Serialization
                                 }
                                 else if (type == typeof(Guid))
                                 {
-                                    Guid guid;
-                                    if (Guid.TryParse(value, out guid))
+                                    if (Guid.TryParse(value, out var guid))
                                     {
                                         var list = result as IList;
                                         if (list != null)

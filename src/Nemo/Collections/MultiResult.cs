@@ -22,23 +22,31 @@ namespace Nemo.Collections
     }
 
     [Serializable]
-    public class MultiResult<T1, T2> : IMultiResult, IEnumerable<T1>
-        where T1 : class
-        where T2 : class
+    public class MultiResult<TFirst> : IMultiResult, IEnumerable<TFirst>
+        where TFirst : class
     {
-        private readonly IEnumerable<ITypeUnion> _source;
-        private IEnumerator<ITypeUnion> _iter;
-        private readonly bool _cached;
-        private readonly IConfiguration _config;
-        private ITypeUnion _last;
+        private readonly IEnumerable<object> _source;
+        private IEnumerator<object> _iter;
+        private object _last;
 
-        public MultiResult(IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
+        public MultiResult(IList<Type> types, IEnumerable<object> source, bool cached, IConfiguration config)
         {
-            _cached = cached;
+            if (types == null) throw new ArgumentNullException(nameof(types));
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (types.Count == 0 || (types.Count == 1 && types[0] == typeof(TFirst))) throw new ArgumentException("Insufficient number for types provided");
+
+            if (types[0] != typeof(TFirst))
+            {
+                types = types.Prepend(typeof(TFirst)).ToArray();
+            }
+
+            AllTypes = types as Type[] ?? types.ToArray();
+            IsCached = cached; 
+            
             if (cached)
             {
-                _config = config;
-                if ((config ?? ConfigurationFactory.Get<T1>()).DefaultCacheRepresentation == CacheRepresentation.List)
+                Configuration = config;
+                if ((config ?? ConfigurationFactory.Get<TFirst>()).DefaultCacheRepresentation == CacheRepresentation.List)
                 {
                     _source = source.ToList();
                 }
@@ -54,15 +62,11 @@ namespace Nemo.Collections
             _iter = _source.GetEnumerator();
         }
 
-        IEnumerator<T1> IEnumerable<T1>.GetEnumerator()
-        {
-            return Retrieve<T1>().GetEnumerator();
-        }
+        public Type[] AllTypes { get; }
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return _iter;
-        }
+        public bool IsCached { get; }
+
+        public IConfiguration Configuration { get; }
 
         public IEnumerable<T> Retrieve<T>()
         {
@@ -71,17 +75,17 @@ namespace Nemo.Collections
                 yield break;
             }
 
-            if (_last != null && _last.Is<T>())
+            if (_last != null && _last is T item1)
             {
-                yield return _last.As<T>(); ;
+                yield return item1;
             }
 
             while (_iter.MoveNext())
             {
                 _last = _iter.Current;
-                if (_last.Is<T>())
+                if (_last is T item2)
                 {
-                    yield return _last.As<T>();
+                    yield return item2;
                 }
                 else
                 {
@@ -90,96 +94,38 @@ namespace Nemo.Collections
             }
         }
 
-        public virtual Type[] AllTypes => new[] { typeof(T1), typeof(T2) };
-        
         public bool Reset()
         {
-            if (!_cached) return false;
+            if (!IsCached) return false;
             _last = null;
             _iter = _source.GetEnumerator();
             return true;
         }
 
-        public bool IsCached => _cached;
+        IEnumerator<TFirst> IEnumerable<TFirst>.GetEnumerator()
+        {
+            return Retrieve<TFirst>().GetEnumerator();
+        }
 
-        public IConfiguration Configuration => _config;
-    }
-
-    [Serializable]
-    public class MultiResult<T1, T2, T3> : MultiResult<T1, T2>, IMultiResult
-        where T1 : class
-        where T2 : class
-        where T3 : class
-    {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
-            : base(source, cached, config)
-        { }
-
-        public override Type[] AllTypes => new[] { typeof(T1), typeof(T2), typeof(T3) };
-    }
-
-    [Serializable]
-    public class MultiResult<T1, T2, T3, T4> : MultiResult<T1, T2, T3>
-        where T1 : class
-        where T2 : class
-        where T3 : class
-        where T4 : class
-    {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
-            : base(source, cached, config)
-        { }
-
-        public override Type[] AllTypes => new[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4) };
-    }
-
-    [Serializable]
-    public class MultiResult<T1, T2, T3, T4, T5> : MultiResult<T1, T2, T3, T4>
-        where T1 : class
-        where T2 : class
-        where T3 : class
-        where T4 : class
-        where T5 : class
-    {
-        public MultiResult(IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
-            : base(source, cached, config)
-        { }
-
-        public override Type[] AllTypes => new[] { typeof(T1), typeof(T2), typeof(T3), typeof(T4), typeof(T5) };
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return _iter;
+        }
     }
 
     public static class MultiResult
     {
-        private static readonly ConcurrentDictionary<TypeArray, Type> _types = new ConcurrentDictionary<TypeArray, Type>();
+        private static readonly ConcurrentDictionary<Type, Type> _types = new ConcurrentDictionary<Type, Type>();
         private static readonly ConcurrentDictionary<TypeArray, List<MethodInfo>> _methods = new ConcurrentDictionary<TypeArray, List<MethodInfo>>();
         private static readonly ConcurrentDictionary<Type, List<ObjectRelation>> _relations = new ConcurrentDictionary<Type, List<ObjectRelation>>();
 
-        public static IMultiResult Create(IList<Type> types, IEnumerable<ITypeUnion> source, bool cached, IConfiguration config)
+        public static IMultiResult Create(IList<Type> types, IEnumerable<object> source, bool cached, IConfiguration config)
         {
-            if (types == null || source == null) return null;
+            if (types == null || source == null || types.Count < 2) return null;
 
-            Type genericType = null;
-            switch (types.Count)
-            {
-                case 2:
-                    genericType = typeof(MultiResult<,>);
-                    break;
-                case 3:
-                    genericType = typeof(MultiResult<,,>);
-                    break;
-                case 4:
-                    genericType = typeof(MultiResult<,,,>);
-                    break;
-                case 5:
-                    genericType = typeof(MultiResult<,,,,>);
-                    break;
-            }
-
-            if (genericType == null) return null;
-
-            var key = new TypeArray(types);
-            var type = _types.GetOrAdd(key, t => genericType.MakeGenericType(t.Types is Type[] ? (Type[])t.Types : t.Types.ToArray()));
-            var activator = Reflection.Activator.CreateDelegate(type, typeof(IEnumerable<ITypeUnion>), typeof(bool), typeof(IConfiguration));
-            var multiResult = (IMultiResult)activator(source, cached, config);
+            var type = _types.GetOrAdd(types[0], t => typeof(MultiResult<>).MakeGenericType(types[0]));
+            var activator = Reflection.Activator.CreateDelegate(type, typeof(IList<Type>), typeof(IEnumerable<object>), typeof(bool), typeof(IConfiguration));
+            var multiResult = (IMultiResult)activator(types, source, cached, config);
             return multiResult;
         }
 

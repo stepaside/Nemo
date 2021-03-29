@@ -188,8 +188,7 @@ namespace Nemo.Reflection
         public static bool IsNullableType(Type objectType)
         {
             //return objectType.IsGenericType && objectType.GetGenericTypeDefinition().Equals(typeof(Nullable<>));
-            Type dummy;
-            return IsNullableType(objectType, out dummy);
+            return IsNullableType(objectType, out var dummy);
         }
 
         public static bool IsNullableType(Type objectType, out Type underlyingType)
@@ -260,6 +259,33 @@ namespace Nemo.Reflection
         public static bool IsArray(Type objectType)
         {
             return objectType.IsArray;
+        }
+
+        public static bool IsTuple(Type objectType)
+        {
+#if !NETSTANDARD2_0
+            return objectType.GetInterface(typeof(ITuple).Name) != null;
+#else
+            if (!objectType.IsGenericType)
+            {
+                return false;
+            }
+
+            var genericTypeDefinition = objectType.GetGenericTypeDefinition();
+            return genericTypeDefinition == typeof(Tuple<>)
+                || genericTypeDefinition == typeof(Tuple<,>)
+                || genericTypeDefinition == typeof(Tuple<,,>)
+                || genericTypeDefinition == typeof(Tuple<,,,>)
+                || genericTypeDefinition == typeof(Tuple<,,,,>)
+                || genericTypeDefinition == typeof(Tuple<,,,,,>)
+                || genericTypeDefinition == typeof(Tuple<,,,,,,>)
+                || genericTypeDefinition == typeof(Tuple<,,,,,,,>);
+#endif
+        }
+
+        public static IList<Type> GetTupleTypes(Type objectType)
+        {
+            return objectType.GetGenericArguments().SelectMany(t => Reflector.IsTuple(t) ? GetTupleTypes(t) : new[] { t }).ToList();
         }
 
         public static bool IsAnonymousType(Type objectType)

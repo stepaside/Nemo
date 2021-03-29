@@ -24,7 +24,7 @@ namespace Nemo.Utilities
     {
         public JsonType Type { get; internal set; }
         public string Name { get; internal set; }
-        public TypeUnion<string, long, decimal, bool> Value { get; internal set; }
+        public object Value { get; internal set; }
 
         public JsonValue Parent { get; internal set; }
         public JsonValue NexSibling { get; internal set; }
@@ -469,7 +469,7 @@ namespace Nemo.Utilities
                                 {
                                     s = json.Substring(first, i - first);
                                 }
-                                value.Value = new TypeUnion<string, long, decimal, bool>(s);
+                                value.Value = s;
 
                                 if (top != null)
                                 {
@@ -500,14 +500,14 @@ namespace Nemo.Utilities
                             else if (ch == 't' && json[i + 1] == 'r' && json[i + 2] == 'u' && json[i + 3] == 'e')
                             {
                                 value.Type = JsonType.Boolean;
-                                value.Value = new TypeUnion<string, long, decimal, bool>(true);
+                                value.Value = true;
                                 i += 3;
                             }
                             // false
-                            else if (jsonArray != null && (ch == 'f' && json[i + 1] == 'a' && json[i + 2] == 'l' && json[i + 3] == 's' && jsonArray[i + 4] == 'e'))
+                            else if (ch == 'f' && json[i + 1] == 'a' && json[i + 2] == 'l' && json[i + 3] == 's' && json[i + 4] == 'e')
                             {
                                 value.Type = JsonType.Boolean;
-                                value.Value = new TypeUnion<string, long, decimal, bool>(false);
+                                value.Value = false;
                                 i += 4;
                             }
                             else
@@ -556,26 +556,24 @@ namespace Nemo.Utilities
                         
                             if (value.Type == JsonType.Integer)
                             {
-                                long n;
-                                if (TextToInteger(json.Substring(first, i - first), out n) != i - first)
+                                if (TextToInteger(json.Substring(first, i - first), out var n) != i - first)
                                 {
                                     throw new JsonParserException(first, "Bad integer number");
                                 }
                                 else
                                 {
-                                    value.Value = new TypeUnion<string, long, decimal, bool>(n);
+                                    value.Value = n;
                                 }
                                 i--;
                             }
 
                             if (value.Type == JsonType.Decimal)
                             {
-                                decimal d;
-                                if (TextToDecimal(json.Substring(first, i - first), out d) != i - first)
+                                if (TextToDecimal(json.Substring(first, i - first), out var d) != i - first)
                                 {
                                     throw new JsonParserException(first, "Bad decimal number");
                                 }
-                                value.Value = new TypeUnion<string, long, decimal, bool>(d);
+                                value.Value = d;
                                 i--;
                             }
 
