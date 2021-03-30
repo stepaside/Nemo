@@ -817,7 +817,7 @@ namespace Nemo
                 operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, ConfigurationFactory.Get<T>());
+            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, request.Configuration ?? ConfigurationFactory.Get<T>());
 
             var response = request.Connection != null 
                 ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration) 
@@ -1246,9 +1246,12 @@ namespace Nemo
                 typeName = typeName.Substring(1);
             }
             
-            var procName = config.OperationPrefix + typeName + "_" + operation;
+            var procName = operation;
             switch (namingConvention)
             {
+                case OperationNamingConvention.PrefixTypeName_Operation:
+                    procName = config.OperationPrefix + typeName + "_" + operation;
+                    break;
                 case OperationNamingConvention.PrefixTypeNameOperation:
                     procName = config.OperationPrefix + typeName + operation;
                     break;

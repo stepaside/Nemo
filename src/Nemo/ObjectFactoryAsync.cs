@@ -438,7 +438,7 @@ namespace Nemo
                 operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, ConfigurationFactory.Get<T>());
+            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, request.Configuration ?? ConfigurationFactory.Get<T>());
 
             var response = request.Connection != null
                 ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration).ConfigureAwait(false)

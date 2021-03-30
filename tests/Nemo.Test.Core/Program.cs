@@ -29,7 +29,7 @@ namespace NemoTest
                 .SetDefaultMaterializationMode(MaterializationMode.Exact)
                 .SetDefaultCacheRepresentation(CacheRepresentation.None)
                 .SetDefaultSerializationMode(SerializationMode.Compact)
-                .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
+                .SetOperationNamingConvention(OperationNamingConvention.Default)
                 .SetOperationPrefix("spDTO_")
                 .SetAutoTypeCoercion(true)
                 .SetLogging(false)
