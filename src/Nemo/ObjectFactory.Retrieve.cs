@@ -29,7 +29,7 @@ namespace Nemo
             var value = response.Value;
             if (value == null)
             {
-                return default(T);
+                return default;
             }
 
             return (T)Reflector.ChangeType(value, typeof(T));
@@ -46,20 +46,14 @@ namespace Nemo
 
             if (!cached.HasValue)
             {
-                if (config == null)
-                {
-                    config = ConfigurationFactory.Get<TResult>();
-                }
+                config ??= ConfigurationFactory.Get<TResult>();
 
                 cached = config.DefaultCacheRepresentation != CacheRepresentation.None;
             }
 
             if (cached.Value)
             {
-                if (config == null)
-                {
-                    config = ConfigurationFactory.Get<TResult>();
-                }
+                config ??= ConfigurationFactory.Get<TResult>();
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
@@ -134,10 +128,7 @@ namespace Nemo
                 operationType = operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<T>();
-            }
+            config ??= ConfigurationFactory.Get<T>();
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
@@ -175,10 +166,7 @@ namespace Nemo
             typeCount += LoadTypes<T3>(fakeType, realTypes, out hasTuple) ? 1 : 0;
             typeCount += LoadTypes<T4>(fakeType, realTypes, out hasTuple) ? 1 : 0;
 
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<TResult>();
-            }
+            config ??= ConfigurationFactory.Get<TResult>();
 
             var returnType = OperationReturnType.SingleResult;
 
@@ -208,7 +196,7 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            var parameterList = ExtractParameters<TResult>(operation, parameters);
+            var parameterList = ExtractParameters<TResult>(parameters);
             return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
         }
 
@@ -262,18 +250,15 @@ namespace Nemo
         public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T : class
         {
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<T>();
-            }
+            config ??= ConfigurationFactory.Get<T>();
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            var parameterList = ExtractParameters<T>(operation, parameters);
+            var parameterList = ExtractParameters<T>(parameters);
             return RetrieveImplemenation<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
         }
 
-        private static IList<Param> ExtractParameters<T>(string operation, object parameters)
+        private static IList<Param> ExtractParameters<T>(object parameters)
             where T : class
         {
             IList<Param> parameterList = null;
@@ -282,7 +267,7 @@ namespace Nemo
                 switch (parameters)
                 {
                     case ParamList list:
-                        parameterList = list.GetParameters(typeof(T), operation);
+                        parameterList = list.GetParameters();
                         break;
                     case Param[] array:
                         parameterList = array;
@@ -326,7 +311,7 @@ namespace Nemo
             var value = response.Value;
             if (value == null)
             {
-                return default(T);
+                return default;
             }
 
             return (T)Reflector.ChangeType(value, typeof(T));
@@ -343,20 +328,14 @@ namespace Nemo
 
             if (!cached.HasValue)
             {
-                if (config == null)
-                {
-                    config = ConfigurationFactory.Get<TResult>();
-                }
+                config ??= ConfigurationFactory.Get<TResult>();
 
                 cached = config.DefaultCacheRepresentation != CacheRepresentation.None;
             }
 
             if (cached.Value)
             {
-                if (config == null)
-                {
-                    config = ConfigurationFactory.Get<TResult>();
-                }
+                config ??= ConfigurationFactory.Get<TResult>();
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
@@ -431,10 +410,7 @@ namespace Nemo
                 operationType = operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<T>();
-            }
+            config ??= ConfigurationFactory.Get<T>();
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
@@ -476,10 +452,7 @@ namespace Nemo
                 realTypes.Add(typeof(T4));
             }
 
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<TResult>();
-            }
+            config ??= ConfigurationFactory.Get<TResult>();
 
             var returnType = OperationReturnType.SingleResult;
 
@@ -509,7 +482,7 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            var parameterList = ExtractParameters<TResult>(operation, parameters);
+            var parameterList = ExtractParameters<TResult>(parameters);
             return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config).ConfigureAwait(false);
         }
 
@@ -543,14 +516,11 @@ namespace Nemo
         public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where T : class
         {
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<T>();
-            }
+            config ??= ConfigurationFactory.Get<T>();
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            var parameterList = ExtractParameters<T>(operation, parameters);
+            var parameterList = ExtractParameters<T>(parameters);
             return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config).ConfigureAwait(false);
         }
 

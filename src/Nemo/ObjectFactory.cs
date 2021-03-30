@@ -484,19 +484,16 @@ namespace Nemo
         public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return Insert<T>(parameters.GetParameters(typeof(T), OperationInsert), connectionName, captureException, schema, connection, config);
+            return Insert<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config);
         }
 
         public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
+            config ??= ConfigurationFactory.Get<T>();
+
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
             
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<T>();
-            }
-
             if (config.GenerateInsertSql)
             {
                 request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName, config));
@@ -515,18 +512,15 @@ namespace Nemo
         public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return Update<T>(parameters.GetParameters(typeof(T), OperationUpdate), connectionName, captureException, schema, connection, config);
+            return Update<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config);
         }
 
         public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
+            config ??= ConfigurationFactory.Get<T>();
+
             var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
-            
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<T>();
-            }
             
             if (config.GenerateUpdateSql)
             {
@@ -562,18 +556,15 @@ namespace Nemo
         public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return Delete<T>(parameters.GetParameters(typeof(T), OperationDelete), connectionName, captureException, schema, connection, config);
+            return Delete<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config);
         }
 
         public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
+            config ??= ConfigurationFactory.Get<T>();
 
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<T>();
-            }
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
 
             if (config.GenerateDeleteSql)
             {
@@ -625,18 +616,15 @@ namespace Nemo
         public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return Destroy<T>(parameters.GetParameters(typeof(T), OperationDestroy), connectionName, captureException, schema, connection, config);
+            return Destroy<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config);
         }
 
         public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
+            config ??= ConfigurationFactory.Get<T>();
 
-            if (config == null)
-            {
-                config = ConfigurationFactory.Get<T>();
-            }
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
 
             if (config.GenerateDeleteSql)
             {
@@ -821,6 +809,22 @@ namespace Nemo
 
             var response = request.Connection != null 
                 ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration) 
+                : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration);
+            return response;
+        }
+
+        public static OperationResponse Execute(OperationRequest request)
+        {
+            var operationType = request.OperationType;
+            if (operationType == OperationType.Guess)
+            {
+                operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+            }
+
+            var operationText = GetOperationText(null, request.Operation, request.OperationType, request.SchemaName, request.Configuration ?? ConfigurationFactory.DefaultConfiguration);
+
+            var response = request.Connection != null
+                ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration)
                 : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration);
             return response;
         }
@@ -1240,45 +1244,66 @@ namespace Nemo
             if (operationType != OperationType.StoredProcedure) return operation;
 
             var namingConvention = config.OperationNamingConvention;
-            var typeName = objectType.Name;
-            if (objectType.IsInterface && typeName[0] == 'I')
+
+            string typeName = null;
+            if (objectType != null)
             {
-                typeName = typeName.Substring(1);
+                typeName = objectType.Name;
+                if (objectType.IsInterface && typeName[0] == 'I')
+                {
+                    typeName = typeName.Substring(1);
+                }
             }
             
             var procName = operation;
-            switch (namingConvention)
+
+            if (string.IsNullOrEmpty(typeName))
             {
-                case OperationNamingConvention.PrefixTypeName_Operation:
-                    procName = config.OperationPrefix + typeName + "_" + operation;
-                    break;
-                case OperationNamingConvention.PrefixTypeNameOperation:
-                    procName = config.OperationPrefix + typeName + operation;
-                    break;
-                case OperationNamingConvention.TypeName_Operation:
-                    procName = typeName + "_" + operation;
-                    break;
-                case OperationNamingConvention.TypeNameOperation:
-                    procName = typeName + operation;
-                    break;
-                case OperationNamingConvention.PrefixOperation_TypeName:
-                    procName = config.OperationPrefix + operation + "_" + typeName;
-                    break;
-                case OperationNamingConvention.PrefixOperationTypeName:
-                    procName = config.OperationPrefix + operation + typeName;
-                    break;
-                case OperationNamingConvention.Operation_TypeName:
-                    procName = operation + "_" + typeName;
-                    break;
-                case OperationNamingConvention.OperationTypeName:
-                    procName = operation + typeName;
-                    break;
-                case OperationNamingConvention.PrefixOperation:
-                    procName = config.OperationPrefix + operation;
-                    break;
-                case OperationNamingConvention.Operation:
-                    procName = operation;
-                    break;
+                switch (namingConvention)
+                {
+                    case OperationNamingConvention.PrefixOperation:
+                        procName = config.OperationPrefix + operation;
+                        break;
+                    case OperationNamingConvention.Operation:
+                        procName = operation;
+                        break;
+                }
+            }
+            else
+            {
+                switch (namingConvention)
+                {
+                    case OperationNamingConvention.PrefixTypeName_Operation:
+                        procName = config.OperationPrefix + typeName + "_" + operation;
+                        break;
+                    case OperationNamingConvention.PrefixTypeNameOperation:
+                        procName = config.OperationPrefix + typeName + operation;
+                        break;
+                    case OperationNamingConvention.TypeName_Operation:
+                        procName = typeName + "_" + operation;
+                        break;
+                    case OperationNamingConvention.TypeNameOperation:
+                        procName = typeName + operation;
+                        break;
+                    case OperationNamingConvention.PrefixOperation_TypeName:
+                        procName = config.OperationPrefix + operation + "_" + typeName;
+                        break;
+                    case OperationNamingConvention.PrefixOperationTypeName:
+                        procName = config.OperationPrefix + operation + typeName;
+                        break;
+                    case OperationNamingConvention.Operation_TypeName:
+                        procName = operation + "_" + typeName;
+                        break;
+                    case OperationNamingConvention.OperationTypeName:
+                        procName = operation + typeName;
+                        break;
+                    case OperationNamingConvention.PrefixOperation:
+                        procName = config.OperationPrefix + operation;
+                        break;
+                    case OperationNamingConvention.Operation:
+                        procName = operation;
+                        break;
+                }
             }
 
             if (!string.IsNullOrEmpty(schema))
