@@ -70,7 +70,7 @@ namespace Nemo.Data
             return connectionName ?? ConfigurationFactory.Get(objectType).DefaultConnectionName;
         }
 
-        internal static string GetProviderInvariantName(string connectionName, Type objectType)
+        internal static string GetProviderInvariantName(string connectionName, Type objectType, IConfiguration config)
         {
             if (connectionName.NullIfEmpty() == null && objectType != null)
             {
@@ -85,17 +85,17 @@ namespace Nemo.Data
             string cleanConnectionString;
 
 #if NETSTANDARD
-            var connectionStringSetting = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
+            var connectionStringSetting = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);
             if (connectionStringSetting != null)
             {
-                return connectionStringSetting.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionStringSetting.ConnectionString, out cleanConnectionString);
+                return connectionStringSetting.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionStringSetting.ConnectionString, config, out cleanConnectionString);
             }
 #endif
-            return ConfigurationManager.ConnectionStrings[connectionName]?.ProviderName ?? GetProviderInvariantNameByConnectionString(ConfigurationManager.ConnectionStrings[connectionName]?.ConnectionString, out cleanConnectionString);
+            return ConfigurationManager.ConnectionStrings[connectionName]?.ProviderName ?? GetProviderInvariantNameByConnectionString(ConfigurationManager.ConnectionStrings[connectionName]?.ConnectionString, config, out cleanConnectionString);
 
         }
 
-        internal static string GetProviderInvariantNameByConnectionString(string connectionString, out string cleanConnectionString)
+        internal static string GetProviderInvariantNameByConnectionString(string connectionString, IConfiguration config, out string cleanConnectionString)
         {
             cleanConnectionString = connectionString;
 
@@ -123,7 +123,7 @@ namespace Nemo.Data
             if (!lostPassword)
             {
 #if NETSTANDARD
-                dynamic connectionStrings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings();
+                dynamic connectionStrings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionStrings();
 
                 if (connectionStrings == null)
                 {
@@ -134,10 +134,10 @@ namespace Nemo.Data
 #endif
                 for (var i = 0; i < connectionStrings.Count; i++)
                 {
-                    var config = connectionStrings[i];
-                    if (string.Equals(config.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
+                    var connectionStringsSettings = connectionStrings[i];
+                    if (string.Equals(connectionStringsSettings.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
                     {
-                        return config.ProviderName;
+                        return connectionStringsSettings.ProviderName;
                     }
                 }
             }
@@ -150,7 +150,7 @@ namespace Nemo.Data
                 }
 
 #if NETSTANDARD
-                dynamic connectionStrings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionStrings();
+                dynamic connectionStrings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionStrings();
 
                 if (connectionStrings == null)
                 {
@@ -161,9 +161,9 @@ namespace Nemo.Data
 #endif
                 for (var i = 0; i < connectionStrings.Count; i++)
                 {
-                    var config = connectionStrings[i];
+                    var connectionStringsSettings = connectionStrings[i];
 
-                    var otherBuilder = new DbConnectionStringBuilder { ConnectionString = config.ConnectionString };
+                    var otherBuilder = new DbConnectionStringBuilder { ConnectionString = connectionStringsSettings.ConnectionString };
                     otherBuilder.Remove("pwd");
                     otherBuilder.Remove("password");
 
@@ -181,7 +181,7 @@ namespace Nemo.Data
 
                     if (equivalenCount == builder.Count)
                     {
-                        return config.ProviderName;
+                        return connectionStringsSettings.ProviderName;
                     }
                 }
             }
@@ -189,10 +189,10 @@ namespace Nemo.Data
             return null;
         }
 
-        internal static DbConnection CreateConnection(string connectionString, string providerName)
+        internal static DbConnection CreateConnection(string connectionString, string providerName, IConfiguration config)
         {
             var cleanConnectionString = connectionString;
-            providerName ??= GetProviderInvariantNameByConnectionString(connectionString, out cleanConnectionString);
+            providerName ??= GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
 
 #if NETSTANDARD
             var factory = GetDbProviderFactory(providerName);
@@ -207,7 +207,7 @@ namespace Nemo.Data
             return connection;
         }
 
-        internal static DbConnection CreateConnection(string connectionName, Type objectType)
+        internal static DbConnection CreateConnection(string connectionName, Type objectType, IConfiguration config)
         {
             if (connectionName.NullIfEmpty() == null && objectType != null)
             {
@@ -226,23 +226,23 @@ namespace Nemo.Data
             string connectionString = null;
             string providerName = null;
 
-            var connectionStringSetting = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
+            var connectionStringSetting = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);
             if (connectionStringSetting != null)
             {
                 connectionString = connectionStringSetting.ConnectionString;
-                providerName = connectionStringSetting.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, out cleanConnectionString);
+                providerName = connectionStringSetting.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
             }
             else
             {
                 connectionString = ConfigurationManager.ConnectionStrings[connectionName]?.ConnectionString;
-                providerName = ConfigurationManager.ConnectionStrings[connectionName]?.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, out cleanConnectionString);
+                providerName = ConfigurationManager.ConnectionStrings[connectionName]?.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
             }
 
             var factory = GetDbProviderFactory(providerName);
 #else
-            var config = ConfigurationManager.ConnectionStrings[connectionName];
-            var connectionString = config?.ConnectionString;
-            var factory = DbProviderFactories.GetFactory(config?.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, out cleanConnectionString));
+            var connectionStringsSettings = ConfigurationManager.ConnectionStrings[connectionName];
+            var connectionString = connectionStringsSettings?.ConnectionString;
+            var factory = DbProviderFactories.GetFactory(connectionStringsSettings?.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString));
 #endif
             var connection = factory.CreateConnection();
             if (connection != null)
@@ -254,53 +254,58 @@ namespace Nemo.Data
 
         public static DbConnection CreateConnection(string connectionStringOrName)
         {
+            return CreateConnection(connectionStringOrName, ConfigurationFactory.DefaultConfiguration);
+        }
+
+        public static DbConnection CreateConnection(string connectionStringOrName, IConfiguration config)
+        {
             string connectionString = null;
             string providerName = null;
             string cleanConnectionString = null;
 
 #if NETSTANDARD
-            var connectionStringSetting = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionStringOrName);
+            var connectionStringSetting = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionStringOrName);
 
             if (connectionStringSetting != null)
             {
                 connectionString = connectionStringSetting.ConnectionString;
-                providerName = connectionStringSetting.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, out cleanConnectionString);
-                return CreateConnection(cleanConnectionString ?? connectionString, providerName);
+                providerName = connectionStringSetting.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
+                return CreateConnection(cleanConnectionString ?? connectionString, providerName, config);
             }
             else
             {
-                var config = ConfigurationManager.ConnectionStrings[connectionStringOrName];
-                if (config != null)
+                var connectionStringSettings = ConfigurationManager.ConnectionStrings[connectionStringOrName];
+                if (connectionStringSettings != null)
                 {
-                    connectionString = ConfigurationManager.ConnectionStrings[connectionStringOrName]?.ConnectionString;
-                    providerName = ConfigurationManager.ConnectionStrings[connectionStringOrName]?.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, out cleanConnectionString);
-                    return CreateConnection(cleanConnectionString ?? connectionString, providerName);
+                    connectionString = connectionStringSettings.ConnectionString;
+                    providerName = connectionStringSettings.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
+                    return CreateConnection(cleanConnectionString ?? connectionString, providerName, config);
                 }
                 else
                 {
-                    providerName = GetProviderInvariantNameByConnectionString(connectionStringOrName, out cleanConnectionString);
-                    return CreateConnection(cleanConnectionString ?? connectionStringOrName, providerName);
+                    providerName = GetProviderInvariantNameByConnectionString(connectionStringOrName, config, out cleanConnectionString);
+                    return CreateConnection(cleanConnectionString ?? connectionStringOrName, providerName, config);
                 }
             }
 #else
-            var config = ConfigurationManager.ConnectionStrings[connectionStringOrName];
-            if (config != null)
+            var connectionStringSetting = ConfigurationManager.ConnectionStrings[connectionStringOrName];
+            if (connectionStringSetting != null)
             {
-                connectionString = config.ConnectionString;
-                providerName = config.ProviderName ?? GetProviderInvariantNameByConnectionString(config.ConnectionString, out cleanConnectionString);
-                return CreateConnection(cleanConnectionString ?? connectionString, providerName);
+                connectionString = connectionStringSetting.ConnectionString;
+                providerName = connectionStringSetting.ProviderName ?? GetProviderInvariantNameByConnectionString(connectionStringSetting.ConnectionString, config, out cleanConnectionString);
+                return CreateConnection(cleanConnectionString ?? connectionString, providerName, config);
             }
             else
             {
-                providerName = GetProviderInvariantNameByConnectionString(connectionStringOrName, out cleanConnectionString);
-                return CreateConnection(cleanConnectionString ?? connectionStringOrName, providerName);
+                providerName = GetProviderInvariantNameByConnectionString(connectionStringOrName, config, out cleanConnectionString);
+                return CreateConnection(cleanConnectionString ?? connectionStringOrName, providerName, config);
             }
 #endif
         }
 
-        internal static DbDataAdapter CreateDataAdapter(DbConnection connection)
+        internal static DbDataAdapter CreateDataAdapter(DbConnection connection, IConfiguration config)
         {
-            var providerName = GetProviderInvariantNameByConnectionString(connection.ConnectionString, out var _);
+            var providerName = GetProviderInvariantNameByConnectionString(connection.ConnectionString, config, out var _);
 #if NETSTANDARD
             return providerName != null ? GetDbProviderFactory(providerName).CreateDataAdapter() : null;
 #else

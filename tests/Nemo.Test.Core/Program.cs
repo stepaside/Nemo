@@ -233,14 +233,16 @@ namespace NemoTest
 
         private static void RunRetrieve(int count, bool cached, Nemo.Configuration.IConfiguration nemoConfig)
         {
-            var connection = DbFactory.CreateConnection("DbConnection");
+            var connection = DbFactory.CreateConnection("DbConnection", nemoConfig);
             const string sql = @"select CustomerID, CompanyName from Customers";
             //var parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } };
 
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, /*parameters: parameters,*/ cached: cached, config: nemoConfig).ToList();
+            var clonedConfig = ConfigurationFactory.CloneConfiguration(nemoConfig);
+            clonedConfig.SetLogging(true).SetLogProvider(new ConsoleLoggingProvider());
+            var result = ObjectFactory.Retrieve<Customer>(connection: connection, sql: sql, /*parameters: parameters,*/ cached: cached, config: clonedConfig).ToList();
 
             var timer = new Stopwatch();
             timer.Start();
@@ -256,13 +258,15 @@ namespace NemoTest
 
         private static void RunSelect(int count, bool cached, Nemo.Configuration.IConfiguration nemoConfig)
         {
-            var connection = DbFactory.CreateConnection("DbConnection");
+            var connection = DbFactory.CreateConnection("DbConnection", nemoConfig);
             Expression<Func<Customer, bool>> predicate = c => c.Id == "ALFKI";
 
             connection.Open();
 
             // Warm-up
-            var result = ObjectFactory.Select<Customer>(null, connection: connection, cached: cached, config: nemoConfig).ToList();
+            var clonedConfig = ConfigurationFactory.CloneConfiguration(nemoConfig);
+            clonedConfig.SetLogging(true).SetLogProvider(new ConsoleLoggingProvider());
+            var result = ObjectFactory.Select<Customer>(null, connection: connection, cached: cached, config: clonedConfig).ToList();
 
             var timer = new Stopwatch();
             timer.Start();

@@ -42,6 +42,14 @@ namespace Nemo.Configuration
             return clone.Merge(_configuration.Value);
         }
 
+        public static IConfiguration CloneConfiguration(IConfiguration config)
+        {
+            if (config == null) return null;
+
+            var clone = new DefaultConfiguration();
+            return clone.Merge(config);
+        }
+
         public static IConfiguration Get<T>()
             where T : class
         {

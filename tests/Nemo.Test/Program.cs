@@ -174,7 +174,7 @@ namespace NemoTest
 
             // UnitOfWork example
             //customer.Orders.Do(o => o.Customer = null).Consume();
-            using (ObjectScope.New(customer, autoCommit: false))
+            using (ObjectScope.New(customer, autoCommit: false, config: nemoConfig))
             {
                 customer.CompanyName += "Test";
                 customer.Orders[0].ShipPostalCode = "11111";
@@ -183,7 +183,7 @@ namespace NemoTest
                 var o = ObjectFactory.Create<Order>();
                 o.CustomerId = customer.Id;
                 o.ShipPostalCode = "19115";
-                o.GenerateKey();
+                o.GenerateKey(nemoConfig);
                 customer.Orders.Add(o);
 
                 //var previos = customer.Old();

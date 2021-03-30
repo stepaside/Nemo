@@ -18,44 +18,46 @@ namespace Nemo.Id
         private readonly string _connectionName;
         private readonly int _maxLo;
         private long _currentHi;
+        private readonly IConfiguration _config;
         private int _currentLo;
         private bool _hasTable;
 
         private readonly object _locker = new object();
         private const string GenerateSql = @"SELECT next_hi FROM {1}{0}{2} WHERE entity_type = {3}{4}; UPDATE {1}{0}{2} SET next_hi = next_hi + 1 WHERE entity_type = {3}{5} AND next_hi = {3}{6};";
         
-        public HiLoGenerator(object entity, PropertyInfo property)
-            : this(entity, property, 1000)
+        public HiLoGenerator(object entity, PropertyInfo property, IConfiguration config)
+            : this(entity, property, 1000, config)
         {
         }
 
-        public HiLoGenerator(object entity, PropertyInfo property, int maxLo)
-            : this(entity, property, maxLo, null)
+        public HiLoGenerator(object entity, PropertyInfo property, int maxLo, IConfiguration config)
+            : this(entity, property, maxLo, null, config)
         {
         }
 
-        public HiLoGenerator(object entity, PropertyInfo property, int maxLo, string connectionName)
-            : this(entity.GetType(), property, maxLo, connectionName)
+        public HiLoGenerator(object entity, PropertyInfo property, int maxLo, string connectionName, IConfiguration config)
+            : this(entity.GetType(), property, maxLo, connectionName, config)
         {
         }
 
-        public HiLoGenerator(Type entityType, PropertyInfo property) 
-            : this(entityType, property, 1000)
+        public HiLoGenerator(Type entityType, PropertyInfo property, IConfiguration config) 
+            : this(entityType, property, 1000, config)
         {
         }
 
-        public HiLoGenerator(Type entityType, PropertyInfo property, int maxLo)
-            : this(entityType, property, maxLo, null)
+        public HiLoGenerator(Type entityType, PropertyInfo property, int maxLo, IConfiguration config)
+            : this(entityType, property, maxLo, null, config)
         {
         }
 
-        public HiLoGenerator(Type entityType, PropertyInfo property, int maxLo, string connectionName)
+        public HiLoGenerator(Type entityType, PropertyInfo property, int maxLo, string connectionName, IConfiguration config)
         {
             _entityType = entityType;
             _property = property;
             _maxLo = maxLo;
             _connectionName = connectionName;
             _currentHi = -1;
+            _config = config;
         }
 
         public object Generate()
@@ -86,11 +88,11 @@ namespace Nemo.Id
                 _hasTable = true;
             }
 
-            var config = ConfigurationFactory.Get(_entityType);
+            var config = _config ?? ConfigurationFactory.Get(_entityType);
             var connectionName = _connectionName ?? config.DefaultConnectionName;
-            var dialect = DialectFactory.GetProvider(connectionName);
+            var dialect = DialectFactory.GetProvider(connectionName, config);
             
-            using (var connection = DbFactory.CreateConnection(connectionName, _entityType))
+            using (var connection = DbFactory.CreateConnection(connectionName, _entityType, config))
             {
                 connection.Open();
                 using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))
@@ -135,11 +137,11 @@ namespace Nemo.Id
 
         private void CreateTableIfNotExists()
         {
-            var config = ConfigurationFactory.Get(_entityType);
+            var config = _config ?? ConfigurationFactory.Get(_entityType);
             var connectionName = _connectionName ?? config.DefaultConnectionName;
-            var dialect = DialectFactory.GetProvider(connectionName);
+            var dialect = DialectFactory.GetProvider(connectionName, _config);
 
-            using (var connection = DbFactory.CreateConnection(connectionName, _entityType))
+            using (var connection = DbFactory.CreateConnection(connectionName, _entityType, _config))
             {
                 connection.Open();
                 using (var tx = connection.BeginTransaction(IsolationLevel.Serializable))

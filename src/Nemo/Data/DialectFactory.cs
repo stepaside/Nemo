@@ -11,20 +11,20 @@ namespace Nemo.Data
 {
     public static class DialectFactory
     {
-        public static DialectProvider GetProvider(string connectionName)
+        public static DialectProvider GetProvider(string connectionName, IConfiguration config)
         {
 #if NETSTANDARD
-            dynamic config = ConfigurationFactory.DefaultConfiguration.SystemConfiguration?.ConnectionString(connectionName);
+            dynamic connectionStringsSettings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);
 
-            if (config == null)
+            if (connectionStringsSettings == null)
             {
-                config = ConfigurationManager.ConnectionStrings[connectionName];
+                connectionStringsSettings = ConfigurationManager.ConnectionStrings[connectionName];
             }
 #else
-            var config = ConfigurationManager.ConnectionStrings[connectionName];
+            var connectionStringsSettings = ConfigurationManager.ConnectionStrings[connectionName];
 #endif
-            var connection = DbFactory.CreateConnection(config.ConnectionString, config.ProviderName);
-            return GetProvider(connection, config.ProviderName);
+            var connection = DbFactory.CreateConnection(connectionStringsSettings.ConnectionString, connectionStringsSettings.ProviderName, config);
+            return GetProvider(connection, connectionStringsSettings.ProviderName);
         }
 
         public static DialectProvider GetProvider(DbConnection connection, string providerName = null)

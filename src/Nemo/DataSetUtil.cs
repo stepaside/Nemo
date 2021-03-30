@@ -22,8 +22,6 @@ namespace Nemo
             if (e == null) return null;
 
             Debug.Assert(IsCatchableExceptionType(e), "Invalid exception type, should have been re-thrown!");
-            Log.Capture(e);
-
             return e;
         }
 

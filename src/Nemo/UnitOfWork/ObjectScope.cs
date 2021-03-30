@@ -19,12 +19,8 @@ namespace Nemo.UnitOfWork
     public class ObjectScope : IDisposable
     {
         private const string ScopeNameStore = "__ObjectScope";
-        internal object Item = null;
-        internal byte[] ItemSnapshot = null;
-        internal object OriginalItem = null;
-        internal readonly Type ItemType = null;
         private bool? _hasException = null;
-
+        
         internal static Stack<ObjectScope> Scopes
         {
             get
@@ -52,13 +48,13 @@ namespace Nemo.UnitOfWork
             return item.Serialize(SerializationMode.SerializeAll);
         }
 
-        public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, DbConnection connection = null)
+        public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            return new ObjectScope(item, autoCommit, mode, typeof(T), connection);
+            return new ObjectScope(item, autoCommit, mode, typeof(T), connection, config);
         }
         
-        private ObjectScope(object item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null, DbConnection connection = null)
+        private ObjectScope(object item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null, DbConnection connection = null, IConfiguration config = null)
         {
             if (item == null && type == null)
             {
@@ -73,6 +69,7 @@ namespace Nemo.UnitOfWork
             AutoCommit = autoCommit;
             IsNew = item == null;
             ItemType = type;
+            Configuration = config;
             ChangeTracking = mode != ChangeTrackingMode.Default ? mode : ConfigurationFactory.Get(type).DefaultChangeTrackingMode;
             if (!IsNew)
             {
@@ -93,44 +90,28 @@ namespace Nemo.UnitOfWork
                 Connection = connection;
             }
         }
+
+        internal object Item { get; private set; }
         
-        public bool AutoCommit
-        {
-            get;
-            private set;
-        }
+        internal byte[] ItemSnapshot { get; private set; }
+        
+        internal object OriginalItem { get; set; }
+        
+        internal Type ItemType { get; }
 
-        public ChangeTrackingMode ChangeTracking
-        {
-            get;
-            private set;
-        }
+        public bool AutoCommit { get; }
 
-        public bool IsNew
-        {
-            get;
-            private set;
-        }
+        public ChangeTrackingMode ChangeTracking { get; }
 
-        internal bool IsNested
-        {
-            get
-            {
-                return Scopes.Count > 1;
-            }
-        }
+        public bool IsNew { get; }
 
-        internal TransactionScope Transaction
-        {
-            get;
-            private set;
-        }
+        internal bool IsNested => Scopes.Count > 1;
 
-        internal DbConnection Connection
-        {
-            get;
-            private set;
-        }
+        internal TransactionScope Transaction { get; }
+
+        internal DbConnection Connection { get; }
+
+        internal IConfiguration Configuration { get; }
 
         internal void Cleanup()
         {

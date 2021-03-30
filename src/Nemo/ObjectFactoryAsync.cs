@@ -43,7 +43,7 @@ namespace Nemo
 
             if (!externalConnection)
             {
-                connection = DbFactory.CreateConnection(connectionName ?? config.DefaultConnectionName);
+                connection = DbFactory.CreateConnection(connectionName ?? config.DefaultConnectionName, config);
             }
 
             try
@@ -61,7 +61,7 @@ namespace Nemo
                 var propertyMap = Reflector.GetPropertyMap<T>();
                 var provider = DialectFactory.GetProvider(transaction.Connection);
 
-                var requests = BuildBatchInsert(items, transaction, captureException, propertyMap, provider);
+                var requests = BuildBatchInsert(items, transaction, captureException, propertyMap, provider, config);
                 foreach (var request in requests)
                 {
                     var response = await ExecuteAsync<T>(request).ConfigureAwait(false);
@@ -102,7 +102,7 @@ namespace Nemo
         public static async Task<OperationResponse> InsertAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = null, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = null, CaptureException = captureException, Configuration = config };
 
             if (config == null)
             {
@@ -111,7 +111,7 @@ namespace Nemo
 
             if (config.GenerateInsertSql)
             {
-                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetInsertStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName, config));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -133,7 +133,7 @@ namespace Nemo
         public static async Task<OperationResponse> UpdateAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
 
             if (config == null)
             {
@@ -161,7 +161,7 @@ namespace Nemo
                     });
                 }
 
-                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetUpdateStatement(typeof(T), partition.Item2, partition.Item1, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName, config));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -183,7 +183,7 @@ namespace Nemo
         public static async Task<OperationResponse> DeleteAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
 
             if (config == null)
             {
@@ -227,7 +227,7 @@ namespace Nemo
                     });
                 }
 
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), partition.Item1, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName), softDeleteColumn);
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), partition.Item1, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName, config), softDeleteColumn);
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -249,7 +249,7 @@ namespace Nemo
         public static async Task<OperationResponse> DestroyAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
             where T : class
         {
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
             
             if (config == null)
             {
@@ -258,7 +258,7 @@ namespace Nemo
 
             if (config.GenerateDeleteSql)
             {
-                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName));
+                request.Operation = SqlBuilder.GetDeleteStatement(typeof(T), parameters, request.Connection != null ? DialectFactory.GetProvider(request.Connection) : DialectFactory.GetProvider(request.ConnectionName ?? config.DefaultConnectionName, config));
                 request.OperationType = OperationType.Sql;
             }
             else
@@ -271,7 +271,7 @@ namespace Nemo
             return response;
         }
 
-        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings")
+        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings", IConfiguration config = null)
         {
             var rootType = types?[0];
 
@@ -288,7 +288,7 @@ namespace Nemo
             }
             else
             {
-                dbConnection = DbFactory.CreateConnection(connectionName, rootType);
+                dbConnection = DbFactory.CreateConnection(connectionName, rootType, config);
                 closeConnection = true;
             }
 
@@ -441,8 +441,8 @@ namespace Nemo
             var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, ConfigurationFactory.Get<T>());
 
             var response = request.Connection != null
-                ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName).ConfigureAwait(false)
-                : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName).ConfigureAwait(false);
+                ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration).ConfigureAwait(false)
+                : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration).ConfigureAwait(false);
             return response;
         }
 

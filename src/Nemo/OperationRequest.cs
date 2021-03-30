@@ -22,6 +22,8 @@ namespace Nemo
         private DbConnection _connection = null;
         [NonSerialized]
         private DbTransaction _transaction = null;
+        [NonSerialized]
+        private IConfiguration _configuration = null;
 
         public string Operation { get; set; }
 
@@ -33,7 +35,7 @@ namespace Nemo
             {
                 if (_connection == null && ConnectionName.NullIfEmpty() == null && _connectionString.NullIfEmpty() != null)
                 {
-                    _connection = DbFactory.CreateConnection(_connectionString);
+                    _connection = DbFactory.CreateConnection(_connectionString, _configuration);
                 }
                 return _connection;
             }
@@ -119,6 +121,8 @@ namespace Nemo
         public bool CaptureException { get; set; }
 
         public string SchemaName { get; set; }
+
+        public IConfiguration Configuration { get; set; }
 
         public bool IsValid()
         {

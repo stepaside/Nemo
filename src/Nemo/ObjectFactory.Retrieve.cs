@@ -19,12 +19,12 @@ namespace Nemo
     {
         #region Retrieve Methods
 
-        public static T RetrieveScalar<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null)
+        public static T RetrieveScalar<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
             where T : struct
         {
             var response = connection != null
-                ? Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema)
-                : Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema);
+                ? Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema, config: config)
+                : Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema, config: config);
 
             var value = response.Value;
             if (value == null)
@@ -38,7 +38,7 @@ namespace Nemo
         private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
-            Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}");
+            Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}", config);
             IEnumerable<TResult> result;
 
             string queryKey = null;
@@ -63,7 +63,7 @@ namespace Nemo
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
-                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}");
+                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}", config);
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -75,28 +75,28 @@ namespace Nemo
                     result = identityMap.GetIndex(queryKey);
                 }
 
-                Log.CaptureEnd();
+                Log.CaptureEnd(config);
 
                 if (result != null)
                 {
-                    Log.Capture(() => $"Found in L1 cache: {queryKey}");
+                    Log.Capture(() => $"Found in L1 cache: {queryKey}", config);
 
                     if (returnType == OperationReturnType.MultiResult)
                     {
                         ((IMultiResult)result).Reset();
                     }
 
-                    Log.CaptureEnd();
+                    Log.CaptureEnd(config);
                     return result;
                 }
-                Log.Capture(() => $"Not found in L1 cache: {queryKey}");
+                Log.Capture(() => $"Not found in L1 cache: {queryKey}", config);
             }
 
             result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap);
 
             if (queryKey != null)
             {
-                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}");
+                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}", config);
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
@@ -119,10 +119,10 @@ namespace Nemo
                     config.ExecutionContext.Set(queryKey, result);
                 }
 
-                Log.CaptureEnd();
+                Log.CaptureEnd(config);
             }
 
-            Log.CaptureEnd();
+            Log.CaptureEnd(config);
             return result;
         }
 
@@ -134,16 +134,17 @@ namespace Nemo
                 operationType = operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
-
-            var response = connection != null
-                ? Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema)
-                : Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema);
-
             if (config == null)
             {
                 config = ConfigurationFactory.Get<T>();
             }
+
+            var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
+
+            var response = connection != null
+                ? Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema, config: config)
+                : Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema, config: config);
+
             var result = Translate(response, map, types, config, identityMap);
             return result;
         }
@@ -315,12 +316,12 @@ namespace Nemo
 
         #region Retrieve Async Methods
 
-        public static async Task<T> RetrieveScalarAsync<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null)
+        public static async Task<T> RetrieveScalarAsync<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
             where T : struct
         {
             var response = connection != null
-                ? await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema).ConfigureAwait(false)
-                : await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema).ConfigureAwait(false);
+                ? await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema, config: config).ConfigureAwait(false)
+                : await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema, config: config).ConfigureAwait(false);
 
             var value = response.Value;
             if (value == null)
@@ -334,7 +335,7 @@ namespace Nemo
         private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
-            Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}");
+            Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}", config);
             IEnumerable<TResult> result;
 
             string queryKey = null;
@@ -359,7 +360,7 @@ namespace Nemo
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
-                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}");
+                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}", config);
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -371,28 +372,28 @@ namespace Nemo
                     result = identityMap.GetIndex(queryKey);
                 }
 
-                Log.CaptureEnd();
+                Log.CaptureEnd(config);
 
                 if (result != null)
                 {
-                    Log.Capture(() => $"Found in L1 cache: {queryKey}");
+                    Log.Capture(() => $"Found in L1 cache: {queryKey}", config);
 
                     if (returnType == OperationReturnType.MultiResult)
                     {
                         ((IMultiResult)result).Reset();
                     }
 
-                    Log.CaptureEnd();
+                    Log.CaptureEnd(config);
                     return result;
                 }
-                Log.Capture(() => $"Not found in L1 cache: {queryKey}");
+                Log.Capture(() => $"Not found in L1 cache: {queryKey}", config);
             }
 
             result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap).ConfigureAwait(false);
 
             if (queryKey != null)
             {
-                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}");
+                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}", config);
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
@@ -415,10 +416,10 @@ namespace Nemo
                     config.ExecutionContext.Set(queryKey, result);
                 }
 
-                Log.CaptureEnd();
+                Log.CaptureEnd(config);
             }
 
-            Log.CaptureEnd();
+            Log.CaptureEnd(config);
             return result;
         }
 
@@ -430,16 +431,17 @@ namespace Nemo
                 operationType = operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
-
-            var response = connection != null
-                ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema).ConfigureAwait(false)
-                : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema).ConfigureAwait(false);
-
             if (config == null)
             {
                 config = ConfigurationFactory.Get<T>();
             }
+
+            var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
+
+            var response = connection != null
+                ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema, config: config).ConfigureAwait(false)
+                : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema, config: config).ConfigureAwait(false);
+
             var result = Translate(response, map, types, config, identityMap);
             return result;
         }

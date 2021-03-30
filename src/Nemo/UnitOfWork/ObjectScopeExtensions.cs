@@ -31,7 +31,7 @@ namespace Nemo.UnitOfWork
                 DbTransaction transaction = null;
                 if (context.ChangeTracking == ChangeTrackingMode.Automatic)
                 {
-                    var connection = context.Connection ?? DbFactory.CreateConnection(null, typeof(T));
+                    var connection = context.Connection ?? DbFactory.CreateConnection(null, typeof(T), context.Configuration);
                     var externalConnection = context.Connection != null;
                     var openConnectionRequired = !externalConnection || context.Connection.State != ConnectionState.Open;
                     try
@@ -54,7 +54,8 @@ namespace Nemo.UnitOfWork
                                     Parameters = statement.Item2,
                                     Connection = connection,
                                     ReturnType = OperationReturnType.SingleResult,
-                                    Transaction = transaction
+                                    Transaction = transaction,
+                                    Configuration = context.Configuration
                                 });
                             success = response.Value != null;
                             if (success)
@@ -80,7 +81,7 @@ namespace Nemo.UnitOfWork
                 }
                 else if (context.ChangeTracking == ChangeTrackingMode.Debug)
                 {
-                    var connection = context.Connection ?? DbFactory.CreateConnection(null, typeof(T));
+                    var connection = context.Connection ?? DbFactory.CreateConnection(null, typeof(T), context.Configuration);
                     var externalConnection = context.Connection != null;
                     var openConnectionRequired = !externalConnection || context.Connection.State != ConnectionState.Open;
                     try

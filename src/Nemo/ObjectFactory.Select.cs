@@ -23,8 +23,8 @@ namespace Nemo
             string providerName = null;
             if (connection == null)
             {
-                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
             }
 
             var provider = DialectFactory.GetProvider(connection, providerName);
@@ -47,8 +47,8 @@ namespace Nemo
                 string providerName = null;
                 if (connection == null)
                 {
-                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                    connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                    connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
                 }
 
                 provider = DialectFactory.GetProvider(connection, providerName);
@@ -75,8 +75,8 @@ namespace Nemo
                 string providerName = null;
                 if (connection == null)
                 {
-                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                    connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                    connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
                 }
 
                 provider = DialectFactory.GetProvider(connection, providerName);
@@ -105,8 +105,8 @@ namespace Nemo
                 string providerName = null;
                 if (connection == null)
                 {
-                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                    connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                    connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
                 }
 
                 provider = DialectFactory.GetProvider(connection, providerName);
@@ -137,8 +137,8 @@ namespace Nemo
                 string providerName = null;
                 if (connection == null)
                 {
-                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                    connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                    connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
                 }
 
                 provider = DialectFactory.GetProvider(connection, providerName);
@@ -248,8 +248,8 @@ namespace Nemo
             string providerName = null;
             if (connection == null)
             {
-                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
             }
 
             var provider = DialectFactory.GetProvider(connection, providerName);
@@ -272,8 +272,8 @@ namespace Nemo
                 string providerName = null;
                 if (connection == null)
                 {
-                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                    connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                    connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
                 }
 
                 provider = DialectFactory.GetProvider(connection, providerName);
@@ -300,8 +300,8 @@ namespace Nemo
                 string providerName = null;
                 if (connection == null)
                 {
-                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                    connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                    connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
                 }
 
                 provider = DialectFactory.GetProvider(connection, providerName);
@@ -330,8 +330,8 @@ namespace Nemo
                 string providerName = null;
                 if (connection == null)
                 {
-                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                    connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                    connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
                 }
 
                 provider = DialectFactory.GetProvider(connection, providerName);
@@ -362,8 +362,8 @@ namespace Nemo
                 string providerName = null;
                 if (connection == null)
                 {
-                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T));
-                    connection = DbFactory.CreateConnection(connectionName, typeof(T));
+                    providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
+                    connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
                 }
 
                 provider = DialectFactory.GetProvider(connection, providerName);

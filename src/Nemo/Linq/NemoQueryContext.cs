@@ -130,14 +130,14 @@ namespace Nemo.Linq
             if (count)
             {
                 return (async ? CountAsyncMethod : CountMethod).MakeGenericMethod(type, longCount ? typeof(long) : typeof(int))
-                    .Invoke(null, new object[] { criteria, null, connection });
+                    .Invoke(null, new object[] { criteria, null, connection, config });
             }
 
             if (aggregate)
             {
                 var property = (PropertyInfo)(projection.Body as MemberExpression).Member;
                 return (async ? AggregateAsyncMethod : AggregateMethod).MakeGenericMethod(type, property.PropertyType)
-                   .Invoke(null, new object[] { Enum.Parse(typeof(ObjectFactory.AggregateNames), aggregateName.Replace("Async", ""), true), projection, criteria, null, connection });
+                   .Invoke(null, new object[] { Enum.Parse(typeof(ObjectFactory.AggregateNames), aggregateName.Replace("Async", ""), true), projection, criteria, null, connection, config });
             }
 
             return (async ? SelectAsyncMethod : SelectMethod).MakeGenericMethod(type)
