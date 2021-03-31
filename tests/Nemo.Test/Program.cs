@@ -234,6 +234,7 @@ namespace NemoTest
 
             RunJsonParser(json, 500);
             RunJsonNetParser(json, 500);
+            RunSystemJsonParser(json, 500);
             // ServiceStack does not support DOM parsing
             // RunServiceStackJsonParser<Customer>(new Customer(customer), 500);
 
@@ -775,6 +776,23 @@ namespace NemoTest
             var time = t.Elapsed.TotalMilliseconds * 1000;
 
             Console.WriteLine("Json.NET Parser: {0}µs", time);
+        }
+
+        public static void RunSystemJsonParser(string json, int count)
+        {
+            // Warm-up
+            var root = System.Text.Json.JsonDocument.Parse(json, new System.Text.Json.JsonDocumentOptions { AllowTrailingCommas = true });
+
+            var t = new Stopwatch();
+            t.Start();
+            for (var i = 0; i < count; i++)
+            {
+                root = System.Text.Json.JsonDocument.Parse(json, new System.Text.Json.JsonDocumentOptions { AllowTrailingCommas = true });
+            }
+            t.Stop();
+            var time = t.Elapsed.TotalMilliseconds * 1000;
+
+            Console.WriteLine("System.Text.Json Parser: {0}µs", time);
         }
 
         public static void RunServiceStackJsonParser<T>(T item, int count)
