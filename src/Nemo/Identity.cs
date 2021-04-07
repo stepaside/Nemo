@@ -30,19 +30,15 @@ namespace Nemo
         internal static IdentityMap<T> Get<T>(IConfiguration configuration)
             where T : class
         {
-            var executionContext = configuration?.ExecutionContext ?? ConfigurationFactory.Get<T>().ExecutionContext;
-            IdentityMap<T> identityMap;
+            configuration ??= ConfigurationFactory.Get<T>();
+            var executionContext = configuration.ExecutionContext;
             var identityMapKey = typeof(T).FullName + "/IdentityMap";
-            if (!executionContext.Exists(identityMapKey))
+            if (!executionContext.TryGet(identityMapKey, out var identityMap))
             {
                 identityMap = new IdentityMap<T>();
                 executionContext.Set(identityMapKey, identityMap);
             }
-            else
-            {
-                identityMap = (IdentityMap<T>)executionContext.Get(identityMapKey);
-            }
-            return identityMap;
+            return (IdentityMap<T>)identityMap;
         }
 
         internal static void WriteThrough<T>(this IIdentityMap identityMap, T value, string hash)

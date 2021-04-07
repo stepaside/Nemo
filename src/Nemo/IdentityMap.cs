@@ -26,8 +26,7 @@ namespace Nemo
         
         public T Get(string id)
         {
-            T item;
-            _entities.TryGetValue(id, out item);
+            _entities.TryGetValue(id, out var item);
             return item;
         }
 
@@ -39,17 +38,15 @@ namespace Nemo
 
         public bool Remove(T entity)
         {
-            T item;
             var id = entity.ComputeHash();
-            if (!_entities.TryRemove(id, out item)) return false;
+            if (!_entities.TryRemove(id, out _)) return false;
             CleanIndices(id);
             return true;
         }
 
         public IEnumerable<T> GetIndex(string index)
         {
-            List<string> idList;
-            return !_indices.TryGetValue(index, out idList) ? null : idList.Select(Get).Where(item => item != null);
+            return !_indices.TryGetValue(index, out var idList) ? null : idList.Select(Get).Where(item => item != null);
         }
 
         public IEnumerable<T> AddIndex(string index, IEnumerable<T> entities)

@@ -43,28 +43,6 @@ namespace Nemo.Utilities
             }
         }
 
-        public static void Capture(Func<string> computeMessage, IConfiguration config)
-        {
-            if (!IsEnabled(config, out var logPRovider)) return;
-
-            var context = GetContext(config);
-            Capture(computeMessage, logPRovider, context);
-        }
-
-        private static void Capture(Func<string> computeMessage, ILogProvider logProvider, Tuple<Guid, Stopwatch> context)
-        {
-            Capture(computeMessage(), logProvider, context);            
-        }
-
-        private static void Capture(string message, ILogProvider logProvider, Tuple<Guid, Stopwatch> context)
-        {
-            if (context.Item1 != Guid.Empty && context.Item2 != null)
-            {
-                message = $"{context.Item1}: {message}";
-            }
-            logProvider.Write(message);
-        }
-
         public static void Capture(Exception error, IConfiguration config)
         {
             if (!IsEnabled(config, out var logProvider)) return;
@@ -75,22 +53,31 @@ namespace Nemo.Utilities
 
         public static void Capture(string message, IConfiguration config)
         {
-            Capture(() => message, config);
+            if (!IsEnabled(config, out var logPRovider)) return;
+
+            var context = GetContext(config);
+            Capture(message, logPRovider, context);
         }
-        
-        public static bool CaptureBegin(Func<string> computeMessage, IConfiguration config)
+
+        private static void Capture(string message, ILogProvider logProvider, Tuple<Guid, Stopwatch> context)
         {
-            if (!IsEnabled(config, out var logProvider)) return false;
-            
-            var context = CreateContext(config);
-            Capture(computeMessage, logProvider, context);
-            context.Item2.Start();
-            return true;
+            if (message == null) return;
+
+            if (context.Item1 != Guid.Empty && context.Item2 != null)
+            {
+                message = $"{context.Item1}: {message}";
+            }
+            logProvider.Write(message);
         }
 
         public static bool CaptureBegin(string message, IConfiguration config)
         {
-            return CaptureBegin(() => message, config);
+            if (!IsEnabled(config, out var logProvider)) return false;
+
+            var context = CreateContext(config);
+            Capture(message, logProvider, context);
+            context.Item2.Start();
+            return true;
         }
         
         public static void CaptureEnd(IConfiguration config)

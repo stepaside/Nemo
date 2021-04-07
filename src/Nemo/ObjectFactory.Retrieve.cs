@@ -1,5 +1,6 @@
 ﻿using Nemo.Collections;
 using Nemo.Configuration;
+using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Fn.Extensions;
 using Nemo.Reflection;
@@ -69,8 +70,6 @@ namespace Nemo
                     result = identityMap.GetIndex(queryKey);
                 }
 
-                Log.CaptureEnd(config);
-
                 if (result != null)
                 {
                     Log.Capture($"Found in L1 cache: {queryKey}", config);
@@ -84,9 +83,10 @@ namespace Nemo
                     return result;
                 }
                 Log.Capture($"Not found in L1 cache: {queryKey}", config);
+                Log.CaptureEnd(config);
             }
 
-            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap);
+            result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, schema, config, identityMap);
 
             if (queryKey != null)
             {
@@ -120,7 +120,7 @@ namespace Nemo
             return result;
         }
 
-        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, string schema, IConfiguration config, IdentityMap<T> identityMap)
+        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, IConfiguration config, IdentityMap<T> identityMap)
             where T : class
         {
             if (operationType == OperationType.Guess)
@@ -132,11 +132,12 @@ namespace Nemo
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
-            Log.CaptureBegin($"Retrieve data from database using {operationText}", config);
+            Log.CaptureBegin($"Retrieving data", config);
+            Log.Capture(operationText, config);
 
             var response = connection != null
                 ? Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema, config: config)
-                : Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema, config: config);
+                : Execute(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema, config: config);
 
             Log.CaptureEnd(config);
 
@@ -151,7 +152,9 @@ namespace Nemo
 
         private static string GetQueryKey<T>(string operation, IEnumerable<Param> parameters, OperationReturnType returnType)
         {
-            var hash = Hash.Compute(Encoding.UTF8.GetBytes(returnType + "/" + operation + "/" + string.Join(",", parameters.OrderBy(p => p.Name).Select(p => p.Name + "=" + p.Value))));
+            var combined = new StringBuilder();
+            combined.Append(returnType.ToString()).Append("/").Append(operation).Append("/").Append(parameters.OrderBy(p => p.Name).Select(p => $"{p.Name}={p.Value}").ToDelimitedString(","));
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(combined.ToString()));
             return typeof(T).FullName + "/" + hash;
         }
 
@@ -360,8 +363,6 @@ namespace Nemo
                     result = identityMap.GetIndex(queryKey);
                 }
 
-                Log.CaptureEnd(config);
-
                 if (result != null)
                 {
                     Log.Capture($"Found in L1 cache: {queryKey}", config);
@@ -375,9 +376,10 @@ namespace Nemo
                     return result;
                 }
                 Log.Capture($"Not found in L1 cache: {queryKey}", config);
+                Log.CaptureEnd(config);
             }
 
-            result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap).ConfigureAwait(false);
+            result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, schema, config, identityMap).ConfigureAwait(false);
 
             if (queryKey != null)
             {
@@ -411,7 +413,7 @@ namespace Nemo
             return result;
         }
 
-        private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, bool cached, string schema, IConfiguration config, IdentityMap<T> identityMap)
+        private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, IConfiguration config, IdentityMap<T> identityMap)
             where T : class
         {
             if (operationType == OperationType.Guess)
@@ -423,7 +425,8 @@ namespace Nemo
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
-            Log.CaptureBegin($"Retrieve data from database using {operationText}", config);
+            Log.CaptureBegin($"Retrieving data", config);
+            Log.Capture(operationText, config);
 
             var response = connection != null
                 ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema, config: config).ConfigureAwait(false)
