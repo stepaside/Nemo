@@ -38,7 +38,7 @@ namespace Nemo
         private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
-            Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}", config);
+            Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
 
             string queryKey = null;
@@ -57,7 +57,7 @@ namespace Nemo
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
-                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}", config);
+                Log.CaptureBegin($"Retrieving from L1 cache: {queryKey}", config);
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -73,7 +73,7 @@ namespace Nemo
 
                 if (result != null)
                 {
-                    Log.Capture(() => $"Found in L1 cache: {queryKey}", config);
+                    Log.Capture($"Found in L1 cache: {queryKey}", config);
 
                     if (returnType == OperationReturnType.MultiResult)
                     {
@@ -83,14 +83,14 @@ namespace Nemo
                     Log.CaptureEnd(config);
                     return result;
                 }
-                Log.Capture(() => $"Not found in L1 cache: {queryKey}", config);
+                Log.Capture($"Not found in L1 cache: {queryKey}", config);
             }
 
             result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap);
 
             if (queryKey != null)
             {
-                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}", config);
+                Log.CaptureBegin($"Saving to L1 cache: {queryKey}", config);
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
@@ -132,11 +132,20 @@ namespace Nemo
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
+            Log.CaptureBegin($"Retrieve data from database using {operationText}", config);
+
             var response = connection != null
                 ? Execute(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema, config: config)
                 : Execute(operationText, parameters, returnType, connectionName: connectionName, operationType: operationType, types: types, schema: schema, config: config);
 
+            Log.CaptureEnd(config);
+
+            Log.CaptureBegin($"Translating response", config);
+
             var result = Translate(response, map, types, config, identityMap);
+
+            Log.CaptureEnd(config);
+
             return result;
         }
 
@@ -320,7 +329,7 @@ namespace Nemo
         private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
             where TResult : class
         {
-            Log.CaptureBegin(() => $"RetrieveImplemenation: {typeof(TResult).FullName}::{operation}", config);
+            Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
 
             string queryKey = null;
@@ -339,7 +348,7 @@ namespace Nemo
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
-                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}", config);
+                Log.CaptureBegin($"Retrieving from L1 cache: {queryKey}", config);
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -355,7 +364,7 @@ namespace Nemo
 
                 if (result != null)
                 {
-                    Log.Capture(() => $"Found in L1 cache: {queryKey}", config);
+                    Log.Capture($"Found in L1 cache: {queryKey}", config);
 
                     if (returnType == OperationReturnType.MultiResult)
                     {
@@ -365,14 +374,14 @@ namespace Nemo
                     Log.CaptureEnd(config);
                     return result;
                 }
-                Log.Capture(() => $"Not found in L1 cache: {queryKey}", config);
+                Log.Capture($"Not found in L1 cache: {queryKey}", config);
             }
 
             result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, cached.Value, schema, config, identityMap).ConfigureAwait(false);
 
             if (queryKey != null)
             {
-                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}", config);
+                Log.CaptureBegin($"Saving to L1 cache: {queryKey}", config);
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
@@ -414,11 +423,20 @@ namespace Nemo
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
+            Log.CaptureBegin($"Retrieve data from database using {operationText}", config);
+
             var response = connection != null
                 ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema, config: config).ConfigureAwait(false)
                 : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema, config: config).ConfigureAwait(false);
 
+            Log.CaptureEnd(config);
+
+            Log.CaptureBegin($"Translating response", config);
+
             var result = Translate(response, map, types, config, identityMap);
+
+            Log.CaptureEnd(config);
+
             return result;
         }
 
