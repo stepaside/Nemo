@@ -678,6 +678,12 @@ namespace Nemo
 
             Dictionary<DbParameter, Param> outputParameters = null;
 
+            ISet<string> procedureParameters = null;
+            if (operationType == OperationType.StoredProcedure && config.IgnoreInvalidProcedureParameters)
+            {
+                procedureParameters = DbFactory.GetProcedureParameters(dbConnection, operationText, true, config);
+            }
+
             var command = dbConnection.CreateCommand();
             command.CommandText = operationText;
             command.CommandType = operationType == OperationType.StoredProcedure ? CommandType.StoredProcedure : CommandType.Text;
@@ -687,8 +693,15 @@ namespace Nemo
                 for (var i = 0; i < parameters.Count; ++i)
                 {
                     var parameter = parameters[i];
+                    var name = parameter.Name.TrimStart('@', '?', ':');
+
+                    if (procedureParameters != null && !procedureParameters.Contains(name))
+                    {
+                        continue;
+                    }
+
                     var dbParam = command.CreateParameter();
-                    dbParam.ParameterName = parameter.Name.TrimStart('@', '?', ':');
+                    dbParam.ParameterName = name;
                     dbParam.Direction = parameter.Direction;
                     dbParam.Value = parameter.Value ?? DBNull.Value;
                     

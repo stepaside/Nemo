@@ -24,6 +24,7 @@ namespace Nemo.Configuration
         string HiLoTableName { get; }
         bool AutoTypeCoercion { get; }
         IConfigurationRoot SystemConfiguration { get; }
+        bool IgnoreInvalidProcedureParameters { get; }
 
         IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value);
         IConfiguration SetLogging(bool value);
@@ -42,6 +43,7 @@ namespace Nemo.Configuration
         IConfiguration SetLogProvider(ILogProvider value);
         IConfiguration SetAutoTypeCoercion(bool value);
         IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration);
+        IConfiguration SetIgnoreInvalidProcedureParameters(bool value);
         IConfiguration Merge(IConfiguration configuration);
     }
 }

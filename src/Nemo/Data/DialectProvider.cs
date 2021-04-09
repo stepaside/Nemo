@@ -51,6 +51,8 @@ namespace Nemo.Data
         public string IdentifierEscapeStartCharacter { get; protected set; }
         public string IdentifierEscapeEndCharacter { get; protected set; }
 
+        public string StoredProcedureParameterListQuery { get; protected set; }
+
         public virtual string DeclareVariable(string variableName, DbType dbType)
         {
             throw new NotImplementedException();

@@ -44,6 +44,17 @@ namespace Nemo.Data
             IdentifierEscapeEndCharacter = "]";
             SupportsTemporaryTables = true;
             ConditionalTableCreation = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='{0}' AND xtype='U') CREATE TABLE [{1}] ({2});";
+            StoredProcedureParameterListQuery = @"
+select 
+    sysobjects.name as procedure_name, 
+    syscolumns.name as parameter_name 
+from 
+    sysobjects, syscolumns 
+where 
+    sysobjects.xtype='P'
+    and sysobjects.id = syscolumns.id
+    and sysobjects.name = @name
+order by syscolumns.colid;";
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)

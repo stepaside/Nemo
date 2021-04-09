@@ -40,6 +40,7 @@ namespace NemoTest
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
                 .SetAutoTypeCoercion(true)
+                .SetIgnoreInvalidProcedureParameters(true)
                 .SetLogging(false);
 
             //// Simple retrieve with dynamic parameters
@@ -127,7 +128,7 @@ namespace NemoTest
             var retrieve_customer = ObjectFactory.Retrieve<ICustomer>(parameters: new[] { new Param { Name = "CustomerID", Value = "ALFKI" } }).FirstOrDefault();
 
             // Simple retrieve with dynamic parameters and custom operation name
-            var retrieve_customers_by_country = ObjectFactory.Retrieve<ICustomer>(operation: "RetrieveByCountry", parameters: new ParamList { Country => "USA" });
+            var retrieve_customers_by_country = ObjectFactory.Retrieve<ICustomer>(operation: "RetrieveByCountry", parameters: new ParamList { Country => "USA", State => "PA" });
 
             // Simple retrieve with sql statement operation
             var retrieve_customer_sql = ObjectFactory.Retrieve<ICustomer>(sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });

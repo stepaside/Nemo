@@ -6,6 +6,7 @@ using Nemo.Reflection;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
@@ -445,6 +446,47 @@ namespace Nemo.Data
             }
 
             return instance as DbProviderFactory;
+        }
+
+        internal static ISet<string> GetProcedureParameters(DbConnection connection, string procedureName, bool keepOpen, IConfiguration config)
+        {
+            var dialect = DialectFactory.GetProvider(connection);
+            if (string.IsNullOrEmpty(dialect.StoredProcedureParameterListQuery)) return null;
+
+            var key = $"{nameof(GetProcedureParameters)}:{procedureName}";
+            if (config.ExecutionContext.Get(key) is ISet<string> set) return set;
+
+            set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var shouldClose = false;
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                shouldClose = true;
+            }
+            try
+            {
+                using var command = connection.CreateCommand();
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = dialect.ParameterPrefix + "name";
+                parameter.Value = procedureName;
+                command.Parameters.Add(parameter);
+                command.CommandText = dialect.StoredProcedureParameterListQuery;
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    set.Add(reader.GetString(reader.GetOrdinal("parameter_name")).TrimStart('@', '?', ':'));
+                }
+            }
+            finally
+            {
+                if (shouldClose && !keepOpen)
+                {
+                    connection.Close();
+                }
+            }
+
+            config.ExecutionContext.Set(key, set);
+            return set;
         }
     }
 }

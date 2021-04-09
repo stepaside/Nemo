@@ -54,6 +54,8 @@ namespace Nemo.Configuration
 
         public bool AutoTypeCoercion { get; private set; }
 
+        public bool IgnoreInvalidProcedureParameters { get; private set; }
+
         public IConfigurationRoot SystemConfiguration { get; private set; }
 
         public IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value)
@@ -161,6 +163,12 @@ namespace Nemo.Configuration
             return this;
         }
 
+        public IConfiguration SetIgnoreInvalidProcedureParameters(bool value)
+        {
+            IgnoreInvalidProcedureParameters = value;
+            return this;
+        }
+
         public IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration)
         {
             SystemConfiguration = systemConfiguration;
@@ -202,6 +210,8 @@ namespace Nemo.Configuration
             mergedConfig.SetLogProvider(LogProvider ?? configuration.LogProvider);
 
             mergedConfig.SetAutoTypeCoercion(AutoTypeCoercion || configuration.AutoTypeCoercion);
+
+            mergedConfig.SetIgnoreInvalidProcedureParameters(IgnoreInvalidProcedureParameters || configuration.IgnoreInvalidProcedureParameters);
 
             mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);
 

@@ -39,6 +39,30 @@ namespace Nemo.Data
             IdentifierEscapeEndCharacter = "`";
             SupportsTemporaryTables = true;
             ConditionalTableCreation = "CREATE TABLE IF NOT EXISTS {0} ({1})";
+            StoredProcedureParameterListQuery = @"
+select 
+    r.routine_schema as schema_name,
+    r.specific_name as procedure_name,
+    p.parameter_name,
+    p.data_type,
+    case when p.parameter_mode is null and p.data_type is not null
+        then 'RETURN'
+        else p.parameter_mode 
+    end as parameter_mode,
+    p.character_maximum_length as char_length,
+    p.numeric_precision,
+    p.numeric_scale
+from 
+    information_schema.routines r
+    left join information_schema.parameters p
+        on p.specific_schema = r.routine_schema 
+        and p.specific_name = r.specific_name
+where 
+    r.routine_schema not in ('sys', 'information_schema', 'mysql', 'performance_schema')
+    and r.routine_type = 'PROCEDURE'
+    and r.specific_name = @name
+order by 
+    p.ordinal_position;";
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)

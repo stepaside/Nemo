@@ -41,6 +41,32 @@ namespace Nemo.Data
             IdentifierEscapeEndCharacter = "\"";
             SupportsTemporaryTables = true;
             ConditionalTableCreation = "CREATE TABLE IF NOT EXISTS {0} ({1})";
+            StoredProcedureParameterListQuery = @"
+select 
+    proc.owner as schema_name,
+    proc.object_name as procedure_name,
+    args.argument_name as parameter_name,
+    args.in_out,
+    args.data_type,
+    args.data_length,
+    args.data_precision,
+    args.data_scale,
+    args.defaulted,
+    args.default_value
+from 
+    sys.all_procedures proc
+    left join sys.all_arguments args
+        on proc.object_id = args.object_id
+where 
+    proc.owner not in ('ANONYMOUS','CTXSYS','DBSNMP','EXFSYS',
+        'MDSYS', 'MGMT_VIEW','OLAPSYS','OWBSYS','ORDPLUGINS', 'ORDSYS',
+        'OUTLN', 'SI_INFORMTN_SCHEMA','SYS','SYSMAN','SYSTEM', 'TSMSYS',
+        'WK_TEST', 'WKSYS', 'WKPROXY','WMSYS','XDB','APEX_040000', 
+        'APEX_PUBLIC_USER','DIP', 'FLOWS_30000','FLOWS_FILES','MDDATA',
+        'ORACLE_OCM', 'XS$NULL', 'SPATIAL_CSW_ADMIN_USR', 'LBACSYS',
+        'SPATIAL_WFS_ADMIN_USR', 'PUBLIC', 'APEX_040200')
+    and object_type = 'PROCEDURE'
+order by args.position;";
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)

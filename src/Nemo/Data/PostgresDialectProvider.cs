@@ -42,6 +42,24 @@ namespace Nemo.Data
             IdentifierEscapeEndCharacter = "\"";
             SupportsTemporaryTables = true;
             ConditionalTableCreation = "CREATE TABLE IF NOT EXISTS {0} ({1})";
+            StoredProcedureParameterListQuery = @"
+select 
+    proc.specific_schema as schema_name,
+    proc.routine_name as procedure_name,
+    args.parameter_name,
+    args.parameter_mode,
+    args.data_type
+from 
+    information_schema.routines proc
+    left join information_schema.parameters args 
+        on proc.specific_schema = args.specific_schema 
+        and proc.specific_name = args.specific_name
+where 
+    proc.routine_schema not in ('pg_catalog', 'information_schema')
+    and proc.routine_type = 'PROCEDURE'
+	and proc.routine_name = @name
+order by
+    args.ordinal_position;";
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)
