@@ -23,6 +23,8 @@ namespace Nemo
         public static T RetrieveScalar<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
             where T : struct
         {
+            config ??= ConfigurationFactory.DefaultConfiguration;
+
             var response = connection != null
                 ? Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema, config: config)
                 : Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema, config: config);
@@ -316,6 +318,8 @@ namespace Nemo
         public static async Task<T> RetrieveScalarAsync<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
             where T : struct
         {
+            config ??= ConfigurationFactory.DefaultConfiguration;
+
             var response = connection != null
                 ? await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema, config: config).ConfigureAwait(false)
                 : await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema, config: config).ConfigureAwait(false);

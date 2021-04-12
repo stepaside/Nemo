@@ -454,7 +454,7 @@ namespace Nemo.Data
             if (string.IsNullOrEmpty(dialect.StoredProcedureParameterListQuery)) return null;
 
             var key = $"{nameof(GetProcedureParameters)}:{procedureName}";
-            if (config.ExecutionContext.Get(key) is ISet<string> set) return set;
+            if (config?.ExecutionContext?.Get(key) is ISet<string> set) return set;
 
             set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var shouldClose = false;
@@ -485,7 +485,7 @@ namespace Nemo.Data
                 }
             }
 
-            config.ExecutionContext.Set(key, set);
+            config?.ExecutionContext?.Set(key, set);
             return set;
         }
     }

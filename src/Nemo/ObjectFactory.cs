@@ -679,7 +679,7 @@ namespace Nemo
             Dictionary<DbParameter, Param> outputParameters = null;
 
             ISet<string> procedureParameters = null;
-            if (operationType == OperationType.StoredProcedure && config.IgnoreInvalidProcedureParameters)
+            if (operationType == OperationType.StoredProcedure && (config?.IgnoreInvalidProcedureParameters).GetValueOrDefault())
             {
                 procedureParameters = DbFactory.GetProcedureParameters(dbConnection, operationText, true, config);
             }
@@ -818,11 +818,13 @@ namespace Nemo
                 operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, request.Configuration ?? ConfigurationFactory.Get<T>());
+            var config = request.Configuration ?? ConfigurationFactory.Get<T>();
+
+            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, config);
 
             var response = request.Connection != null 
-                ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration) 
-                : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration);
+                ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config) 
+                : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config);
             return response;
         }
 
@@ -834,11 +836,13 @@ namespace Nemo
                 operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(null, request.Operation, request.OperationType, request.SchemaName, request.Configuration ?? ConfigurationFactory.DefaultConfiguration);
+            var config = request.Configuration ?? ConfigurationFactory.DefaultConfiguration;
+
+            var operationText = GetOperationText(null, request.Operation, request.OperationType, request.SchemaName, config);
 
             var response = request.Connection != null
-                ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration)
-                : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration);
+                ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config)
+                : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config);
             return response;
         }
 

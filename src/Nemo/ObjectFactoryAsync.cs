@@ -296,6 +296,12 @@ namespace Nemo
 
             Dictionary<DbParameter, Param> outputParameters = null;
 
+            ISet<string> procedureParameters = null;
+            if (operationType == OperationType.StoredProcedure && (config?.IgnoreInvalidProcedureParameters).GetValueOrDefault())
+            {
+                procedureParameters = DbFactory.GetProcedureParameters(dbConnection, operationText, true, config);
+            }
+
             var command = dbConnection.CreateCommand();
             command.CommandText = operationText;
             command.CommandType = operationType == OperationType.StoredProcedure ? CommandType.StoredProcedure : CommandType.Text;
@@ -305,8 +311,15 @@ namespace Nemo
                 for (var i = 0; i < parameters.Count; ++i)
                 {
                     var parameter = parameters[i];
+                    var name = parameter.Name.TrimStart('@', '?', ':');
+
+                    if (procedureParameters != null && !procedureParameters.Contains(name))
+                    {
+                        continue;
+                    }
+
                     var dbParam = command.CreateParameter();
-                    dbParam.ParameterName = parameter.Name.TrimStart('@', '?', ':');
+                    dbParam.ParameterName = name;
                     dbParam.Direction = parameter.Direction;
                     dbParam.Value = parameter.Value ?? DBNull.Value;
 
@@ -426,11 +439,13 @@ namespace Nemo
                 operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, request.Configuration ?? ConfigurationFactory.Get<T>());
+            var config = request.Configuration ?? ConfigurationFactory.Get<T>();
+
+            var operationText = GetOperationText(typeof(T), request.Operation, request.OperationType, request.SchemaName, config);
 
             var response = request.Connection != null
-                ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration).ConfigureAwait(false)
-                : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration).ConfigureAwait(false);
+                ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config).ConfigureAwait(false)
+                : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config).ConfigureAwait(false);
             return response;
         }
 
@@ -442,11 +457,13 @@ namespace Nemo
                 operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
             }
 
-            var operationText = GetOperationText(null, request.Operation, request.OperationType, request.SchemaName, request.Configuration ?? ConfigurationFactory.DefaultConfiguration);
+            var config = request.Configuration ?? ConfigurationFactory.DefaultConfiguration;
+
+            var operationText = GetOperationText(null, request.Operation, request.OperationType, request.SchemaName, config);
 
             var response = request.Connection != null
-                ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration).ConfigureAwait(false)
-                : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: request.Configuration).ConfigureAwait(false);
+                ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config).ConfigureAwait(false)
+                : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config).ConfigureAwait(false);
             return response;
         }
 
