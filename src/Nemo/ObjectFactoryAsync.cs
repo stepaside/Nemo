@@ -296,24 +296,31 @@ namespace Nemo
 
             Dictionary<DbParameter, Param> outputParameters = null;
 
-            ISet<string> procedureParameters = null;
-            if (operationType == OperationType.StoredProcedure && (config?.IgnoreInvalidProcedureParameters).GetValueOrDefault())
-            {
-                procedureParameters = DbFactory.GetProcedureParameters(dbConnection, operationText, true, config);
-            }
-
             var command = dbConnection.CreateCommand();
             command.CommandText = operationText;
             command.CommandType = operationType == OperationType.StoredProcedure ? CommandType.StoredProcedure : CommandType.Text;
             command.CommandTimeout = 0;
             if (parameters != null)
             {
+                ISet<string> parsedParameters = null;
+                if ((config?.IgnoreInvalidParameters).GetValueOrDefault())
+                {
+                    if (operationType == OperationType.StoredProcedure)
+                    {
+                        parsedParameters = DbFactory.GetProcedureParameters(dbConnection, operationText, true, config);
+                    }
+                    else
+                    {
+                        parsedParameters = DbFactory.GetQueryParameters(dbConnection, operationText, true, config);
+                    }
+                }
+
                 for (var i = 0; i < parameters.Count; ++i)
                 {
                     var parameter = parameters[i];
                     var name = parameter.Name.TrimStart('@', '?', ':');
 
-                    if (procedureParameters != null && !procedureParameters.Contains(name))
+                    if (parsedParameters != null && !parsedParameters.Contains(name))
                     {
                         continue;
                     }

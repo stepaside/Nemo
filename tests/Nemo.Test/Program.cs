@@ -40,7 +40,7 @@ namespace NemoTest
                 .SetOperationNamingConvention(OperationNamingConvention.PrefixTypeName_Operation)
                 .SetOperationPrefix("spDTO_")
                 .SetAutoTypeCoercion(true)
-                .SetIgnoreInvalidProcedureParameters(true)
+                .SetIgnoreInvalidParameters(true)
                 .SetLogging(false);
 
             //// Simple retrieve with dynamic parameters

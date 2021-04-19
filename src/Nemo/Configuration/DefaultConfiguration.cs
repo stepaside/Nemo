@@ -54,7 +54,7 @@ namespace Nemo.Configuration
 
         public bool AutoTypeCoercion { get; private set; }
 
-        public bool IgnoreInvalidProcedureParameters { get; private set; }
+        public bool IgnoreInvalidParameters { get; private set; }
 
         public IConfigurationRoot SystemConfiguration { get; private set; }
 
@@ -163,9 +163,9 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetIgnoreInvalidProcedureParameters(bool value)
+        public IConfiguration SetIgnoreInvalidParameters(bool value)
         {
-            IgnoreInvalidProcedureParameters = value;
+            IgnoreInvalidParameters = value;
             return this;
         }
 
@@ -211,7 +211,7 @@ namespace Nemo.Configuration
 
             mergedConfig.SetAutoTypeCoercion(AutoTypeCoercion || configuration.AutoTypeCoercion);
 
-            mergedConfig.SetIgnoreInvalidProcedureParameters(IgnoreInvalidProcedureParameters || configuration.IgnoreInvalidProcedureParameters);
+            mergedConfig.SetIgnoreInvalidParameters(IgnoreInvalidParameters || configuration.IgnoreInvalidParameters);
 
             mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);
 

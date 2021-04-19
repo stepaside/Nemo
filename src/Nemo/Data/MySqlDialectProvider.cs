@@ -39,6 +39,7 @@ namespace Nemo.Data
             IdentifierEscapeEndCharacter = "`";
             SupportsTemporaryTables = true;
             ConditionalTableCreation = "CREATE TABLE IF NOT EXISTS {0} ({1})";
+            ParameterNameRegexPattern = "\\@([\\w.$]+|\"[^\"]+\"|'[^']+')";
             StoredProcedureParameterListQuery = @"
 select 
     r.routine_schema as schema_name,

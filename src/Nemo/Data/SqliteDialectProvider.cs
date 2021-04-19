@@ -40,6 +40,7 @@ namespace Nemo.Data
             IdentifierEscapeEndCharacter = "\"";
             SupportsTemporaryTables = true;
             ConditionalTableCreation = "CREATE TABLE IF NOT EXISTS {0} ({1})";
+            ParameterNameRegexPattern = "\\@[\\w$]+";
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)

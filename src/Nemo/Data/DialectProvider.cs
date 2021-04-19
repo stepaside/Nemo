@@ -4,16 +4,20 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Data.Common;
+using System.Text.RegularExpressions;
 
 namespace Nemo.Data
 {
     public abstract class DialectProvider
     {
+        private readonly Lazy<Regex> _parameterNameMatcher;
         protected DialectProvider() 
         {
-            this.BooleanDefinition = "BIT";
-            this.IntDefinition = "INTEGER";
-            this.SmallIntDefinition = "SMALLINT";
+            BooleanDefinition = "BIT";
+            IntDefinition = "INTEGER";
+            SmallIntDefinition = "SMALLINT";
+
+            _parameterNameMatcher = new Lazy<Regex>(() => !string.IsNullOrEmpty(ParameterNameRegexPattern) ? new Regex(ParameterNameRegexPattern, RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled) : null, true);
         }
 
         public string BigIntDefinition { get; protected set; }
@@ -52,6 +56,15 @@ namespace Nemo.Data
         public string IdentifierEscapeEndCharacter { get; protected set; }
 
         public string StoredProcedureParameterListQuery { get; protected set; }
+        public string ParameterNameRegexPattern { get; protected set; }
+
+        public Regex ParameterNameMatcher
+        {
+            get
+            {
+                return _parameterNameMatcher.Value;
+            }
+        }
 
         public virtual string DeclareVariable(string variableName, DbType dbType)
         {

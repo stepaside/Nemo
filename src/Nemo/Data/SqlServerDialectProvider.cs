@@ -44,6 +44,7 @@ namespace Nemo.Data
             IdentifierEscapeEndCharacter = "]";
             SupportsTemporaryTables = true;
             ConditionalTableCreation = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='{0}' AND xtype='U') CREATE TABLE [{1}] ({2});";
+            ParameterNameRegexPattern = "\\@[\\w#$@]+";
             StoredProcedureParameterListQuery = @"
 select 
     specific_name as procedure_name, 

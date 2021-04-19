@@ -4,6 +4,7 @@ using Nemo.Configuration.Mapping;
 using Nemo.Extensions;
 using Nemo.Reflection;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
@@ -11,6 +12,7 @@ using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Nemo.Data
 {
@@ -487,6 +489,16 @@ namespace Nemo.Data
 
             config?.ExecutionContext?.Set(key, set);
             return set;
+        }
+
+        internal static ISet<string> GetQueryParameters(DbConnection connection, string sql, bool keepOpen, IConfiguration config)
+        {
+            var dialect = DialectFactory.GetProvider(connection);
+            if (dialect.UseOrderedParameters || string.IsNullOrEmpty(dialect.ParameterPrefix)) return null;
+
+            if (dialect.ParameterNameMatcher == null) return null;
+
+            return new HashSet<string>(dialect.ParameterNameMatcher.Matches(sql).Cast<Match>().Select(m => m.Value.TrimStart('@', '?', ':')), StringComparer.OrdinalIgnoreCase);
         }
     }
 }
