@@ -10,7 +10,7 @@ namespace Nemo.Benchmark.Entities
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            var settings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration.ConnectionString("DbConnection");
+            var settings = ConfigurationFactory.DefaultConfiguration.SystemConfiguration.ConnectionString("DbConnectionSqlServer");
             optionsBuilder.UseSqlServer(settings.ConnectionString);
         }
 

@@ -45,7 +45,7 @@ namespace Nemo.Configuration
 
         public static ConnectionStringSettings ConnectionString(this IConfigurationRoot configuration, string name, string section = "ConnectionStrings")
         {
-            return ConnectionStringSettingsCache.GetOrAdd("${section}:{name}", key =>
+            return ConnectionStringSettingsCache.GetOrAdd($"{section}:{name}", key =>
             {
                 ConnectionStringSettings connectionStringSettings;
 

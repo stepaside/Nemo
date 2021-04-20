@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 namespace Nemo.Benchmark
 {
     //[SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.Net472, baseline: true, warmupCount: 1)]
-    [SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.NetCoreApp31, baseline: true, warmupCount: 1)]
+    [SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.NetCoreApp31, warmupCount: 1)]
     //[SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.NetCoreApp50, warmupCount: 1)]
     [RPlotExporter, MemoryDiagnoser, MinColumn, MaxColumn, MeanColumn, MedianColumn, RankColumn]
     public class OrmBenchmark
@@ -27,10 +27,12 @@ namespace Nemo.Benchmark
         private IConfigurationRoot _config;
         private Configuration.IConfiguration _nemoConfig;
         private System.Data.Common.DbConnection _connection;
+        private List<object> _idList;
 
         const string sql = @"select CustomerID, CompanyName from Customers";
+        const string sqlById = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerId";
 
-        [Params(500)]
+        [Params(20)]
         public int Count;
 
         [GlobalSetup]
@@ -38,7 +40,7 @@ namespace Nemo.Benchmark
         {
             _config = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
 
-            _nemoConfig = ConfigurationFactory.Configure()
+            _nemoConfig = (ConfigurationFactory.Configure() ?? ConfigurationFactory.DefaultConfiguration)
                 .SetDefaultChangeTrackingMode(ChangeTrackingMode.Debug)
                 .SetDefaultMaterializationMode(MaterializationMode.Exact)
                 .SetDefaultCacheRepresentation(CacheRepresentation.None)
@@ -62,41 +64,69 @@ namespace Nemo.Benchmark
         {
             _connection?.Close();
         }
-
-        [Benchmark]
-        [Arguments(true)]
-        [Arguments(false)]
-        public void RunEF(bool reuseContext)
+                
+        public IEnumerable<object> CustomerIdList
         {
-            if (reuseContext)
+            get
+            {
+                if (_idList != null) return _idList;
+
+                _idList = new List<object>();
+
+                var config = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
+                using (var connection = DbFactory.CreateConnection(config.GetConnectionString("DbConnection")))
+                {
+                    connection.Open();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "select CustomerID from Customers";
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                _idList.Add(reader.GetString(0));
+                            }
+                        }
+                    }
+                }
+
+                return _idList;
+            }
+        }
+
+        [Benchmark(Description = "EF Select All")]
+        public void RunEF()
+        {
+            using (var context = new EFContext())
+            {
+                context.ChangeTracker.AutoDetectChangesEnabled = false;
+                context.ChangeTracker.QueryTrackingBehavior = Microsoft.EntityFrameworkCore.QueryTrackingBehavior.NoTracking;
+
+                for (var i = 0; i < Count; i++)
+                {
+                    var customer = context.Customers.ToList();
+                }
+            }
+
+        }
+
+        [Benchmark(Description = "EF Select By Id")]
+        [ArgumentsSource(nameof(CustomerIdList))]
+        public void RunEF(string id)
+        {
+            for (var i = 0; i < Count; i++)
             {
                 using (var context = new EFContext())
                 {
                     context.ChangeTracker.AutoDetectChangesEnabled = false;
                     context.ChangeTracker.QueryTrackingBehavior = Microsoft.EntityFrameworkCore.QueryTrackingBehavior.NoTracking;
 
-                    for (var i = 0; i < Count; i++)
-                    {
-                        var customer = context.Customers.ToList();//FirstOrDefault(c => c.Id == "ALFKI");
-                    }
-                }
-            }
-            else
-            {
-                for (var i = 0; i < Count; i++)
-                {
-                    using (var context = new EFContext())
-                    {
-                        context.ChangeTracker.AutoDetectChangesEnabled = false;
-                        context.ChangeTracker.QueryTrackingBehavior = Microsoft.EntityFrameworkCore.QueryTrackingBehavior.NoTracking;
-
-                        var customer = context.Customers.ToList();//FirstOrDefault(c => c.Id == "ALFKI");
-                    }
+                    var customer = context.Customers.Find(id);
                 }
             }
         }
 
-        [Benchmark]
+        [Benchmark(Description = "NativeWithMapper Select All")]
         public void RunNativeWithMapper()
         {
             for (var i = 0; i < Count; i++)
@@ -105,10 +135,6 @@ namespace Nemo.Benchmark
                 {
                     cmd.CommandText = sql;
                     cmd.CommandType = CommandType.Text;
-                    //var param = cmd.CreateParameter();
-                    //param.ParameterName = "CustomerId";
-                    //param.Value = "ALFKI";
-                    //cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
@@ -121,7 +147,33 @@ namespace Nemo.Benchmark
             }
         }
 
-        [Benchmark]
+        [Benchmark(Description = "NativeWithMapper Select By Id")]
+        [ArgumentsSource(nameof(CustomerIdList))]
+        public void RunNativeWithMapper(string id)
+        {
+            for (var i = 0; i < Count; i++)
+            {
+                using (var cmd = _connection.CreateCommand())
+                {
+                    cmd.CommandText = sqlById;
+                    cmd.CommandType = CommandType.Text;
+                    var param = cmd.CreateParameter();
+                    param.ParameterName = "CustomerId";
+                    param.Value = id;
+                    cmd.Parameters.Add(param);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var customer = new Customer();
+                            ObjectFactory.Map(reader, customer);
+                        }
+                    }
+                }
+            }
+        }
+
+        [Benchmark(Description = "Native Select All")]
         public void RunNative()
         {
             for (var i = 0; i < Count; i++)
@@ -130,10 +182,6 @@ namespace Nemo.Benchmark
                 {
                     cmd.CommandText = sql;
                     cmd.CommandType = CommandType.Text;
-                    //var param = cmd.CreateParameter();
-                    //param.ParameterName = "CustomerId";
-                    //param.Value = "ALFKI";
-                    //cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read()) { };
@@ -142,10 +190,32 @@ namespace Nemo.Benchmark
             }
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Native Select By Id")]
+        [ArgumentsSource(nameof(CustomerIdList))]
+        public void RunNative(string id)
+        {
+            for (var i = 0; i < Count; i++)
+            {
+                using (var cmd = _connection.CreateCommand())
+                {
+                    cmd.CommandText = sqlById;
+                    cmd.CommandType = CommandType.Text;
+                    var param = cmd.CreateParameter();
+                    param.ParameterName = "CustomerId";
+                    param.Value = id;
+                    cmd.Parameters.Add(param);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read()) { };
+                    }
+                }
+            }
+        }
+
+        [Benchmark(Description = "Execute Select All")]
         public void RunExecute()
         {
-            var req = new OperationRequest { Operation = sql, /*Parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = DbType.String } },*/ ReturnType = OperationReturnType.SingleResult, OperationType = OperationType.Sql, Connection = _connection };
+            var req = new OperationRequest { Operation = sql, ReturnType = OperationReturnType.SingleResult, OperationType = OperationType.Sql, Connection = _connection };
             for (var i = 0; i < Count; i++)
             {
                 var response = ObjectFactory.Execute(req);
@@ -156,34 +226,76 @@ namespace Nemo.Benchmark
             }
         }
 
-        [Benchmark]
-        //[Arguments(true)]
-        [Arguments(false)]
-        public void RunRetrieve(bool cached)
+        [Benchmark(Description = "Execute Select By Id")]
+        [ArgumentsSource(nameof(CustomerIdList))]
+        public void RunExecute(string id)
         {
+            var req = new OperationRequest { Operation = sqlById, Parameters = new[] { new Param { Name = "CustomerId", Value = id, DbType = DbType.String } }, ReturnType = OperationReturnType.SingleResult, OperationType = OperationType.Sql, Connection = _connection };
             for (var i = 0; i < Count; i++)
             {
-                var result = ObjectFactory.Retrieve<Customer>(connection: _connection, sql: sql, /*parameters: parameters,*/ cached: cached, config: _nemoConfig).ToList();
+                var response = ObjectFactory.Execute(req);
+                using (var reader = (IDataReader)response.Value)
+                {
+                    while (reader.Read()) { }
+                }
             }
         }
 
-        [Benchmark]
-        //[Arguments(true)]
-        [Arguments(false)]
-        public void RunSelect(bool cached)
+        [Benchmark(Description = "Retrieve Select All")]
+        public void RunRetrieve()
         {
             for (var i = 0; i < Count; i++)
             {
-                var result = ObjectFactory.Select<Customer>(null, connection: _connection, cached: cached, config: _nemoConfig).ToList();
+                var result = ObjectFactory.Retrieve<Customer>(connection: _connection, sql: sql, cached: false, config: _nemoConfig).ToList();
             }
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Retrieve Select By Id")]
+        [ArgumentsSource(nameof(CustomerIdList))]
+        public void RunRetrieve(string id)
+        {
+            var parameters = new[] { new Param { Name = "CustomerId", Value = id, DbType = DbType.String } };
+            for (var i = 0; i < Count; i++)
+            {
+                var result = ObjectFactory.Retrieve<Customer>(connection: _connection, sql: sqlById, parameters: parameters, cached: false, config: _nemoConfig).ToList();
+            }
+        }
+
+        [Benchmark(Description = "Nemo Select All")]
+        public void RunSelect()
+        {
+            for (var i = 0; i < Count; i++)
+            {
+                var result = ObjectFactory.Select<Customer>(null, connection: _connection, cached: false, config: _nemoConfig).ToList();
+            }
+        }
+
+        [Benchmark(Description = "Nemo Select By Id")]
+        [ArgumentsSource(nameof(CustomerIdList))]
+        public void RunSelect(string id)
+        {
+            for (var i = 0; i < Count; i++)
+            {
+                var result = ObjectFactory.Select<Customer>(c => c.Id == id, connection: _connection, cached: false, config: _nemoConfig).ToList();
+            }
+        }
+
+        [Benchmark(Description = "Dapper Select All")]
         public void RunDapper()
         {
             for (var i = 0; i < Count; i++)
             {
-                var result = _connection.Query<Customer>(sql, null /*new { CustomerID = "ALFKI" }*/, buffered: false).ToList();
+                var result = _connection.Query<Customer>(sql, null, buffered: false).ToList();
+            }
+        }
+
+        [Benchmark(Description = "Dapper Select By Id")]
+        [ArgumentsSource(nameof(CustomerIdList))]
+        public void RunDapper(string id)
+        {
+            for (var i = 0; i < Count; i++)
+            {
+                var result = _connection.Query<Customer>(sql, new { CustomerId = id }, buffered: false).ToList();
             }
         }
     }
