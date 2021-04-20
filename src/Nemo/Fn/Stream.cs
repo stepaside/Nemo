@@ -43,7 +43,7 @@ namespace Nemo.Fn
             {
                 // Once the tail is used 
                 // we consider it "realized"
-                // so we store it to imporve performance
+                // so we store it to improve performance
                 // instead of needing to regenerate the list again
                 if (_realized == null && _tail != null)
                 {
