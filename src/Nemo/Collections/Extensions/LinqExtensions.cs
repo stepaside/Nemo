@@ -195,15 +195,6 @@ namespace Nemo.Collections.Extensions
             }
         }
 
-        public static List<T> ToLazyList<T>(this IEnumerable<T> source)
-        {
-            if (source is Stream<T> stream)
-            {
-                return stream.ToList();
-            }
-            return source.ToList();
-        }
-
         #endregion
 
         #region Concat Methods

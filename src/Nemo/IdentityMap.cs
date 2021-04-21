@@ -96,19 +96,16 @@ namespace Nemo
 
         public void CleanIndices(string id)
         {
-            HashSet<string> indices;
-            if (!_indicesReverse.TryRemove(id, out indices)) return;
+            if (!_indicesReverse.TryRemove(id, out var indices)) return;
             foreach (var index in indices)
             {
-                List<string> idList;
-                _indices.TryRemove(index, out idList);
+                _indices.TryRemove(index, out _);
             }
         }
 
         bool IIdentityMap.TryGetValue(string id, out object value)
         {
-            T item;
-            var success = _entities.TryGetValue(id, out item);
+            var success = _entities.TryGetValue(id, out var item);
             value = item;
             return success;
         }
@@ -120,8 +117,7 @@ namespace Nemo
 
         bool IIdentityMap.Remove(string id)
         {
-            T item;
-            return _entities.TryRemove(id, out item);
+            return _entities.TryRemove(id, out _);
         }
     }
 }

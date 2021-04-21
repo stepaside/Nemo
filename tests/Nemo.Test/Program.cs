@@ -134,6 +134,7 @@ namespace NemoTest
             {
                 var stream_customer_count = retrieve_customers_by_country.Count();
             }
+
             var stream_customer = retrieve_customers_by_country.FirstOrDefault();
 
             // Simple retrieve with sql statement operation

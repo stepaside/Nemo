@@ -15,8 +15,16 @@ namespace Nemo.Fn
     {
         private readonly T _head;
         private readonly Func<Stream<T>> _tail;
+        private readonly bool _isEmpty;
         private Stream<T> _realized;
         private List<T> _list;
+
+        public static readonly Stream<T> Empty = new Stream<T>();
+
+        private Stream() 
+        {
+            _isEmpty = true;
+        }
 
         public Stream(T head)
         {
@@ -53,20 +61,27 @@ namespace Nemo.Fn
             }
         }
 
+        public bool IsEmpty()
+        {
+            return _isEmpty;
+        }
+
         public Stream<T> Append(T value)
         {
-            return ((IEnumerable<T>)this).Append(value).AsStream();
+            return IsEmpty() ? new Stream<T>(value) : ((IEnumerable<T>)this).Append(value).AsStream();
         }
 
         public Stream<T> Prepend(T value)
         {
-            return new Stream<T>(value, () => this);
+            return IsEmpty() ? new Stream<T>(value) : new Stream<T>(value, () => this);
         }
 
         #region IEnumerable<T> Members
 
         public IEnumerator<T> GetEnumerator()
         {
+            if (IsEmpty()) yield break;
+
             yield return _head;
 
             var t = Tail;
@@ -80,7 +95,7 @@ namespace Nemo.Fn
 
         public List<T> ToList()
         {
-            return _list ?? (_list = Enumerable.ToList(this));
+            return _list ??= Enumerable.ToList(this);
         }
 
         #endregion
@@ -104,6 +119,12 @@ namespace Nemo.Fn
         public T ElementAt(int index)
         {
             index.ThrowIfNegative("index");
+
+            if (IsEmpty())
+            {
+                throw new ArgumentOutOfRangeException("index", "`index` is larger than the collection size.");
+            }
+
             var stream = this;
             while (--index >= 0)
             {
@@ -116,8 +137,33 @@ namespace Nemo.Fn
             return stream.Head;
         }
 
+        public T ElementAtOrDefault(int index)
+        {
+            index.ThrowIfNegative("index");
+
+            if (IsEmpty())
+            {
+                return default;
+            }
+
+            var stream = this;
+            while (--index >= 0)
+            {
+                stream = stream.Tail;
+                if (stream == null)
+                {
+                    return default;
+                }
+            }
+            return stream.Head;
+        }
+
         public T First()
         {
+            if (IsEmpty())
+            {
+                throw new InvalidOperationException("Sequence contains no matching elements");
+            }
             return Head;
         }
 
@@ -128,7 +174,9 @@ namespace Nemo.Fn
 
         public long LongCount()
         {
-            long count = 1;
+            if (IsEmpty()) return 0;
+
+            var count = 0L;
             var tail = Tail;
             while (tail != null)
             {
@@ -140,6 +188,8 @@ namespace Nemo.Fn
 
         public Stream<T> Reverse()
         {
+            if (IsEmpty()) return Empty;
+
             var newHead = new Stream<T>(Head);
             var tail = Tail;
             while (tail != null)
