@@ -14,9 +14,8 @@ namespace Nemo.Fn
     public class Stream<T> : IEnumerable<T>
     {
         private readonly T _head;
-        private readonly Func<Stream<T>> _tail;
+        private readonly Lazy<Stream<T>> _tail;
         private readonly bool _isEmpty;
-        private Stream<T> _realized;
         private List<T> _list;
 
         public static readonly Stream<T> Empty = new Stream<T>();
@@ -31,7 +30,7 @@ namespace Nemo.Fn
             _head = head;
         }
 
-        public Stream(T head, Func<Stream<T>> tail)
+        public Stream(T head, Lazy<Stream<T>> tail)
         {
             _head = head;
             _tail = tail;
@@ -49,15 +48,8 @@ namespace Nemo.Fn
         {
             get
             {
-                // Once the tail is used 
-                // we consider it "realized"
-                // so we store it to improve performance
-                // instead of needing to regenerate the list again
-                if (_realized == null && _tail != null)
-                {
-                    _realized = _tail();
-                }
-                return _realized;
+
+                return _tail.Value;
             }
         }
 
@@ -68,12 +60,30 @@ namespace Nemo.Fn
 
         public Stream<T> Append(T value)
         {
-            return IsEmpty() ? new Stream<T>(value) : ((IEnumerable<T>)this).Append(value).AsStream();
+            return IsEmpty() ? new Stream<T>(value) : new Stream<T>(Head, new Lazy<Stream<T>>(() => Tail.Append(value)));
         }
 
         public Stream<T> Prepend(T value)
         {
-            return IsEmpty() ? new Stream<T>(value) : new Stream<T>(value, () => this);
+            return IsEmpty() ? new Stream<T>(value) : new Stream<T>(value, new Lazy<Stream<T>>(() => this));
+        }
+
+        public void ForEach(Action<T> action)
+        {
+            if (IsEmpty()) return;
+
+            action(Head);
+            Tail.ForEach(action);
+        }
+
+        public static Stream<T> operator + (Stream<T> stream, T value)
+        {
+            return stream.Append(value);
+        }
+
+        public static Stream<T> operator + (T value, Stream<T> stream)
+        {
+            return stream.Prepend(value);
         }
 
         #region IEnumerable<T> Members
@@ -194,7 +204,7 @@ namespace Nemo.Fn
             var tail = Tail;
             while (tail != null)
             {
-                newHead = new Stream<T>(tail.Head, () => newHead);
+                newHead = new Stream<T>(tail.Head, new Lazy<Stream<T>>(() => newHead));
                 tail = tail.Tail;
             }
             return newHead;

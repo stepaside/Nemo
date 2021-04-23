@@ -18,7 +18,7 @@ namespace Nemo.Fn
 
         public static Stream<T> AsStream<T>(this IEnumerator<T> iterator)
         {
-            return iterator.MoveNext() ? new Stream<T>(iterator.Current, iterator.AsStream) : Stream<T>.Empty;
+            return iterator.MoveNext() ? new Stream<T>(iterator.Current, new Lazy<Stream<T>>(() => iterator.AsStream())) : Stream<T>.Empty;
         }
 
         public static Stream<T> ZipWith<U, V, T>(this Stream<U> st1, Stream<V> st2, Func<U, V, T> zipper)
@@ -27,7 +27,7 @@ namespace Nemo.Fn
 
             if (st1.IsEmpty() || st2.IsEmpty()) return Stream<T>.Empty;
 
-            return new Stream<T>(zipper(st1.Head, st2.Head), () => st1.Tail.ZipWith(st2.Tail, zipper));
+            return new Stream<T>(zipper(st1.Head, st2.Head), new Lazy<Stream<T>>(() => st1.Tail.ZipWith(st2.Tail, zipper)));
         }
 
         public static Stream<Tuple<U, V>> Zip<U, V>(this Stream<U> st1, Stream<V> st2)
@@ -36,7 +36,7 @@ namespace Nemo.Fn
 
             if (st1.IsEmpty() || st2.IsEmpty()) return Stream<Tuple<U, V>>.Empty;
 
-            return new Stream<Tuple<U, V>>(new Tuple<U, V>(st1.Head, st2.Head), () => st1.Tail.Zip(st2.Tail));
+            return new Stream<Tuple<U, V>>(new Tuple<U, V>(st1.Head, st2.Head), new Lazy<Stream<Tuple<U, V>>>(() => st1.Tail.Zip(st2.Tail)));
         }
 
         public static T FoldRight<U, T>(this Stream<U> st1, Func<U, T, T> folder, T init)
@@ -53,14 +53,14 @@ namespace Nemo.Fn
         {
             return st1 == null 
                 ? null 
-                : st1.IsEmpty() ? Stream<T>.Empty : new Stream<T>(mapper(st1.Head), () => st1.Tail.Map(mapper));
+                : st1.IsEmpty() ? Stream<T>.Empty : new Stream<T>(mapper(st1.Head), new Lazy<Stream<T>>(() => st1.Tail.Map(mapper)));
         }
 
         public static Stream<T> Filter<T>(this Stream<T> st1, Func<T, bool> filter)
         {
             return st1 == null 
                 ? null 
-                : st1.IsEmpty() ? Stream<T>.Empty : filter(st1.Head) ? new Stream<T>(st1.Head, () => st1.Tail.Filter(filter)) : st1.Tail.Filter(filter);
+                : st1.IsEmpty() ? Stream<T>.Empty : filter(st1.Head) ? new Stream<T>(st1.Head, new Lazy<Stream<T>>(() => st1.Tail.Filter(filter))) : st1.Tail.Filter(filter);
         }
 
         public static Stream<T> Merge<T>(this Stream<T> st1, Stream<T> st2) where T : IComparable<T>
@@ -77,8 +77,8 @@ namespace Nemo.Fn
 
             var result = st1.Head.CompareTo(st2.Head);
             return result < 0
-                ? new Stream<T>(st1.Head, () => Merge(st1.Tail, st2))
-                : result > 0 ? new Stream<T>(st2.Head, () => Merge(st1, st2.Tail)) : new Stream<T>(st1.Head, () => Merge(st1.Tail, st2.Tail));
+                ? new Stream<T>(st1.Head, new Lazy<Stream<T>>(() => Merge(st1.Tail, st2)))
+                : result > 0 ? new Stream<T>(st2.Head, new Lazy<Stream<T>>(() => Merge(st1, st2.Tail))) : new Stream<T>(st1.Head, new Lazy<Stream<T>>(() => Merge(st1.Tail, st2.Tail)));
         }
     }
 }
