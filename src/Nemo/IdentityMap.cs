@@ -53,7 +53,7 @@ namespace Nemo
         {
             if (entities == null) return null;
 
-            if (entities is Stream<T>)
+            if (entities is IBuffer<T>)
             {
                 return entities.Select(e =>
                 {

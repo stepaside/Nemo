@@ -52,7 +52,7 @@ namespace Nemo.Collections
                 }
                 else
                 {
-                    _source = source.AsStream();
+                    _source = source.Memoize();
                 }
             }
             else

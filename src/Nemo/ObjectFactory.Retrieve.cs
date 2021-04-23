@@ -102,7 +102,7 @@ namespace Nemo
                     }
                     else
                     {
-                        result = result.AsStream() ?? Enumerable.Empty<TResult>();
+                        result = result.Memoize() ?? Enumerable.Empty<TResult>();
                     }
                 }
 
@@ -397,7 +397,7 @@ namespace Nemo
                     }
                     else
                     {
-                        result = result.AsStream() ?? Enumerable.Empty<TResult>();
+                        result = result.Memoize() ?? Enumerable.Empty<TResult>();
                     }
                 }
 

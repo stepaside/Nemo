@@ -158,19 +158,7 @@ namespace Nemo.Collections.Extensions
                 index++;
             }
         }
-        
-        public static IEnumerable<T> Do<T>(this IEnumerable<T> source, Action<T> action)
-        {
-            source.ThrowIfNull("source");
-            action.ThrowIfNull("action");
-
-            foreach (var item in source)
-            {
-                action(item);
-                yield return item;
-            }
-        }
-
+       
         public static IEnumerable<T> Do<T>(this IEnumerable<T> source, Action<int, T> action)
         {
             source.ThrowIfNull("source");
@@ -697,7 +685,7 @@ namespace Nemo.Collections.Extensions
                 return Tuple.Create((IList<T>)trueList, (IList<T>)falseList);
             }
 
-            var stream = source.AsStream();
+            var stream = source.Memoize();
             return stream != null
                 ? Tuple.Create((IList<T>)stream.Where(predicate).ToList(), (IList<T>)stream.Where(s => !predicate(s)).ToList())
                 : Tuple.Create((IList<T>)new T[0], (IList<T>)new T[0]);
