@@ -822,7 +822,7 @@ namespace Nemo
             var operationType = request.OperationType;
             if (operationType == OperationType.Guess)
             {
-                operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = GuessOperationType(request.Operation);
             }
 
             var config = request.Configuration ?? ConfigurationFactory.Get<T>();
@@ -840,7 +840,7 @@ namespace Nemo
             var operationType = request.OperationType;
             if (operationType == OperationType.Guess)
             {
-                operationType = request.Operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = GuessOperationType(request.Operation);
             }
 
             var config = request.Configuration ?? ConfigurationFactory.DefaultConfiguration;
@@ -851,6 +851,11 @@ namespace Nemo
                 ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config)
                 : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config);
             return response;
+        }
+
+        private static OperationType GuessOperationType(string operation)
+        {
+            return operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
         }
 
         #endregion

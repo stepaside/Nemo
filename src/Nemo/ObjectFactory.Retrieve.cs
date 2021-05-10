@@ -20,14 +20,16 @@ namespace Nemo
     {
         #region Retrieve Methods
 
-        public static T RetrieveScalar<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
+        public static T RetrieveScalar<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
             where T : struct
         {
             config ??= ConfigurationFactory.DefaultConfiguration;
 
+            var parameterList = ExtractParameters(parameters);
+
             var response = connection != null
-                ? Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema, config: config)
-                : Execute(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema, config: config);
+                ? Execute(sql, parameterList, OperationReturnType.Scalar, GuessOperationType(sql), connection: connection, schema: schema, config: config)
+                : Execute(sql, parameterList, OperationReturnType.Scalar, GuessOperationType(sql), connectionName: connectionName, schema: schema, config: config);
 
             var value = response.Value;
             if (value == null)
@@ -127,7 +129,7 @@ namespace Nemo
         {
             if (operationType == OperationType.Guess)
             {
-                operationType = operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = GuessOperationType(operation);
             }
 
             config ??= ConfigurationFactory.Get<T>();
@@ -210,7 +212,7 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            var parameterList = ExtractParameters<TResult>(parameters);
+            var parameterList = ExtractParameters(parameters);
             return RetrieveImplemenation(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config);
         }
 
@@ -268,12 +270,11 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            var parameterList = ExtractParameters<T>(parameters);
+            var parameterList = ExtractParameters(parameters);
             return RetrieveImplemenation<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
         }
 
-        private static IList<Param> ExtractParameters<T>(object parameters)
-            where T : class
+        private static IList<Param> ExtractParameters(object parameters)
         {
             IList<Param> parameterList = null;
             if (parameters != null)
@@ -315,14 +316,16 @@ namespace Nemo
 
         #region Retrieve Async Methods
 
-        public static async Task<T> RetrieveScalarAsync<T>(string sql, Param[] parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
+        public static async Task<T> RetrieveScalarAsync<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
             where T : struct
         {
             config ??= ConfigurationFactory.DefaultConfiguration;
 
+            var parameterList = ExtractParameters(parameters);
+
             var response = connection != null
-                ? await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connection: connection, schema: schema, config: config).ConfigureAwait(false)
-                : await ExecuteAsync(sql, parameters, OperationReturnType.Scalar, OperationType.Sql, connectionName: connectionName, schema: schema, config: config).ConfigureAwait(false);
+                ? await ExecuteAsync(sql, parameterList, OperationReturnType.Scalar, GuessOperationType(sql), connection: connection, schema: schema, config: config).ConfigureAwait(false)
+                : await ExecuteAsync(sql, parameterList, OperationReturnType.Scalar, GuessOperationType(sql), connectionName: connectionName, schema: schema, config: config).ConfigureAwait(false);
 
             var value = response.Value;
             if (value == null)
@@ -422,7 +425,7 @@ namespace Nemo
         {
             if (operationType == OperationType.Guess)
             {
-                operationType = operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+                operationType = GuessOperationType(operation);
             }
 
             config ??= ConfigurationFactory.Get<T>();
@@ -507,7 +510,7 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            var parameterList = ExtractParameters<TResult>(parameters);
+            var parameterList = ExtractParameters(parameters);
             return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config).ConfigureAwait(false);
         }
 
@@ -545,7 +548,7 @@ namespace Nemo
 
             var command = sql ?? operation;
             var commandType = sql == null ? OperationType.StoredProcedure : OperationType.Sql;
-            var parameterList = ExtractParameters<T>(parameters);
+            var parameterList = ExtractParameters(parameters);
             return await RetrieveImplemenationAsync<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config).ConfigureAwait(false);
         }
 
