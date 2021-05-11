@@ -641,7 +641,7 @@ namespace Nemo
             return response;
         }
 
-        internal static OperationResponse Execute(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, IConfiguration config = null)
+        internal static OperationResponse Execute(string operationText, IEnumerable<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, IConfiguration config = null)
         {
             var rootType = types?[0];
 
@@ -697,9 +697,8 @@ namespace Nemo
                     }
                 }
 
-                for (var i = 0; i < parameters.Count; ++i)
+                foreach (var parameter in parameters)
                 {
-                    var parameter = parameters[i];
                     var name = parameter.Name.TrimStart('@', '?', ':');
 
                     if (parsedParameters != null && !parsedParameters.Contains(name))
@@ -851,6 +850,38 @@ namespace Nemo
                 ? Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config)
                 : Execute(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config);
             return response;
+        }
+
+        public static OperationResponse ExecuteSql(string sql, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
+        {
+            var request = new OperationRequest
+            {
+                Operation = sql,
+                Parameters = ExtractParameters(parameters),
+                ConnectionName = connectionName,
+                Connection = connection,
+                Configuration = config,
+                OperationType = OperationType.Sql,
+                ReturnType = nonQuery ? OperationReturnType.NonQuery : OperationReturnType.MultiResult,
+                CaptureException = captureException
+            };
+            return Execute(request);
+        }
+
+        public static OperationResponse ExecuteProcedure(string procedure, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
+        {
+            var request = new OperationRequest
+            {
+                Operation = procedure,
+                Parameters = ExtractParameters(parameters),
+                ConnectionName = connectionName,
+                Connection = connection,
+                Configuration = config,
+                OperationType = OperationType.StoredProcedure,
+                ReturnType = nonQuery ? OperationReturnType.NonQuery : OperationReturnType.MultiResult,
+                CaptureException = captureException
+            };
+            return Execute(request);
         }
 
         private static OperationType GuessOperationType(string operation)

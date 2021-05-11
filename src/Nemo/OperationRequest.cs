@@ -14,7 +14,7 @@ namespace Nemo
     public class OperationRequest
     {
         private string _connectionString = null;
-        private IList<Param> _parameters = new List<Param>();
+        private Param[] _parameters = null;
         private OperationReturnType _returnType = OperationReturnType.Guess;
         private OperationType _operationType = OperationType.Guess;
         
@@ -73,17 +73,17 @@ namespace Nemo
             }
         }
 
-        public IList<Param> Parameters
+        public IEnumerable<Param> Parameters
         {
             get
             {
-                return _parameters;
+                return _parameters ?? Enumerable.Empty<Param>();
             }
             set
             {
                 if (value != null)
                 {
-                    _parameters = new List<Param>(value);
+                    _parameters = value.ToArray();
                 }
             }
         }

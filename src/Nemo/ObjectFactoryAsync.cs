@@ -259,7 +259,7 @@ namespace Nemo
             return response;
         }
 
-        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IList<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings", IConfiguration config = null)
+        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IEnumerable<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings", IConfiguration config = null)
         {
             var rootType = types?[0];
 
@@ -315,9 +315,8 @@ namespace Nemo
                     }
                 }
 
-                for (var i = 0; i < parameters.Count; ++i)
+                foreach (var parameter in parameters)
                 {
-                    var parameter = parameters[i];
                     var name = parameter.Name.TrimStart('@', '?', ':');
 
                     if (parsedParameters != null && !parsedParameters.Contains(name))
@@ -472,6 +471,38 @@ namespace Nemo
                 ? await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, connection: request.Connection, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config).ConfigureAwait(false)
                 : await ExecuteAsync(operationText, request.Parameters, request.ReturnType, operationType, request.Types, request.ConnectionName, transaction: request.Transaction, captureException: request.CaptureException, schema: request.SchemaName, config: config).ConfigureAwait(false);
             return response;
+        }
+
+        public static async Task<OperationResponse> ExecuteSqlAsync(string sql, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
+        {
+            var request = new OperationRequest
+            {
+                Operation = sql,
+                Parameters = ExtractParameters(parameters),
+                ConnectionName = connectionName,
+                Connection = connection,
+                Configuration = config,
+                OperationType = OperationType.Sql,
+                ReturnType = nonQuery ? OperationReturnType.NonQuery : OperationReturnType.MultiResult,
+                CaptureException = captureException
+            };
+            return await ExecuteAsync(request).ConfigureAwait(false);
+        }
+
+        public static async Task<OperationResponse> ExecuteProcedureAsync(string procedure, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
+        {
+            var request = new OperationRequest
+            {
+                Operation = procedure,
+                Parameters = ExtractParameters(parameters),
+                ConnectionName = connectionName,
+                Connection = connection,
+                Configuration = config,
+                OperationType = OperationType.StoredProcedure,
+                ReturnType = nonQuery ? OperationReturnType.NonQuery : OperationReturnType.MultiResult,
+                CaptureException = captureException
+            };
+            return await ExecuteAsync(request).ConfigureAwait(false);
         }
 
         #endregion

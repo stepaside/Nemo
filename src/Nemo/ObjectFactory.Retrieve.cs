@@ -274,7 +274,7 @@ namespace Nemo
             return RetrieveImplemenation<T>(command, commandType, parameterList, OperationReturnType.SingleResult, connectionName, connection, null, new[] { typeof(T) }, schema, cached, config);
         }
 
-        private static IList<Param> ExtractParameters(object parameters)
+        public static IList<Param> ExtractParameters(object parameters)
         {
             IList<Param> parameterList = null;
             if (parameters != null)
