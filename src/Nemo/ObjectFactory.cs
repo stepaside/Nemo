@@ -868,26 +868,6 @@ namespace Nemo
             return Execute(request);
         }
 
-        public static IEnumerable<T> ExecuteSql<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
-            where T : class
-        {
-            var request = new OperationRequest
-            {
-                Operation = sql,
-                Parameters = ExtractParameters(parameters),
-                ConnectionName = connectionName,
-                Connection = connection,
-                Configuration = config,
-                OperationType = OperationType.Sql,
-                ReturnType = OperationReturnType.SingleResult,
-                CaptureException = captureException
-            };
-            var response = Execute(request);
-
-            var result = Translate<T>(response, config);
-            return result;
-        }
-
         public static OperationResponse ExecuteProcedure(string procedure, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
         {
             var request = new OperationRequest
@@ -902,26 +882,6 @@ namespace Nemo
                 CaptureException = captureException
             };
             return Execute(request);
-        }
-
-        public static IEnumerable<T> ExecuteProcedure<T>(string procedure, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
-            where T : class
-        {
-            var request = new OperationRequest
-            {
-                Operation = procedure,
-                Parameters = ExtractParameters(parameters),
-                ConnectionName = connectionName,
-                Connection = connection,
-                Configuration = config,
-                OperationType = OperationType.StoredProcedure,
-                ReturnType = OperationReturnType.SingleResult,
-                CaptureException = captureException
-            };
-            var response = Execute(request);
-
-            var result = Translate<T>(response, config);
-            return result;
         }
 
         private static OperationType GuessOperationType(string operation)

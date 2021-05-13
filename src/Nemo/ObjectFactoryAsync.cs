@@ -489,25 +489,6 @@ namespace Nemo
             return await ExecuteAsync(request).ConfigureAwait(false);
         }
 
-        public static async Task<IEnumerable<T>> ExecuteSqlAsync<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
-             where T : class
-        {
-            var request = new OperationRequest
-            {
-                Operation = sql,
-                Parameters = ExtractParameters(parameters),
-                ConnectionName = connectionName,
-                Connection = connection,
-                Configuration = config,
-                OperationType = OperationType.Sql,
-                ReturnType = OperationReturnType.SingleResult,
-                CaptureException = captureException
-            };
-            var response = await ExecuteAsync(request).ConfigureAwait(false);
-            var result = Translate<T>(response, config);
-            return result;
-        }
-
         public static async Task<OperationResponse> ExecuteProcedureAsync(string procedure, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
         {
             var request = new OperationRequest
@@ -522,25 +503,6 @@ namespace Nemo
                 CaptureException = captureException
             };
             return await ExecuteAsync(request).ConfigureAwait(false);
-        }
-
-        public static async Task<IEnumerable<T>> ExecuteProcedureAsync<T>(string procedure, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
-             where T : class
-        {
-            var request = new OperationRequest
-            {
-                Operation = procedure,
-                Parameters = ExtractParameters(parameters),
-                ConnectionName = connectionName,
-                Connection = connection,
-                Configuration = config,
-                OperationType = OperationType.StoredProcedure,
-                ReturnType = OperationReturnType.SingleResult,
-                CaptureException = captureException
-            };
-            var response = await ExecuteAsync(request).ConfigureAwait(false);
-            var result = Translate<T>(response, config);
-            return result;
         }
 
         #endregion
