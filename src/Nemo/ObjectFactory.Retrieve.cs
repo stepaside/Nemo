@@ -21,7 +21,6 @@ namespace Nemo
         #region Retrieve Methods
 
         public static T RetrieveScalar<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
-            where T : IConvertible
         {
             config ??= ConfigurationFactory.DefaultConfiguration;
 
@@ -317,7 +316,6 @@ namespace Nemo
         #region Retrieve Async Methods
 
         public static async Task<T> RetrieveScalarAsync<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
-            where T : IConvertible
         {
             config ??= ConfigurationFactory.DefaultConfiguration;
 

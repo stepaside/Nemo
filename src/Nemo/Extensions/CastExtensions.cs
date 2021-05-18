@@ -136,26 +136,22 @@ namespace Nemo.Extensions
                     default:
                         if (structType == typeof(DateTimeOffset))
                         {
-                            DateTimeOffset temp;
-                            success = DateTimeOffset.TryParse(source, out temp);
+                            success = DateTimeOffset.TryParse(source, out var temp);
                             result = temp;
                         }
                         else if (structType == typeof(Guid))
                         {
-                            Guid temp;
-                            success = Guid.TryParse(source, out temp);
+                            success = Guid.TryParse(source, out var temp);
                             result = temp;
                         }
                         else if (structType == typeof(TimeSpan))
                         {
-                            TimeSpan temp;
-                            success = TimeSpan.TryParse(source, out temp);
+                            success = TimeSpan.TryParse(source, out var temp);
                             result = temp;
                         }
                         else if (structType == typeof(Version))
                         {
-                            Version temp;
-                            success = Version.TryParse(source, out temp);
+                            success = Version.TryParse(source, out var temp);
                             result = temp;
                         }
                         else

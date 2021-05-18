@@ -1,5 +1,6 @@
 ﻿using Nemo.Collections.Extensions;
 using Nemo.Configuration.Mapping;
+using Nemo.Extensions;
 using Nemo.Serialization;
 using Nemo.Utilities;
 using System;
@@ -78,6 +79,24 @@ namespace Nemo.Reflection
                 {
                     return null;
                 }
+            }
+
+            // Check if conversion is needed
+            if (value?.GetType() == conversionType)
+            {
+                return value;
+            }
+
+            // Check if we should use .ToString() instead of Convert.ChangeType
+            if (value != null && !(value is IConvertible) && conversionType == typeof(string))
+            {
+                return value.ToString();
+            }
+
+            // Check if we should parse the value instead of Convert.ChangeType
+            if (value is string text && !typeof(IConvertible).IsAssignableFrom(conversionType) && text.TryParse(conversionType, out var result))
+            {
+                return result;
             }
 
             return Convert.ChangeType(value, conversionType);
