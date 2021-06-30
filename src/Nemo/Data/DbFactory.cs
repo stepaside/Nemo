@@ -192,7 +192,7 @@ namespace Nemo.Data
             return null;
         }
 
-        internal static DbConnection CreateConnection(string connectionString, string providerName, IConfiguration config)
+        public static DbConnection CreateConnection(string connectionString, string providerName, IConfiguration config)
         {
             var cleanConnectionString = connectionString;
             providerName ??= GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
