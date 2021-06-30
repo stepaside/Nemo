@@ -197,7 +197,9 @@ namespace Nemo.Data
             var cleanConnectionString = connectionString;
             providerName ??= GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
 
-#if NETSTANDARD
+#if NETSTANDARD2_1
+            var factory = DbProviderFactories.GetFactory(providerName);
+#elif NETSTANDARD
             var factory = GetDbProviderFactory(providerName);
 #else
             var factory = DbProviderFactories.GetFactory(providerName);

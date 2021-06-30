@@ -13,7 +13,7 @@ namespace Nemo.Configuration
         private static readonly ConcurrentDictionary<string, ConnectionStringSettingsCollection> ConnectionStringSettingsCollectionCache = new ConcurrentDictionary<string, ConnectionStringSettingsCollection>();
         private static readonly ConcurrentDictionary<string, ConnectionStringSettings> ConnectionStringSettingsCache = new ConcurrentDictionary<string, ConnectionStringSettings>();
 
-        public static ConnectionStringSettingsCollection ConnectionStrings(this IConfigurationRoot configuration, string section = "ConnectionStrings")
+        public static ConnectionStringSettingsCollection ConnectionStrings(this Microsoft.Extensions.Configuration.IConfiguration configuration, string section = "ConnectionStrings")
         {
             return ConnectionStringSettingsCollectionCache.GetOrAdd(section, key =>
             {
@@ -43,7 +43,7 @@ namespace Nemo.Configuration
             });
         }
 
-        public static ConnectionStringSettings ConnectionString(this IConfigurationRoot configuration, string name, string section = "ConnectionStrings")
+        public static ConnectionStringSettings ConnectionString(this Microsoft.Extensions.Configuration.IConfiguration configuration, string name, string section = "ConnectionStrings")
         {
             return ConnectionStringSettingsCache.GetOrAdd($"{section}:{name}", key =>
             {
