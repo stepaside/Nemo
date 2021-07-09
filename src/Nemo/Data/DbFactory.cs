@@ -212,6 +212,19 @@ namespace Nemo.Data
             return connection;
         }
 
+        public static DbConnection CreateConnection(string connectionString, DataAccessProviderTypes providerType)
+        {
+            return CreateConnection(connectionString, GetProviderInvariantName(providerType));
+        }
+
+        public static DbConnection CreateConnection(string connectionString, string providerName)
+        {
+            connectionString.ThrowIfNull(nameof(connectionString));
+            providerName.ThrowIfNull(nameof(providerName));
+
+            return CreateConnection(connectionString, providerName, null);
+        }
+
         internal static DbConnection CreateConnection(string connectionName, Type objectType, IConfiguration config)
         {
             if (connectionName.NullIfEmpty() == null && objectType != null)
@@ -353,6 +366,41 @@ namespace Nemo.Data
             }
 
             return null;
+        }
+
+        internal static string GetProviderInvariantName(DataAccessProviderTypes type)
+        {
+            if (type == DataAccessProviderTypes.SqlServer)
+            {
+                return ProviderInvariantSql;
+            }
+
+            if (type == DataAccessProviderTypes.SqlServerCore)
+            {
+                return ProviderInvariantSqlCore;
+            }
+
+            if (type == DataAccessProviderTypes.SqLite)
+            {
+                return ProviderInvariantSqlite;
+            }
+
+            if (type == DataAccessProviderTypes.MySql)
+            {
+                return ProviderInvariantMysql;
+            }
+
+            if (type == DataAccessProviderTypes.PostgreSql)
+            {
+                return ProviderInvariantPostgres;
+            }
+
+            if (type == DataAccessProviderTypes.Oracle)
+            {
+                return ProviderInvariantOracle;
+            }
+
+            throw new NotSupportedException($"Unsupported Provider Factory specified: {type}");
         }
 
         public static DbProviderFactory GetDbProviderFactory(string providerName)
