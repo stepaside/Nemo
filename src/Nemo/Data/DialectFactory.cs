@@ -41,18 +41,20 @@ namespace Nemo.Data
 
             switch (providerName)
             {
-                case DbFactory.ProviderInvariantSql:
+                case DbFactory.ProviderInvariantSqlClient:
                 {
                     var version = new Version(connection.ServerVersion);
                     var isLegacy = version.Major <= 8;
                     var isLatest = version.Major >= 11;
                     return isLegacy ? SqlServerLegacyDialectProvider.Instance : (isLatest ? SqlServerLatestDialectProvider.Instance : SqlServerDialectProvider.Instance);
                 }
-                case DbFactory.ProviderInvariantSqlCore:
+                case DbFactory.ProviderInvariantMicrosoftSqlClient:
                     return SqlServerLatestDialectProvider.Instance;
                 case DbFactory.ProviderInvariantMysql:
+                case DbFactory.ProviderInvariantMysqlClient:
                     return MySqlDialectProvider.Instance;
                 case DbFactory.ProviderInvariantSqlite:
+                case DbFactory.ProviderInvariantMicrosoftSqlite:
                     return SqliteDialectProvider.Instance;
                 case DbFactory.ProviderInvariantOracle:
                     return OracleDialectProvider.Instance;

@@ -18,12 +18,16 @@ namespace Nemo.Data
 {
     public static class DbFactory
     {
-        public const string ProviderInvariantSql = "System.Data.SqlClient";
-        public const string ProviderInvariantMysql = "MySql.Data.MySqlClient";
+        public const string ProviderInvariantSqlClient = "System.Data.SqlClient";
+        public const string ProviderInvariantMysqlClient = "MySql.Data.MySqlClient";
+        public const string ProviderInvariantMysql = "MySql.Data";
         public const string ProviderInvariantSqlite = "System.Data.SQLite";
+        public const string ProviderInvariantMicrosoftSqlite = "Microsoft.Data.SQLite";
         public const string ProviderInvariantOracle = "Oracle.DataAccess.Client";
         public const string ProviderInvariantPostgres = "Npgsql";
-        public const string ProviderInvariantSqlCore = "Microsoft.Data.SqlClient";
+        public const string ProviderInvariantMicrosoftSqlClient = "Microsoft.Data.SqlClient";
+
+        public static readonly ISet<string> ProviderInvariantNames = new HashSet<string>(new string[] { ProviderInvariantSqlClient, ProviderInvariantMysql, ProviderInvariantMysqlClient, ProviderInvariantSqlite, ProviderInvariantOracle, ProviderInvariantPostgres, ProviderInvariantMicrosoftSqlClient, ProviderInvariantMicrosoftSqlite }, StringComparer.OrdinalIgnoreCase);
 
         private static string CleanConnectionString(string connectionString)
         {
@@ -197,13 +201,8 @@ namespace Nemo.Data
             var cleanConnectionString = connectionString;
             providerName ??= GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
 
-#if NETSTANDARD2_1
-            var factory = DbProviderFactories.GetFactory(providerName);
-#elif NETSTANDARD
             var factory = GetDbProviderFactory(providerName);
-#else
-            var factory = DbProviderFactories.GetFactory(providerName);
-#endif
+
             var connection = factory.CreateConnection();
             if (connection != null)
             {
@@ -337,22 +336,27 @@ namespace Nemo.Data
 
             if (connectionType == "system.data.sqlclient.sqlconnection")
             {
-                return ProviderInvariantSql;
+                return ProviderInvariantSqlClient;
             }
 
             if (connectionType == "microsoft.data.sqlclient.sqlconnection")
             {
-                return ProviderInvariantSqlCore;
+                return ProviderInvariantMicrosoftSqlClient;
             }
 
-            if (connectionType == "system.data.sqlite.sqliteconnection" || connectionType == "microsoft.data.sqlite.sqliteconnection")
+            if (connectionType == "system.data.sqlite.sqliteconnection")
             {
                 return ProviderInvariantSqlite;
             }
 
+            if (connectionType == "microsoft.data.sqlite.sqliteconnection")
+            {
+                return ProviderInvariantMicrosoftSqlite;
+            }
+
             if (connectionType == "mysql.data.mysqlclient.mysqlconnection")
             {
-                return ProviderInvariantMysql;
+                return ProviderInvariantMysqlClient;
             }
 
             if (connectionType == "oracle.dataaccess.client.oracleconnection")
@@ -372,12 +376,12 @@ namespace Nemo.Data
         {
             if (type == DataAccessProviderTypes.SqlServer)
             {
-                return ProviderInvariantSql;
+                return ProviderInvariantSqlClient;
             }
 
             if (type == DataAccessProviderTypes.SqlServerCore)
             {
-                return ProviderInvariantSqlCore;
+                return ProviderInvariantMicrosoftSqlClient;
             }
 
             if (type == DataAccessProviderTypes.SqLite)
@@ -387,7 +391,7 @@ namespace Nemo.Data
 
             if (type == DataAccessProviderTypes.MySql)
             {
-                return ProviderInvariantMysql;
+                return ProviderInvariantMysqlClient;
             }
 
             if (type == DataAccessProviderTypes.PostgreSql)
@@ -409,35 +413,43 @@ namespace Nemo.Data
             {
                 throw new ArgumentNullException(nameof(providerName));
             }
+            
+#if NETSTANDARD2_1 || NET472_OR_GREATER
+            if (!ProviderInvariantNames.Contains(providerName)) throw new NotSupportedException($"Unsupported Provider Factory specified: {providerName}");
 
-            providerName = providerName.ToLower();
+            try
+            {
+                return DbProviderFactories.GetFactory(providerName);
+            }
+            catch { }
+#endif
 
-            if (providerName == "system.data.sqlclient")
+            if (string.Equals(providerName, ProviderInvariantSqlClient, StringComparison.OrdinalIgnoreCase))
             {
                 return GetDbProviderFactory(DataAccessProviderTypes.SqlServer);
             }
 
-            if (providerName == "microsoft.data.sqlclient")
+            if (string.Equals(providerName, ProviderInvariantMicrosoftSqlClient, StringComparison.OrdinalIgnoreCase))
             {
                 return GetDbProviderFactory(DataAccessProviderTypes.SqlServerCore);
             }
 
-            if (providerName == "system.data.sqlite" || providerName == "microsoft.data.sqlite")
+            if (string.Equals(providerName, ProviderInvariantSqlite, StringComparison.OrdinalIgnoreCase) || string.Equals(providerName, ProviderInvariantMicrosoftSqlite, StringComparison.OrdinalIgnoreCase))
             {
                 return GetDbProviderFactory(DataAccessProviderTypes.SqLite);
             }
 
-            if (providerName == "mysql.data.mysqlclient" || providerName == "mysql.data")
+            if (string.Equals(providerName, ProviderInvariantMysql, StringComparison.OrdinalIgnoreCase) || string.Equals(providerName, ProviderInvariantMysqlClient, StringComparison.OrdinalIgnoreCase))
             {
                 return GetDbProviderFactory(DataAccessProviderTypes.MySql);
             }
 
-            if (providerName == "oracle.dataaccess.client")
+            if (string.Equals(providerName, ProviderInvariantOracle, StringComparison.OrdinalIgnoreCase))
             {
                 return GetDbProviderFactory(DataAccessProviderTypes.Oracle);
             }
 
-            if (providerName == "npgsql")
+            if (string.Equals(providerName, ProviderInvariantPostgres, StringComparison.OrdinalIgnoreCase))
             {
                 return GetDbProviderFactory(DataAccessProviderTypes.PostgreSql);
             }

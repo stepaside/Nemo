@@ -43,6 +43,10 @@ namespace NemoTest
                 .SetIgnoreInvalidParameters(true)
                 .SetLogging(false);
 
+            var factory = DbFactory.GetDbProviderFactory(DataAccessProviderTypes.SqlServer);
+
+            var connection = DbFactory.CreateConnection("Data Source=.;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;", DataAccessProviderTypes.SqlServer);
+
             //// Simple retrieve with dynamic parameters
             //var retrieve_customer_test = ObjectFactory.Retrieve<Customer>(parameters: new { CustomerID = "ALFKI" }).FirstOrDefault();
 
