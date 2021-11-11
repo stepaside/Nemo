@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using Nemo.Collections;
 using Nemo.Collections.Extensions;
 using Nemo.Extensions;
 using Nemo.Fn;
@@ -21,7 +22,7 @@ namespace Nemo
         where T : class
     {
         private readonly ConcurrentDictionary<string, T> _entities = new ConcurrentDictionary<string, T>();
-        private readonly ConcurrentDictionary<string, List<string>> _indices = new ConcurrentDictionary<string, List<string>>();
+        private readonly ConcurrentDictionary<string, HashList<string>> _indices = new ConcurrentDictionary<string, HashList<string>>();
         private readonly ConcurrentDictionary<string, HashSet<string>> _indicesReverse = new ConcurrentDictionary<string, HashSet<string>>();
         
         public T Get(string id)
@@ -58,7 +59,7 @@ namespace Nemo
                 return entities.Select(e =>
                 {
                     var id = e.ComputeHash();
-                    _indices.AddOrUpdate(index, k => new List<string>(new[] { id }), (k, l) =>
+                    _indices.AddOrUpdate(index, k => new HashList<string>(new[] { id }), (k, l) =>
                     {
                         l.Add(id);
                         return l;
@@ -81,7 +82,7 @@ namespace Nemo
             var list = entities as IList<T> ?? entities.ToList();
             var map = list.Select(e => new { Id = e.ComputeHash(), Entity = e }).GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.Last().Entity);
 
-            if (!_indices.TryAdd(index, map.Keys.ToList())) return list;
+            if (!_indices.TryAdd(index, new HashList<string>(map.Keys))) return list;
 
             foreach (var pair in map.Where(pair => _entities.TryAdd(pair.Key, pair.Value)))
             {
