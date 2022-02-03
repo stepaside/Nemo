@@ -12,9 +12,9 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <AssemblyName>Nemo</AssemblyName>
     <AssemblyTitle>Nemo</AssemblyTitle>
-    <AssemblyVersion>2.6.2</AssemblyVersion>
-    <FileVersion>2.6.2</FileVersion>
-    <PackageVersion>2.6.2</PackageVersion>
+    <AssemblyVersion>2.7.0</AssemblyVersion>
+    <FileVersion>2.7.0</FileVersion>
+    <PackageVersion>2.7.0-beta.1.0.0</PackageVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>

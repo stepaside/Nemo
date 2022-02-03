@@ -29,6 +29,8 @@ namespace Nemo.Data
             AnsiStringDefinition = "text";
             DateDefinition = "date";
             DateTimeDefinition = "timestamp";
+            DateTime2Definition = "timestamp";
+            DateTimeOffsetDefinition = "timestamp with time zone";
             TimeDefinition = "time";
             TemporaryTableCreation = "CREATE TEMPORARY TABLE {0} ({1});";
             UseOrderedParameters = false;
@@ -61,6 +63,7 @@ where
 	and proc.routine_name = @name
 order by
     args.ordinal_position;";
+            SupportsArrays = true;
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)

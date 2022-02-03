@@ -280,6 +280,8 @@ namespace Nemo
                 closeConnection = true;
             }
 
+            var dialect = DialectFactory.GetProvider(dbConnection);
+
             if (returnType == OperationReturnType.Guess)
             {
                 if (operationText.IndexOf("insert", StringComparison.OrdinalIgnoreCase) > -1
@@ -294,67 +296,11 @@ namespace Nemo
                 }
             }
 
-            Dictionary<DbParameter, Param> outputParameters = null;
-
             var command = dbConnection.CreateCommand();
             command.CommandText = operationText;
             command.CommandType = operationType == OperationType.StoredProcedure ? CommandType.StoredProcedure : CommandType.Text;
             command.CommandTimeout = 0;
-            if (parameters != null)
-            {
-                ISet<string> parsedParameters = null;
-                if ((config?.IgnoreInvalidParameters).GetValueOrDefault())
-                {
-                    if (operationType == OperationType.StoredProcedure)
-                    {
-                        parsedParameters = DbFactory.GetProcedureParameters(dbConnection, operationText, true, config);
-                    }
-                    else
-                    {
-                        parsedParameters = DbFactory.GetQueryParameters(dbConnection, operationText, true, config);
-                    }
-                }
-
-                foreach (var parameter in parameters)
-                {
-                    var name = parameter.Name.TrimStart('@', '?', ':');
-
-                    if (parsedParameters != null && !parsedParameters.Contains(name))
-                    {
-                        continue;
-                    }
-
-                    var dbParam = command.CreateParameter();
-                    dbParam.ParameterName = name;
-                    dbParam.Direction = parameter.Direction;
-                    dbParam.Value = parameter.Value ?? DBNull.Value;
-
-                    if (parameter.Value != null)
-                    {
-                        if (parameter.Size > -1)
-                        {
-                            dbParam.Size = parameter.Size;
-                        }
-
-                        dbParam.DbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
-                    }
-                    else if (parameter.DbType != null)
-                    {
-                        dbParam.DbType = parameter.DbType.Value;
-                    }
-
-                    if (dbParam.Direction == ParameterDirection.Output)
-                    {
-                        if (outputParameters == null)
-                        {
-                            outputParameters = new Dictionary<DbParameter, Param>();
-                        }
-                        outputParameters.Add(dbParam, parameter);
-                    }
-
-                    command.Parameters.Add(dbParam);
-                }
-            }
+            var outputParameters = DbFactory.SetupParameters(command, parameters, dialect, config);
 
             if (dbConnection.State != ConnectionState.Open)
             {

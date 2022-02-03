@@ -34,18 +34,18 @@ namespace Nemo.Data
                 providerName = DbFactory.GetProviderInvariantName(connection);
             }
 
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
-
             switch (providerName)
             {
                 case DbFactory.ProviderInvariantSqlClient:
                 {
+                    if (connection.State != ConnectionState.Open)
+                    {
+                        connection.Open();
+                    }
+
                     var version = new Version(connection.ServerVersion);
                     var isLegacy = version.Major <= 8;
-                    var isLatest = version.Major >= 11;
+                    var isLatest = version.Major >= 13;
                     return isLegacy ? SqlServerLegacyDialectProvider.Instance : (isLatest ? SqlServerLatestDialectProvider.Instance : SqlServerDialectProvider.Instance);
                 }
                 case DbFactory.ProviderInvariantMicrosoftSqlClient:

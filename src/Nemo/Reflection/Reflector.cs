@@ -765,8 +765,8 @@ namespace Nemo.Reflection
             {typeof(TimeSpan),DbType.Time},
             {typeof(TimeSpan?),DbType.Time},
             {typeof(byte[]),DbType.Binary},
-            {typeof(Guid),DbType.Guid},           
-            {typeof(Guid?),DbType.Guid},           
+            {typeof(Guid),DbType.Guid},
+            {typeof(Guid?),DbType.Guid},
             {typeof(object),DbType.Object}
         };
 
@@ -775,11 +775,11 @@ namespace Nemo.Reflection
             DbType dbType;
             if (clrType == null)
             {
-                dbType = DbType.Xml;
+                dbType = DbType.Object;
             }
             else if (!ClrToDbTypeLookup.TryGetValue(clrType, out dbType))
             {
-                dbType = clrType.IsEnum ? DbType.Int32 : DbType.Xml; 
+                dbType = clrType.IsEnum ? DbType.Int32 : DbType.Object; 
             }
             return dbType;
         }

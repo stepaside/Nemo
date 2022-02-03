@@ -144,6 +144,8 @@ namespace NemoTest
             // Simple retrieve with sql statement operation
             var retrieve_customer_sql = ObjectFactory.Retrieve<ICustomer>(sql: "select * from Customers where CustomerID = @CustomerID", parameters: new ParamList { CustomerID => "ALFKI" });
 
+            var retrieve_many_customer_sql = ObjectFactory.Retrieve<ICustomer>(sql: "select * from Customers where CustomerID in (@CustomerIDs)", parameters: new { CustomerIDs = new[] { "ALFKI", "ANTON" } });
+
             // Advanced!
             // Retrieve customers with orders as object graph
             var retrieve_customer_with_orders_graph = ((IMultiResult)ObjectFactory.Retrieve<Customer, Order>(

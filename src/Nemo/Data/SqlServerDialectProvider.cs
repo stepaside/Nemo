@@ -11,6 +11,26 @@ namespace Nemo.Data
     public class SqlServerLatestDialectProvider : SqlServerDialectProvider
     {
         public static new SqlServerLatestDialectProvider Instance = new SqlServerLatestDialectProvider();
+
+        public override string SplitString(string variableName, string type, string delimiter)
+        {
+            if (variableName == null) throw new ArgumentNullException(nameof(variableName));
+
+            var selectExpression = "[value]";
+            if (type != null)
+            {
+                selectExpression = $"CAST([value] AS {type})";
+            }
+
+            if (!variableName.StartsWith(VariablePrefix))
+            {
+                variableName = $"{VariablePrefix}{variableName}";
+            }
+
+            delimiter ??= ",";
+
+            return $"SELECT {selectExpression} FROM STRING_SPLIT({variableName},'{delimiter.Replace("'", "''")}')";
+        }
     }
 
     public class SqlServerDialectProvider : DialectProvider
@@ -31,6 +51,8 @@ namespace Nemo.Data
             AnsiStringDefinition = "VARCHAR(8000)";
             DateDefinition = "DATE";
             DateTimeDefinition = "DATETIME";
+            DateTime2Definition = "DATETIME2";
+            DateTimeOffsetDefinition = "DATETIMEOFFSET";
             TimeDefinition = "TIME";
             TemporaryTableCreation = "CREATE TABLE {0} ({1});";
             UseOrderedParameters = false;

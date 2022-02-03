@@ -4,7 +4,7 @@ using Nemo.Configuration.Mapping;
 using Nemo.Extensions;
 using Nemo.Reflection;
 using System;
-using System.Collections.Concurrent;
+using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
@@ -28,6 +28,8 @@ namespace Nemo.Data
         public const string ProviderInvariantMicrosoftSqlClient = "Microsoft.Data.SqlClient";
 
         public static readonly ISet<string> ProviderInvariantNames = new HashSet<string>(new string[] { ProviderInvariantSqlClient, ProviderInvariantMysql, ProviderInvariantMysqlClient, ProviderInvariantSqlite, ProviderInvariantOracle, ProviderInvariantPostgres, ProviderInvariantMicrosoftSqlClient, ProviderInvariantMicrosoftSqlite }, StringComparer.OrdinalIgnoreCase);
+
+        public static readonly char[] ParameterPrexifes = new char[] { '@', '?', ':' };
 
         private static string CleanConnectionString(string connectionString)
         {
@@ -512,9 +514,9 @@ namespace Nemo.Data
             return instance as DbProviderFactory;
         }
 
-        internal static ISet<string> GetProcedureParameters(DbConnection connection, string procedureName, bool keepOpen, IConfiguration config)
+        internal static ISet<string> GetProcedureParameters(DbConnection connection, string procedureName, bool keepOpen, IConfiguration config, DialectProvider dialect)
         {
-            var dialect = DialectFactory.GetProvider(connection);
+            dialect ??= DialectFactory.GetProvider(connection);
             if (string.IsNullOrEmpty(dialect.StoredProcedureParameterListQuery)) return null;
 
             var key = $"{nameof(GetProcedureParameters)}:{procedureName}";
@@ -538,7 +540,7 @@ namespace Nemo.Data
                 using var reader = command.ExecuteReader();
                 while (reader.Read())
                 {
-                    set.Add(reader.GetString(reader.GetOrdinal("parameter_name")).TrimStart('@', '?', ':'));
+                    set.Add(reader.GetString(reader.GetOrdinal("parameter_name")).TrimStart(ParameterPrexifes));
                 }
             }
             finally
@@ -553,14 +555,157 @@ namespace Nemo.Data
             return set;
         }
 
-        internal static ISet<string> GetQueryParameters(DbConnection connection, string sql, bool keepOpen, IConfiguration config)
+        internal static ISet<string> GetQueryParameters(DbConnection connection, string sql, bool keepOpen, IConfiguration config, DialectProvider dialect)
         {
-            var dialect = DialectFactory.GetProvider(connection);
+            dialect ??= DialectFactory.GetProvider(connection);
             if (dialect.UseOrderedParameters || string.IsNullOrEmpty(dialect.ParameterPrefix)) return null;
 
             if (dialect.ParameterNameMatcher == null) return null;
 
-            return new HashSet<string>(dialect.ParameterNameMatcher.Matches(sql).Cast<Match>().Select(m => m.Value.TrimStart('@', '?', ':')), StringComparer.OrdinalIgnoreCase);
+            return new HashSet<string>(dialect.ParameterNameMatcher.Matches(sql).Cast<Match>().Select(m => m.Value.TrimStart(ParameterPrexifes)), StringComparer.OrdinalIgnoreCase);
+        }
+
+        internal static Dictionary<DbParameter, Param> SetupParameters(DbCommand command, IEnumerable<Param> parameters, DialectProvider dialect, IConfiguration config)
+        {
+            Dictionary<DbParameter, Param> outputParameters = null;
+            if (parameters != null)
+            {
+                var isPositional = command.CommandType != CommandType.StoredProcedure && command.CommandText.IndexOf('?') >= 0;
+
+                ISet<string> parsedParameters = null;
+                if ((config?.IgnoreInvalidParameters).GetValueOrDefault())
+                {
+                    if (command.CommandType == CommandType.StoredProcedure)
+                    {
+                        parsedParameters = DbFactory.GetProcedureParameters(command.Connection, command.CommandText, true, config, dialect);
+                    }
+                    else
+                    {
+                        parsedParameters = DbFactory.GetQueryParameters(command.Connection, command.CommandText, true, config, dialect);
+                    }
+                }
+
+                var count = 0;
+                foreach (var parameter in parameters)
+                {
+                    var originalName = parameter.Name;
+                    var name = originalName.TrimStart(DbFactory.ParameterPrexifes);
+
+                    if (parsedParameters != null && !parsedParameters.Contains(name))
+                    {
+                        continue;
+                    }
+
+                    var dbParam = command.CreateParameter();
+                    dbParam.ParameterName = name;
+                    dbParam.Direction = parameter.Direction;
+
+                    var addParameter = true;
+
+                    if (dbParam.Direction == ParameterDirection.Output && command.CommandType == CommandType.StoredProcedure)
+                    {
+                        if (outputParameters == null)
+                        {
+                            outputParameters = new Dictionary<DbParameter, Param>();
+                        }
+                        outputParameters.Add(dbParam, parameter);
+                    }
+                    else
+                    {
+                        dbParam.Value = parameter.Value ?? DBNull.Value;
+
+                        if (parameter.IsArray && !dialect.SupportsArrays)
+                        {
+                            var items = dbParam.Value as IEnumerable;
+                            if (command.CommandType != CommandType.StoredProcedure)
+                            {
+                                var itemType = Reflector.GetElementType(parameter.Type);
+                                var dbType = Reflector.ClrToDbType(itemType);
+                                var splitString = !isPositional ? dialect.SplitString(originalName, dialect.GetColumnType(dbType), null) : null;
+
+                                if (!string.IsNullOrEmpty(splitString))
+                                {
+                                    command.CommandText = dialect.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => $"({splitString})");
+                                    parameter.Value = string.Join(",", items.Cast<object>().ToArray());
+                                    dbParam.Value = parameter.Value;
+                                }
+                                else
+                                {
+                                    var expansionParameters = new List<string>();
+                                    foreach (var item in items)
+                                    {
+                                        var listEpxansionParam = command.CreateParameter();
+                                        listEpxansionParam.ParameterName = $"{name}{expansionParameters.Count}";
+                                        listEpxansionParam.Direction = parameter.Direction;
+                                        listEpxansionParam.Value = item;
+                                        listEpxansionParam.DbType = dbType;
+                                        expansionParameters.Add(listEpxansionParam.ParameterName);
+                                        command.Parameters.Add(listEpxansionParam);
+                                    }
+
+                                    var expanedParameters = isPositional ? Enumerable.Repeat('?', expansionParameters.Count).ToDelimitedString(",") : expansionParameters.Select(n => $"{dialect.ParameterPrefix}{n}").ToDelimitedString(",");
+                                    if (isPositional)
+                                    {
+
+                                        var current = 0;
+                                        command.CommandText = dialect.PositionalParameterMatcher.Replace(command.CommandText, match =>
+                                        {
+                                            current++;
+                                            if (current > count)
+                                            {
+                                                return $"({expanedParameters})";
+                                            }
+                                            return match.Value;
+                                        }, count + 1);
+                                    }
+                                    else
+                                    {
+                                        command.CommandText = dialect.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => match.Groups[1].Success && match.Groups[3].Success ? expanedParameters : $"({expanedParameters})");
+                                    }
+
+                                    count += expansionParameters.Count;
+
+                                    addParameter = false;
+                                }
+                            }
+                            else
+                            {
+                                parameter.Value = string.Join(",", items.Cast<object>().ToArray());
+                                dbParam.Value = parameter.Value;
+                                count++;
+                            }
+                        }
+                        else
+                        {
+                            count++;
+                        }
+
+                        if (addParameter)
+                        {
+                            if (parameter.Value != null)
+                            {
+                                if (parameter.Size > -1)
+                                {
+                                    dbParam.Size = parameter.Size;
+                                }
+
+                                dbParam.DbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
+                            }
+                            else if (parameter.DbType != null)
+                            {
+                                dbParam.DbType = parameter.DbType.Value;
+                            }
+                        }
+                    }
+
+                    if (addParameter)
+                    {
+                        command.Parameters.Add(dbParam);
+                    }
+                }
+            }
+
+            return outputParameters;
         }
     }
 }

@@ -28,6 +28,8 @@ namespace Nemo.Data
             AnsiStringDefinition = "VARCHAR2(4000)";
             DateDefinition = "DATE";
             DateTimeDefinition = "TIMESTAMP";
+            DateTime2Definition = "TIMESTAMP";
+            DateTimeOffsetDefinition = "TIMESTAMP WITH TIME ZONE";
             TimeDefinition = "TIMESTAMP";
             TemporaryTableCreation = "CREATE GLOBAL TEMPORARY TABLE {0} ({1}) ON COMMIT DELETE ROWS;";
             UseOrderedParameters = false;
@@ -67,6 +69,7 @@ where
         'ORACLE_OCM', 'XS$NULL', 'SPATIAL_CSW_ADMIN_USR', 'LBACSYS',
         'SPATIAL_WFS_ADMIN_USR', 'PUBLIC', 'APEX_040200')
     and object_type = 'PROCEDURE'
+    and proc.object_name = :name
 order by args.position;";
         }
 

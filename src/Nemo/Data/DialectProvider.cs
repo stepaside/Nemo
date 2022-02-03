@@ -11,6 +11,9 @@ namespace Nemo.Data
     public abstract class DialectProvider
     {
         private readonly Lazy<Regex> _parameterNameMatcher;
+        private readonly Lazy<Regex> _parameterNameMatcherWithGroups;
+        private readonly Lazy<Regex> _positionalParameterNameMatcher;
+
         protected DialectProvider() 
         {
             BooleanDefinition = "BIT";
@@ -18,6 +21,10 @@ namespace Nemo.Data
             SmallIntDefinition = "SMALLINT";
 
             _parameterNameMatcher = new Lazy<Regex>(() => !string.IsNullOrEmpty(ParameterNameRegexPattern) ? new Regex(ParameterNameRegexPattern, RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled) : null, true);
+
+            _parameterNameMatcherWithGroups = new Lazy<Regex>(() => !string.IsNullOrEmpty(ParameterNameRegexPattern) ? new Regex(ParameterNameRegexPattern.StartsWith("(") ? ParameterNameRegexPattern : $@"(\(\s*?)?({ParameterNameRegexPattern})(\s*?\))?", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled) : null, true);
+
+            _positionalParameterNameMatcher = new Lazy<Regex>(() => new Regex(@"(\(\s*?)?(\?)(\s*?\))?", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled));
         }
 
         public string BigIntDefinition { get; protected set; }
@@ -34,6 +41,8 @@ namespace Nemo.Data
         public string AnsiStringDefinition { get; protected set; }
         public string DateDefinition { get; protected set; }
         public string DateTimeDefinition { get; protected set; }
+        public string DateTime2Definition { get; protected set; }
+        public string DateTimeOffsetDefinition { get; protected set; }
         public string TimeDefinition { get; protected set; }
 
         public string AutoIncrementComputation { get; protected set; }
@@ -58,11 +67,29 @@ namespace Nemo.Data
         public string StoredProcedureParameterListQuery { get; protected set; }
         public string ParameterNameRegexPattern { get; protected set; }
 
+        public bool SupportsArrays { get; protected set; }
+
         public Regex ParameterNameMatcher
         {
             get
             {
                 return _parameterNameMatcher.Value;
+            }
+        }
+
+        public Regex ParameterNameMatcherWithGroups
+        {
+            get
+            {
+                return _parameterNameMatcherWithGroups.Value;
+            }
+        }
+
+        public Regex PositionalParameterMatcher
+        {
+            get
+            {
+                return _positionalParameterNameMatcher.Value;
             }
         }
 
@@ -106,6 +133,11 @@ namespace Nemo.Data
             return tableName;
         }
 
+        public virtual string SplitString(string variableName, string type, string delimiter)
+        {
+            return null;
+        }
+
         public virtual string GetColumnType(DbType dbType)
         {
             switch (dbType)
@@ -140,8 +172,12 @@ namespace Nemo.Data
                     return DateDefinition;
                 case DbType.DateTime:
                     return DateTimeDefinition;
+                case DbType.DateTime2:
+                    return DateTime2Definition;
                 case DbType.Time:
                     return TimeDefinition;
+                case DbType.DateTimeOffset:
+                    return DateTimeOffsetDefinition;
             }
             return null;
         }

@@ -26,6 +26,8 @@ namespace Nemo.Data
             AnsiStringDefinition = "VARCHAR(65535)";
             DateDefinition = "DATE";
             DateTimeDefinition = "DATETIME";
+            DateTime2Definition = "DATETIME";
+            DateTimeOffsetDefinition = "DATETIME";
             TimeDefinition = "TIME";
             TemporaryTableCreation = "CREATE TEMPORARY TABLE {0} ({1});";
             UseOrderedParameters = false;
