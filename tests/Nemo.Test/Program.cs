@@ -41,6 +41,7 @@ namespace NemoTest
                 .SetOperationPrefix("spDTO_")
                 .SetAutoTypeCoercion(true)
                 .SetIgnoreInvalidParameters(true)
+                .SetPadListExpansion(true)
                 .SetLogging(false);
 
             var factory = DbFactory.GetDbProviderFactory(DataAccessProviderTypes.SqlServer);

@@ -69,6 +69,8 @@ namespace Nemo.Data
 
         public bool SupportsArrays { get; protected set; }
 
+        public abstract int MaximumNumberOfParameters { get; }
+
         public Regex ParameterNameMatcher
         {
             get
@@ -202,6 +204,34 @@ namespace Nemo.Data
              where T : class
         {
             return null;
+        }
+
+        //This is taken from Dapper
+        public virtual int GetListExpansionPadding(int count)
+        {
+            switch (count)
+            {
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                    return 0; // no padding
+            }
+            if (count < 0) return 0;
+
+            int padFactor;
+            if (count <= 150) padFactor = 10;
+            else if (count <= 750) padFactor = 50;
+            else if (count <= 2000) padFactor = 100; // note: max param count for SQL Server
+            else if (count <= 2070) padFactor = 10; // try not to over-pad as we approach that limit
+            else if (count <= 2100) return 0; // just don't pad between 2070 and 2100, to minimize the crazy
+            else padFactor = 200; // above that, all bets are off!
+
+            // if we have 17, factor = 10; 17 % 10 = 7, we need 3 more
+            var intoBlock = count % padFactor;
+            return intoBlock == 0 ? 0 : (padFactor - intoBlock);
         }
     }
 }

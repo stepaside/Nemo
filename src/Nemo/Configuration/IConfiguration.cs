@@ -25,6 +25,7 @@ namespace Nemo.Configuration
         bool AutoTypeCoercion { get; }
         IConfigurationRoot SystemConfiguration { get; }
         bool IgnoreInvalidParameters { get; }
+        bool PadListExpansion { get; }
 
         IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value);
         IConfiguration SetLogging(bool value);
@@ -44,6 +45,7 @@ namespace Nemo.Configuration
         IConfiguration SetAutoTypeCoercion(bool value);
         IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration);
         IConfiguration SetIgnoreInvalidParameters(bool value);
+        IConfiguration SetPadListExpansion(bool value);
         IConfiguration Merge(IConfiguration configuration);
     }
 }

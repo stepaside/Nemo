@@ -30,6 +30,7 @@ namespace Nemo.Data
         public static readonly ISet<string> ProviderInvariantNames = new HashSet<string>(new string[] { ProviderInvariantSqlClient, ProviderInvariantMysql, ProviderInvariantMysqlClient, ProviderInvariantSqlite, ProviderInvariantOracle, ProviderInvariantPostgres, ProviderInvariantMicrosoftSqlClient, ProviderInvariantMicrosoftSqlite }, StringComparer.OrdinalIgnoreCase);
 
         public static readonly char[] ParameterPrexifes = new char[] { '@', '?', ':' };
+        public const int DefaultStringLength = 4000;
 
         private static string CleanConnectionString(string connectionString)
         {
@@ -621,6 +622,7 @@ namespace Nemo.Data
                             {
                                 var itemType = Reflector.GetElementType(parameter.Type);
                                 var dbType = Reflector.ClrToDbType(itemType);
+                                var isString = IsStringType(dbType);
                                 var splitString = !isPositional ? dialect.SplitString(originalName, dialect.GetColumnType(dbType), null) : null;
 
                                 if (!string.IsNullOrEmpty(splitString))
@@ -638,15 +640,42 @@ namespace Nemo.Data
                                         listEpxansionParam.ParameterName = $"{name}{expansionParameters.Count}";
                                         listEpxansionParam.Direction = parameter.Direction;
                                         listEpxansionParam.Value = item;
+                                        if (isString)
+                                        {
+                                            listEpxansionParam.Size = DefaultStringLength;
+                                            if (item is string s && s?.Length > DefaultStringLength)
+                                            {
+                                                listEpxansionParam.Size = -1;
+                                            }
+                                        }
                                         listEpxansionParam.DbType = dbType;
                                         expansionParameters.Add(listEpxansionParam.ParameterName);
                                         command.Parameters.Add(listEpxansionParam);
                                     }
 
+                                    if (config.PadListExpansion && expansionParameters.Count > 0)
+                                    {
+                                        var lastValue = command.Parameters[command.Parameters.Count - 1].Value;
+                                        var padding = dialect.GetListExpansionPadding(expansionParameters.Count);
+                                        for(var i = 0; i < padding; i++)
+                                        {
+                                            var listEpxansionParam = command.CreateParameter();
+                                            listEpxansionParam.ParameterName = $"{name}{expansionParameters.Count + i}";
+                                            listEpxansionParam.Direction = parameter.Direction;
+                                            listEpxansionParam.Value = lastValue;
+                                            listEpxansionParam.DbType = dbType;
+                                            if (isString)
+                                            {
+                                                listEpxansionParam.Size = DefaultStringLength;
+                                            }
+                                            expansionParameters.Add(listEpxansionParam.ParameterName);
+                                            command.Parameters.Add(listEpxansionParam);
+                                        }
+                                    }
+
                                     var expanedParameters = isPositional ? Enumerable.Repeat('?', expansionParameters.Count).ToDelimitedString(",") : expansionParameters.Select(n => $"{dialect.ParameterPrefix}{n}").ToDelimitedString(",");
                                     if (isPositional)
                                     {
-
                                         var current = 0;
                                         command.CommandText = dialect.PositionalParameterMatcher.Replace(command.CommandText, match =>
                                         {
@@ -684,12 +713,21 @@ namespace Nemo.Data
                         {
                             if (parameter.Value != null)
                             {
+                                var dbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
+                                dbParam.DbType = dbType;
+
                                 if (parameter.Size > -1)
                                 {
                                     dbParam.Size = parameter.Size;
                                 }
-
-                                dbParam.DbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
+                                else if (IsStringType(dbType))
+                                {
+                                    dbParam.Size = DefaultStringLength;
+                                    if (parameter.Value is string s && s.Length > DefaultStringLength)
+                                    {
+                                        parameter.Size = -1;
+                                    }
+                                }
                             }
                             else if (parameter.DbType != null)
                             {
@@ -706,6 +744,11 @@ namespace Nemo.Data
             }
 
             return outputParameters;
+        }
+
+        private static bool IsStringType(DbType dbType)
+        {
+            return dbType == DbType.String || dbType == DbType.AnsiString || dbType == DbType.StringFixedLength || dbType == DbType.AnsiStringFixedLength;
         }
     }
 }

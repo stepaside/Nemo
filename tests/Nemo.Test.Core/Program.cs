@@ -33,6 +33,8 @@ namespace NemoTest
                 .SetOperationPrefix("spDTO_")
                 .SetAutoTypeCoercion(true)
                 .SetLogging(false)
+                .SetIgnoreInvalidParameters(true)
+                .SetPadListExpansion(true)
                 .SetSystemConfiguration(config);
 
 

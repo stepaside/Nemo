@@ -12,12 +12,19 @@ namespace Nemo.Data
     {
         public static new SqlServerLatestDialectProvider Instance = new SqlServerLatestDialectProvider();
 
+        private readonly HashSet<string> _stringTypes;
+
+        public SqlServerLatestDialectProvider(): base()
+        {
+            _stringTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "CHAR", "NCHAR", "VARCHAR", "NVARCHAR", "TEXT", "NTEXT" };
+        }
+
         public override string SplitString(string variableName, string type, string delimiter)
         {
             if (variableName == null) throw new ArgumentNullException(nameof(variableName));
 
             var selectExpression = "[value]";
-            if (type != null)
+            if (type != null && !_stringTypes.Contains(type))
             {
                 selectExpression = $"CAST([value] AS {type})";
             }
@@ -130,5 +137,7 @@ order by ordinal_position;";
         {
             get { throw new NotImplementedException(); }
         }
+
+        public override int MaximumNumberOfParameters => 2100;
     }
 }

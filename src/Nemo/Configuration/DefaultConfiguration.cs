@@ -58,6 +58,8 @@ namespace Nemo.Configuration
 
         public IConfigurationRoot SystemConfiguration { get; private set; }
 
+        public bool PadListExpansion { get; private set; }
+
         public IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value)
         {
             _defaultL1CacheRepresentation = value;
@@ -169,6 +171,12 @@ namespace Nemo.Configuration
             return this;
         }
 
+        public IConfiguration SetPadListExpansion(bool value)
+        {
+            PadListExpansion = value;
+            return this;
+        }
+
         public IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration)
         {
             SystemConfiguration = systemConfiguration;
@@ -212,6 +220,8 @@ namespace Nemo.Configuration
             mergedConfig.SetAutoTypeCoercion(AutoTypeCoercion || configuration.AutoTypeCoercion);
 
             mergedConfig.SetIgnoreInvalidParameters(IgnoreInvalidParameters || configuration.IgnoreInvalidParameters);
+
+            mergedConfig.SetPadListExpansion(PadListExpansion || configuration.PadListExpansion);
 
             mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);
 

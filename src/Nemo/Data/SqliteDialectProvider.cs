@@ -97,5 +97,7 @@ namespace Nemo.Data
         {
             get { throw new NotImplementedException(); }
         }
+
+        public override int MaximumNumberOfParameters => 999;
     }
 }

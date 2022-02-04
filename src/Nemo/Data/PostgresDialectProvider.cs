@@ -118,5 +118,7 @@ order by
         {
             get { throw new NotImplementedException(); }
         }
+
+        public override int MaximumNumberOfParameters => short.MaxValue;
     }
 }
