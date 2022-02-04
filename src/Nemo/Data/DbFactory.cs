@@ -630,6 +630,7 @@ namespace Nemo.Data
                                     command.CommandText = dialect.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => $"({splitString})");
                                     parameter.Value = string.Join(",", items.Cast<object>().ToArray());
                                     dbParam.Value = parameter.Value;
+                                    count++;
                                 }
                                 else
                                 {
