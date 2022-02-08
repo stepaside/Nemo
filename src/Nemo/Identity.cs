@@ -28,7 +28,6 @@ namespace Nemo
         }
 
         internal static IdentityMap<T> Get<T>(IConfiguration configuration)
-            where T : class
         {
             configuration ??= ConfigurationFactory.Get<T>();
             var executionContext = configuration.ExecutionContext;
@@ -42,7 +41,6 @@ namespace Nemo
         }
 
         internal static void WriteThrough<T>(this IIdentityMap identityMap, T value, string hash)
-            where T : class
         {
             if (identityMap != null && value != null && hash != null)
             {
@@ -51,8 +49,6 @@ namespace Nemo
         }
 
         internal static TResult GetEntityByKey<T, TResult>(this IIdentityMap identityMap, Func<SortedDictionary<string, object>> getKey, out string hash)
-            where T : class
-            where TResult : class
         {
             hash = null;
 

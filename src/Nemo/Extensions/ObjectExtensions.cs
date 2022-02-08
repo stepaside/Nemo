@@ -29,39 +29,36 @@ namespace Nemo.Extensions
         /// <summary>
         /// Property method returns a value of a property.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
         /// <typeparam name="TResult"></typeparam>
         /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <returns></returns>
-        public static TResult Property<T, TResult>(this T dataEntity, string propertyName)
-            where T : class
+        public static TResult Property<TResult>(this object dataEntity, string propertyName)
         {
-            var reflectedType = Reflector.GetReflectedType(dataEntity.GetType());
-            if (typeof(T) == typeof(object) && reflectedType.IsEmitted && reflectedType.InterfaceTypeName != null)
+            var entityType = dataEntity.GetType();
+            var reflectedType = Reflector.GetReflectedType(entityType);
+            if (entityType == typeof(object) && reflectedType.IsEmitted && reflectedType.InterfaceTypeName != null)
             {
                 return (TResult)Reflector.Property.Get(reflectedType.InterfaceType, dataEntity, propertyName);
             }
 
-            if (reflectedType.IsMarkerInterface || typeof(T) == typeof(object))
+            if (reflectedType.IsMarkerInterface)
             {
                 return (TResult)Reflector.Property.Get(reflectedType.UnderlyingType, dataEntity, propertyName);
             }
             
-            return (TResult)Reflector.Property.Get(dataEntity, propertyName);
+            return (TResult)Reflector.Property.Get(entityType, dataEntity, propertyName);
         }
 
         /// <summary>
         /// Property method returns a value of a property.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
         /// <typeparam name="TResult"></typeparam>
         /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
-        public static TResult PropertyOrDefault<T, TResult>(this T dataEntity, string propertyName, TResult defaultValue)
-            where T : class
+        public static TResult PropertyOrDefault<TResult>(this object dataEntity, string propertyName, TResult defaultValue)
         {
             var result = dataEntity.Property(propertyName);
             return result != null ? (TResult)result : defaultValue;
@@ -73,10 +70,9 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <returns></returns>
-        public static object Property<T>(this T dataEntity, string propertyName)
-            where T : class
+        public static object Property(this object dataEntity, string propertyName)
         {
-            return dataEntity.Property<T, object>(propertyName);
+            return dataEntity.Property<object>(propertyName);
         }
 
         /// <summary>
@@ -85,21 +81,21 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
         /// <param name="propertyValue"></param>
-        public static void Property<T>(this T dataEntity, string propertyName, object propertyValue)
-            where T : class
+        public static void Property(this object dataEntity, string propertyName, object propertyValue)
         {
-            var reflectedType = Reflector.GetReflectedType(dataEntity.GetType());
-            if (typeof(T) == typeof(object) && reflectedType.IsEmitted && reflectedType.InterfaceTypeName != null)
+            var entityType = dataEntity.GetType();
+            var reflectedType = Reflector.GetReflectedType(entityType);
+            if (entityType == typeof(object) && reflectedType.IsEmitted && reflectedType.InterfaceTypeName != null)
             {
                 Reflector.Property.Set(reflectedType.InterfaceType, dataEntity, propertyName, propertyValue);
             }
-            else if (reflectedType.IsMarkerInterface || typeof(T) == typeof(object))
+            else if (reflectedType.IsMarkerInterface)
             {
                 Reflector.Property.Set(reflectedType.UnderlyingType, dataEntity, propertyName, propertyValue);
             }
             else
             {
-                Reflector.Property.Set(dataEntity, propertyName, propertyValue);
+                Reflector.Property.Set(entityType, dataEntity, propertyName, propertyValue);
             }
         }
 
@@ -108,11 +104,9 @@ namespace Nemo.Extensions
         /// </summary>
         /// <param name="dataEntity"></param>
         /// <param name="propertyName"></param>
-        public static bool PropertyExists<T>(this T dataEntity, string propertyName)
-            where T : class
+        public static bool PropertyExists(this object dataEntity, string propertyName)
         {
-            object value;
-            return dataEntity.PropertyTryGet(propertyName, out value);
+            return dataEntity.PropertyTryGet(propertyName, out _);
         }
 
         /// <summary>
@@ -122,8 +116,7 @@ namespace Nemo.Extensions
         /// <param name="propertyName"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static bool PropertyTryGet<T>(this T dataEntity, string propertyName, out object value)
-            where T : class
+        public static bool PropertyTryGet(this object dataEntity, string propertyName, out object value)
         {
             var exists = false;
             value = null;
@@ -595,8 +588,17 @@ namespace Nemo.Extensions
         public static bool IsNew<T>(this T dataEntity)
             where T : class
         {
-            var entity = dataEntity as ITrackableDataEntity;
-            if (entity != null)
+            if (dataEntity is ITrackableDataEntity entity)
+            {
+                return entity.ObjectState == ObjectState.New;
+            }
+            var primaryKey = dataEntity.GetPrimaryKey();
+            return primaryKey.Values.Sum(v => v == null || v == v.GetType().GetDefault() ? 1 : 0) == primaryKey.Values.Count;
+        }
+
+        public static bool IsNew(this object dataEntity)
+        {
+            if (dataEntity is ITrackableDataEntity entity)
             {
                 return entity.ObjectState == ObjectState.New;
             }
@@ -605,32 +607,29 @@ namespace Nemo.Extensions
         }
 
         public static bool IsReadOnly<T>(this T dataEntity)
-           where T : class
+            where T: class
         {
-            var entity = dataEntity as ITrackableDataEntity;
-            if (entity != null)
+            if (dataEntity is ITrackableDataEntity entity)
             {
                 return entity.ObjectState == ObjectState.ReadOnly;
             }
             return Reflector.GetAttribute<ReadOnlyAttribute>(dataEntity.GetType()) != null;
         }
 
-        public static bool IsDirty<T>(this T dataEntity)
-           where T : class
+        public static bool IsDirty<T>(this T dataEntity) 
+            where T : class
         {
-            var entity = dataEntity as ITrackableDataEntity;
-            if (entity != null)
+            if (dataEntity is ITrackableDataEntity entity)
             {
                 return entity.ObjectState == ObjectState.Dirty;
             }
             return false;
         }
 
-        public static bool IsDeleted<T>(this T dataEntity)
-           where T : class
+        public static bool IsDeleted<T>(this T dataEntity) 
+            where T : class
         {
-            var entity = dataEntity as ITrackableDataEntity;
-            if (entity != null)
+            if (dataEntity is ITrackableDataEntity entity)
             {
                 return entity.ObjectState == ObjectState.Deleted;
             }
@@ -734,6 +733,7 @@ namespace Nemo.Extensions
 
         private static readonly ConcurrentDictionary<Type, string[]> _primaryAndCacheKeys = new ConcurrentDictionary<Type, string[]>();
         private static readonly ConcurrentDictionary<Tuple<Type, PropertyInfo, Type>, IIdGenerator> _idGenerators = new ConcurrentDictionary<Tuple<Type, PropertyInfo, Type>, IIdGenerator>();
+        private static readonly uint _emptyHash = Hash.Compute(Encoding.UTF8.GetBytes(string.Empty));
         
         /// <summary>
         /// GetPrimaryKey method returns primary key of a business object (if available)
@@ -782,7 +782,6 @@ namespace Nemo.Extensions
         }
 
         internal static void GenerateKeys<T>(this IList<T> dataEntities, IConfiguration config)
-            where T : class
         {
             var propertyMap = Reflector.GetPropertyMap<T>();
             var generatorKeys = propertyMap.Where(p => p.Value != null && p.Value.Generator != null).Select(p => Tuple.Create(typeof(T), p.Key, p.Value.Generator));
@@ -801,7 +800,9 @@ namespace Nemo.Extensions
             where T : class
         {
             var hash = Hash.Compute(Encoding.UTF8.GetBytes(dataEntity.GetPrimaryKey().Select(p => $"{p.Key}={p.Value}").ToDelimitedString(",")));
-            var type = typeof(T);
+            var type = dataEntity.GetType();
+            if (hash == _emptyHash) return type.FullName;
+            
             if (type == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
             {
                 type = Reflector.GetInterface(dataEntity.GetType());
@@ -809,6 +810,19 @@ namespace Nemo.Extensions
             else if (Reflector.IsMarkerInterface<T>())
             {
                 type = dataEntity.GetType();
+            }
+            return type.FullName + "/" + hash;
+        }
+
+        public static string ComputeHash(this object dataEntity)
+        {
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(dataEntity.GetPrimaryKey().Select(p => $"{p.Key}={p.Value}").ToDelimitedString(",")));
+            var type = dataEntity.GetType();
+            if (hash == _emptyHash) return type.FullName;
+
+            if (type == typeof(object) && Reflector.IsEmitted(dataEntity.GetType()))
+            {
+                type = Reflector.GetInterface(dataEntity.GetType());
             }
             return type.FullName + "/" + hash;
         }
@@ -855,8 +869,7 @@ namespace Nemo.Extensions
             return dataEntities == null ? null : dataEntities.Select(b => b.AsReadOnly()).ToArray();
         }
 
-        internal static void CheckReadOnly<T>(this T dataEntity)
-            where T : class
+        internal static void CheckReadOnly(this object dataEntity)
         {
             // Read-only objects can't participate in CRUD
             if (dataEntity.IsReadOnly())

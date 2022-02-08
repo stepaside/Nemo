@@ -164,7 +164,6 @@ namespace Nemo.Configuration.Mapping
         }
 
         internal static bool IsIndexer<TSource>(TSource source) 
-            where TSource : class
         {
             return source is IDictionary<string, object> || (source is IDataRecord) || source is DataRow;
         }

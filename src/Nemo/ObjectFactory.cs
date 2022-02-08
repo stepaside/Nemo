@@ -40,13 +40,11 @@ namespace Nemo
         #region Instantiation Methods
 
         public static T Create<T>()
-            where T : class
         {
             return Create<T>(typeof(T).IsInterface);
         }
         
         public static T Create<T>(bool isInterface)
-            where T : class
         {
             var value = isInterface ? Adapter.Implement<T>() : FastActivator<T>.New();
 
@@ -105,36 +103,28 @@ namespace Nemo
         }
 
         public static T Map<T>(object source)
-            where T : class
         {
             return (T)Map(source, typeof(T));
         }
 
         internal static T Map<T>(object source, bool autoTypeCoercion)
-            where T : class
         {
             return (T)Map(source, typeof(T), autoTypeCoercion);
         }
 
         public static TResult Map<TSource, TResult>(TSource source)
-            where TResult : class
-            where TSource : class
         {
             var target = Create<TResult>(typeof(TResult).IsInterface);
             return Map(source, target);
         }
 
         internal static TResult Map<TSource, TResult>(TSource source, bool autoTypeCoercion)
-            where TResult : class
-            where TSource : class
         {
             var target = Create<TResult>(typeof(TResult).IsInterface);
             return Map(source, target, autoTypeCoercion);
         }
 
         public static TResult Map<TSource, TResult>(TSource source, TResult target)
-            where TResult : class
-            where TSource : class
         {
             var indexer = MappingFactory.IsIndexer(source);
 
@@ -172,8 +162,6 @@ namespace Nemo
         }
 
         internal static TResult Map<TSource, TResult>(TSource source, TResult target, bool autoTypeCoercion)
-           where TResult : class
-           where TSource : class
         {
             var indexer = MappingFactory.IsIndexer(source);
 
@@ -210,7 +198,6 @@ namespace Nemo
         }
 
         public static T Map<T>(IDictionary<string, object> source)
-            where T : class
         {
             var target = Create<T>();
             Map(source, target);
@@ -218,7 +205,6 @@ namespace Nemo
         }
 
         internal static T Map<T>(IDictionary<string, object> source, bool autoTypeCoercion)
-            where T : class
         {
             var target = Create<T>();
             Map(source, target, autoTypeCoercion);
@@ -226,14 +212,12 @@ namespace Nemo
         }
 
         public static void Map<T>(IDictionary<string, object> source, T target)
-            where T : class
         {
             var autoTypeCoercion = (ConfigurationFactory.Get<T>()?.AutoTypeCoercion).GetValueOrDefault();
             Map(source, target, autoTypeCoercion);
         }
 
         internal static void Map<T>(IDictionary<string, object> source, T target, bool autoTypeCoercion)
-            where T : class
         {
             if (autoTypeCoercion)
             {
@@ -246,7 +230,6 @@ namespace Nemo
         }
 
         public static T Map<T>(DataRow source)
-            where T : class
         {
             var target = Create<T>();
             Map(source, target);
@@ -254,7 +237,6 @@ namespace Nemo
         }
 
         internal static T Map<T>(DataRow source, bool autoTypeCoercion)
-            where T : class
         {
             var target = Create<T>();
             Map(source, target, autoTypeCoercion);
@@ -262,14 +244,12 @@ namespace Nemo
         }
 
         public static void Map<T>(DataRow source, T target)
-            where T : class
         {
             var autoTypeCoercion = (ConfigurationFactory.Get<T>()?.AutoTypeCoercion).GetValueOrDefault();
             Map(source, target, autoTypeCoercion);
         }
 
         internal static void Map<T>(DataRow source, T target, bool autoTypeCoercion)
-            where T : class
         {
             if (autoTypeCoercion)
             {
@@ -282,31 +262,26 @@ namespace Nemo
         }
 
         public static T Map<T>(IDataReader source)
-            where T : class
         {
             return Map<T>((IDataRecord)source);
         }
 
         internal static T Map<T>(IDataReader source, bool autoTypeCoercion)
-           where T : class
         {
             return Map<T>((IDataRecord)source, autoTypeCoercion);
         }
 
         public static void Map<T>(IDataReader source, T target)
-            where T : class
         {
             Map((IDataRecord)source, target);
         }
 
         internal static void Map<T>(IDataReader source, T target, bool autoTypeCoercion)
-           where T : class
         {
             Map((IDataRecord)source, target, autoTypeCoercion);
         }
 
         public static T Map<T>(IDataRecord source)
-            where T : class
         {
             var target = Create<T>();
             Map(source, target);
@@ -314,7 +289,6 @@ namespace Nemo
         }
 
         internal static T Map<T>(IDataRecord source, bool autoTypeCoercion)
-            where T : class
         {
             var target = Create<T>();
             Map(source, target, autoTypeCoercion);
@@ -322,14 +296,12 @@ namespace Nemo
         }
 
         public static void Map<T>(IDataRecord source, T target)
-            where T : class
         {
             var autoTypeCoercion = (ConfigurationFactory.Get<T>()?.AutoTypeCoercion).GetValueOrDefault();
             Map(source, target, autoTypeCoercion);
         }
 
         internal static void Map<T>(IDataRecord source, T target, bool autoTypeCoercion)
-            where T : class
         {
             if (autoTypeCoercion)
             {
@@ -349,10 +321,16 @@ namespace Nemo
         /// Binds interface implementation to the existing object type.
         /// </summary>
         public static T Bind<T>(object source)
-            where T : class
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
             var target = Adapter.Bind<T>(source);
+            return target;
+        }
+
+        public static object Bind(object source, Type targetType)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            var target = Adapter.Bind(source, targetType);
             return target;
         }
 
@@ -368,7 +346,6 @@ namespace Nemo
         /// <param name="simpleAndComplexProperties"></param>
         /// <returns></returns>
         public static T Wrap<T>(IDictionary<string, object> map, bool simpleAndComplexProperties = false)
-             where T : class
         {
             var wrapper = simpleAndComplexProperties ? FastComplexWrapper<T>.Instance : FastWrapper<T>.Instance;
             return (T)wrapper(map);
@@ -662,7 +639,7 @@ namespace Nemo
                 closeConnection = true;
             }
 
-            var dialect = DialectFactory.GetProvider(dbConnection);
+            var dialect = new Lazy<DialectProvider>(() => DialectFactory.GetProvider(dbConnection));
 
             if (returnType == OperationReturnType.Guess)
             {
@@ -840,38 +817,35 @@ namespace Nemo
         #region Translate Methods
 
         public static IEnumerable<T> Translate<T>(OperationResponse response, IConfiguration config)
-            where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
-            return Translate<T>(response, null, null, config, Identity.Get<T>(config));
+            var reflectedType = Reflector.GetReflectedType<T>();
+            return Translate<T>(response, null, null, reflectedType.IsInterface, reflectedType.IsSimpleType, config, Identity.Get<T>(config));
         }
 
-        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, IConfiguration config, IIdentityMap identityMap)
-            where T : class
+        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
         {
             var cached = config.DefaultCacheRepresentation != CacheRepresentation.None;
             var mode = config.DefaultMaterializationMode;
 
-           var value = response?.Value;
+            var value = response?.Value;
             if (value == null)
             {
                 return Enumerable.Empty<T>();
             }
 
-            var isInterface = Reflector.GetReflectedType<T>().IsInterface;
-
             switch (value)
             {
                 case IDataReader reader:
-                    if (map != null || types == null || types.Count == 1) return ConvertDataReader(reader, map, types, isInterface, config);
+                    if (map != null || types == null || types.Count == 1) return ConvertDataReader(reader, map, types, isInterface, isSimpleType, config);
                     var multiResultItems = ConvertDataReaderMultiResult(reader, types, isInterface, config);
                     return (IEnumerable<T>)MultiResult.Create(types, multiResultItems, cached, config);
                 case DataSet dataSet:
-                    return ConvertDataSet<T>(dataSet, isInterface, config, identityMap);
+                    return ConvertDataSet<T>(dataSet, isInterface, isSimpleType, config, identityMap);
                 case DataTable dataTable:
-                    return ConvertDataTable<T>(dataTable, isInterface, config, identityMap);
+                    return ConvertDataTable<T>(dataTable, isInterface, isSimpleType, config, identityMap);
                 case DataRow dataRow:
-                    return ConvertDataRow<T>(dataRow, isInterface, config, identityMap, null).Return();
+                    return ConvertDataRow<T>(dataRow, isInterface, isSimpleType, config, identityMap, null).Return();
                 case T item:
                     return item.Return();
                 case IList<T> genericList:
@@ -883,24 +857,21 @@ namespace Nemo
             return Bind<T>(value).Return();
         }
 
-        private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, bool isInterface, IConfiguration config, IIdentityMap identityMap)
-             where T : class
+        private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
         {
             var tableName = GetTableName(typeof(T));
-            return dataSet.Tables.Count != 0 ? ConvertDataTable<T>(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], isInterface, config, identityMap) : Enumerable.Empty<T>();
+            return dataSet.Tables.Count != 0 ? ConvertDataTable<T>(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], isInterface, isSimpleType, config, identityMap) : Enumerable.Empty<T>();
         }
 
-        private static IEnumerable<T> ConvertDataTable<T>(DataTable table, bool isInterface, IConfiguration config, IIdentityMap identityMap)
-             where T : class
+        private static IEnumerable<T> ConvertDataTable<T>(DataTable table, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
         {
-            return ConvertDataTable<T>(table.Rows.Cast<DataRow>(), isInterface, config, identityMap);
+            return ConvertDataTable<T>(table.Rows.Cast<DataRow>(), isInterface, isSimpleType, config, identityMap);
         }
 
-        private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, bool isInterface, IConfiguration config, IIdentityMap identityMap)
-             where T : class
+        private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
         {
             var primaryKey = GetPrimaryKeyColumns(typeof(T));
-            return table.Select(row => ConvertDataRow<T>(row, isInterface, config, identityMap, primaryKey));
+            return table.Select(row => ConvertDataRow<T>(row, isInterface, isSimpleType, config, identityMap, primaryKey));
         }
 
         private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, bool isInterface, IConfiguration config, IIdentityMap identityMap)
@@ -909,14 +880,27 @@ namespace Nemo
             return table.Select(row => ConvertDataRow(row, targetType, isInterface, config, identityMap, primaryKey));
         }
         
-        private static T ConvertDataRow<T>(DataRow row, bool isInterface, IConfiguration config, IIdentityMap identityMap, string[] primaryKey)
-             where T : class
+        private static T ConvertDataRow<T>(DataRow row, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap, string[] primaryKey)
         {
             var result = identityMap.GetEntityByKey<DataRow, T>(row.GetKeySelector(primaryKey), out var hash);
 
             if (result != null) return result;
 
-            var value = config.DefaultMaterializationMode == MaterializationMode.Exact || !isInterface ? Map<T>(row, config.AutoTypeCoercion) : Wrap<T>(GetSerializableDataRow(row));
+            T value;
+            if (isSimpleType)
+            {
+                value = row[0].SafeCast<T>();
+            }
+            else if (config.DefaultMaterializationMode == MaterializationMode.Exact || !isInterface)
+            {
+                value = Create<T>(isInterface);
+                Map(row, value, config.AutoTypeCoercion);
+            }
+            else
+            {
+                value = Wrap<T>(GetSerializableDataRow(row));
+            }
+
             TrySetObjectState(value);
 
             // Write-through for identity map
@@ -1022,8 +1006,7 @@ namespace Nemo
             }
         }
 
-        private static IEnumerable<T> ConvertDataReader<T>(IDataReader reader, Func<object[], T> map, IList<Type> types, bool isInterface, IConfiguration config)
-            where T : class
+        private static IEnumerable<T> ConvertDataReader<T>(IDataReader reader, Func<object[], T> map, IList<Type> types, bool isInterface, bool isSimpleType, IConfiguration config)
         {
             try
             {
@@ -1032,7 +1015,11 @@ namespace Nemo
                 var references = new Dictionary<Tuple<Type, string>, object>();
                 while (reader.Read())
                 {
-                    if (!isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact)
+                    if (isSimpleType)
+                    {
+                        yield return reader.GetValue(0).SafeCast<T>();
+                    }
+                    else if (!isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact)
                     {
                         var item = Create<T>(isInterface);
                         Map(reader, item, config.AutoTypeCoercion);
@@ -1073,7 +1060,7 @@ namespace Nemo
                         {
                             bag.Add(reader.GetName(index), reader[index]);
                         }
-                        var item = Wrap<T>(bag);
+                        var item = (T)Wrap(bag, typeof(T));
 
                         TrySetObjectState(item);
 
@@ -1183,8 +1170,7 @@ namespace Nemo
 
         internal static void TrySetObjectState(object item, ObjectState state = ObjectState.Clean)
         {
-            var entity = item as ITrackableDataEntity;
-            if (entity != null)
+            if (item is ITrackableDataEntity entity)
             {
                 entity.ObjectState = state;
             }
@@ -1192,7 +1178,7 @@ namespace Nemo
         
         private static IDictionary<string, object> GetSerializableDataRow(DataRow row)
         {
-            IDictionary<string, object> result = new Dictionary<string, object>(StringComparer.Ordinal);
+            var result = new Dictionary<string, object>(StringComparer.Ordinal);
             if (row != null)
             {
                 foreach (DataColumn column in row.Table.Columns)

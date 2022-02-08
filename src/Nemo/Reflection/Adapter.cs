@@ -17,7 +17,6 @@ namespace Nemo.Reflection
         private static readonly ConcurrentDictionary<Tuple<Type, Type, string>, Type> Types = new ConcurrentDictionary<Tuple<Type, Type, string>, Type>();
 
         public static T Bind<T>(object value)
-            where T : class
         {
             if (!typeof(T).IsInterface)
             {
@@ -25,6 +24,18 @@ namespace Nemo.Reflection
             }
             var activator = InternalBind<T>(value.GetType());
             return (T)activator(value);
+        }
+
+        public static object Bind(object value, Type interfaceType)
+        {
+            if (interfaceType == null)  throw new ArgumentNullException(nameof(interfaceType));
+
+            if (!interfaceType.IsInterface)
+            {
+                throw new ArgumentException("The given type is not an interface.");
+            }
+            var activator = InternalBind(interfaceType, value.GetType());
+            return activator(value);
         }
 
         public static T Guard<T>(T value)
@@ -38,7 +49,6 @@ namespace Nemo.Reflection
         }
 
         public static T Implement<T>()
-            where T : class
         {
             if (!typeof(T).IsInterface)
             {
@@ -66,7 +76,7 @@ namespace Nemo.Reflection
                 var isAnonymous = Reflector.IsAnonymousType(n.Item1);
                 var name = string.Format("{0}_{1}_{2}", isAnonymous ? n.Item1.Name : n.Item1.FullName, n.Item2.FullName, n.Item3);
                 // creates the assembly and module.
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
                 var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
 #else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
@@ -93,7 +103,7 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
                 var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
 #else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
@@ -120,7 +130,7 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
                 var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
 #else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
@@ -152,7 +162,7 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
                 var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
 #else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
@@ -219,7 +229,7 @@ namespace Nemo.Reflection
             }
 
             // create the final type. 
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
             var type = typeBuilder.CreateTypeInfo().AsType();
 #else
             var type = typeBuilder.CreateType();
@@ -244,7 +254,7 @@ namespace Nemo.Reflection
             DefineProperties(null, typeBuilder, null, interfaceType, DynamicProxyType.Implementation);
 
             // create the final type. 
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
             var type = typeBuilder.CreateTypeInfo().AsType();
 #else
             var type = typeBuilder.CreateType();

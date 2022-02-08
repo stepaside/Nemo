@@ -56,7 +56,7 @@ namespace Nemo.Configuration
 
         public bool IgnoreInvalidParameters { get; private set; }
 
-        public IConfigurationRoot SystemConfiguration { get; private set; }
+        public Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; private set; }
 
         public bool PadListExpansion { get; private set; }
 
@@ -177,7 +177,7 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration)
+        public IConfiguration SetSystemConfiguration(Microsoft.Extensions.Configuration.IConfiguration systemConfiguration)
         {
             SystemConfiguration = systemConfiguration;
             return this;

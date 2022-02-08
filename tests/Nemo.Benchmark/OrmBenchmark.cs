@@ -19,8 +19,9 @@ using System.Threading.Tasks;
 namespace Nemo.Benchmark
 {
     //[SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.Net472, baseline: true, warmupCount: 1)]
-    [SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.NetCoreApp31, warmupCount: 1, launchCount: 5)]
+    //[SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.NetCoreApp31, warmupCount: 1, launchCount: 5)]
     //[SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.NetCoreApp50, warmupCount: 1, invocationCount: 5)]
+    [SimpleJob(RunStrategy.ColdStart, RuntimeMoniker.HostProcess, warmupCount: 1, invocationCount: 5)]
     [RPlotExporter, MemoryDiagnoser, AllStatisticsColumn]
     public class OrmBenchmark
     {
@@ -45,6 +46,7 @@ namespace Nemo.Benchmark
                 .SetOperationNamingConvention(OperationNamingConvention.Default)
                 .SetOperationPrefix("spDTO_")
                 .SetAutoTypeCoercion(true)
+                .SetPadListExpansion(true)
                 .SetLogging(false)
                 .SetSystemConfiguration(_config);
         }

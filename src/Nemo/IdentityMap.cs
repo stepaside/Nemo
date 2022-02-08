@@ -19,7 +19,6 @@ namespace Nemo
     }
 
     internal class IdentityMap<T> : IIdentityMap
-        where T : class
     {
         private readonly ConcurrentDictionary<string, T> _entities = new ConcurrentDictionary<string, T>();
         private readonly ConcurrentDictionary<string, HashList<string>> _indices = new ConcurrentDictionary<string, HashList<string>>();

@@ -40,7 +40,6 @@ namespace Nemo
         }
 
         private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
-            where TResult : class
         {
             Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
@@ -124,7 +123,6 @@ namespace Nemo
         }
 
         private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, IConfiguration config, IdentityMap<T> identityMap)
-            where T : class
         {
             if (operationType == OperationType.Guess)
             {
@@ -146,7 +144,9 @@ namespace Nemo
 
             Log.CaptureBegin($"Translating response", config);
 
-            var result = Translate(response, map, types, config, identityMap);
+
+            var reflectedType = Reflector.GetReflectedType<T>();
+            var result = Translate(response, map, types, reflectedType.IsInterface, reflectedType.IsSimpleType, config, identityMap);
 
             Log.CaptureEnd(config);
 
@@ -263,7 +263,6 @@ namespace Nemo
         }
 
         public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
-            where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
 
@@ -335,7 +334,6 @@ namespace Nemo
         }
 
         private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
-            where TResult : class
         {
             Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
@@ -419,7 +417,6 @@ namespace Nemo
         }
 
         private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, IConfiguration config, IdentityMap<T> identityMap)
-            where T : class
         {
             if (operationType == OperationType.Guess)
             {
@@ -441,7 +438,8 @@ namespace Nemo
 
             Log.CaptureBegin($"Translating response", config);
 
-            var result = Translate(response, map, types, config, identityMap);
+            var reflectedType = Reflector.GetReflectedType<T>();
+            var result = Translate(response, map, types, reflectedType.IsInterface, reflectedType.IsSimpleType, config, identityMap);
 
             Log.CaptureEnd(config);
 
@@ -540,7 +538,6 @@ namespace Nemo
         }
 
         public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
-            where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
 

@@ -94,7 +94,7 @@ namespace Nemo.Data
 
             string cleanConnectionString;
 
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
             var connectionStringSetting = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);
             if (connectionStringSetting != null)
             {
@@ -132,7 +132,7 @@ namespace Nemo.Data
 
             if (!lostPassword)
             {
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
                 dynamic connectionStrings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionStrings();
 
                 if (connectionStrings == null)
@@ -159,7 +159,7 @@ namespace Nemo.Data
                     builder["user id"] = uid;
                 }
 
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
                 dynamic connectionStrings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionStrings();
 
                 if (connectionStrings == null)
@@ -241,7 +241,7 @@ namespace Nemo.Data
 
             string cleanConnectionString = null;
 
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
 
             string connectionString = null;
             string providerName = null;
@@ -283,7 +283,7 @@ namespace Nemo.Data
             string providerName = null;
             string cleanConnectionString = null;
 
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
             var connectionStringSetting = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionStringOrName);
 
             if (connectionStringSetting != null)
@@ -326,7 +326,7 @@ namespace Nemo.Data
         internal static DbDataAdapter CreateDataAdapter(DbConnection connection, IConfiguration config)
         {
             var providerName = GetProviderInvariantNameByConnectionString(connection.ConnectionString, config, out var _);
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
             return providerName != null ? GetDbProviderFactory(providerName).CreateDataAdapter() : null;
 #else
             return providerName != null ? DbProviderFactories.GetFactory(providerName).CreateDataAdapter() : null;
@@ -417,7 +417,7 @@ namespace Nemo.Data
                 throw new ArgumentNullException(nameof(providerName));
             }
             
-#if NETSTANDARD2_1 || NET472_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET472_OR_GREATER
             if (!ProviderInvariantNames.Contains(providerName)) throw new NotSupportedException($"Unsupported Provider Factory specified: {providerName}");
 
             try
@@ -566,7 +566,7 @@ namespace Nemo.Data
             return new HashSet<string>(dialect.ParameterNameMatcher.Matches(sql).Cast<Match>().Select(m => m.Value.TrimStart(ParameterPrexifes)), StringComparer.OrdinalIgnoreCase);
         }
 
-        internal static Dictionary<DbParameter, Param> SetupParameters(DbCommand command, IEnumerable<Param> parameters, DialectProvider dialect, IConfiguration config)
+        internal static Dictionary<DbParameter, Param> SetupParameters(DbCommand command, IEnumerable<Param> parameters, Lazy<DialectProvider> dialect, IConfiguration config)
         {
             Dictionary<DbParameter, Param> outputParameters = null;
             if (parameters != null)
@@ -578,11 +578,11 @@ namespace Nemo.Data
                 {
                     if (command.CommandType == CommandType.StoredProcedure)
                     {
-                        parsedParameters = DbFactory.GetProcedureParameters(command.Connection, command.CommandText, true, config, dialect);
+                        parsedParameters = DbFactory.GetProcedureParameters(command.Connection, command.CommandText, true, config, dialect.Value);
                     }
                     else
                     {
-                        parsedParameters = DbFactory.GetQueryParameters(command.Connection, command.CommandText, true, config, dialect);
+                        parsedParameters = DbFactory.GetQueryParameters(command.Connection, command.CommandText, true, config, dialect.Value);
                     }
                 }
 
@@ -615,7 +615,7 @@ namespace Nemo.Data
                     {
                         dbParam.Value = parameter.Value ?? DBNull.Value;
 
-                        if (parameter.IsArray && !dialect.SupportsArrays)
+                        if (parameter.IsArray && !dialect.Value.SupportsArrays)
                         {
                             var items = dbParam.Value as IEnumerable;
                             if (command.CommandType != CommandType.StoredProcedure)
@@ -623,11 +623,11 @@ namespace Nemo.Data
                                 var itemType = Reflector.GetElementType(parameter.Type);
                                 var dbType = Reflector.ClrToDbType(itemType);
                                 var isString = IsStringType(dbType);
-                                var splitString = !isPositional ? dialect.SplitString(originalName, dialect.GetColumnType(dbType), null) : null;
+                                var splitString = !isPositional ? dialect.Value.SplitString(originalName, dialect.Value.GetColumnType(dbType), null) : null;
 
                                 if (!string.IsNullOrEmpty(splitString))
                                 {
-                                    command.CommandText = dialect.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => $"({splitString})");
+                                    command.CommandText = dialect.Value.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => $"({splitString})");
                                     parameter.Value = string.Join(",", items.Cast<object>().ToArray());
                                     dbParam.Value = parameter.Value;
                                     count++;
@@ -657,7 +657,7 @@ namespace Nemo.Data
                                     if (config.PadListExpansion && expansionParameters.Count > 0)
                                     {
                                         var lastValue = command.Parameters[command.Parameters.Count - 1].Value;
-                                        var padding = dialect.GetListExpansionPadding(expansionParameters.Count);
+                                        var padding = dialect.Value.GetListExpansionPadding(expansionParameters.Count);
                                         for(var i = 0; i < padding; i++)
                                         {
                                             var listEpxansionParam = command.CreateParameter();
@@ -674,11 +674,11 @@ namespace Nemo.Data
                                         }
                                     }
 
-                                    var expanedParameters = isPositional ? Enumerable.Repeat('?', expansionParameters.Count).ToDelimitedString(",") : expansionParameters.Select(n => $"{dialect.ParameterPrefix}{n}").ToDelimitedString(",");
+                                    var expanedParameters = isPositional ? Enumerable.Repeat('?', expansionParameters.Count).ToDelimitedString(",") : expansionParameters.Select(n => $"{dialect.Value.ParameterPrefix}{n}").ToDelimitedString(",");
                                     if (isPositional)
                                     {
                                         var current = 0;
-                                        command.CommandText = dialect.PositionalParameterMatcher.Replace(command.CommandText, match =>
+                                        command.CommandText = dialect.Value.PositionalParameterMatcher.Replace(command.CommandText, match =>
                                         {
                                             current++;
                                             if (current > count)
@@ -690,7 +690,7 @@ namespace Nemo.Data
                                     }
                                     else
                                     {
-                                        command.CommandText = dialect.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => match.Groups[1].Success && match.Groups[3].Success ? expanedParameters : $"({expanedParameters})");
+                                        command.CommandText = dialect.Value.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => match.Groups[1].Success && match.Groups[3].Success ? expanedParameters : $"({expanedParameters})");
                                     }
 
                                     count += expansionParameters.Count;

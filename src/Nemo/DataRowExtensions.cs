@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 
-#if NETSTANDARD
+#if NETSTANDARD2_0_OR_GREATER
 using Nemo;
 
 namespace System.Data

@@ -23,7 +23,7 @@ namespace Nemo.Configuration
         IExecutionContext ExecutionContext { get; }
         string HiLoTableName { get; }
         bool AutoTypeCoercion { get; }
-        IConfigurationRoot SystemConfiguration { get; }
+        Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; }
         bool IgnoreInvalidParameters { get; }
         bool PadListExpansion { get; }
 
@@ -43,7 +43,7 @@ namespace Nemo.Configuration
         IConfiguration SetHiLoTableName(string value);
         IConfiguration SetLogProvider(ILogProvider value);
         IConfiguration SetAutoTypeCoercion(bool value);
-        IConfiguration SetSystemConfiguration(IConfigurationRoot systemConfiguration);
+        IConfiguration SetSystemConfiguration(Microsoft.Extensions.Configuration.IConfiguration systemConfiguration);
         IConfiguration SetIgnoreInvalidParameters(bool value);
         IConfiguration SetPadListExpansion(bool value);
         IConfiguration Merge(IConfiguration configuration);

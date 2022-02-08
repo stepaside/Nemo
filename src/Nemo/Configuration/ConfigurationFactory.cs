@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Nemo.Configuration.Mapping;
+using Nemo.Reflection;
 
 namespace Nemo.Configuration
 {
@@ -51,7 +52,6 @@ namespace Nemo.Configuration
         }
 
         public static IConfiguration Get<T>()
-            where T : class
         {
             return Get(typeof(T));
         }
@@ -59,25 +59,31 @@ namespace Nemo.Configuration
         public static IConfiguration Get(Type type)
         {
             var globalConfig = DefaultConfiguration;
+            if (!IsConfigurable(type)) return globalConfig;
+
             var configurationKey = type.FullName + "/Configuration";
             var config = (IConfiguration)globalConfig.ExecutionContext.Get(configurationKey);
             return config ?? globalConfig;
         }
 
         public static void Set<T>(IConfiguration configuration)
-            where T : class
         {
             Set(typeof(T), configuration);
         }
 
         public static void Set(Type type, IConfiguration configuration)
         {
-            if (configuration == null) return;
+            if (configuration == null || !IsConfigurable(type)) return;
 
             var globalConfig = DefaultConfiguration;
             var configurationKey = type.FullName + "/Configuration";
             globalConfig.ExecutionContext.Set(configurationKey, configuration.Merge(globalConfig));
         }
 
+        private static bool IsConfigurable(Type type)
+        {
+            var refletectType = Reflector.GetReflectedType(type);
+            return !refletectType.IsSimpleType && !refletectType.IsSimpleList;
+        }
     }
 }

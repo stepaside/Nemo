@@ -280,7 +280,7 @@ namespace Nemo
                 closeConnection = true;
             }
 
-            var dialect = DialectFactory.GetProvider(dbConnection);
+            var dialect = new Lazy<DialectProvider>(() => DialectFactory.GetProvider(dbConnection));
 
             if (returnType == OperationReturnType.Guess)
             {
