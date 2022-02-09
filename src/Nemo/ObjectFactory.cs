@@ -1013,16 +1013,21 @@ namespace Nemo
                 var isAccumulator = false;
                 var count = reader.FieldCount;
                 var references = new Dictionary<Tuple<Type, string>, object>();
+                var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
+                var columns = !isSimpleType && useMapper ? reader.GetColumns() : null;
                 while (reader.Read())
                 {
                     if (isSimpleType)
                     {
                         yield return reader.GetValue(0).SafeCast<T>();
                     }
-                    else if (!isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact)
+                    else if (useMapper)
                     {
                         var item = Create<T>(isInterface);
-                        Map(reader, item, config.AutoTypeCoercion);
+                        var record = (IDataRecord)new WrappedRecord(reader, columns);
+                        Map(record, item, config.AutoTypeCoercion);
+                        
+                        TrySetObjectState(item);
 
                         if (map != null)
                         {
@@ -1033,7 +1038,8 @@ namespace Nemo
                                 var identity = CreateIdentity(types[i], reader);
                                 if (!references.TryGetValue(identity, out var reference))
                                 {
-                                    reference = Map((object)reader, types[i], config.AutoTypeCoercion);
+                                    reference = Map((object)record, types[i], config.AutoTypeCoercion);
+                                    TrySetObjectState(reference);
                                     references.Add(identity, reference);
                                 }
                                 args[i] = reference;
@@ -1074,6 +1080,7 @@ namespace Nemo
                                 if (!references.TryGetValue(identity, out var reference))
                                 {
                                     reference = Wrap(bag, types[i]);
+                                    TrySetObjectState(reference);
                                     references.Add(identity, reference);
                                 }
                                 args[i] = reference;
@@ -1131,10 +1138,11 @@ namespace Nemo
                 int resultIndex = 0;
                 do
                 {
+                    var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
                     var columns = reader.GetColumns();
                     while (reader.Read())
                     {
-                        if (!isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact)
+                        if (useMapper)
                         {
                             var item = Map((object)new WrappedReader(reader, columns), types[resultIndex], config.AutoTypeCoercion);
                             TrySetObjectState(item);
