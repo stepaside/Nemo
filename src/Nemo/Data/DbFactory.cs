@@ -605,6 +605,7 @@ namespace Nemo.Data
 
                     if (dbParam.Direction == ParameterDirection.Output && command.CommandType == CommandType.StoredProcedure)
                     {
+                        SetParameterTypeAndSize(parameter, dbParam);
                         if (outputParameters == null)
                         {
                             outputParameters = new Dictionary<DbParameter, Param>();
@@ -712,28 +713,7 @@ namespace Nemo.Data
 
                         if (addParameter)
                         {
-                            if (parameter.Value != null)
-                            {
-                                var dbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
-                                dbParam.DbType = dbType;
-
-                                if (parameter.Size > -1)
-                                {
-                                    dbParam.Size = parameter.Size;
-                                }
-                                else if (IsStringType(dbType))
-                                {
-                                    dbParam.Size = DefaultStringLength;
-                                    if (parameter.Value is string s && s.Length > DefaultStringLength)
-                                    {
-                                        parameter.Size = -1;
-                                    }
-                                }
-                            }
-                            else if (parameter.DbType != null)
-                            {
-                                dbParam.DbType = parameter.DbType.Value;
-                            }
+                            SetParameterTypeAndSize(parameter, dbParam);
                         }
                     }
 
@@ -745,6 +725,32 @@ namespace Nemo.Data
             }
 
             return outputParameters;
+        }
+
+        private static void SetParameterTypeAndSize(Param parameter, DbParameter dbParam)
+        {
+            if (parameter.Value != null)
+            {
+                var dbType = parameter.DbType ?? Reflector.ClrToDbType(parameter.Type);
+                dbParam.DbType = dbType;
+
+                if (parameter.Size > -1)
+                {
+                    dbParam.Size = parameter.Size;
+                }
+                else if (IsStringType(dbType))
+                {
+                    dbParam.Size = DefaultStringLength;
+                    if (parameter.Value is string s && s.Length > DefaultStringLength)
+                    {
+                        parameter.Size = -1;
+                    }
+                }
+            }
+            else if (parameter.DbType != null)
+            {
+                dbParam.DbType = parameter.DbType.Value;
+            }
         }
 
         private static bool IsStringType(DbType dbType)
