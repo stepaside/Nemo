@@ -440,30 +440,16 @@ namespace Nemo
         /// </summary>
         /// <returns></returns>
         public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
-            where T1 : class
-            where T2 : class
-            where T3 : class
-            where T4 : class
-            where TResult : class
         {
             var fakeType = typeof(Fake);
             var realTypes = new List<Type> { typeof(TResult) };
-            if (fakeType != typeof(T1))
-            {
-                realTypes.Add(typeof(T1));
-            }
-            if (fakeType != typeof(T2))
-            {
-                realTypes.Add(typeof(T2));
-            }
-            if (fakeType != typeof(T3))
-            {
-                realTypes.Add(typeof(T3));
-            }
-            if (fakeType != typeof(T4))
-            {
-                realTypes.Add(typeof(T4));
-            }
+            var hasTuple = false;
+
+            var typeCount = 1;
+            typeCount += LoadTypes<T1>(fakeType, realTypes, ref hasTuple) ? 1 : 0;
+            typeCount += LoadTypes<T2>(fakeType, realTypes, ref hasTuple) ? 1 : 0;
+            typeCount += LoadTypes<T3>(fakeType, realTypes, ref hasTuple) ? 1 : 0;
+            typeCount += LoadTypes<T4>(fakeType, realTypes, ref hasTuple) ? 1 : 0;
 
             config ??= ConfigurationFactory.Get<TResult>();
 
@@ -474,22 +460,26 @@ namespace Nemo
             {
                 returnType = OperationReturnType.MultiResult;
             }
-            else if (map != null && realTypes.Count > 1)
+            else if (map != null && typeCount > 1 && typeCount < 6 && !hasTuple)
             {
-                switch (realTypes.Count)
+                var hasSimpleType = realTypes.Any(t => Reflector.IsSimpleType(t));
+                if (!hasSimpleType)
                 {
-                    case 5:
-                        func = args => map((TResult)args[0], (T1)args[1], (T2)args[2], (T3)args[3], (T4)args[4]);
-                        break;
-                    case 4:
-                        func = args => map.Curry((TResult)args[0], (T1)args[1], (T2)args[2], (T3)args[3])(null);
-                        break;
-                    case 3:
-                        func = args => map.Curry((TResult)args[0], (T1)args[1], (T2)args[2])(null, null);
-                        break;
-                    case 2:
-                        func = args => map.Curry((TResult)args[0], (T1)args[1])(null, null, null);
-                        break;
+                    switch (realTypes.Count)
+                    {
+                        case 5:
+                            func = args => map((TResult)args[0], (T1)args[1], (T2)args[2], (T3)args[3], (T4)args[4]);
+                            break;
+                        case 4:
+                            func = args => map.Curry((TResult)args[0], (T1)args[1], (T2)args[2], (T3)args[3])(default);
+                            break;
+                        case 3:
+                            func = args => map.Curry((TResult)args[0], (T1)args[1], (T2)args[2])(default, default);
+                            break;
+                        case 2:
+                            func = args => map.Curry((TResult)args[0], (T1)args[1])(default, default, default);
+                            break;
+                    }
                 }
             }
 
@@ -500,27 +490,18 @@ namespace Nemo
         }
 
         public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
-            where T1 : class
-            where T2 : class
-            where T3 : class
-            where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
             return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
         }
 
         public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
-            where T1 : class
-            where T2 : class
-            where TResult : class
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
             return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
         }
 
         public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
-            where T1 : class
-            where TResult : class
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
             return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
