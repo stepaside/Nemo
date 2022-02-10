@@ -22,14 +22,14 @@ namespace Nemo.Collections
     }
 
     [Serializable]
-    public class MultiResult<TFirst> : IMultiResult, IEnumerable<TFirst>
+    internal class MultiResult<TFirst> : IMultiResult, IEnumerable<TFirst>
         where TFirst : class
     {
-        private readonly IEnumerable<object> _source;
-        private IEnumerator<object> _iter;
-        private object _last;
+        private readonly IEnumerable<MultiResultItem> _source;
+        private IEnumerator<MultiResultItem> _iter;
+        private MultiResultItem _last;
 
-        public MultiResult(IList<Type> types, IEnumerable<object> source, bool cached, IConfiguration config)
+        public MultiResult(IList<Type> types, IEnumerable<MultiResultItem> source, bool cached, IConfiguration config)
         {
             if (types == null) throw new ArgumentNullException(nameof(types));
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -70,26 +70,41 @@ namespace Nemo.Collections
 
         public IEnumerable<T> Retrieve<T>()
         {
-            if (typeof(T) == typeof(ObjectFactory.Fake))
+            if (typeof(T) == typeof(ObjectFactory.Fake) || !AllTypes.Any(t => t.IsAssignableFrom(typeof(T))))
             {
                 yield break;
             }
 
-            if (_last != null && _last is T item1)
+            if (_last != null && _last.Item is T item1)
             {
                 yield return item1;
             }
 
             while (_iter.MoveNext())
             {
-                _last = _iter.Current;
-                if (_last is T item2)
+                var current = _iter.Current;
+
+                // if current item matches the type requested return the item
+                if (current.Item is T item2)
                 {
+                    _last = current;
                     yield return item2;
                 }
                 else
                 {
-                    yield break;
+                    // the previous type items have been iterated through
+                    // thus we can break out
+                    if (_last != null && current.ItemTypeIndex != _last.ItemTypeIndex)
+                    {
+                        _last = current;
+                        yield break;
+                    }
+                    else
+                    {
+                        // we haven't exhaused the type yet but are requesting next type
+                        _last = null;
+                        current.SkipNextCallback?.Invoke();
+                    }
                 }
             }
         }
@@ -113,18 +128,26 @@ namespace Nemo.Collections
         }
     }
 
+    internal class MultiResultItem
+    {
+        public object Item { get; set; }
+        public Type ItemType { get; set; }
+        public int ItemTypeIndex { get; set; }
+        public Action SkipNextCallback { get; set; }
+    }
+
     public static class MultiResult
     {
         private static readonly ConcurrentDictionary<Type, Type> _types = new ConcurrentDictionary<Type, Type>();
         private static readonly ConcurrentDictionary<TypeArray, List<MethodInfo>> _methods = new ConcurrentDictionary<TypeArray, List<MethodInfo>>();
         private static readonly ConcurrentDictionary<Type, List<ObjectRelation>> _relations = new ConcurrentDictionary<Type, List<ObjectRelation>>();
 
-        public static IMultiResult Create(IList<Type> types, IEnumerable<object> source, bool cached, IConfiguration config)
+        internal static IMultiResult Create(IList<Type> types, IEnumerable<MultiResultItem> source, bool cached, IConfiguration config)
         {
             if (types == null || source == null || types.Count < 2) return null;
 
             var type = _types.GetOrAdd(types[0], t => typeof(MultiResult<>).MakeGenericType(types[0]));
-            var activator = Reflection.Activator.CreateDelegate(type, typeof(IList<Type>), typeof(IEnumerable<object>), typeof(bool), typeof(IConfiguration));
+            var activator = Reflection.Activator.CreateDelegate(type, typeof(IList<Type>), typeof(IEnumerable<MultiResultItem>), typeof(bool), typeof(IConfiguration));
             var multiResult = (IMultiResult)activator(types, source, cached, config);
             return multiResult;
         }

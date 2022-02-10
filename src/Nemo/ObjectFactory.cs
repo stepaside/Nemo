@@ -1131,8 +1131,14 @@ namespace Nemo
             return identity;
         }
 
-        private static IEnumerable<object> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, bool isInterface, IConfiguration config)
+        private static IEnumerable<MultiResultItem> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, bool isInterface, IConfiguration config)
         {
+            var skipNext = false;
+            void changeSkipNext()
+            {
+                skipNext = true;
+            }
+
             try
             {
                 int resultIndex = 0;
@@ -1146,7 +1152,7 @@ namespace Nemo
                         {
                             var item = Map((object)new WrappedReader(reader, columns), types[resultIndex], config.AutoTypeCoercion);
                             TrySetObjectState(item);
-                            yield return item;
+                            yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
                         }
                         else
                         {
@@ -1157,7 +1163,13 @@ namespace Nemo
                             }
                             var item = Wrap(bag, types[resultIndex]);
                             TrySetObjectState(item);
-                            yield return item;
+                            yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
+                        }
+
+                        if (skipNext)
+                        {
+                            skipNext = false;
+                            break;
                         }
                     }
                     resultIndex++;

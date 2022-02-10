@@ -186,7 +186,8 @@ namespace NemoTest
                                                                                         select * from Orders where CustomerID = @CustomerID",
                                                                     parameters: new ParamList { CustomerId => "ALFKI" });
 
-            var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault(); // ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
+            var lazy_customer = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<ICustomer>().FirstOrDefault();
+            //var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault();
             var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>().ToList();
 
             // UnitOfWork example
