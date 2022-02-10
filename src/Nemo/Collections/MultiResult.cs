@@ -23,7 +23,6 @@ namespace Nemo.Collections
 
     [Serializable]
     internal class MultiResult<TFirst> : IMultiResult, IEnumerable<TFirst>
-        where TFirst : class
     {
         private readonly IEnumerable<MultiResultItem> _source;
         private IEnumerator<MultiResultItem> _iter;

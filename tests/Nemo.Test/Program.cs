@@ -190,6 +190,18 @@ namespace NemoTest
             //var lazy_customer = retrieve_customer_with_orders_lazy.FirstOrDefault();
             var lazy_orders = ((IMultiResult)retrieve_customer_with_orders_lazy).Retrieve<IOrder>().ToList();
 
+            // Advanced!
+            // Retrieve customers with orders as multi-result
+            var retrieve_simple_lists = ObjectFactory.Retrieve<string, int, object>(
+                                                                    sql: @"select CustomerID from Customers;
+                                                                            select OrderID from Orders;
+                                                                            select CustomerID, OrderID from Orders",
+                                                                    parameters: new ParamList { CustomerId => "ALFKI" });
+
+            var customer_id_list = ((IMultiResult)retrieve_simple_lists).Retrieve<string>().ToList();
+            var order_id_list = ((IMultiResult)retrieve_simple_lists).Retrieve<int>().ToList();
+            var dynamic_item_list = ((IMultiResult)retrieve_simple_lists).Retrieve<object>().ToList();
+
             // UnitOfWork example
             //customer.Orders.Do(o => o.Customer = null).Consume();
             using (ObjectScope.New(customer, autoCommit: false, config: nemoConfig))

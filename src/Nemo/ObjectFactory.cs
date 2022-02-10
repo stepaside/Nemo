@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Dynamic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -838,7 +839,7 @@ namespace Nemo
             {
                 case IDataReader reader:
                     if (map != null || types == null || types.Count == 1) return ConvertDataReader(reader, map, types, isInterface, isSimpleType, config);
-                    var multiResultItems = ConvertDataReaderMultiResult(reader, types, isInterface, config);
+                    var multiResultItems = ConvertDataReaderMultiResult(reader, types, config);
                     return (IEnumerable<T>)MultiResult.Create(types, multiResultItems, cached, config);
                 case DataSet dataSet:
                     return ConvertDataSet<T>(dataSet, isInterface, isSimpleType, config, identityMap);
@@ -890,6 +891,10 @@ namespace Nemo
             if (isSimpleType)
             {
                 value = row[0].SafeCast<T>();
+            }
+            else if (typeof(T) == typeof(object))
+            {
+                value = (T)GetSerializableDataRow(row);
             }
             else if (config.DefaultMaterializationMode == MaterializationMode.Exact || !isInterface)
             {
@@ -1014,12 +1019,18 @@ namespace Nemo
                 var count = reader.FieldCount;
                 var references = new Dictionary<Tuple<Type, string>, object>();
                 var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
-                var columns = !isSimpleType && useMapper ? reader.GetColumns() : null;
+                var columns = !isSimpleType ? reader.GetColumns() : null;
+                var isAnonymous = typeof(T) == typeof(object);
                 while (reader.Read())
                 {
                     if (isSimpleType)
                     {
                         yield return reader.GetValue(0).SafeCast<T>();
+                    }
+                    else if (isAnonymous)
+                    {
+                        var bag = CreateDynamicItem(reader, columns);
+                        yield return (T)bag;
                     }
                     else if (useMapper)
                     {
@@ -1061,11 +1072,7 @@ namespace Nemo
                     }
                     else
                     {
-                        var bag = new Dictionary<string, object>();
-                        for (var index = 0; index < count; index++)
-                        {
-                            bag.Add(reader.GetName(index), reader[index]);
-                        }
+                        var bag = CreateDynamicItem(reader, columns);
                         var item = (T)Wrap(bag, typeof(T));
 
                         TrySetObjectState(item);
@@ -1121,6 +1128,16 @@ namespace Nemo
             }
         }
 
+        private static IDictionary<string, object> CreateDynamicItem(IDataReader reader, ISet<string> columns)
+        {
+            var bag = new Dictionary<string, object>();
+            foreach (var column in columns)
+            {
+                bag[column] = reader[column];
+            }
+            return bag;
+        }
+
         private static Tuple<Type, string> CreateIdentity(Type objectType, IDataRecord record)
         {
             var nameMap = Reflector.GetPropertyNameMap(objectType);
@@ -1131,7 +1148,7 @@ namespace Nemo
             return identity;
         }
 
-        private static IEnumerable<MultiResultItem> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, bool isInterface, IConfiguration config)
+        private static IEnumerable<MultiResultItem> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, IConfiguration config)
         {
             var skipNext = false;
             void changeSkipNext()
@@ -1139,16 +1156,31 @@ namespace Nemo
                 skipNext = true;
             }
 
+            var reflectedTypes = types.Select(t => Reflector.GetReflectedType(t)).ToList();
+
             try
             {
                 int resultIndex = 0;
                 do
                 {
+                    var isInterface = reflectedTypes[resultIndex].IsInterface;
+                    var isAnonymous = types[resultIndex] == typeof(object);
+                    var isSimpleType = reflectedTypes[resultIndex].IsSimpleType;
                     var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
-                    var columns = reader.GetColumns();
+                    var columns = !isSimpleType ? reader.GetColumns() : null;
                     while (reader.Read())
                     {
-                        if (useMapper)
+                        if (isSimpleType)
+                        {
+                            var item = reader.GetValue(0);
+                            yield return new MultiResultItem { Item = Reflector.ChangeType(item, types[resultIndex]), ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
+                        }
+                        else if (isAnonymous)
+                        {
+                            var item = CreateDynamicItem(reader, columns);
+                            yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
+                        }
+                        else if (useMapper)
                         {
                             var item = Map((object)new WrappedReader(reader, columns), types[resultIndex], config.AutoTypeCoercion);
                             TrySetObjectState(item);
@@ -1156,11 +1188,7 @@ namespace Nemo
                         }
                         else
                         {
-                            var bag = new Dictionary<string, object>();
-                            for (int index = 0; index < columns.Count; index++)
-                            {
-                                bag.Add(reader.GetName(index), reader.GetValue(index));
-                            }
+                            var bag = CreateDynamicItem(reader, columns);
                             var item = Wrap(bag, types[resultIndex]);
                             TrySetObjectState(item);
                             yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
