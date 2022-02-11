@@ -875,10 +875,10 @@ namespace Nemo
             return table.Select(row => ConvertDataRow<T>(row, isInterface, isSimpleType, config, identityMap, primaryKey));
         }
 
-        private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, bool isInterface, IConfiguration config, IIdentityMap identityMap)
+        private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
         {
             var primaryKey = GetPrimaryKeyColumns(targetType);
-            return table.Select(row => ConvertDataRow(row, targetType, isInterface, config, identityMap, primaryKey));
+            return table.Select(row => ConvertDataRow(row, targetType, isInterface, isSimpleType, config, identityMap, primaryKey));
         }
         
         private static T ConvertDataRow<T>(DataRow row, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap, string[] primaryKey)
@@ -894,7 +894,7 @@ namespace Nemo
             }
             else if (typeof(T) == typeof(object))
             {
-                value = (T)GetSerializableDataRow(row);
+                value = (T)GetSerializableDataRow(row, true);
             }
             else if (config.DefaultMaterializationMode == MaterializationMode.Exact || !isInterface)
             {
@@ -903,7 +903,7 @@ namespace Nemo
             }
             else
             {
-                value = Wrap<T>(GetSerializableDataRow(row));
+                value = Wrap<T>(GetSerializableDataRow(row, false));
             }
 
             TrySetObjectState(value);
@@ -916,7 +916,7 @@ namespace Nemo
             return value;
         }
 
-        private static object ConvertDataRow(DataRow row, Type targetType, bool isInterface, IConfiguration config, IIdentityMap identityMap, string[] primaryKey)
+        private static object ConvertDataRow(DataRow row, Type targetType, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap, string[] primaryKey)
         {
             string hash = null;
 
@@ -931,15 +931,29 @@ namespace Nemo
                 }
             }
 
-            var value = config.DefaultMaterializationMode == MaterializationMode.Exact || !isInterface ? Map((object)row, targetType, config.AutoTypeCoercion) : Wrap(GetSerializableDataRow(row), targetType);
+            object value;
+            if (isSimpleType)
+            {
+                value = Reflector.ChangeType(row[0], targetType);
+            }
+            else if (targetType == typeof(object))
+            {
+                value = GetSerializableDataRow(row, true);
+            }
+            else if (config.DefaultMaterializationMode == MaterializationMode.Exact || !isInterface)
+            {
+                value = Map((object)row, targetType, config.AutoTypeCoercion);
+            }
+            else
+            {
+                value = Wrap(GetSerializableDataRow(row, false), targetType);
+            }
+
             TrySetObjectState(value);
 
             // Write-through for identity map
-            if (identityMap != null && value != null && hash != null)
-            {
-                identityMap.Set(hash, value);
-            }
-            
+            identityMap.WriteThrough(value, hash);
+
             LoadRelatedData(row, value, targetType, config, identityMap, primaryKey);
 
             return value;
@@ -969,26 +983,28 @@ namespace Nemo
                 object propertyValue = null;
                 if (p.Value.IsDataEntity)
                 {
+                    var propertyReflectedType = Reflector.GetReflectedType(p.Key.PropertyType);
                     var propertyKey = GetPrimaryKeyColumns(p.Key.PropertyType);
                     IIdentityMap relatedIdentityMap = null;
                     if (identityMap != null)
                     {
                         relatedIdentityMap = Identity.Get(p.Key.PropertyType, config);
                     }
-                    propertyValue = ConvertDataRow(childRows[0], p.Key.PropertyType, p.Key.PropertyType.IsInterface, config, relatedIdentityMap, propertyKey);
+                    propertyValue = ConvertDataRow(childRows[0], p.Key.PropertyType, propertyReflectedType.IsInterface, propertyReflectedType.IsSimpleType, config, relatedIdentityMap, propertyKey);
                 }
                 else if (p.Value.IsDataEntityList)
                 {
                     var elementType = p.Value.ElementType;
                     if (elementType != null)
                     {
+                        var propertyReflectedType = Reflector.GetReflectedType(elementType);
                         IIdentityMap relatedIdentityMap = null;
                         if (identityMap != null)
                         {
                             relatedIdentityMap = Identity.Get(elementType, config);
                         }
 
-                        var items = ConvertDataTable(childRows, elementType, elementType.IsInterface, config, relatedIdentityMap);
+                        var items = ConvertDataTable(childRows, elementType, propertyReflectedType.IsInterface, propertyReflectedType.IsSimpleType, config, relatedIdentityMap);
                         IList list;
                         if (!p.Value.IsListInterface)
                         {
@@ -1029,7 +1045,7 @@ namespace Nemo
                     }
                     else if (isAnonymous)
                     {
-                        var bag = CreateDynamicItem(reader, columns);
+                        var bag = CreateDynamicItem(reader, columns, true);
                         yield return (T)bag;
                     }
                     else if (useMapper)
@@ -1072,7 +1088,7 @@ namespace Nemo
                     }
                     else
                     {
-                        var bag = CreateDynamicItem(reader, columns);
+                        var bag = CreateDynamicItem(reader, columns, false);
                         var item = (T)Wrap(bag, typeof(T));
 
                         TrySetObjectState(item);
@@ -1128,9 +1144,9 @@ namespace Nemo
             }
         }
 
-        private static IDictionary<string, object> CreateDynamicItem(IDataReader reader, ISet<string> columns)
+        private static IDictionary<string, object> CreateDynamicItem(IDataReader reader, ISet<string> columns, bool isDynamic)
         {
-            var bag = new Dictionary<string, object>();
+            IDictionary<string, object> bag = !isDynamic ? new Dictionary<string, object>() : new ExpandoObject();
             foreach (var column in columns)
             {
                 bag[column] = reader[column];
@@ -1177,7 +1193,7 @@ namespace Nemo
                         }
                         else if (isAnonymous)
                         {
-                            var item = CreateDynamicItem(reader, columns);
+                            var item = CreateDynamicItem(reader, columns, true);
                             yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
                         }
                         else if (useMapper)
@@ -1188,7 +1204,7 @@ namespace Nemo
                         }
                         else
                         {
-                            var bag = CreateDynamicItem(reader, columns);
+                            var bag = CreateDynamicItem(reader, columns, false);
                             var item = Wrap(bag, types[resultIndex]);
                             TrySetObjectState(item);
                             yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
@@ -1224,9 +1240,9 @@ namespace Nemo
             }
         }
         
-        private static IDictionary<string, object> GetSerializableDataRow(DataRow row)
+        private static IDictionary<string, object> GetSerializableDataRow(DataRow row, bool isDynamic)
         {
-            var result = new Dictionary<string, object>(StringComparer.Ordinal);
+            IDictionary<string, object> result = !isDynamic ? new Dictionary<string, object>(StringComparer.Ordinal) : new ExpandoObject();
             if (row != null)
             {
                 foreach (DataColumn column in row.Table.Columns)

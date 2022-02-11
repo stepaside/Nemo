@@ -192,7 +192,7 @@ namespace NemoTest
 
             // Advanced!
             // Retrieve customers with orders as multi-result
-            var retrieve_simple_lists = ObjectFactory.Retrieve<string, int, object>(
+            var retrieve_simple_lists = ObjectFactory.Retrieve<string, int, dynamic>(
                                                                     sql: @"select CustomerID from Customers;
                                                                             select OrderID from Orders;
                                                                             select CustomerID, OrderID from Orders",
@@ -200,7 +200,7 @@ namespace NemoTest
 
             var customer_id_list = ((IMultiResult)retrieve_simple_lists).Retrieve<string>().ToList();
             var order_id_list = ((IMultiResult)retrieve_simple_lists).Retrieve<int>().ToList();
-            var dynamic_item_list = ((IMultiResult)retrieve_simple_lists).Retrieve<object>().ToList();
+            var dynamic_item_list = ((IMultiResult)retrieve_simple_lists).Retrieve<dynamic>().ToList();
 
             // UnitOfWork example
             //customer.Orders.Do(o => o.Customer = null).Consume();
