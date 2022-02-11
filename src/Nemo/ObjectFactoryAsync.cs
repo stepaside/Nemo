@@ -269,10 +269,12 @@ namespace Nemo
             if (transaction != null)
             {
                 dbConnection = transaction.Connection;
+                closeConnection = dbConnection.State != ConnectionState.Open;
             }
             else if (connection != null)
             {
                 dbConnection = connection;
+                closeConnection = dbConnection.State != ConnectionState.Open;
             }
             else
             {

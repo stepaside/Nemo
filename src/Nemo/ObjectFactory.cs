@@ -629,10 +629,12 @@ namespace Nemo
             if (transaction != null)
             {
                 dbConnection = transaction.Connection;
+                closeConnection = dbConnection.State != ConnectionState.Open;
             }
             else if (connection != null)
             {
                 dbConnection = connection;
+                closeConnection = dbConnection.State != ConnectionState.Open;
             }
             else
             {
@@ -1149,7 +1151,7 @@ namespace Nemo
             IDictionary<string, object> bag = !isDynamic ? new Dictionary<string, object>() : new ExpandoObject();
             foreach (var column in columns)
             {
-                bag[column] = reader[column];
+                bag[isDynamic ? NormalizeDynamicPropertyName(column) : column] = reader[column];
             }
             return bag;
         }
@@ -1247,10 +1249,34 @@ namespace Nemo
             {
                 foreach (DataColumn column in row.Table.Columns)
                 {
-                    result.Add(column.ColumnName, row[column]);
+                    result.Add(isDynamic ? NormalizeDynamicPropertyName(column.ColumnName) : column.ColumnName, row[column]);
                 }
             }
             return result;
+        }
+
+        private static string NormalizeDynamicPropertyName(string name)
+        {
+            var output = new StringBuilder(name.Trim());
+            var index = 0;
+            foreach (var ch in name)
+            {
+                if (index == 0 && !char.IsLetter(ch) && ch != '_')
+                {
+                    output.Append('_');
+                }
+                if (char.IsLetterOrDigit(ch) || ch == '_')
+                {
+                    output.Append(ch);
+                }
+                else
+                {
+                    output.Append('_');
+                }
+                index++;
+            }
+
+            return output.ToString();
         }
 
         #endregion
