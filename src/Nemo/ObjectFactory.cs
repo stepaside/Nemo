@@ -1257,7 +1257,7 @@ namespace Nemo
 
         private static string NormalizeDynamicPropertyName(string name)
         {
-            var output = new StringBuilder(name.Trim());
+            var output = new StringBuilder();
             var index = 0;
             foreach (var ch in name)
             {
