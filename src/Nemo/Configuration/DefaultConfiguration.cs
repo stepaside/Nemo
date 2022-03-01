@@ -4,7 +4,6 @@ using Nemo.UnitOfWork;
 using Nemo.Utilities;
 using System;
 using Nemo.Logging;
-using Microsoft.Extensions.Configuration;
 
 namespace Nemo.Configuration
 {
@@ -55,8 +54,6 @@ namespace Nemo.Configuration
         public bool AutoTypeCoercion { get; private set; }
 
         public bool IgnoreInvalidParameters { get; private set; }
-
-        public Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; private set; }
 
         public bool PadListExpansion { get; private set; }
 
@@ -177,11 +174,16 @@ namespace Nemo.Configuration
             return this;
         }
 
+#if NETSTANDARD2_0_OR_GREATER
+
+        public Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; private set; }
+
         public IConfiguration SetSystemConfiguration(Microsoft.Extensions.Configuration.IConfiguration systemConfiguration)
         {
             SystemConfiguration = systemConfiguration;
             return this;
         }
+#endif
 
         public IConfiguration Merge(IConfiguration configuration)
         {
@@ -223,7 +225,9 @@ namespace Nemo.Configuration
 
             mergedConfig.SetPadListExpansion(PadListExpansion || configuration.PadListExpansion);
 
+#if NETSTANDARD2_0_OR_GREATER
             mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);
+#endif
 
             return mergedConfig;
         }

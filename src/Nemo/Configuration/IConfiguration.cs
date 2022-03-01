@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using Nemo.Logging;
+﻿using Nemo.Logging;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 
@@ -23,7 +22,6 @@ namespace Nemo.Configuration
         IExecutionContext ExecutionContext { get; }
         string HiLoTableName { get; }
         bool AutoTypeCoercion { get; }
-        Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; }
         bool IgnoreInvalidParameters { get; }
         bool PadListExpansion { get; }
 
@@ -43,9 +41,13 @@ namespace Nemo.Configuration
         IConfiguration SetHiLoTableName(string value);
         IConfiguration SetLogProvider(ILogProvider value);
         IConfiguration SetAutoTypeCoercion(bool value);
-        IConfiguration SetSystemConfiguration(Microsoft.Extensions.Configuration.IConfiguration systemConfiguration);
         IConfiguration SetIgnoreInvalidParameters(bool value);
         IConfiguration SetPadListExpansion(bool value);
         IConfiguration Merge(IConfiguration configuration);
+
+#if NETSTANDARD2_0_OR_GREATER
+        Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; }
+        IConfiguration SetSystemConfiguration(Microsoft.Extensions.Configuration.IConfiguration systemConfiguration);
+#endif
     }
 }

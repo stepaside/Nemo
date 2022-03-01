@@ -13,7 +13,7 @@
     <AssemblyTitle>Nemo</AssemblyTitle>
     <AssemblyVersion>2.7.0</AssemblyVersion>
     <FileVersion>2.7.0</FileVersion>
-    <PackageVersion>2.7.0-beta.1.9.0</PackageVersion>
+    <PackageVersion>2.7.0-beta.1.10.0</PackageVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>
@@ -48,8 +48,6 @@
     <PackageReference Include="System.Data.SqlClient" Version="4.8.3" />
     <PackageReference Include="System.Interactive" Version="6.0.1" />
     <PackageReference Include="System.Interactive.Async.Providers" Version="6.0.1" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'">
@@ -59,6 +57,8 @@
     <PackageReference Include="System.Reflection.Emit" Version="4.7.0" />
     <PackageReference Include="System.Reflection.Emit.ILGeneration" Version="4.7.0" />
     <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" />
+	<PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
@@ -67,5 +67,6 @@
 	<Reference Include="System.Runtime.Caching" />
 	<Reference Include="System.Runtime.Serialization" />
 	<Reference Include="System.Transactions" />
+    <Reference Include="System.Configuration" />
   </ItemGroup>
 </Project>
