@@ -139,7 +139,7 @@ namespace Nemo.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="dataEntity"></param>
         /// <param name="config"></param>
-        public static void Load<T>(this T dataEntity, IConfiguration config)
+        public static void Load<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             var parameters = GetLoadParameters(dataEntity);
@@ -155,7 +155,7 @@ namespace Nemo.Extensions
             dataEntity.Load(ConfigurationFactory.Get<T>());
         }
 
-        public static async Task LoadAsync<T>(this T dataEntity, IConfiguration config)
+        public static async Task LoadAsync<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             var parameters = GetLoadParameters(dataEntity);
@@ -193,7 +193,7 @@ namespace Nemo.Extensions
             return parameters;
         }
 
-        private static void HandleLoad<T>(T dataEntity, T retrievedObject, IConfiguration config)
+        private static void HandleLoad<T>(T dataEntity, T retrievedObject, INemoConfiguration config)
             where T : class
         {
             if (retrievedObject == null) return;
@@ -210,7 +210,7 @@ namespace Nemo.Extensions
         /// <param name="config"></param>
         /// <param name="additionalParameters"></param>
         /// <returns></returns>
-        public static bool Insert<T>(this T dataEntity, IConfiguration config, params Param[] additionalParameters)
+        public static bool Insert<T>(this T dataEntity, INemoConfiguration config, params Param[] additionalParameters)
             where T : class
         {
             GetInsertParameters(dataEntity, config, additionalParameters, out var propertyMap, out var identityProperty, out var parameters);
@@ -226,7 +226,7 @@ namespace Nemo.Extensions
             return dataEntity.Insert(ConfigurationFactory.Get<T>(), additionalParameters);
         }
 
-        public static async Task<bool> InsertAsync<T>(this T dataEntity, IConfiguration config, params Param[] additionalParameters)
+        public static async Task<bool> InsertAsync<T>(this T dataEntity, INemoConfiguration config, params Param[] additionalParameters)
             where T : class
         {
             GetInsertParameters(dataEntity, config, additionalParameters, out var propertyMap, out var identityProperty, out var parameters);
@@ -242,7 +242,7 @@ namespace Nemo.Extensions
             return dataEntity.InsertAsync(ConfigurationFactory.Get<T>(), additionalParameters);
         }
 
-        private static void GetInsertParameters<T>(T dataEntity, IConfiguration config, Param[] additionalParameters, out IDictionary<PropertyInfo, ReflectedProperty> propertyMap, out PropertyInfo identityProperty, out Param[] parameters)
+        private static void GetInsertParameters<T>(T dataEntity, INemoConfiguration config, Param[] additionalParameters, out IDictionary<PropertyInfo, ReflectedProperty> propertyMap, out PropertyInfo identityProperty, out Param[] parameters)
             where T : class
         {
             dataEntity.ThrowIfNull("dataEntity");
@@ -278,7 +278,7 @@ namespace Nemo.Extensions
             }
         }
 
-        private static bool HandleInsert<T>(T dataEntity, Param[] parameters, PropertyInfo identityProperty, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, OperationResponse response, IConfiguration config)
+        private static bool HandleInsert<T>(T dataEntity, Param[] parameters, PropertyInfo identityProperty, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, OperationResponse response, INemoConfiguration config)
             where T : class
         {
             var success = response != null && response.RecordsAffected > 0;
@@ -328,7 +328,7 @@ namespace Nemo.Extensions
         /// <param name="config"></param>
         /// <param name="additionalParameters"></param>
         /// <returns></returns>
-        public static bool Update<T>(this T dataEntity, IConfiguration config, params Param[] additionalParameters)
+        public static bool Update<T>(this T dataEntity, INemoConfiguration config, params Param[] additionalParameters)
             where T : class
         {
             var supportsChangeTracking = GetUpdateParameters(dataEntity, additionalParameters, out var propertyMap, out var outputProperties, out var parameters);
@@ -344,7 +344,7 @@ namespace Nemo.Extensions
             return dataEntity.Update(ConfigurationFactory.Get<T>(), additionalParameters);
         }
 
-        public static async Task<bool> UpdateAsync<T>(this T dataEntity, IConfiguration config, params Param[] additionalParameters)
+        public static async Task<bool> UpdateAsync<T>(this T dataEntity, INemoConfiguration config, params Param[] additionalParameters)
             where T : class
         {
             var supportsChangeTracking = GetUpdateParameters(dataEntity, additionalParameters, out var propertyMap, out var outputProperties, out var parameters);
@@ -397,7 +397,7 @@ namespace Nemo.Extensions
             return supportsChangeTracking;
         }
 
-        private static bool HandleUpdate<T>(T dataEntity, IEnumerable<PropertyInfo> outputProperties, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, Param[] parameters, bool supportsChangeTracking, OperationResponse response, IConfiguration config) 
+        private static bool HandleUpdate<T>(T dataEntity, IEnumerable<PropertyInfo> outputProperties, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, Param[] parameters, bool supportsChangeTracking, OperationResponse response, INemoConfiguration config) 
             where T : class
         {
             var success = response != null && response.RecordsAffected > 0;
@@ -434,7 +434,7 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <param name="config"></param>
         /// <returns></returns>
-        public static bool Delete<T>(this T dataEntity, IConfiguration config)
+        public static bool Delete<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             var parameters = GetDeleteParameters(dataEntity);
@@ -450,7 +450,7 @@ namespace Nemo.Extensions
             return dataEntity.Delete(ConfigurationFactory.Get<T>());
         }
 
-        public static async Task<bool> DeleteAsync<T>(this T dataEntity, IConfiguration config)
+        public static async Task<bool> DeleteAsync<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             var parameters = GetDeleteParameters(dataEntity);
@@ -473,7 +473,7 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <param name="config"></param>
         /// <returns></returns>
-        public static bool Destroy<T>(this T dataEntity, IConfiguration config)
+        public static bool Destroy<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             var parameters = GetDeleteParameters(dataEntity);
@@ -489,7 +489,7 @@ namespace Nemo.Extensions
             return dataEntity.Destroy(ConfigurationFactory.Get<T>());
         }
 
-        public static async Task<bool> DestroyAsync<T>(this T dataEntity, IConfiguration config)
+        public static async Task<bool> DestroyAsync<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             var parameters = GetDeleteParameters(dataEntity);
@@ -517,7 +517,7 @@ namespace Nemo.Extensions
             return GetDeleteParameters(dataEntity, propertyMap);
         }
 
-        private static bool HandleDelete<T>(T dataEntity, OperationResponse response, bool destroy, IConfiguration config)
+        private static bool HandleDelete<T>(T dataEntity, OperationResponse response, bool destroy, INemoConfiguration config)
             where T : class
         {
             var success = response != null && response.RecordsAffected > 0;
@@ -548,7 +548,7 @@ namespace Nemo.Extensions
             dataEntity.Attach(ConfigurationFactory.Get<T>());
         }
 
-        public static void Attach<T>(this T dataEntity, IConfiguration config)
+        public static void Attach<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             Identity.Get<T>(config).Set(dataEntity);
@@ -560,7 +560,7 @@ namespace Nemo.Extensions
             dataEntity.Detach(ConfigurationFactory.Get<T>());
         }
 
-        public static void Detach<T>(this T dataEntity, IConfiguration config)
+        public static void Detach<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             Identity.Get<T>(config).Remove(dataEntity);
@@ -768,7 +768,7 @@ namespace Nemo.Extensions
             return primaryKey;
         }
 
-        public static void GenerateKey<T>(this T dataEntity, IConfiguration config = null)
+        public static void GenerateKey<T>(this T dataEntity, INemoConfiguration config = null)
             where T : class
         {
             var propertyMap = Reflector.GetPropertyMap<T>();
@@ -781,7 +781,7 @@ namespace Nemo.Extensions
             }
         }
 
-        internal static void GenerateKeys<T>(this IList<T> dataEntities, IConfiguration config)
+        internal static void GenerateKeys<T>(this IList<T> dataEntities, INemoConfiguration config)
         {
             var propertyMap = Reflector.GetPropertyMap<T>();
             var generatorKeys = propertyMap.Where(p => p.Value != null && p.Value.Generator != null).Select(p => Tuple.Create(typeof(T), p.Key, p.Value.Generator));

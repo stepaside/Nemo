@@ -46,6 +46,8 @@ namespace NemoTest
 
             var factory = DbFactory.GetDbProviderFactory(DataAccessProviderTypes.SqlServer);
 
+            var guessed_connection = DbFactory.CreateConnection("Data Source=localhost;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;");
+
             var connection = DbFactory.CreateConnection("Data Source=.;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;", DataAccessProviderTypes.SqlServer);
 
             //// Simple retrieve with dynamic parameters
@@ -567,7 +569,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Execute:" + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunRetrieve(int count, bool cached, IConfiguration config)
+        private static void RunRetrieve(int count, bool cached, INemoConfiguration config)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             //const string sql = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerID";
@@ -591,7 +593,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Retrieve: " + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunSelect(int count, IConfiguration config)
+        private static void RunSelect(int count, INemoConfiguration config)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             //Expression<Func<ICustomer, bool>> predicate = c => c.Id == "ALFKI";
@@ -613,7 +615,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Select: " + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunRetrieveComplex(int count, IConfiguration config)
+        private static void RunRetrieveComplex(int count, INemoConfiguration config)
         {
             var connection = DbFactory.CreateConnection(ConfigurationManager.ConnectionStrings[ConfigurationFactory.DefaultConnectionName]?.ConnectionString);
             var sql = @"select * from Customers where CustomerID = @CustomerID; select * from Orders where CustomerID = @CustomerID; 

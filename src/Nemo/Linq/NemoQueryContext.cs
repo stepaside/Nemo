@@ -25,7 +25,7 @@ namespace Nemo.Linq
 
 
         // Executes the expression tree that is passed to it. 
-        internal static object Execute(Expression expression, DbConnection connection = null, bool async = false, IConfiguration config = null)
+        internal static object Execute(Expression expression, DbConnection connection = null, bool async = false, INemoConfiguration config = null)
         {
             var args = new Dictionary<string, object>();
             var type = Prepare(expression, args, async);

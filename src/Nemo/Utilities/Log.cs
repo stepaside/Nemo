@@ -12,7 +12,7 @@ namespace Nemo.Utilities
     {
         private const string LogContextName = "__LogContext";
 
-        private static bool IsEnabled(IConfiguration config, out ILogProvider logProvider)
+        private static bool IsEnabled(INemoConfiguration config, out ILogProvider logProvider)
         {
             logProvider = null;
             if (!(config ?? ConfigurationFactory.DefaultConfiguration).Logging) return false;
@@ -20,12 +20,12 @@ namespace Nemo.Utilities
             return logProvider != null;
         }
 
-        private static ILogProvider GetLogProvider(IConfiguration config)
+        private static ILogProvider GetLogProvider(INemoConfiguration config)
         {
             return (config ?? ConfigurationFactory.DefaultConfiguration).LogProvider;
         }
 
-        public static void Configure(IConfiguration config)
+        public static void Configure(INemoConfiguration config)
         {
             if (IsEnabled(config, out var logProvider))
             {
@@ -33,7 +33,7 @@ namespace Nemo.Utilities
             }
         }
 
-        public static void Configure(string configFile, IConfiguration config)
+        public static void Configure(string configFile, INemoConfiguration config)
         {
             if (!IsEnabled(config, out var logProvider)) return;
 
@@ -43,7 +43,7 @@ namespace Nemo.Utilities
             }
         }
 
-        public static void Capture(Exception error, IConfiguration config)
+        public static void Capture(Exception error, INemoConfiguration config)
         {
             if (!IsEnabled(config, out var logProvider)) return;
 
@@ -51,7 +51,7 @@ namespace Nemo.Utilities
             logProvider.Write(error, context.Item1 != Guid.Empty ? context.Item1.ToString() : null);
         }
 
-        public static void Capture(string message, IConfiguration config)
+        public static void Capture(string message, INemoConfiguration config)
         {
             if (!IsEnabled(config, out var logPRovider)) return;
 
@@ -70,7 +70,7 @@ namespace Nemo.Utilities
             logProvider.Write(message);
         }
 
-        public static bool CaptureBegin(string message, IConfiguration config)
+        public static bool CaptureBegin(string message, INemoConfiguration config)
         {
             if (!IsEnabled(config, out var logProvider)) return false;
 
@@ -80,7 +80,7 @@ namespace Nemo.Utilities
             return true;
         }
         
-        public static void CaptureEnd(IConfiguration config)
+        public static void CaptureEnd(INemoConfiguration config)
         {
             if (!IsEnabled(config, out var logProvider)) return;
 
@@ -93,7 +93,7 @@ namespace Nemo.Utilities
             ClearContext(config);
         }
 
-        private static Tuple<Guid, Stopwatch> GetContext(IConfiguration config)
+        private static Tuple<Guid, Stopwatch> GetContext(INemoConfiguration config)
         {
             if ((config ?? ConfigurationFactory.DefaultConfiguration).ExecutionContext.TryGet(LogContextName, out var context))
             {
@@ -106,7 +106,7 @@ namespace Nemo.Utilities
             return new Tuple<Guid, Stopwatch>(Guid.Empty, null);
         }
 
-        private static void ClearContext(IConfiguration config)
+        private static void ClearContext(INemoConfiguration config)
         {
             if ((config ?? ConfigurationFactory.DefaultConfiguration).ExecutionContext.TryGet(LogContextName, out var context))
             {
@@ -118,7 +118,7 @@ namespace Nemo.Utilities
             }
         }
 
-        private static Tuple<Guid, Stopwatch> CreateContext(IConfiguration config)
+        private static Tuple<Guid, Stopwatch> CreateContext(INemoConfiguration config)
         {
             var executionContext = (config ?? ConfigurationFactory.DefaultConfiguration).ExecutionContext;
 

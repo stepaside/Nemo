@@ -18,7 +18,7 @@ namespace Nemo.Collections
         IEnumerable<T> Retrieve<T>();
         bool Reset();
         bool IsCached { get; }
-        IConfiguration Configuration { get; }
+        INemoConfiguration Configuration { get; }
     }
 
     [Serializable]
@@ -28,7 +28,7 @@ namespace Nemo.Collections
         private IEnumerator<MultiResultItem> _iter;
         private MultiResultItem _last;
 
-        public MultiResult(IList<Type> types, IEnumerable<MultiResultItem> source, bool cached, IConfiguration config)
+        public MultiResult(IList<Type> types, IEnumerable<MultiResultItem> source, bool cached, INemoConfiguration config)
         {
             if (types == null) throw new ArgumentNullException(nameof(types));
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -65,7 +65,7 @@ namespace Nemo.Collections
 
         public bool IsCached { get; }
 
-        public IConfiguration Configuration { get; }
+        public INemoConfiguration Configuration { get; }
 
         public IEnumerable<T> Retrieve<T>()
         {
@@ -141,12 +141,12 @@ namespace Nemo.Collections
         private static readonly ConcurrentDictionary<TypeArray, List<MethodInfo>> _methods = new ConcurrentDictionary<TypeArray, List<MethodInfo>>();
         private static readonly ConcurrentDictionary<Type, List<ObjectRelation>> _relations = new ConcurrentDictionary<Type, List<ObjectRelation>>();
 
-        internal static IMultiResult Create(IList<Type> types, IEnumerable<MultiResultItem> source, bool cached, IConfiguration config)
+        internal static IMultiResult Create(IList<Type> types, IEnumerable<MultiResultItem> source, bool cached, INemoConfiguration config)
         {
             if (types == null || source == null || types.Count < 2) return null;
 
             var type = _types.GetOrAdd(types[0], t => typeof(MultiResult<>).MakeGenericType(types[0]));
-            var activator = Reflection.Activator.CreateDelegate(type, typeof(IList<Type>), typeof(IEnumerable<MultiResultItem>), typeof(bool), typeof(IConfiguration));
+            var activator = Reflection.Activator.CreateDelegate(type, typeof(IList<Type>), typeof(IEnumerable<MultiResultItem>), typeof(bool), typeof(INemoConfiguration));
             var multiResult = (IMultiResult)activator(types, source, cached, config);
             return multiResult;
         }
@@ -175,7 +175,7 @@ namespace Nemo.Collections
             return source.Aggregate<T>(source.Configuration ?? ConfigurationFactory.Get<T>());
         }
 
-        public static IEnumerable<T> Aggregate<T>(this IMultiResult source, IConfiguration config)
+        public static IEnumerable<T> Aggregate<T>(this IMultiResult source, INemoConfiguration config)
             where T : class
         {
             var results = source.AsEnumerable().Select(s => s.ToList()).ToList();
@@ -222,7 +222,7 @@ namespace Nemo.Collections
             return roots;
         }
         
-        private static void LoadRelatedData(object value, Type objectType, List<ObjectRelation> relations, List<List<object>> set, bool cached, IConfiguration config)
+        private static void LoadRelatedData(object value, Type objectType, List<ObjectRelation> relations, List<List<object>> set, bool cached, INemoConfiguration config)
         {
             var propertyMap = Reflector.GetPropertyMap(objectType);
 

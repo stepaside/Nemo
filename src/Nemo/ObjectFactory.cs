@@ -361,7 +361,7 @@ namespace Nemo
 
         #region Insert/Update/Delete/Execute Methods
         
-        private static IEnumerable<OperationRequest> BuildBatchInsert<T>(IEnumerable<T> items, DbTransaction transaction, bool captureException, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, DialectProvider provider, IConfiguration config, int batchSize = 500)
+        private static IEnumerable<OperationRequest> BuildBatchInsert<T>(IEnumerable<T> items, DbTransaction transaction, bool captureException, IDictionary<PropertyInfo, ReflectedProperty> propertyMap, DialectProvider provider, INemoConfiguration config, int batchSize = 500)
              where T : class
         {
             var statementId = 0;
@@ -397,7 +397,7 @@ namespace Nemo
             }
         }
 
-        public static long Insert<T>(IEnumerable<T> items, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, IConfiguration config = null)
+        public static long Insert<T>(IEnumerable<T> items, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, INemoConfiguration config = null)
             where T : class
         {
             var count = 0L;
@@ -459,13 +459,13 @@ namespace Nemo
             }
         }
 
-        public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static OperationResponse Insert<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return Insert<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config);
         }
 
-        public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static OperationResponse Insert<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
@@ -487,13 +487,13 @@ namespace Nemo
             return response;
         }
 
-        public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static OperationResponse Update<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return Update<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config);
         }
 
-        public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static OperationResponse Update<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
@@ -531,13 +531,13 @@ namespace Nemo
             return response;
         }
 
-        public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static OperationResponse Delete<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return Delete<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config);
         }
 
-        public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static OperationResponse Delete<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
@@ -591,13 +591,13 @@ namespace Nemo
             return response;
         }
 
-        public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static OperationResponse Destroy<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return Destroy<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config);
         }
 
-        public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static OperationResponse Destroy<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
@@ -619,7 +619,7 @@ namespace Nemo
             return response;
         }
 
-        internal static OperationResponse Execute(string operationText, IEnumerable<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, IConfiguration config = null)
+        internal static OperationResponse Execute(string operationText, IEnumerable<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, INemoConfiguration config = null)
         {
             var rootType = types?[0];
 
@@ -778,7 +778,7 @@ namespace Nemo
             return response;
         }
 
-        public static OperationResponse ExecuteSql(string sql, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
+        public static OperationResponse ExecuteSql(string sql, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, INemoConfiguration config = null)
         {
             var request = new OperationRequest
             {
@@ -794,7 +794,7 @@ namespace Nemo
             return Execute(request);
         }
 
-        public static OperationResponse ExecuteProcedure(string procedure, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
+        public static OperationResponse ExecuteProcedure(string procedure, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, INemoConfiguration config = null)
         {
             var request = new OperationRequest
             {
@@ -819,14 +819,19 @@ namespace Nemo
 
         #region Translate Methods
 
-        public static IEnumerable<T> Translate<T>(OperationResponse response, IConfiguration config)
+        public static IEnumerable<T> Translate<T>(OperationResponse response)
+        {
+            return Translate<T>(response, null);
+        }
+
+        public static IEnumerable<T> Translate<T>(OperationResponse response, INemoConfiguration config)
         {
             config ??= ConfigurationFactory.Get<T>();
             var reflectedType = Reflector.GetReflectedType<T>();
             return Translate<T>(response, null, null, reflectedType.IsInterface, reflectedType.IsSimpleType, config, Identity.Get<T>(config));
         }
 
-        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
+        private static IEnumerable<T> Translate<T>(OperationResponse response, Func<object[], T> map, IList<Type> types, bool isInterface, bool isSimpleType, INemoConfiguration config, IIdentityMap identityMap)
         {
             var cached = config.DefaultCacheRepresentation != CacheRepresentation.None;
             var mode = config.DefaultMaterializationMode;
@@ -860,30 +865,30 @@ namespace Nemo
             return Bind<T>(value).Return();
         }
 
-        private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
+        private static IEnumerable<T> ConvertDataSet<T>(DataSet dataSet, bool isInterface, bool isSimpleType, INemoConfiguration config, IIdentityMap identityMap)
         {
             var tableName = GetTableName(typeof(T));
             return dataSet.Tables.Count != 0 ? ConvertDataTable<T>(dataSet.Tables.Contains(tableName) ? dataSet.Tables[tableName] : dataSet.Tables[0], isInterface, isSimpleType, config, identityMap) : Enumerable.Empty<T>();
         }
 
-        private static IEnumerable<T> ConvertDataTable<T>(DataTable table, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
+        private static IEnumerable<T> ConvertDataTable<T>(DataTable table, bool isInterface, bool isSimpleType, INemoConfiguration config, IIdentityMap identityMap)
         {
             return ConvertDataTable<T>(table.Rows.Cast<DataRow>(), isInterface, isSimpleType, config, identityMap);
         }
 
-        private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
+        private static IEnumerable<T> ConvertDataTable<T>(IEnumerable<DataRow> table, bool isInterface, bool isSimpleType, INemoConfiguration config, IIdentityMap identityMap)
         {
             var primaryKey = GetPrimaryKeyColumns(typeof(T));
             return table.Select(row => ConvertDataRow<T>(row, isInterface, isSimpleType, config, identityMap, primaryKey));
         }
 
-        private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap)
+        private static IEnumerable<object> ConvertDataTable(IEnumerable<DataRow> table, Type targetType, bool isInterface, bool isSimpleType, INemoConfiguration config, IIdentityMap identityMap)
         {
             var primaryKey = GetPrimaryKeyColumns(targetType);
             return table.Select(row => ConvertDataRow(row, targetType, isInterface, isSimpleType, config, identityMap, primaryKey));
         }
         
-        private static T ConvertDataRow<T>(DataRow row, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap, string[] primaryKey)
+        private static T ConvertDataRow<T>(DataRow row, bool isInterface, bool isSimpleType, INemoConfiguration config, IIdentityMap identityMap, string[] primaryKey)
         {
             var result = identityMap.GetEntityByKey<DataRow, T>(row.GetKeySelector(primaryKey), out var hash);
 
@@ -918,7 +923,7 @@ namespace Nemo
             return value;
         }
 
-        private static object ConvertDataRow(DataRow row, Type targetType, bool isInterface, bool isSimpleType, IConfiguration config, IIdentityMap identityMap, string[] primaryKey)
+        private static object ConvertDataRow(DataRow row, Type targetType, bool isInterface, bool isSimpleType, INemoConfiguration config, IIdentityMap identityMap, string[] primaryKey)
         {
             string hash = null;
 
@@ -961,7 +966,7 @@ namespace Nemo
             return value;
         }
 
-        private static void LoadRelatedData(DataRow row, object value, Type targetType, IConfiguration config, IIdentityMap identityMap, string[] primaryKey)
+        private static void LoadRelatedData(DataRow row, object value, Type targetType, INemoConfiguration config, IIdentityMap identityMap, string[] primaryKey)
         {
             var table = row.Table;
             if (table.ChildRelations.Count <= 0) return;
@@ -1029,7 +1034,7 @@ namespace Nemo
             }
         }
 
-        private static IEnumerable<T> ConvertDataReader<T>(IDataReader reader, Func<object[], T> map, IList<Type> types, bool isInterface, bool isSimpleType, IConfiguration config)
+        private static IEnumerable<T> ConvertDataReader<T>(IDataReader reader, Func<object[], T> map, IList<Type> types, bool isInterface, bool isSimpleType, INemoConfiguration config)
         {
             try
             {
@@ -1166,7 +1171,7 @@ namespace Nemo
             return identity;
         }
 
-        private static IEnumerable<MultiResultItem> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, IConfiguration config)
+        private static IEnumerable<MultiResultItem> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, INemoConfiguration config)
         {
             var skipNext = false;
             void changeSkipNext()
@@ -1321,7 +1326,7 @@ namespace Nemo
             return new TransactionScope(TransactionScopeOption.Required, options);
         }
 
-        internal static string GetOperationText(Type objectType, string operation, OperationType operationType, string schema, IConfiguration config)
+        internal static string GetOperationText(Type objectType, string operation, OperationType operationType, string schema, INemoConfiguration config)
         {
             if (operationType != OperationType.StoredProcedure) return operation;
 

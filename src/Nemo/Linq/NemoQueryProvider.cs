@@ -17,9 +17,9 @@ namespace Nemo.Linq
     public class NemoQueryProvider : IAsyncQueryProvider, IQueryProvider
     {
         private readonly DbConnection _connection;
-        private readonly IConfiguration _config;
+        private readonly INemoConfiguration _config;
 
-        public NemoQueryProvider(DbConnection connection = null, IConfiguration config = null)
+        public NemoQueryProvider(DbConnection connection = null, INemoConfiguration config = null)
         {
             _connection = connection;
             _config = config;

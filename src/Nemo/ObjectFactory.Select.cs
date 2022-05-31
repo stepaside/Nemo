@@ -17,7 +17,7 @@ namespace Nemo
         #region Select Methods
 
         public static IEnumerable<T> Select<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, int skipCount = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
         {
             string providerName = null;
@@ -38,7 +38,7 @@ namespace Nemo
         }
 
         private static IEnumerable<T> Select<T, T1>(Expression<Func<T, T1, bool>> join, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, int skipCount = 0,
-            bool? cached = null, SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            bool? cached = null, SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
         {
@@ -65,7 +65,7 @@ namespace Nemo
 
         private static IEnumerable<T> Select<T, T1, T2>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, int skipCount = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -94,7 +94,7 @@ namespace Nemo
 
         internal static IEnumerable<T> Select<T, T1, T2, T3>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, int skipCount = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -125,7 +125,7 @@ namespace Nemo
 
         private static IEnumerable<T> Select<T, T1, T2, T3, T4>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, int skipCount = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -242,7 +242,7 @@ namespace Nemo
         }
 
         public static IAsyncEnumerable<T> SelectAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, int page = 0, int pageSize = 0, int skipCount = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
         {
             string providerName = null;
@@ -263,7 +263,7 @@ namespace Nemo
         }
 
         private static IAsyncEnumerable<T> SelectAsync<T, T1>(Expression<Func<T, T1, bool>> join, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, int skipCount = 0,
-            bool? cached = null, SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            bool? cached = null, SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
         {
@@ -290,7 +290,7 @@ namespace Nemo
 
         private static IAsyncEnumerable<T> SelectAsync<T, T1, T2>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, int skipCount = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -319,7 +319,7 @@ namespace Nemo
 
         internal static IAsyncEnumerable<T> SelectAsync<T, T1, T2, T3>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, int skipCount = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -350,7 +350,7 @@ namespace Nemo
 
         private static IAsyncEnumerable<T> SelectAsync<T, T1, T2, T3, T4>(Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
             Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, DialectProvider provider = null, int page = 0, int pageSize = 0, int skipCount = 0, bool? cached = null,
-            SelectOption selectOption = SelectOption.All, IConfiguration config = null, params Sorting<T>[] orderBy)
+            SelectOption selectOption = SelectOption.All, INemoConfiguration config = null, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class

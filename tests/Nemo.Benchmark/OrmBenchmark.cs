@@ -26,7 +26,7 @@ namespace Nemo.Benchmark
     public class OrmBenchmark
     {
         private IConfigurationRoot _config;
-        private Configuration.IConfiguration _nemoConfig;
+        private Configuration.INemoConfiguration _nemoConfig;
         private System.Data.Common.DbConnection _connection;
         private List<object> _idList;
 

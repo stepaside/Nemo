@@ -23,7 +23,7 @@ namespace Nemo
     {
         #region Insert/Update/Delete/Execute Methods
 
-        public static async Task<long> InsertAsync<T>(IEnumerable<T> items, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, IConfiguration config = null)
+        public static async Task<long> InsertAsync<T>(IEnumerable<T> items, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, INemoConfiguration config = null)
            where T : class
         {
             var count = 0L;
@@ -93,13 +93,13 @@ namespace Nemo
             }
         }
 
-        public static async Task<OperationResponse> InsertAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static async Task<OperationResponse> InsertAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return await InsertAsync<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config).ConfigureAwait(false);
         }
 
-        public static async Task<OperationResponse> InsertAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static async Task<OperationResponse> InsertAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
@@ -121,13 +121,13 @@ namespace Nemo
             return response;
         }
 
-        public static async Task<OperationResponse> UpdateAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static async Task<OperationResponse> UpdateAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return await UpdateAsync<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config).ConfigureAwait(false);
         }
 
-        public static async Task<OperationResponse> UpdateAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static async Task<OperationResponse> UpdateAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
@@ -168,13 +168,13 @@ namespace Nemo
             return response;
         }
 
-        public static async Task<OperationResponse> DeleteAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static async Task<OperationResponse> DeleteAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return await DeleteAsync<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config).ConfigureAwait(false);
         }
 
-        public static async Task<OperationResponse> DeleteAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static async Task<OperationResponse> DeleteAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
@@ -231,13 +231,13 @@ namespace Nemo
             return response;
         }
 
-        public static async Task<OperationResponse> DestroyAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static async Task<OperationResponse> DestroyAsync<T>(ParamList parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return await DestroyAsync<T>(parameters.GetParameters(), connectionName, captureException, schema, connection, config).ConfigureAwait(false);
         }
 
-        public static async Task<OperationResponse> DestroyAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, IConfiguration config = null)
+        public static async Task<OperationResponse> DestroyAsync<T>(Param[] parameters, string connectionName = null, bool captureException = false, string schema = null, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             config ??= ConfigurationFactory.Get<T>();
@@ -259,7 +259,7 @@ namespace Nemo
             return response;
         }
 
-        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IEnumerable<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings", IConfiguration config = null)
+        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IEnumerable<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings", INemoConfiguration config = null)
         {
             var rootType = types?[0];
 
@@ -421,7 +421,7 @@ namespace Nemo
             return response;
         }
 
-        public static async Task<OperationResponse> ExecuteSqlAsync(string sql, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
+        public static async Task<OperationResponse> ExecuteSqlAsync(string sql, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, INemoConfiguration config = null)
         {
             var request = new OperationRequest
             {
@@ -437,7 +437,7 @@ namespace Nemo
             return await ExecuteAsync(request).ConfigureAwait(false);
         }
 
-        public static async Task<OperationResponse> ExecuteProcedureAsync(string procedure, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, IConfiguration config = null)
+        public static async Task<OperationResponse> ExecuteProcedureAsync(string procedure, bool nonQuery, object parameters = null, string connectionName = null, DbConnection connection = null, bool captureException = false, INemoConfiguration config = null)
         {
             var request = new OperationRequest
             {

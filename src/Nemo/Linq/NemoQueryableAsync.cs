@@ -16,7 +16,7 @@ namespace Nemo.Linq
         private readonly CancellationToken _cancellationToken;
         private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
-        public NemoQueryableAsync(DbConnection connection, IConfiguration config, CancellationToken cancellationToken)
+        public NemoQueryableAsync(DbConnection connection, INemoConfiguration config, CancellationToken cancellationToken)
         {
             _provider = new NemoQueryProvider(connection, config);
             _expression = Expression.Constant(this);
@@ -35,7 +35,7 @@ namespace Nemo.Linq
         {
         }
 
-        public NemoQueryableAsync(IConfiguration config) : this(null, config, CancellationToken.None)
+        public NemoQueryableAsync(INemoConfiguration config) : this(null, config, CancellationToken.None)
         {
         }
 

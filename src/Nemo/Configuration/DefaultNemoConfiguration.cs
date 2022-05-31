@@ -7,7 +7,7 @@ using Nemo.Logging;
 
 namespace Nemo.Configuration
 {
-    internal sealed class DefaultConfiguration : IConfiguration
+    internal sealed class DefaultNemoConfiguration : INemoConfiguration
     {
         private string _defaultConnectionName;
         private string _operationPrefix;
@@ -57,19 +57,19 @@ namespace Nemo.Configuration
 
         public bool PadListExpansion { get; private set; }
 
-        public IConfiguration SetDefaultCacheRepresentation(CacheRepresentation value)
+        public INemoConfiguration SetDefaultCacheRepresentation(CacheRepresentation value)
         {
             _defaultL1CacheRepresentation = value;
             return this;
         }
 
-        public IConfiguration SetLogging(bool value)
+        public INemoConfiguration SetLogging(bool value)
         {
             _logging = value;
             return this;
         }
         
-        public IConfiguration SetDefaultMaterializationMode(MaterializationMode value)
+        public INemoConfiguration SetDefaultMaterializationMode(MaterializationMode value)
         {
             if (value != MaterializationMode.Default)
             {
@@ -78,19 +78,19 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetOperationPrefix(string value)
+        public INemoConfiguration SetOperationPrefix(string value)
         {
             _operationPrefix = value;
             return this;
         }
 
-        public IConfiguration SetDefaultConnectionName(string value)
+        public INemoConfiguration SetDefaultConnectionName(string value)
         {
             _defaultConnectionName = value;
             return this;
         }
 
-        public IConfiguration SetDefaultChangeTrackingMode(ChangeTrackingMode value)
+        public INemoConfiguration SetDefaultChangeTrackingMode(ChangeTrackingMode value)
         {
             if (value != ChangeTrackingMode.Default)
             {
@@ -99,7 +99,7 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetOperationNamingConvention(OperationNamingConvention value)
+        public INemoConfiguration SetOperationNamingConvention(OperationNamingConvention value)
         {
             if (value != OperationNamingConvention.Default)
             {
@@ -108,67 +108,67 @@ namespace Nemo.Configuration
             return this;
         }
 
-        public IConfiguration SetDefaultSerializationMode(SerializationMode value)
+        public INemoConfiguration SetDefaultSerializationMode(SerializationMode value)
         {
             _defaultSerializationMode = value;
             return this;
         }
 
-        public IConfiguration SetGenerateDeleteSql(bool value)
+        public INemoConfiguration SetGenerateDeleteSql(bool value)
         {
             GenerateDeleteSql = value;
             return this;
         }
 
-        public IConfiguration SetGenerateInsertSql(bool value)
+        public INemoConfiguration SetGenerateInsertSql(bool value)
         {
             GenerateInsertSql = value;
             return this;
         }
 
-        public IConfiguration SetGenerateUpdateSql(bool value)
+        public INemoConfiguration SetGenerateUpdateSql(bool value)
         {
             GenerateUpdateSql = value;
             return this;
         }
 
-        public IConfiguration SetAuditLogProvider(IAuditLogProvider value)
+        public INemoConfiguration SetAuditLogProvider(IAuditLogProvider value)
         {
             AuditLogProvider = value;
             return this;
         }
 
-        public IConfiguration SetExecutionContext(IExecutionContext value)
+        public INemoConfiguration SetExecutionContext(IExecutionContext value)
         {
             ExecutionContext = value;
             return this;
         }
 
-        public IConfiguration SetHiLoTableName(string value)
+        public INemoConfiguration SetHiLoTableName(string value)
         {
             _hiLoTableName = value;
             return this;
         }
 
-        public IConfiguration SetLogProvider(ILogProvider value)
+        public INemoConfiguration SetLogProvider(ILogProvider value)
         {
             LogProvider = value;
             return this;
         }
 
-        public IConfiguration SetAutoTypeCoercion(bool value)
+        public INemoConfiguration SetAutoTypeCoercion(bool value)
         {
             AutoTypeCoercion = value;
             return this;
         }
 
-        public IConfiguration SetIgnoreInvalidParameters(bool value)
+        public INemoConfiguration SetIgnoreInvalidParameters(bool value)
         {
             IgnoreInvalidParameters = value;
             return this;
         }
 
-        public IConfiguration SetPadListExpansion(bool value)
+        public INemoConfiguration SetPadListExpansion(bool value)
         {
             PadListExpansion = value;
             return this;
@@ -178,16 +178,16 @@ namespace Nemo.Configuration
 
         public Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; private set; }
 
-        public IConfiguration SetSystemConfiguration(Microsoft.Extensions.Configuration.IConfiguration systemConfiguration)
+        public INemoConfiguration SetSystemConfiguration(Microsoft.Extensions.Configuration.IConfiguration systemConfiguration)
         {
             SystemConfiguration = systemConfiguration;
             return this;
         }
 #endif
 
-        public IConfiguration Merge(IConfiguration configuration)
+        public INemoConfiguration Merge(INemoConfiguration configuration)
         {
-            var mergedConfig = new DefaultConfiguration();
+            var mergedConfig = new DefaultNemoConfiguration();
 
             mergedConfig.SetAuditLogProvider(AuditLogProvider ?? configuration.AuditLogProvider);
 

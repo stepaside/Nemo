@@ -5,6 +5,7 @@ using Nemo.Extensions;
 using Nemo.Reflection;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
@@ -28,6 +29,7 @@ namespace Nemo.Data
         public const string ProviderInvariantMicrosoftSqlClient = "Microsoft.Data.SqlClient";
 
         public static readonly ISet<string> ProviderInvariantNames = new HashSet<string>(new string[] { ProviderInvariantSqlClient, ProviderInvariantMysql, ProviderInvariantMysqlClient, ProviderInvariantSqlite, ProviderInvariantOracle, ProviderInvariantPostgres, ProviderInvariantMicrosoftSqlClient, ProviderInvariantMicrosoftSqlite }, StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<string, string> ConnectionStringProviderMapping = new(StringComparer.OrdinalIgnoreCase);
 
         public static readonly char[] ParameterPrexifes = new char[] { '@', '?', ':' };
         public const int DefaultStringLength = 4000;
@@ -80,7 +82,7 @@ namespace Nemo.Data
             return connectionName ?? ConfigurationFactory.Get(objectType).DefaultConnectionName;
         }
 
-        internal static string GetProviderInvariantName(string connectionName, Type objectType, IConfiguration config)
+        internal static string GetProviderInvariantName(string connectionName, Type objectType, INemoConfiguration config)
         {
             if (connectionName.NullIfEmpty() == null && objectType != null)
             {
@@ -105,7 +107,7 @@ namespace Nemo.Data
 
         }
 
-        internal static string GetProviderInvariantNameByConnectionString(string connectionString, IConfiguration config, out string cleanConnectionString)
+        internal static string GetProviderInvariantNameByConnectionString(string connectionString, INemoConfiguration config, out string cleanConnectionString)
         {
             cleanConnectionString = connectionString;
 
@@ -147,7 +149,7 @@ namespace Nemo.Data
                     var connectionStringsSettings = connectionStrings[i];
                     if (string.Equals(connectionStringsSettings.ConnectionString, connectionString, StringComparison.OrdinalIgnoreCase))
                     {
-                        return connectionStringsSettings.ProviderName;
+                        return connectionStringsSettings.ProviderName ?? GuessProviderName(connectionString);
                     }
                 }
             }
@@ -191,15 +193,15 @@ namespace Nemo.Data
 
                     if (equivalenCount == builder.Count)
                     {
-                        return connectionStringsSettings.ProviderName;
+                        return connectionStringsSettings.ProviderName ?? GuessProviderName(connectionStringsSettings.ConnectionString);
                     }
                 }
             }
 
-            return null;
+            return GuessProviderName(connectionString);
         }
 
-        internal static DbConnection CreateConnection(string connectionString, string providerName, IConfiguration config)
+        internal static DbConnection CreateConnection(string connectionString, string providerName, INemoConfiguration config)
         {
             var cleanConnectionString = connectionString;
             providerName ??= GetProviderInvariantNameByConnectionString(connectionString, config, out cleanConnectionString);
@@ -227,7 +229,7 @@ namespace Nemo.Data
             return CreateConnection(connectionString, providerName, null);
         }
 
-        internal static DbConnection CreateConnection(string connectionName, Type objectType, IConfiguration config)
+        internal static DbConnection CreateConnection(string connectionName, Type objectType, INemoConfiguration config)
         {
             if (connectionName.NullIfEmpty() == null && objectType != null)
             {
@@ -272,12 +274,31 @@ namespace Nemo.Data
             return connection;
         }
 
+        private static string GuessProviderName(string connectionString)
+        {
+            return ConnectionStringProviderMapping.GetOrAdd(connectionString, cs =>
+            {
+                foreach(var providerName in ProviderInvariantNames)
+                {
+                    try
+                    {
+                        using var connection = GetDbProviderFactory(providerName).CreateConnection();
+                        connection.ConnectionString = cs;
+                        connection.Open();
+                        return providerName;
+                    }
+                    catch { }
+                }
+                return null;
+            });
+        }
+
         public static DbConnection CreateConnection(string connectionStringOrName)
         {
             return CreateConnection(connectionStringOrName, ConfigurationFactory.DefaultConfiguration);
         }
 
-        public static DbConnection CreateConnection(string connectionStringOrName, IConfiguration config)
+        public static DbConnection CreateConnection(string connectionStringOrName, INemoConfiguration config)
         {
             string connectionString = null;
             string providerName = null;
@@ -323,7 +344,7 @@ namespace Nemo.Data
 #endif
         }
 
-        internal static DbDataAdapter CreateDataAdapter(DbConnection connection, IConfiguration config)
+        internal static DbDataAdapter CreateDataAdapter(DbConnection connection, INemoConfiguration config)
         {
             var providerName = GetProviderInvariantNameByConnectionString(connection.ConnectionString, config, out var _);
 #if NETSTANDARD2_0_OR_GREATER
@@ -515,7 +536,7 @@ namespace Nemo.Data
             return instance as DbProviderFactory;
         }
 
-        internal static ISet<string> GetProcedureParameters(DbConnection connection, string procedureName, bool keepOpen, IConfiguration config, DialectProvider dialect)
+        internal static ISet<string> GetProcedureParameters(DbConnection connection, string procedureName, bool keepOpen, INemoConfiguration config, DialectProvider dialect)
         {
             dialect ??= DialectFactory.GetProvider(connection);
             if (string.IsNullOrEmpty(dialect.StoredProcedureParameterListQuery)) return null;
@@ -556,7 +577,7 @@ namespace Nemo.Data
             return set;
         }
 
-        internal static ISet<string> GetQueryParameters(DbConnection connection, string sql, bool keepOpen, IConfiguration config, DialectProvider dialect)
+        internal static ISet<string> GetQueryParameters(DbConnection connection, string sql, bool keepOpen, INemoConfiguration config, DialectProvider dialect)
         {
             dialect ??= DialectFactory.GetProvider(connection);
             if (dialect.UseOrderedParameters || string.IsNullOrEmpty(dialect.ParameterPrefix)) return null;
@@ -566,7 +587,7 @@ namespace Nemo.Data
             return new HashSet<string>(dialect.ParameterNameMatcher.Matches(sql).Cast<Match>().Select(m => m.Value.TrimStart(ParameterPrexifes)), StringComparer.OrdinalIgnoreCase);
         }
 
-        internal static Dictionary<DbParameter, Param> SetupParameters(DbCommand command, IEnumerable<Param> parameters, Lazy<DialectProvider> dialect, IConfiguration config)
+        internal static Dictionary<DbParameter, Param> SetupParameters(DbCommand command, IEnumerable<Param> parameters, Lazy<DialectProvider> dialect, INemoConfiguration config)
         {
             Dictionary<DbParameter, Param> outputParameters = null;
             if (parameters != null)

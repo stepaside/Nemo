@@ -19,7 +19,7 @@ namespace NemoTest
 {
     public class TestService : IHostedService
     {
-        private readonly Nemo.Configuration.IConfiguration _nemoConfig;
+        private readonly Nemo.Configuration.INemoConfiguration _nemoConfig;
 
         public TestService(IConfiguration configuration)
         {
@@ -247,7 +247,7 @@ namespace NemoTest
             Console.WriteLine("Nemo.Execute:" + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunRetrieve(int count, bool cached, Nemo.Configuration.IConfiguration nemoConfig)
+        private static void RunRetrieve(int count, bool cached, Nemo.Configuration.INemoConfiguration nemoConfig)
         {
             var connection = DbFactory.CreateConnection("DbConnection", nemoConfig);
             const string sql = @"select CustomerID, CompanyName from Customers";
@@ -272,7 +272,7 @@ namespace NemoTest
             Console.WriteLine($"Nemo.Retrieve ({(cached ? "cached" : "not cached")}): " + timer.Elapsed.TotalMilliseconds);
         }
 
-        private static void RunSelect(int count, bool cached, Nemo.Configuration.IConfiguration nemoConfig)
+        private static void RunSelect(int count, bool cached, Nemo.Configuration.INemoConfiguration nemoConfig)
         {
             var connection = DbFactory.CreateConnection("DbConnection", nemoConfig);
             Expression<Func<Customer, bool>> predicate = c => c.Id == "ALFKI";

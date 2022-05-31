@@ -20,7 +20,7 @@ namespace Nemo.Collections
         private readonly List<string> _sqlOrder;
         private Func<string, IList<Type>, Task<IEnumerable<T>>> _load;
        
-        public EagerLoadEnumerableAsync(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, Task<IEnumerable<T>>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount, IConfiguration config)
+        public EagerLoadEnumerableAsync(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, Task<IEnumerable<T>>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount, INemoConfiguration config)
         {
             _sqlOrder = sql.ToList();
             _sqlMap = _sqlOrder.Zip(types, (s, t) => new { Key = s, Value = t }).ToDictionary(t => t.Key, t => t.Value);
@@ -82,7 +82,7 @@ namespace Nemo.Collections
 
         public int SkipCount { get; }
 
-        public IConfiguration Configuration { get; }
+        public INemoConfiguration Configuration { get; }
 
         public EagerLoadEnumerableAsync<T> Union(EagerLoadEnumerableAsync<T> other)
         {

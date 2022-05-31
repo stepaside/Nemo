@@ -11,7 +11,7 @@ namespace Nemo.Data
 {
     public static class DialectFactory
     {
-        public static DialectProvider GetProvider(string connectionName, IConfiguration config)
+        public static DialectProvider GetProvider(string connectionName, INemoConfiguration config)
         {
 #if NETSTANDARD2_0_OR_GREATER
             dynamic connectionStringsSettings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);

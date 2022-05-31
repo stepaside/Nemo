@@ -18,39 +18,39 @@ namespace Nemo.Id
         private readonly string _connectionName;
         private readonly int _maxLo;
         private long _currentHi;
-        private readonly IConfiguration _config;
+        private readonly INemoConfiguration _config;
         private int _currentLo;
         private bool _hasTable;
 
         private readonly object _locker = new object();
         private const string GenerateSql = @"SELECT next_hi FROM {1}{0}{2} WHERE entity_type = {3}{4}; UPDATE {1}{0}{2} SET next_hi = next_hi + 1 WHERE entity_type = {3}{5} AND next_hi = {3}{6};";
         
-        public HiLoGenerator(object entity, PropertyInfo property, IConfiguration config)
+        public HiLoGenerator(object entity, PropertyInfo property, INemoConfiguration config)
             : this(entity, property, 1000, config)
         {
         }
 
-        public HiLoGenerator(object entity, PropertyInfo property, int maxLo, IConfiguration config)
+        public HiLoGenerator(object entity, PropertyInfo property, int maxLo, INemoConfiguration config)
             : this(entity, property, maxLo, null, config)
         {
         }
 
-        public HiLoGenerator(object entity, PropertyInfo property, int maxLo, string connectionName, IConfiguration config)
+        public HiLoGenerator(object entity, PropertyInfo property, int maxLo, string connectionName, INemoConfiguration config)
             : this(entity.GetType(), property, maxLo, connectionName, config)
         {
         }
 
-        public HiLoGenerator(Type entityType, PropertyInfo property, IConfiguration config) 
+        public HiLoGenerator(Type entityType, PropertyInfo property, INemoConfiguration config) 
             : this(entityType, property, 1000, config)
         {
         }
 
-        public HiLoGenerator(Type entityType, PropertyInfo property, int maxLo, IConfiguration config)
+        public HiLoGenerator(Type entityType, PropertyInfo property, int maxLo, INemoConfiguration config)
             : this(entityType, property, maxLo, null, config)
         {
         }
 
-        public HiLoGenerator(Type entityType, PropertyInfo property, int maxLo, string connectionName, IConfiguration config)
+        public HiLoGenerator(Type entityType, PropertyInfo property, int maxLo, string connectionName, INemoConfiguration config)
         {
             _entityType = entityType;
             _property = property;

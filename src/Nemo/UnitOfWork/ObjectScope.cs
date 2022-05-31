@@ -48,13 +48,13 @@ namespace Nemo.UnitOfWork
             return item.Serialize(SerializationMode.SerializeAll);
         }
 
-        public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, DbConnection connection = null, IConfiguration config = null)
+        public static ObjectScope New<T>(T item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, DbConnection connection = null, INemoConfiguration config = null)
             where T : class
         {
             return new ObjectScope(item, autoCommit, mode, typeof(T), connection, config);
         }
         
-        private ObjectScope(object item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null, DbConnection connection = null, IConfiguration config = null)
+        private ObjectScope(object item = null, bool autoCommit = false, ChangeTrackingMode mode = ChangeTrackingMode.Default, Type type = null, DbConnection connection = null, INemoConfiguration config = null)
         {
             if (item == null && type == null)
             {
@@ -111,7 +111,7 @@ namespace Nemo.UnitOfWork
 
         internal DbConnection Connection { get; }
 
-        internal IConfiguration Configuration { get; }
+        internal INemoConfiguration Configuration { get; }
 
         internal void Cleanup()
         {

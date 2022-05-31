@@ -6,7 +6,7 @@ namespace Nemo.Configuration
 {
     public static class ConfigurationExtensions
     {
-        public static IServiceCollection AddNemo(this IServiceCollection services, Action<IConfiguration> builder = null)
+        public static IServiceCollection AddNemo(this IServiceCollection services, Action<INemoConfiguration> builder = null)
         {
             services.AddSingleton(new NemoConfigurationBuilder(builder));
             services.AddSingleton<NemoConfigurationService>();
@@ -26,14 +26,14 @@ namespace Nemo.Configuration
 
     public class NemoConfigurationBuilder
     {
-        private readonly Action<IConfiguration> _builder;
+        private readonly Action<INemoConfiguration> _builder;
 
-        public NemoConfigurationBuilder(Action<IConfiguration> builder)
+        public NemoConfigurationBuilder(Action<INemoConfiguration> builder)
         {
             _builder = builder;
         }
 
-        public void Build(IConfiguration configuration)
+        public void Build(INemoConfiguration configuration)
         {
             _builder?.Invoke(configuration);
 

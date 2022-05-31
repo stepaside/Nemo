@@ -20,7 +20,7 @@ namespace Nemo
     {
         #region Retrieve Methods
 
-        public static T RetrieveScalar<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
+        public static T RetrieveScalar<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, INemoConfiguration config = null)
         {
             config ??= ConfigurationFactory.DefaultConfiguration;
 
@@ -39,7 +39,7 @@ namespace Nemo
             return (T)Reflector.ChangeType(value, typeof(T));
         }
 
-        private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
@@ -122,7 +122,7 @@ namespace Nemo
             return result;
         }
 
-        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, IConfiguration config, IdentityMap<T> identityMap)
+        private static IEnumerable<T> RetrieveItems<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, INemoConfiguration config, IdentityMap<T> identityMap)
         {
             if (operationType == OperationType.Guess)
             {
@@ -165,7 +165,7 @@ namespace Nemo
         /// Retrieves an enumerable of type T using provided rule parameters.
         /// </summary>
         /// <returns></returns>
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             var fakeType = typeof(Fake);
             var realTypes = new List<Type> { typeof(TResult) };
@@ -233,25 +233,25 @@ namespace Nemo
             return false;
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
             return Retrieve(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
             return Retrieve(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<TResult> Retrieve<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
             return Retrieve(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config);
         }
 
-        public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static IEnumerable<T> Retrieve<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             config ??= ConfigurationFactory.Get<T>();
 
@@ -303,7 +303,7 @@ namespace Nemo
 
         #region Retrieve Async Methods
 
-        public static async Task<T> RetrieveScalarAsync<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, IConfiguration config = null)
+        public static async Task<T> RetrieveScalarAsync<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, INemoConfiguration config = null)
         {
             config ??= ConfigurationFactory.DefaultConfiguration;
 
@@ -322,7 +322,7 @@ namespace Nemo
             return (T)Reflector.ChangeType(value, typeof(T));
         }
 
-        private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
@@ -405,7 +405,7 @@ namespace Nemo
             return result;
         }
 
-        private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, IConfiguration config, IdentityMap<T> identityMap)
+        private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, INemoConfiguration config, IdentityMap<T> identityMap)
         {
             if (operationType == OperationType.Guess)
             {
@@ -439,7 +439,7 @@ namespace Nemo
         /// Retrieves an enumerable of type T using provided rule parameters.
         /// </summary>
         /// <returns></returns>
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3, T4>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, T4, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             var fakeType = typeof(Fake);
             var realTypes = new List<Type> { typeof(TResult) };
@@ -489,25 +489,25 @@ namespace Nemo
             return await RetrieveImplemenationAsync(command, commandType, parameterList, returnType, connectionName, connection, func, realTypes, schema, cached, config).ConfigureAwait(false);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2, T3>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, T3, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             var newMap = map != null ? (t, t1, t2, t3, f4) => map(t, t1, t2, t3) : (Func<TResult, T1, T2, T3, Fake, TResult>)null;
             return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1, T2>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, T2, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             var newMap = map != null ? (t, t1, t2, f3, f4) => map(t, t1, t2) : (Func<TResult, T1, T2, Fake, Fake, TResult>)null;
             return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
         }
 
-        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static async Task<IEnumerable<TResult>> RetrieveAsync<TResult, T1>(string operation = OperationRetrieve, string sql = null, object parameters = null, Func<TResult, T1, TResult> map = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             var newMap = map != null ? (t, t1, f1, f2, f3) => map(t, t1) : (Func<TResult, T1, Fake, Fake, Fake, TResult>)null;
             return await RetrieveAsync(operation, sql, parameters, newMap, connectionName, connection, schema, cached, config).ConfigureAwait(false);
         }
 
-        public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, IConfiguration config = null)
+        public static async Task<IEnumerable<T>> RetrieveAsync<T>(string operation = OperationRetrieve, string sql = null, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
             config ??= ConfigurationFactory.Get<T>();
 
