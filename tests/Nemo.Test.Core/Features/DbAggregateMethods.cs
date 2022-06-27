@@ -14,11 +14,11 @@ using System.Threading.Tasks;
 
 namespace NemoTestCore.Features
 {
-    public class ExecuteMethods
+    public class DbAggregateMethods
     {
         private static readonly INemoConfiguration _nemoConfig;
 
-        static ExecuteMethods()
+        static DbAggregateMethods()
         {
             _nemoConfig = ConfigurationFactory.CloneCurrentConfiguration();
 
@@ -74,39 +74,14 @@ namespace NemoTestCore.Features
 
         private static DbConnection Connection => DbFactory.CreateConnection("DbConnection", DataAccessProviderTypes.SqlServer);
 
-        public static void ExecuteStoredProcedure()
+        public static void GetMaxOrderId()
         {
-            var response = ObjectFactory.ExecuteProcedure("spDTO_Customer_Retrieve", false, new { CustomerId = "ALFKI" }, connection: Connection);
-            if (!response.HasErrors)
-            {
-                var customer = ObjectFactory.Translate<Customer>(response).FirstOrDefault();
-            }
+            var maxOrderId = ObjectFactory.Max<Order, int>(o => o.OrderId, o => o.CustomerId == "ALFKI", connection: Connection);
         }
 
-        public static void ExecuteQuery()
+        public static void GetCountOfCustomersStartingWithA()
         {
-            var response = ObjectFactory.ExecuteSql("select * from Customers where CustomerID = @CustomerId", false, new { CustomerId = "ALFKI" }, connection: Connection);
-            if (!response.HasErrors)
-            {
-                var customer = ObjectFactory.Translate<Customer>(response).FirstOrDefault();
-            }
-        }
-
-        public static void Execute()
-        {
-            var response = ObjectFactory.Execute(new OperationRequest
-            {
-                Connection = Connection,
-                Operation = "select * from Customers where CustomerID = @CustomerId",
-                OperationType = OperationType.Sql,
-                ReturnType = OperationReturnType.SingleRow,
-                Parameters = new[] { new Param { Name = "CustomerId", Value = "ALFKI", DbType = System.Data.DbType.String } }
-            });
-
-            if (!response.HasErrors)
-            {
-                var customer = ObjectFactory.Translate<Customer>(response).FirstOrDefault();
-            }
+            var selected_customers_A_count = ObjectFactory.Count<Customer>(c => c.CompanyName.StartsWith("A"), connection: Connection);
         }
     }
 }
