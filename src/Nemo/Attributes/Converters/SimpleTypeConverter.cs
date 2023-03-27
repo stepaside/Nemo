@@ -5,13 +5,28 @@ namespace Nemo.Attributes.Converters
 {
 	public class SimpleTypeConverter<T> : ITypeConverter<object, T>
     {
-		#region ITypeConverter<F,T> Members
+        private readonly bool _throwOnFailure;
+
+        public SimpleTypeConverter()
+        { }
+
+        public SimpleTypeConverter(bool throwOnFailure)
+        {
+            _throwOnFailure = throwOnFailure;
+        }
+
+        #region ITypeConverter<F,T> Members
 
         T ITypeConverter<object, T>.ConvertForward(object from)
         {
             if (from == null || from == DBNull.Value)
             {
-                return default(T);
+                return default;
+            }
+
+            if (from.GetType() == typeof(T))
+            {
+                return (T)from;
             }
 
             var type = Reflector.GetReflectedType<T>();
@@ -20,9 +35,9 @@ namespace Nemo.Attributes.Converters
                 var targetType = typeof(T);
                 if (targetType == typeof(bool))
                 {
-                    if (from is string)
+                    if (from is string str)
                     {
-                        string fromValue = ((string)from).ToUpper();
+                        var fromValue = str.ToUpper();
                         if (fromValue == "N" || fromValue == "NO" || fromValue == "F" || fromValue == "FALSE" || fromValue == "0")
                         {
                             return (T)(object)false;
@@ -32,15 +47,15 @@ namespace Nemo.Attributes.Converters
                             return (T)(object)true;
                         }
                     }
-                    else if (from is char)
+                    else if (from is char ch)
                     {
-                        var fromValue = char.ToUpper((char)from);
+                        var fromValue = char.ToUpper(ch);
                         if (fromValue == 'N' || fromValue == 'F' || fromValue == '0')
                         {
                             return (T)(object)false;
                         }
                         else if (fromValue == 'Y' || fromValue == 'T' || fromValue == '1')
-                        {
+                        {   
                             return (T)(object)true;
                         }
                     }
@@ -96,16 +111,14 @@ namespace Nemo.Attributes.Converters
                 }
                 else if (targetType == typeof(DateTimeOffset))
                 {
-                    DateTimeOffset value;
-                    if  (DateTimeOffset.TryParse(Convert.ToString(from), out value))
+                    if  (DateTimeOffset.TryParse(Convert.ToString(from), out var value))
                     {
                         return (T)(object)value;
                     }
                 }
                     else if (targetType == typeof(DateTimeOffset))
                 {
-                    TimeSpan value;
-                    if  (TimeSpan.TryParse(Convert.ToString(from), out value))
+                    if  (TimeSpan.TryParse(Convert.ToString(from), out var value))
                     {
                         return (T)(object)value;
                     }
@@ -135,7 +148,12 @@ namespace Nemo.Attributes.Converters
                     }
                 }
             }
-            return default(T);
+
+            if (!_throwOnFailure)
+            {
+                return default;
+            }
+            throw new InvalidCastException();
         }
 
 		object ITypeConverter<object, T>.ConvertBackward(T to)
@@ -145,4 +163,23 @@ namespace Nemo.Attributes.Converters
 
 		#endregion
 	}
+
+    public class ThrowingSimpleTypeConverter<T> : ITypeConverter<object, T>
+    {
+        private readonly ITypeConverter<object, T> _internal = new SimpleTypeConverter<T>(true);
+
+        #region ITypeConverter<F,T> Members
+
+        T ITypeConverter<object, T>.ConvertForward(object from)
+        {
+            return _internal.ConvertForward(from);
+        }
+
+        object ITypeConverter<object, T>.ConvertBackward(T to)
+        {
+            return _internal.ConvertBackward(to);
+        }
+
+        #endregion
+    }
 }

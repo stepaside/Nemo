@@ -11,9 +11,9 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <AssemblyName>Nemo</AssemblyName>
     <AssemblyTitle>Nemo</AssemblyTitle>
-    <AssemblyVersion>2.8.1</AssemblyVersion>
-    <FileVersion>2.8.1</FileVersion>
-    <PackageVersion>2.8.1</PackageVersion>
+    <AssemblyVersion>2.8.2</AssemblyVersion>
+    <FileVersion>2.8.2</FileVersion>
+    <PackageVersion>2.8.2</PackageVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>

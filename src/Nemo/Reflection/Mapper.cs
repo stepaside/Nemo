@@ -222,6 +222,10 @@ namespace Nemo.Reflection
                 {
                     return Tuple.Create(typeof(DBNullableByteArrayConverter).MakeGenericType(property.PropertyType), interfaceType);
                 }
+                else if (property.IsSimpleType)
+                {
+                    return Tuple.Create(typeof(ThrowingSimpleTypeConverter<>).MakeGenericType(property.PropertyType), interfaceType);
+                }
             }
             return typeConverter;
         }

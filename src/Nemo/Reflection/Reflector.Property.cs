@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Collections.Concurrent;
+using Nemo.Configuration;
 
 namespace Nemo.Reflection
 {
@@ -10,7 +11,7 @@ namespace Nemo.Reflection
         public static class Property
         {
             private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericGetter> Getters = new ConcurrentDictionary<Tuple<Type, string>, GenericGetter>();
-            private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericSetter> Setters = new ConcurrentDictionary<Tuple<Type, string>, GenericSetter>();
+            private static readonly ConcurrentDictionary<Tuple<Type, string>, Tuple<GenericSetter, Type>> Setters = new ConcurrentDictionary<Tuple<Type, string>, Tuple<GenericSetter, Type>>();
             
             #region Property Getters
 
@@ -59,14 +60,23 @@ namespace Nemo.Reflection
                 if (target != null)
                 {
                     var propertyKey = Tuple.Create(targetType, propertyName);
-                    var setMethod = Setters.GetOrAdd(propertyKey, GenerateSetter);
-                    setMethod(target, value);
+                    var setter = Setters.GetOrAdd(propertyKey, GenerateSetter);
+
+                    if (value != null && value is IConvertible && value.GetType() != setter.Item2)
+                    {
+                        setter.Item1(target, ChangeType(value, setter.Item2));
+                    }
+                    else
+                    {
+                        setter.Item1(target, value);
+                    }                    
                 }
             }
 
-            private static GenericSetter GenerateSetter(Tuple<Type, string> key)
+            private static Tuple<GenericSetter, Type> GenerateSetter(Tuple<Type, string> key)
             {
-                return CreateSetMethod(GetProperty(key.Item1, key.Item2), key.Item1);
+                var property = GetProperty(key.Item1, key.Item2);
+                return Tuple.Create(CreateSetMethod(property, key.Item1), property.PropertyType);
             }
 
             #endregion
