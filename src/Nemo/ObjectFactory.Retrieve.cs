@@ -274,6 +274,9 @@ namespace Nemo
                     case Param[] array:
                         parameterList = array;
                         break;
+                    case IList<Param> list:
+                        parameterList = list;
+                        break;
                     case IDictionary<string, object> map:
                         parameterList = map.Select(p => new Param { Name = p.Key, Value = p.Value }).ToArray();
                         break;

@@ -9,12 +9,14 @@ using System.Reflection;
 using Nemo.Attributes;
 using System.Data;
 using Nemo.Fn;
+using System.Collections.Concurrent;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace Nemo.Configuration.Mapping
 {
     internal static class MappingFactory
     {
-        private static readonly Lazy<Dictionary<Type, IEntityMap>> _types = new Lazy<Dictionary<Type, IEntityMap>>(Scan, true);
+        private static readonly ConcurrentDictionary<Type, IEntityMap> _types = new ConcurrentDictionary<Type, IEntityMap>();
 
         private static Dictionary<Type, IEntityMap> Scan()
         {
@@ -48,9 +50,10 @@ namespace Nemo.Configuration.Mapping
 
         internal static void Initialize()
         {
-            if (!_types.IsValueCreated)
+            var maps = Scan();
+            foreach (var entry in maps)
             {
-                var maps = _types.Value;
+                _types[entry.Key] = entry.Value;
             }
         }
 
@@ -58,13 +61,13 @@ namespace Nemo.Configuration.Mapping
             where T : class
         {
             IEntityMap map;
-            return _types.Value.TryGetValue(typeof(T), out map) ? map : null;
+            return _types.TryGetValue(typeof(T), out map) ? map : null;
         }
 
         internal static IEntityMap GetEntityMap(Type type)
         {
             IEntityMap map;
-            if ((!Reflector.IsEmitted(type) || Reflector.IsDataEntity(type)) && _types.Value.TryGetValue(type, out map))
+            if ((!Reflector.IsEmitted(type) || Reflector.IsDataEntity(type)) && _types.TryGetValue(type, out map))
             {
                 return map;
             }

@@ -44,6 +44,11 @@ namespace Nemo.Configuration
             return _configuration.Value;
         }
 
+        public static void RefreshEntityMappings()
+        {
+            MappingFactory.Initialize();
+        }
+
         public static INemoConfiguration CloneCurrentConfiguration()
         {
             var clone = new DefaultNemoConfiguration();
