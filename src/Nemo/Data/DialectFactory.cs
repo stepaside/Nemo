@@ -14,17 +14,24 @@ namespace Nemo.Data
         public static DialectProvider GetProvider(string connectionName, INemoConfiguration config)
         {
 #if NETSTANDARD2_0_OR_GREATER
-            dynamic connectionStringsSettings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);
+            var connectionStringsSettings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);
 
             if (connectionStringsSettings == null)
             {
-                connectionStringsSettings = ConfigurationManager.ConnectionStrings[connectionName];
+                var connectionStringsSettingsSection = ConfigurationManager.ConnectionStrings[connectionName];
+                var connection = DbFactory.CreateConnection(connectionStringsSettingsSection.ConnectionString, connectionStringsSettingsSection.ProviderName, config);
+                return GetProvider(connection, connectionStringsSettingsSection.ProviderName);
+            }
+            else
+            {
+                var connection = DbFactory.CreateConnection(connectionStringsSettings.ConnectionString, connectionStringsSettings.ProviderName, config);
+                return GetProvider(connection, connectionStringsSettings.ProviderName);
             }
 #else
-            var connectionStringsSettings = ConfigurationManager.ConnectionStrings[connectionName];
+            var connectionStringsSettingsSection = ConfigurationManager.ConnectionStrings[connectionName];
+            var connection = DbFactory.CreateConnection(connectionStringsSettingsSection.ConnectionString, connectionStringsSettingsSection.ProviderName, config);
+            return GetProvider(connection, connectionStringsSettingsSection.ProviderName);
 #endif
-            var connection = DbFactory.CreateConnection(connectionStringsSettings.ConnectionString, connectionStringsSettings.ProviderName, config);
-            return GetProvider(connection, connectionStringsSettings.ProviderName);
         }
 
         public static DialectProvider GetProvider(DbConnection connection, string providerName = null)

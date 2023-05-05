@@ -11,9 +11,9 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <AssemblyName>Nemo</AssemblyName>
     <AssemblyTitle>Nemo</AssemblyTitle>
-    <AssemblyVersion>2.8.3</AssemblyVersion>
-    <FileVersion>2.8.3</FileVersion>
-    <PackageVersion>2.8.3</PackageVersion>
+    <AssemblyVersion>2.8.4</AssemblyVersion>
+    <FileVersion>2.8.4</FileVersion>
+    <PackageVersion>2.8.4</PackageVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>
@@ -21,7 +21,7 @@
     <Description>.Net Enterprise Micro-ORM</Description>
     <Authors>Max Stepanskiy</Authors>
     <Company>Stepaside, Inc.</Company>
-    <Copyright>Copyright © Max Stepanskiy 2012-2020</Copyright>
+    <Copyright>Copyright © Max Stepanskiy 2012-2023</Copyright>
     <PackageProjectUrl>https://github.com/stepaside/Nemo/wiki</PackageProjectUrl>
     <PackageTags>ORM micro-ORM data-mapper sql-mapper</PackageTags>
     

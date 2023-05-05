@@ -39,6 +39,8 @@ namespace NemoTest
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            var provider = DialectFactory.GetProvider("DbConnection", _nemoConfig);
+
             var factory = DbFactory.GetDbProviderFactory(DataAccessProviderTypes.SqlServer);
 
             var connection = DbFactory.CreateConnection("Data Source=.;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;", DataAccessProviderTypes.SqlServer);

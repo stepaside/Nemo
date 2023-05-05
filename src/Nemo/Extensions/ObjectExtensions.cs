@@ -16,6 +16,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Nemo.Logging;
 using Nemo.Utilities;
+using System.Data.Common;
 
 namespace Nemo.Extensions
 {
@@ -139,25 +140,41 @@ namespace Nemo.Extensions
         /// <typeparam name="T"></typeparam>
         /// <param name="dataEntity"></param>
         /// <param name="config"></param>
+        public static void Load<T>(this T dataEntity, INemoConfiguration config, DbConnection connection)
+            where T : class
+        {
+            config ??= ConfigurationFactory.Get<T>();
+
+            var parameters = GetLoadParameters(dataEntity);
+
+            var retrievedObject = ObjectFactory.Retrieve<T>(parameters: parameters, config: config, connection: connection).FirstOrDefault();
+
+            HandleLoad(dataEntity, retrievedObject, config);
+        }
+
         public static void Load<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
-            var parameters = GetLoadParameters(dataEntity);
+            dataEntity.Load(config, null);
+        }
 
-            var retrievedObject = ObjectFactory.Retrieve<T>(parameters: parameters, config: config).FirstOrDefault();
-
-            HandleLoad(dataEntity, retrievedObject, config);
+        public static void Load<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            dataEntity.Load(ConfigurationFactory.Get<T>(), connection);
         }
 
         public static void Load<T>(this T dataEntity)
             where T : class
         {
-            dataEntity.Load(ConfigurationFactory.Get<T>());
+            dataEntity.Load(ConfigurationFactory.Get<T>(), null);
         }
 
-        public static async Task LoadAsync<T>(this T dataEntity, INemoConfiguration config)
+        public static async Task LoadAsync<T>(this T dataEntity, INemoConfiguration config, DbConnection connection)
             where T : class
         {
+            config ??= ConfigurationFactory.Get<T>();
+
             var parameters = GetLoadParameters(dataEntity);
 
             var retrievedObject = (await ObjectFactory.RetrieveAsync<T>(parameters: parameters, config: config).ConfigureAwait(false)).FirstOrDefault();
@@ -165,10 +182,22 @@ namespace Nemo.Extensions
             HandleLoad(dataEntity, retrievedObject, config);
         }
 
-        public static Task LoadAsync<T>(this T dataEntity)
+        public static async Task LoadAsync<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
-            return dataEntity.LoadAsync(ConfigurationFactory.Get<T>());
+            await dataEntity.LoadAsync(config, null).ConfigureAwait(false);
+        }
+
+        public static async Task LoadAsync<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            await dataEntity.LoadAsync(ConfigurationFactory.Get<T>(), connection).ConfigureAwait(false);
+        }
+
+        public static async Task LoadAsync<T>(this T dataEntity)
+            where T : class
+        {
+            await dataEntity.LoadAsync(ConfigurationFactory.Get<T>(), null).ConfigureAwait(false);
         }
 
         private static Param[] GetLoadParameters<T>(T dataEntity)
@@ -210,36 +239,100 @@ namespace Nemo.Extensions
         /// <param name="config"></param>
         /// <param name="additionalParameters"></param>
         /// <returns></returns>
-        public static bool Insert<T>(this T dataEntity, INemoConfiguration config, params Param[] additionalParameters)
+        public static bool Insert<T>(this T dataEntity, INemoConfiguration config, Param[] additionalParameters, DbConnection connection)
             where T : class
         {
+            config ??= ConfigurationFactory.Get<T>();
+
             GetInsertParameters(dataEntity, config, additionalParameters, out var propertyMap, out var identityProperty, out var parameters);
 
-            var response = ObjectFactory.Insert<T>(parameters, config: config);
+            var response = ObjectFactory.Insert<T>(parameters, config: config, connection: connection);
 
             return HandleInsert(dataEntity, parameters, identityProperty, propertyMap, response, config);
         }
 
-        public static bool Insert<T>(this T dataEntity, params Param[] additionalParameters)
+        public static bool Insert<T>(this T dataEntity, INemoConfiguration config, Param[] additionalParameters)
             where T : class
         {
-            return dataEntity.Insert(ConfigurationFactory.Get<T>(), additionalParameters);
+            return dataEntity.Insert(config, additionalParameters, null);
         }
 
-        public static async Task<bool> InsertAsync<T>(this T dataEntity, INemoConfiguration config, params Param[] additionalParameters)
+        public static bool Insert<T>(this T dataEntity, Param[] additionalParameters, DbConnection connection)
             where T : class
         {
+            return dataEntity.Insert(ConfigurationFactory.Get<T>(), additionalParameters, connection);
+        }
+
+        public static bool Insert<T>(this T dataEntity, INemoConfiguration config)
+            where T : class
+        {
+            return dataEntity.Insert(config, null, null);
+        }
+
+        public static bool Insert<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            return dataEntity.Insert(ConfigurationFactory.Get<T>(), null, connection);
+        }
+
+        public static bool Insert<T>(this T dataEntity, Param[] additionalParameters)
+            where T : class
+        {
+            return dataEntity.Insert(ConfigurationFactory.Get<T>(), additionalParameters, null);
+        }
+
+        public static bool Insert<T>(this T dataEntity)
+            where T : class
+        {
+            return dataEntity.Insert(ConfigurationFactory.Get<T>(), null, null);
+        }
+
+        public static async Task<bool> InsertAsync<T>(this T dataEntity, INemoConfiguration config, Param[] additionalParameters, DbConnection connection)
+            where T : class
+        {
+            config ??= ConfigurationFactory.Get<T>();
+
             GetInsertParameters(dataEntity, config, additionalParameters, out var propertyMap, out var identityProperty, out var parameters);
             
-            var response = await ObjectFactory.InsertAsync<T>(parameters, config: config).ConfigureAwait(false);
+            var response = await ObjectFactory.InsertAsync<T>(parameters, config: config, connection: connection).ConfigureAwait(false);
 
             return HandleInsert(dataEntity, parameters, identityProperty, propertyMap, response, config);
         }
 
-        public static Task<bool> InsertAsync<T>(this T dataEntity, params Param[] additionalParameters)
+        public static async Task<bool> InsertAsync<T>(this T dataEntity, INemoConfiguration config, Param[] additionalParameters)
+           where T : class
+        {
+            return await dataEntity.InsertAsync(config, additionalParameters, null).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> InsertAsync<T>(this T dataEntity, Param[] additionalParameters, DbConnection connection)
             where T : class
         {
-            return dataEntity.InsertAsync(ConfigurationFactory.Get<T>(), additionalParameters);
+            return await dataEntity.InsertAsync(ConfigurationFactory.Get<T>(), additionalParameters, connection).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> InsertAsync<T>(this T dataEntity, INemoConfiguration config)
+            where T : class
+        {
+            return await dataEntity.InsertAsync(config, null, null).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> InsertAsync<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            return await dataEntity.InsertAsync(ConfigurationFactory.Get<T>(), null, connection).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> InsertAsync<T>(this T dataEntity, Param[] additionalParameters)
+            where T : class
+        {
+            return await dataEntity.InsertAsync(ConfigurationFactory.Get<T>(), additionalParameters, null).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> InsertAsync<T>(this T dataEntity)
+            where T : class
+        {
+            return await dataEntity.InsertAsync(ConfigurationFactory.Get<T>(), null, null).ConfigureAwait(false);
         }
 
         private static void GetInsertParameters<T>(T dataEntity, INemoConfiguration config, Param[] additionalParameters, out IDictionary<PropertyInfo, ReflectedProperty> propertyMap, out PropertyInfo identityProperty, out Param[] parameters)
@@ -328,36 +421,100 @@ namespace Nemo.Extensions
         /// <param name="config"></param>
         /// <param name="additionalParameters"></param>
         /// <returns></returns>
-        public static bool Update<T>(this T dataEntity, INemoConfiguration config, params Param[] additionalParameters)
+        public static bool Update<T>(this T dataEntity, INemoConfiguration config, Param[] additionalParameters, DbConnection connection)
             where T : class
         {
+            config ??= ConfigurationFactory.Get<T>();
+
             var supportsChangeTracking = GetUpdateParameters(dataEntity, additionalParameters, out var propertyMap, out var outputProperties, out var parameters);
 
-            var response = ObjectFactory.Update<T>(parameters, config: config);
+            var response = ObjectFactory.Update<T>(parameters, config: config, connection: connection);
 
             return HandleUpdate(dataEntity, outputProperties, propertyMap, parameters, supportsChangeTracking, response, config);
         }
 
-        public static bool Update<T>(this T dataEntity, params Param[] additionalParameters)
+        public static bool Update<T>(this T dataEntity, INemoConfiguration config, Param[] additionalParameters)
             where T : class
         {
-            return dataEntity.Update(ConfigurationFactory.Get<T>(), additionalParameters);
+            return dataEntity.Update(config, additionalParameters, null);
         }
 
-        public static async Task<bool> UpdateAsync<T>(this T dataEntity, INemoConfiguration config, params Param[] additionalParameters)
+        public static bool Update<T>(this T dataEntity, Param[] additionalParameters, DbConnection connection)
             where T : class
         {
+            return dataEntity.Update(ConfigurationFactory.Get<T>(), additionalParameters, connection);
+        }
+
+        public static bool Update<T>(this T dataEntity, INemoConfiguration config)
+            where T : class
+        {
+            return dataEntity.Update(config, null, null);
+        }
+
+        public static bool Update<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            return dataEntity.Update(ConfigurationFactory.Get<T>(), null, connection);
+        }
+
+        public static bool Update<T>(this T dataEntity, Param[] additionalParameters)
+            where T : class
+        {
+            return dataEntity.Update(ConfigurationFactory.Get<T>(), additionalParameters, null);
+        }
+
+        public static bool Update<T>(this T dataEntity)
+            where T : class
+        {
+            return dataEntity.Update(ConfigurationFactory.Get<T>(), null, null);
+        }
+
+        public static async Task<bool> UpdateAsync<T>(this T dataEntity, INemoConfiguration config, Param[] additionalParameters, DbConnection connection)
+            where T : class
+        {
+            config ??= ConfigurationFactory.Get<T>();
+
             var supportsChangeTracking = GetUpdateParameters(dataEntity, additionalParameters, out var propertyMap, out var outputProperties, out var parameters);
 
-            var response = await ObjectFactory.UpdateAsync<T>(parameters, config: config).ConfigureAwait(false);
+            var response = await ObjectFactory.UpdateAsync<T>(parameters, config: config, connection: connection).ConfigureAwait(false);
 
             return HandleUpdate(dataEntity, outputProperties, propertyMap, parameters, supportsChangeTracking, response, config);
         }
 
-        public static Task<bool> UpdateAsync<T>(this T dataEntity, params Param[] additionalParameters)
+        public static async Task<bool> UpdateAsync<T>(this T dataEntity, INemoConfiguration config, Param[] additionalParameters)
             where T : class
         {
-            return dataEntity.UpdateAsync(ConfigurationFactory.Get<T>(), additionalParameters);
+            return await dataEntity.UpdateAsync(config, additionalParameters, null).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> UpdateAsync<T>(this T dataEntity, Param[] additionalParameters, DbConnection connection)
+            where T : class
+        {
+            return await dataEntity.UpdateAsync(ConfigurationFactory.Get<T>(), additionalParameters, connection).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> UpdateAsync<T>(this T dataEntity, INemoConfiguration config)
+            where T : class
+        {
+            return await dataEntity.UpdateAsync(config, null, null).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> UpdateAsync<T>(this T dataEntity, Param[] additionalParameters)
+            where T : class
+        {
+            return await dataEntity.UpdateAsync(ConfigurationFactory.Get<T>(), additionalParameters, null).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> UpdateAsync<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            return await dataEntity.UpdateAsync(ConfigurationFactory.Get<T>(), null, connection).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> UpdateAsync<T>(this T dataEntity)
+            where T : class
+        {
+            return await dataEntity.UpdateAsync(ConfigurationFactory.Get<T>(), null, null).ConfigureAwait(false);
         }
 
         private static bool GetUpdateParameters<T>(T dataEntity, Param[] additionalParameters, out IDictionary<PropertyInfo, ReflectedProperty> propertyMap, out IEnumerable<PropertyInfo> outputProperties, out Param[] parameters) where T : class
@@ -434,36 +591,64 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <param name="config"></param>
         /// <returns></returns>
+        public static bool Delete<T>(this T dataEntity, INemoConfiguration config, DbConnection connection)
+            where T : class
+        {
+            config ??= ConfigurationFactory.Get<T>();
+
+            var parameters = GetDeleteParameters(dataEntity);
+
+            var response = ObjectFactory.Delete<T>(parameters, config: config, connection: connection);
+
+            return HandleDelete(dataEntity, response, false, config);
+        }
+
         public static bool Delete<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
-            var parameters = GetDeleteParameters(dataEntity);
+            return dataEntity.Delete(config, null);
+        }
 
-            var response = ObjectFactory.Delete<T>(parameters, config: config);
-
-            return HandleDelete(dataEntity, response, false, config);
+        public static bool Delete<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            return dataEntity.Delete(ConfigurationFactory.Get<T>(), connection);
         }
 
         public static bool Delete<T>(this T dataEntity)
             where T : class
         {
-            return dataEntity.Delete(ConfigurationFactory.Get<T>());
+            return dataEntity.Delete(ConfigurationFactory.Get<T>(), null);
+        }
+
+        public static async Task<bool> DeleteAsync<T>(this T dataEntity, INemoConfiguration config, DbConnection connection)
+            where T : class
+        {
+            config ??= ConfigurationFactory.Get<T>();
+
+            var parameters = GetDeleteParameters(dataEntity);
+
+            var response = await ObjectFactory.DeleteAsync<T>(parameters, config: config, connection: connection).ConfigureAwait(false);
+
+            return HandleDelete(dataEntity, response, false, config);
         }
 
         public static async Task<bool> DeleteAsync<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
-            var parameters = GetDeleteParameters(dataEntity);
-
-            var response = await ObjectFactory.DeleteAsync<T>(parameters, config: config).ConfigureAwait(false);
-
-            return HandleDelete(dataEntity, response, false, config);
+            return await dataEntity.DeleteAsync(config, null).ConfigureAwait(false);
         }
 
-        public static Task<bool> DeleteAsync<T>(this T dataEntity)
+        public static async Task<bool> DeleteAsync<T>(this T dataEntity, DbConnection connection)
             where T : class
         {
-            return dataEntity.DeleteAsync(ConfigurationFactory.Get<T>());
+            return await dataEntity.DeleteAsync(ConfigurationFactory.Get<T>(), connection).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> DeleteAsync<T>(this T dataEntity)
+            where T : class
+        {
+            return await dataEntity.DeleteAsync(ConfigurationFactory.Get<T>(), null).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -473,36 +658,64 @@ namespace Nemo.Extensions
         /// <param name="dataEntity"></param>
         /// <param name="config"></param>
         /// <returns></returns>
-        public static bool Destroy<T>(this T dataEntity, INemoConfiguration config)
+        public static bool Destroy<T>(this T dataEntity, INemoConfiguration config, DbConnection connection)
             where T : class
         {
+            config ??= ConfigurationFactory.Get<T>();
+
             var parameters = GetDeleteParameters(dataEntity);
 
-            var response = ObjectFactory.Destroy<T>(parameters, config: config);
+            var response = ObjectFactory.Destroy<T>(parameters, config: config, connection: connection);
 
             return HandleDelete(dataEntity, response, true, config);
+        }
+
+        public static bool Destroy<T>(this T dataEntity, INemoConfiguration config)
+           where T : class
+        {
+            return dataEntity.Destroy(config, null);
+        }
+
+        public static bool Destroy<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            return dataEntity.Destroy(ConfigurationFactory.Get<T>(), connection);
         }
 
         public static bool Destroy<T>(this T dataEntity)
             where T : class
         {
-            return dataEntity.Destroy(ConfigurationFactory.Get<T>());
+            return dataEntity.Destroy(ConfigurationFactory.Get<T>(), null);
+        }
+
+        public static async Task<bool> DestroyAsync<T>(this T dataEntity, INemoConfiguration config, DbConnection connection)
+            where T : class
+        {
+            config ??= ConfigurationFactory.Get<T>();
+
+            var parameters = GetDeleteParameters(dataEntity);
+
+            var response = await ObjectFactory.DestroyAsync<T>(parameters, config: config, connection: connection).ConfigureAwait(false);
+
+            return HandleDelete(dataEntity, response, true, config);
         }
 
         public static async Task<bool> DestroyAsync<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
-            var parameters = GetDeleteParameters(dataEntity);
-
-            var response = await ObjectFactory.DestroyAsync<T>(parameters, config: config).ConfigureAwait(false);
-
-            return HandleDelete(dataEntity, response, true, config);
+            return await dataEntity.DestroyAsync(config, null).ConfigureAwait(false);
         }
 
-        public static Task<bool> DestroyAsync<T>(this T dataEntity)
+        public static async Task<bool> DestroyAsync<T>(this T dataEntity, DbConnection connection)
             where T : class
         {
-            return dataEntity.DestroyAsync(ConfigurationFactory.Get<T>());
+            return await dataEntity.DestroyAsync(ConfigurationFactory.Get<T>(), connection).ConfigureAwait(false);
+        }
+
+        public static async Task<bool> DestroyAsync<T>(this T dataEntity)
+            where T : class
+        {
+            return await dataEntity.DestroyAsync(ConfigurationFactory.Get<T>(), null).ConfigureAwait(false);
         }
 
         private static Param[] GetDeleteParameters<T>(T dataEntity)
@@ -568,11 +781,45 @@ namespace Nemo.Extensions
 
         #region ITrackableDataEntity Methods
 
-        public static bool Save<T>(this T dataEntity)
+        public static bool Save<T>(this T dataEntity, INemoConfiguration config)
             where T : class
         {
             var result = false;
             
+            if (dataEntity.IsNew())
+            {
+                result = dataEntity.Insert(config);
+            }
+            else if (!(dataEntity is ITrackableDataEntity entity) || entity.IsDirty())
+            {
+                result = dataEntity.Update(config);
+            }
+
+            return result;
+        }
+
+        public static bool Save<T>(this T dataEntity, DbConnection connection)
+            where T : class
+        {
+            var result = false;
+
+            if (dataEntity.IsNew())
+            {
+                result = dataEntity.Insert(connection);
+            }
+            else if (!(dataEntity is ITrackableDataEntity entity) || entity.IsDirty())
+            {
+                result = dataEntity.Update(connection);
+            }
+
+            return result;
+        }
+
+        public static bool Save<T>(this T dataEntity)
+            where T : class
+        {
+            var result = false;
+
             if (dataEntity.IsNew())
             {
                 result = dataEntity.Insert();
