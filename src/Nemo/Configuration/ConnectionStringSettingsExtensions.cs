@@ -53,7 +53,7 @@ namespace Nemo.Configuration
                 if (connectionStringCollection == null || connectionStringCollection.Count == 0 || connectionStringCollection.All(c => c.Name == null))
                 {
                     var connectionStrings = configuration.GetSection(section).Get<Dictionary<string, ConnectionStringSettings>>();
-                    if (connectionStrings == null || connectionStrings.Count == 0 || !connectionStrings.ContainsKey(name) || connectionStrings[name].Name == null)
+                    if (connectionStrings == null || connectionStrings.Count == 0)
                     {
                         var connectionStringMap = configuration.GetSection(section).Get<Dictionary<string, string>>();
                         if (connectionStringMap == null || connectionStringMap.Count == 0)
@@ -72,6 +72,22 @@ namespace Nemo.Configuration
                     else if (!connectionStrings.TryGetValue(name, out connectionStringSettings))
                     {
                         return null;
+                    }
+                    else if (connectionStringSettings.Name == null)
+                    {
+                        var connectionStringMap = configuration.GetSection(section).Get<Dictionary<string, string>>();
+                        if (connectionStringMap == null || connectionStringMap.Count == 0)
+                        {
+                            return null;
+                        }
+                        else if (!connectionStringMap.TryGetValue(name, out var connectionString))
+                        {
+                            return null;
+                        }
+                        else
+                        {
+                            connectionStringSettings.ConnectionString = connectionString;
+                        }
                     }
                 }
                 else if (!connectionStringCollection.TryGetValue(name, out connectionStringSettings))
