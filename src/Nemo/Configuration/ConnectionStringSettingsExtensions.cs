@@ -53,7 +53,7 @@ namespace Nemo.Configuration
                 if (connectionStringCollection == null || connectionStringCollection.Count == 0 || connectionStringCollection.All(c => c.Name == null))
                 {
                     var connectionStrings = configuration.GetSection(section).Get<Dictionary<string, ConnectionStringSettings>>();
-                    if (connectionStrings == null || connectionStrings.Count == 0)
+                    if (connectionStrings == null || connectionStrings.Count == 0 || !connectionStrings.ContainsKey(name) || connectionStrings[name].Name == null)
                     {
                         var connectionStringMap = configuration.GetSection(section).Get<Dictionary<string, string>>();
                         if (connectionStringMap == null || connectionStringMap.Count == 0)
