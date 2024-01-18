@@ -11,9 +11,9 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <AssemblyName>Nemo</AssemblyName>
     <AssemblyTitle>Nemo</AssemblyTitle>
-    <AssemblyVersion>2.8.5</AssemblyVersion>
-    <FileVersion>2.8.5</FileVersion>
-    <PackageVersion>2.8.5</PackageVersion>
+    <AssemblyVersion>2.8.6</AssemblyVersion>
+    <FileVersion>2.8.6</FileVersion>
+    <PackageVersion>2.8.6</PackageVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>
@@ -45,7 +45,7 @@
   <!-- common NuGet package refs that affect all projects -->
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
     <PackageReference Include="System.Interactive" Version="6.0.1" />
     <PackageReference Include="System.Interactive.Async.Providers" Version="6.0.1" />
   </ItemGroup>
