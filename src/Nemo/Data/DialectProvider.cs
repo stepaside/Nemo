@@ -68,6 +68,7 @@ namespace Nemo.Data
         public string ParameterNameRegexPattern { get; protected set; }
 
         public bool SupportsArrays { get; protected set; }
+        public bool SupportsPositionalParameters { get; protected set; }
 
         public abstract int MaximumNumberOfParameters { get; }
 
@@ -87,7 +88,7 @@ namespace Nemo.Data
             }
         }
 
-        public Regex PositionalParameterMatcher
+        public virtual Regex PositionalParameterMatcher
         {
             get
             {

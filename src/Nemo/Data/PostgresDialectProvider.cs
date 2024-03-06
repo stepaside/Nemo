@@ -5,12 +5,14 @@ using System.Text;
 using System.Data;
 using Nemo.Extensions;
 using Nemo.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Nemo.Data
 {
     public class PostgresDialectProvider : DialectProvider
     {
         public readonly static PostgresDialectProvider Instance = new PostgresDialectProvider();
+        private readonly Lazy<Regex> _positionalParameterNameMatcher;
 
         protected PostgresDialectProvider()
         {
@@ -64,6 +66,9 @@ where
 order by
     args.ordinal_position;";
             SupportsArrays = true;
+            SupportsPositionalParameters = true;
+
+            _positionalParameterNameMatcher = new Lazy<Regex>(() => new Regex(@"(\(\s*?)?(\$\d+)(\s*?\))?", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled));
         }
 
         public override string ComputeAutoIncrement(string variableName, Func<string> tableNameFactory)
@@ -120,5 +125,7 @@ order by
         }
 
         public override int MaximumNumberOfParameters => short.MaxValue;
+
+        public override Regex PositionalParameterMatcher => _positionalParameterNameMatcher.Value;
     }
 }

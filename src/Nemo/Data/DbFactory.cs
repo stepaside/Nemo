@@ -592,7 +592,7 @@ namespace Nemo.Data
             Dictionary<DbParameter, Param> outputParameters = null;
             if (parameters != null)
             {
-                var isPositional = command.CommandType != CommandType.StoredProcedure && command.CommandText.IndexOf('?') >= 0;
+                var isPositional = command.CommandType != CommandType.StoredProcedure && (command.CommandText.IndexOf('?') >= 0 || (dialect.Value.SupportsPositionalParameters && dialect.Value.PositionalParameterMatcher.IsMatch(command.CommandText)));
 
                 ISet<string> parsedParameters = null;
                 if ((config?.IgnoreInvalidParameters).GetValueOrDefault())
@@ -611,15 +611,18 @@ namespace Nemo.Data
                 foreach (var parameter in parameters)
                 {
                     var originalName = parameter.Name;
-                    var name = originalName.TrimStart(DbFactory.ParameterPrexifes);
+                    var name = isPositional && originalName == null ? null : originalName.TrimStart(DbFactory.ParameterPrexifes);
 
-                    if (parsedParameters != null && !parsedParameters.Contains(name))
+                    if (name != null && parsedParameters != null && !parsedParameters.Contains(name))
                     {
                         continue;
                     }
 
                     var dbParam = command.CreateParameter();
-                    dbParam.ParameterName = name;
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        dbParam.ParameterName = name;
+                    }
                     dbParam.Direction = parameter.Direction;
 
                     var addParameter = true;
