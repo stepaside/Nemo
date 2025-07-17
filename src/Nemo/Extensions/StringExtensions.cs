@@ -20,14 +20,7 @@ namespace Nemo.Extensions
 
             delimiter ??= CultureInfo.CurrentCulture.TextInfo.ListSeparator;
 
-            var sb = new StringBuilder();
-            foreach (var value in source)
-            {
-                if (sb.Length > 0)
-                    sb.Append(delimiter);
-                sb.Append(value);
-            }
-            return sb.ToString();
+            return string.Join(delimiter, source);
         }
 
         public static byte[] ToByteArray(this string value, Encoding encoding = null)
@@ -61,8 +54,19 @@ namespace Nemo.Extensions
 
         public static string ToNumericPhoneNumber(this string phonenumber)
         {
-            int n;
-            return phonenumber.Select(c => _phoneMap.TryGetValue(char.ToLower(c), out n) ? n.ToString() : c.ToString()).ToDelimitedString(string.Empty);
+            var result = new StringBuilder(phonenumber.Length);
+            foreach (var c in phonenumber)
+            {
+                if (_phoneMap.TryGetValue(char.ToLower(c), out var n))
+                {
+                    result.Append(n);
+                }
+                else
+                {
+                    result.Append(c);
+                }
+            }
+            return result.ToString();
         }
 
         public static string Slice(this string source, int start, int end)

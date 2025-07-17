@@ -14,6 +14,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nemo.Test.Core", "tests\Nem
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nemo.Benchmark", "tests\Nemo.Benchmark\Nemo.Benchmark.csproj", "{17B9A683-9303-4DCB-9EAE-313A63C1E5B8}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nemo.UnitTests", "tests\Nemo.UnitTests\Nemo.UnitTests.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +38,10 @@ Global
 		{17B9A683-9303-4DCB-9EAE-313A63C1E5B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{17B9A683-9303-4DCB-9EAE-313A63C1E5B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{17B9A683-9303-4DCB-9EAE-313A63C1E5B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
