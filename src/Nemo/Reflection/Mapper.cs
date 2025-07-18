@@ -19,7 +19,7 @@ namespace Nemo.Reflection
         private static readonly ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper> Mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper>();
         private static readonly ConcurrentDictionary<Type, DictionaryMapper> DictionaryMappers = new ConcurrentDictionary<Type, DictionaryMapper>();
 
-        private static readonly Dictionary<Type, MethodInfo> GetItemMethods = typeof(MappingFactory).GetMethods(BindingFlags.Static | BindingFlags.NonPublic).Where(m => m.Name == "GetItem").ToDictionary(m => m.GetParameters()[0].ParameterType, m => m);
+        private static readonly Dictionary<Type, MethodInfo> GetItemMethods = typeof(MappingFactory).GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public).Where(m => m.Name == "GetItem").ToDictionary(m => m.GetParameters()[0].ParameterType, m => m);
 
         internal static PropertyMapper CreateDelegate(Type sourceType, Type targetType, bool indexer, bool autoTypeCoercion)
         {
@@ -91,6 +91,9 @@ namespace Nemo.Reflection
                 if (match.Value.IsSimpleList && typeConverter == null) continue;
                 typeConverter = MatchTypeConverter(targetType, match.Value, getItem.ReturnType, typeConverter, autoTypeCoercion);
 
+                var propertyName = MappingFactory.GetPropertyOrColumnName(match.Key, false, entityMap, true);
+                if (propertyName == null) continue;
+
                 il.Emit(OpCodes.Ldarg_1);
                 if (typeConverter.Item1 != null)
                 {
@@ -99,7 +102,7 @@ namespace Nemo.Reflection
                 }
 
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldstr, MappingFactory.GetPropertyOrColumnName(match.Key, false, entityMap, true));
+                il.Emit(OpCodes.Ldstr, propertyName);
                 if (!useIndexerMethod)
                 {
                     il.Emit(OpCodes.Callvirt, getItem);
@@ -109,42 +112,48 @@ namespace Nemo.Reflection
                     var propertyType = match.Value.PropertyType;
                     if (propertyType.IsValueType)
                     {
-                        var ctor = propertyType.GetConstructor(Type.EmptyTypes);
-                        if (ctor != null)
-                        { 
-                            il.Emit(OpCodes.Newobj, ctor);
-                            il.BoxIfNeeded(propertyType);
-                        }
-                        else if (propertyType.IsPrimitive)
-                        {
-                            if (propertyType == typeof(double))
-                            {
-                                il.Emit(OpCodes.Ldc_R8, 0.0);
-                            }
-                            else if (propertyType == typeof(float))
-                            {
-                                il.Emit(OpCodes.Ldc_R4, 0.0f);
-                            }
-                            else
-                            {
-                                il.EmitFastInt(0);
-                                if (propertyType == typeof(long) || propertyType == typeof(ulong))
-                                {
-                                    il.Emit(OpCodes.Conv_I8);
-                                }
-                            }
-                            il.BoxIfNeeded(propertyType);
-                        }
-                        else
-                        {
-                            il.Emit(OpCodes.Ldtoken, propertyType); 
-                            il.Emit(OpCodes.Call, getTypeFromHandle);
-                            il.Emit(OpCodes.Call, getDefaultValue);
-                        }
+                        //var ctor = propertyType.GetConstructor(Type.EmptyTypes);
+                        //if (ctor != null)
+                        //{
+                        //    il.Emit(OpCodes.Newobj, ctor);
+                        //    il.BoxIfNeeded(propertyType);
+                        //}
+                        //else if (propertyType.IsPrimitive)
+                        //{
+                        //    if (propertyType == typeof(double))
+                        //    {
+                        //        il.Emit(OpCodes.Ldc_R8, 0.0);
+                        //    }
+                        //    else if (propertyType == typeof(float))
+                        //    {
+                        //        il.Emit(OpCodes.Ldc_R4, 0.0f);
+                        //    }
+                        //    else
+                        //    {
+                        //        il.EmitFastInt(0);
+                        //        if (propertyType == typeof(long) || propertyType == typeof(ulong))
+                        //        {
+                        //            il.Emit(OpCodes.Conv_I8);
+                        //        }
+                        //    }
+                        //    il.BoxIfNeeded(propertyType);
+                        //}
+                        //else
+                        //{
+                        //    il.Emit(OpCodes.Ldtoken, propertyType);
+                        //    il.Emit(OpCodes.Call, getTypeFromHandle);
+                        //    il.Emit(OpCodes.Call, getDefaultValue);
+                        //}
+                        il.Emit(OpCodes.Ldarg_1);
+                        il.Emit(OpCodes.Call, match.Key.GetGetMethod());
+                        il.BoxIfNeeded(propertyType);
                     }
                     else
                     {
-                        il.Emit(OpCodes.Ldnull);
+                        //il.Emit(OpCodes.Ldnull);
+                        il.Emit(OpCodes.Ldarg_1);
+                        il.Emit(OpCodes.Call, match.Key.GetGetMethod());
+                        il.Emit(OpCodes.Castclass, typeof(object));
                     }
                     il.Emit(OpCodes.Call, getItem);
                 }

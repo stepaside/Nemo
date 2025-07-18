@@ -335,6 +335,8 @@ namespace Nemo.Reflection
             {
                 // check if we can support the wrapping.
                 var propertyName = MappingFactory.GetPropertyOrColumnName(property, false, entityMap, false);
+                if (propertyName == null) continue;
+
                 var objectProperty = objectType?.GetProperty(propertyName);
 
                 if (objectProperty != null && ((property.CanRead && !objectProperty.CanRead) || (property.CanWrite && !objectProperty.CanWrite)))
@@ -442,13 +444,14 @@ namespace Nemo.Reflection
 
         private static void DefineIndexerProperty(PropertyInfo property, TypeBuilder typeBuilder, FieldInfo field, Type objectType, IEntityMap entityMap)
         {
-            // create the new property.
-            var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.HasDefault, property.PropertyType, null);
-
             // The property "set" and property "get" methods require a special set of attributes.
             //var getSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig | MethodAttributes.Virtual;
             const MethodAttributes getSetAttr = MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.SpecialName;
             var columnName = MappingFactory.GetPropertyOrColumnName(property, false, entityMap, true);
+            if (columnName == null) return;
+
+            // create the new property.
+            var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.HasDefault, property.PropertyType, null);
 
             // create the getter if we can read.
             if (property.CanRead)

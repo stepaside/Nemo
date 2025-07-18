@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 
@@ -8,9 +9,12 @@ namespace Nemo.Attributes
     public class MapPropertyAttribute : MapAttribute
     {
         public MapPropertyAttribute(string sourceName) : base(sourceName) { }
-        
-        internal static string GetMappedPropertyName(PropertyInfo property)
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static string GetMappedPropertyName(PropertyInfo property)
         {
+            if (property == null) return null;
+
             var mapping = property.GetCustomAttributes(typeof(MapPropertyAttribute), false).Cast<MapPropertyAttribute>().FirstOrDefault();
             if (mapping == null)
             {

@@ -158,6 +158,8 @@ namespace Nemo.UnitTests
             var result = MappingFactory.GetTypeConverter(typeof(string), null, null);
             
             Assert.IsNotNull(result);
+            Assert.IsNull(result.Item1);
+            Assert.IsNull(result.Item2);
         }
 
         private class MockDataRecord : IDataRecord

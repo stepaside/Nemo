@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
+using Newtonsoft.Json.Converters;
 
 namespace Nemo.UnitTests
 {
@@ -31,7 +32,7 @@ namespace Nemo.UnitTests
             public int Id { get; set; }
 
             [MapProperty("entity_name")]
-            [Parameter("@Name", ParameterDirection.Input)]
+            [Parameter("@Name", Direction = ParameterDirection.Input)]
             public string Name { get; set; }
 
             [DoNotPersist]
@@ -41,7 +42,7 @@ namespace Nemo.UnitTests
             [DoNotSelect]
             public string InternalField { get; set; }
 
-            [References(typeof(TestEntity), 0)]
+            [References(typeof(TestEntity), Position = 0)]
             public int? ParentId { get; set; }
         }
 
@@ -279,9 +280,9 @@ namespace Nemo.UnitTests
             var property = typeof(TestEntity).GetProperty("Name");
             var reflectedProperty = new ReflectedProperty(property);
             
-            reflectedProperty.AddConverter(typeof(string));
+            reflectedProperty.AddConverter(typeof(StringEnumConverter));
             
-            Assert.AreEqual(typeof(string), reflectedProperty.Converter);
+            Assert.AreEqual(typeof(StringEnumConverter), reflectedProperty.Converter);
         }
 
         [TestMethod]

@@ -108,7 +108,7 @@ namespace Nemo
             return (T)Map(source, typeof(T));
         }
 
-        internal static T Map<T>(object source, bool autoTypeCoercion)
+        public static T Map<T>(object source, bool autoTypeCoercion)
         {
             return (T)Map(source, typeof(T), autoTypeCoercion);
         }
@@ -127,6 +127,8 @@ namespace Nemo
 
         public static TResult Map<TSource, TResult>(TSource source, TResult target)
         {
+            if (source == null) return target;
+
             var indexer = MappingFactory.IsIndexer(source);
 
             if (indexer)
@@ -138,6 +140,10 @@ namespace Nemo
                     {
                         FastIndexerMapperWithTypeCoercion<IDataRecord, TResult>.Map(record, target);
                     }
+                    else if (source is IDictionary<string, object> dictionary)
+                    {
+                        FastIndexerMapperWithTypeCoercion<IDictionary<string, object>, TResult>.Map(dictionary, target);
+                    }
                     else
                     {
                         FastIndexerMapperWithTypeCoercion<TSource, TResult>.Map(source, target);
@@ -148,6 +154,10 @@ namespace Nemo
                     if (source is IDataRecord record)
                     {
                         FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
+                    }
+                    else if (source is IDictionary<string, object> dictionary)
+                    {
+                        FastIndexerMapper<IDictionary<string, object>, TResult>.Map(dictionary, target);
                     }
                     else
                     {
@@ -164,6 +174,8 @@ namespace Nemo
 
         internal static TResult Map<TSource, TResult>(TSource source, TResult target, bool autoTypeCoercion)
         {
+            if (source == null) return target;
+
             var indexer = MappingFactory.IsIndexer(source);
 
             if (indexer)
@@ -173,6 +185,10 @@ namespace Nemo
                     if (source is IDataRecord record)
                     {
                         FastIndexerMapperWithTypeCoercion<IDataRecord, TResult>.Map(record, target);
+                    }
+                    else if (source is IDictionary<string, object> dictionary)
+                    {
+                        FastIndexerMapperWithTypeCoercion<IDictionary<string, object>, TResult>.Map(dictionary, target);
                     }
                     else
                     {
@@ -184,6 +200,10 @@ namespace Nemo
                     if (source is IDataRecord record)
                     {
                         FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
+                    }
+                    else if (source is IDictionary<string, object> dictionary)
+                    {
+                        FastIndexerMapper<IDictionary<string, object>, TResult>.Map(dictionary, target);
                     }
                     else
                     {
@@ -220,6 +240,8 @@ namespace Nemo
 
         internal static void Map<T>(IDictionary<string, object> source, T target, bool autoTypeCoercion)
         {
+            if (source == null) return;
+
             if (autoTypeCoercion)
             {
                 FastIndexerMapperWithTypeCoercion<IDictionary<string, object>, T>.Map(source, target ?? throw new ArgumentNullException(nameof(target)));
@@ -252,6 +274,8 @@ namespace Nemo
 
         internal static void Map<T>(DataRow source, T target, bool autoTypeCoercion)
         {
+            if (source == null) return;
+
             if (autoTypeCoercion)
             {
                 FastIndexerMapperWithTypeCoercion<DataRow, T>.Map(source, target ?? throw new ArgumentNullException(nameof(target)));
@@ -304,6 +328,8 @@ namespace Nemo
 
         internal static void Map<T>(IDataRecord source, T target, bool autoTypeCoercion)
         {
+            if (source == null) return;
+
             if (autoTypeCoercion)
             {
                 FastIndexerMapperWithTypeCoercion<IDataRecord, T>.Map(source, target ?? throw new ArgumentNullException(nameof(target)));

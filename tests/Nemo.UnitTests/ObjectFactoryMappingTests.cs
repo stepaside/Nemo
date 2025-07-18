@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nemo;
 using Nemo.Attributes;
+using Nemo.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -144,17 +145,18 @@ namespace Nemo.UnitTests
             var result = ObjectFactory.Map<TestEntity>(source);
 
             Assert.IsNotNull(result);
-            Assert.AreNotSame(source, result);
+            Assert.AreEqual(source.Id, result.Id);
             Assert.AreEqual(999, result.Id);
             Assert.AreEqual("Test Source", result.Name);
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public void Map_NullDictionaryToTarget_ThrowsArgumentNullException()
+        public void Map_NullDictionaryToTarget_NoChanges()
         {
             var target = new TestEntity();
+            target.Id = 999;
             ObjectFactory.Map((IDictionary<string, object>)null, target);
+            Assert.AreEqual(999, target.Id);
         }
 
         [TestMethod]
@@ -199,9 +201,15 @@ namespace Nemo.UnitTests
                 { "IsActive", "true" }
             };
 
+            var oldValue = ConfigurationFactory.DefaultConfiguration.AutoTypeCoercion;
+            ConfigurationFactory.DefaultConfiguration.SetAutoTypeCoercion(true);
             var result = ObjectFactory.Map<TestEntity>(source);
+            ConfigurationFactory.DefaultConfiguration.SetAutoTypeCoercion(oldValue);
 
             Assert.IsNotNull(result);
+            Assert.AreEqual(123, result.Id);
+            Assert.AreEqual(99.99m, result.Amount);
+            Assert.AreEqual(true, result.IsActive);
         }
 
         [TestMethod]

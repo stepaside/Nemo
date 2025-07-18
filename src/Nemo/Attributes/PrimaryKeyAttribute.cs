@@ -10,6 +10,13 @@ namespace Nemo.Attributes
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public sealed class PrimaryKeyAttribute : PropertyAttribute
     {
+        public PrimaryKeyAttribute() { }
+
+        public PrimaryKeyAttribute(int position) 
+        { 
+            Position = position;
+        }
+
         public int Position { get; set; }
     }
 }

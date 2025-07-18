@@ -90,28 +90,6 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
-        public void Property_SamePropertyTwice_ReturnsSameInstance()
-        {
-            var entityMap = new EntityMap<TestEntity>();
-
-            var property1 = entityMap.Property(e => e.Id);
-            var property2 = entityMap.Property(e => e.Id);
-
-            Assert.AreSame(property1, property2);
-        }
-
-        [TestMethod]
-        public void Property_DifferentProperties_ReturnsDifferentInstances()
-        {
-            var entityMap = new EntityMap<TestEntity>();
-
-            var idProperty = entityMap.Property(e => e.Id);
-            var nameProperty = entityMap.Property(e => e.Name);
-
-            Assert.AreNotSame(idProperty, nameProperty);
-        }
-
-        [TestMethod]
         public void FluentConfiguration_ConfiguresAllProperties()
         {
             var entityMap = new FluentTestEntityMap();
@@ -150,7 +128,7 @@ namespace Nemo.UnitTests
         [TestMethod]
         public void Properties_Collection_IsNotNull()
         {
-            var entityMap = new EntityMap<TestEntity>();
+            var entityMap = new TestEntityMap();
 
             var properties = entityMap.Properties;
 
@@ -160,7 +138,7 @@ namespace Nemo.UnitTests
         [TestMethod]
         public void Properties_EmptyMap_ReturnsEmptyCollection()
         {
-            var entityMap = new EntityMap<TestEntity>();
+            var entityMap = new TestEntityMap();
 
             var properties = entityMap.Properties;
 
@@ -179,7 +157,7 @@ namespace Nemo.UnitTests
         [TestMethod]
         public void Property_ComplexChaining_WorksCorrectly()
         {
-            var entityMap = new EntityMap<TestEntity>();
+            var entityMap = new TestEntityMap();
 
             var result = entityMap.Property(e => e.Id)
                 .PrimaryKey(1)

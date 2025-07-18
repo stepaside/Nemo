@@ -49,7 +49,7 @@ namespace Nemo.Attributes.Converters
 		/// <returns></returns>
 		public static TypeConverterAttribute GetTypeConverter(PropertyInfo property)
 		{
-			return property.GetCustomAttributes(typeof(TypeConverterAttribute), false).Cast<TypeConverterAttribute>().FirstOrDefault();
+			return property?.GetCustomAttributes(typeof(TypeConverterAttribute), false).Cast<TypeConverterAttribute>().FirstOrDefault();
 		}
 
 		/// <summary>Returns the expected converter interface type, given from and to types.</summary>
@@ -79,6 +79,11 @@ namespace Nemo.Attributes.Converters
 			}
 			else
 			{
+                if (fromType == null || toType == null)
+				{
+					throw new TypeConverterException($"Can't use {converterType.FullName} as a converter because from or to type is null.");
+				}
+
 				var expectedInterfaceType = GetExpectedConverterInterfaceType(fromType, toType);
                 var converterIntefaces = converterType.GetInterfaces();
 
@@ -137,7 +142,6 @@ namespace Nemo.Attributes.Converters
 
         internal static Tuple<Type, Type> GetTypeConverter(Type indexerType, PropertyInfo property)
         {
-            var propertyType = property.PropertyType;
             var typeConverterAttribute = GetTypeConverter(property);
 
             Type typeConverterType = null;
@@ -145,6 +149,7 @@ namespace Nemo.Attributes.Converters
 
             if (typeConverterAttribute != null && typeConverterAttribute.TypeConverterType != null)
             {
+                var propertyType = property?.PropertyType;
                 ValidateTypeConverterType(typeConverterAttribute.TypeConverterType, indexerType, propertyType);
                 typeConverterType = typeConverterAttribute.TypeConverterType;
                 typeConverterInterfaceType = GetExpectedConverterInterfaceType(indexerType, propertyType);

@@ -96,7 +96,7 @@ namespace Nemo.UnitTests
 
             Assert.IsTrue(result.Contains("t.[Id] = 1"));
             Assert.IsTrue(result.Contains("AND"));
-            Assert.IsTrue(result.Contains("t.[IsActive] = 'True'"));
+            Assert.IsTrue(result.Contains("t.[IsActive] = (1=1)"));
         }
 
         [TestMethod]
@@ -121,7 +121,7 @@ namespace Nemo.UnitTests
             var result = PredicateVisitor.Visit<TestEntity>(predicate, dialect, "t");
 
             Assert.IsTrue(result.Contains("NOT"));
-            Assert.IsTrue(result.Contains("t.[IsActive] = 'True'"));
+            Assert.IsTrue(result.Contains("t.[IsActive] = (1=1)"));
         }
 
         [TestMethod]
@@ -344,7 +344,23 @@ namespace Nemo.UnitTests
             Assert.IsTrue(result.Contains("OR"));
             Assert.IsTrue(result.Contains("t.[Id] = 2"));
             Assert.IsTrue(result.Contains("AND"));
-            Assert.IsTrue(result.Contains("t.[IsActive] = 'True'"));
+            Assert.IsTrue(result.Contains("t.[IsActive] = (1=1)"));
+            Assert.IsTrue(result.Contains("t.[Amount] > 100"));
+        }
+
+        [TestMethod]
+        public void Visit_ComplexNestedExpression_GeneratesCorrectSql_WithBoolean()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => (x.Id == 1 || x.Id == 2) && (x.IsActive && x.Amount > 100);
+            var dialect = SqlServerDialectProvider.Instance;
+
+            var result = PredicateVisitor.Visit<TestEntity>(predicate, dialect, "t");
+
+            Assert.IsTrue(result.Contains("t.[Id] = 1"));
+            Assert.IsTrue(result.Contains("OR"));
+            Assert.IsTrue(result.Contains("t.[Id] = 2"));
+            Assert.IsTrue(result.Contains("AND"));
+            Assert.IsTrue(result.Contains("t.[IsActive]='True'"));
             Assert.IsTrue(result.Contains("t.[Amount] > 100"));
         }
 

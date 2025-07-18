@@ -186,13 +186,13 @@ namespace Nemo.Reflection
 
         public int RefPosition { get; internal set; }
 
-        internal bool IsBinary { get; set; }
+        public bool IsBinary { get; set; }
 
         public bool IsPolymorphicList { get; private set; }
 
-        internal Type Converter { get; private set; }
+        public Type Converter { get; private set; }
 
-        internal void AddConverter(Type typeConverter)
+        public void AddConverter(Type typeConverter)
         {
             Converter = Converter == null ? typeConverter : TypeConverterAttribute.ComposeConverters(Converter, typeConverter);
         }

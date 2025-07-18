@@ -3,22 +3,24 @@
  * https://github.com/ServiceStack/ServiceStack.OrmLite
  * **/
 
+using Nemo.Extensions;
+using Nemo.Reflection;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
-using Nemo.Extensions;
-using Nemo.Reflection;
 
 namespace Nemo.Data
 {
-    internal static class PredicateVisitor
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static class PredicateVisitor
     {
-        internal static string Visit<T>(Expression exp, DialectProvider dialect, string alias)
+        public static string Visit<T>(Expression exp, DialectProvider dialect, string alias)
         {
             if (exp == null) return string.Empty;
             switch (exp.NodeType)
@@ -226,7 +228,14 @@ namespace Nemo.Data
             {
                 case ExpressionType.Not:
                     var o = Visit<T>(u.Operand, dialect, alias);
-                    return "NOT (" + o + ")";
+                    if (u.Operand.NodeType == ExpressionType.MemberAccess && u.Operand.Type == typeof(bool))
+                    {
+                        return $"NOT ({o}={GetQuotedTrueValue()})";
+                    }
+                    else
+                    {
+                        return $"NOT ({o})";
+                    }
                 default:
                     return Visit<T>(u.Operand, dialect, alias);
             }

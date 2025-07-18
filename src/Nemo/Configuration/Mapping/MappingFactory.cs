@@ -1,20 +1,23 @@
-﻿using System;
+﻿using Nemo.Attributes;
+using Nemo.Attributes.Converters;
+using Nemo.Fn;
+using Nemo.Reflection;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading.Tasks;
-using Nemo.Attributes.Converters;
-using Nemo.Reflection;
-using System.Reflection;
-using Nemo.Attributes;
-using System.Data;
-using Nemo.Fn;
-using System.Collections.Concurrent;
-using System.Runtime.InteropServices.ComTypes;
+using TypeConverterAttribute = Nemo.Attributes.Converters.TypeConverterAttribute;
 
 namespace Nemo.Configuration.Mapping
 {
-    internal static class MappingFactory
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static class MappingFactory
     {
         private static readonly ConcurrentDictionary<Type, IEntityMap> _types = new ConcurrentDictionary<Type, IEntityMap>();
 
@@ -57,14 +60,14 @@ namespace Nemo.Configuration.Mapping
             }
         }
 
-        internal static IEntityMap GetEntityMap<T>()
+        public static IEntityMap GetEntityMap<T>()
             where T : class
         {
             IEntityMap map;
             return _types.TryGetValue(typeof(T), out map) ? map : null;
         }
 
-        internal static IEntityMap GetEntityMap(Type type)
+        public static IEntityMap GetEntityMap(Type type)
         {
             IEntityMap map;
             if ((!Reflector.IsEmitted(type) || Reflector.IsDataEntity(type)) && _types.TryGetValue(type, out map))
@@ -74,7 +77,7 @@ namespace Nemo.Configuration.Mapping
             return null;
         }
 
-        internal static string GetPropertyOrColumnName(PropertyInfo property, bool ignoreMappings, IEntityMap entityMap, bool isColumn)
+        public static string GetPropertyOrColumnName(PropertyInfo property, bool ignoreMappings, IEntityMap entityMap, bool isColumn)
         {
             string propertyOrColumnName;
             if (ignoreMappings)
@@ -100,7 +103,7 @@ namespace Nemo.Configuration.Mapping
             return propertyOrColumnName;
         }
 
-        internal static Tuple<Type, Type> GetTypeConverter(Type fromType, PropertyInfo property, IEntityMap entityMap)
+        public static Tuple<Type, Type> GetTypeConverter(Type fromType, PropertyInfo property, IEntityMap entityMap)
         {
             if (entityMap != null)
             {
@@ -119,7 +122,7 @@ namespace Nemo.Configuration.Mapping
             return TypeConverterAttribute.GetTypeConverter(fromType, property);
         }
 
-        internal static object GetItem(IDictionary<string, object> source, string name, object defaultValue)
+        public static object GetItem(IDictionary<string, object> source, string name, object defaultValue)
         {
             if (source != null && source.TryGetValue(name, out var value))
             {
@@ -129,7 +132,7 @@ namespace Nemo.Configuration.Mapping
             return defaultValue;
         }
 
-        internal static object GetItem(DataRow source, string name, object defaultValue)
+        public static object GetItem(DataRow source, string name, object defaultValue)
         {
             if (source != null && source.Table != null && source.Table.Columns != null && source.Table.Columns.Contains(name))
             {
@@ -139,7 +142,7 @@ namespace Nemo.Configuration.Mapping
             return defaultValue;
         }
 
-        internal static object GetItem(IDataRecord source, string name, object defaultValue)
+        public static object GetItem(IDataRecord source, string name, object defaultValue)
         {
             if (source != null)
             {
@@ -166,12 +169,12 @@ namespace Nemo.Configuration.Mapping
             return defaultValue;
         }
 
-        internal static bool IsIndexer<TSource>(TSource source) 
+        public static bool IsIndexer<TSource>(TSource source) 
         {
             return source is IDictionary<string, object> || (source is IDataRecord) || source is DataRow;
         }
 
-        internal static Type GetIndexerType(object source)
+        public static Type GetIndexerType(object source)
         {
             if (source is IDictionary<string, object>)
             {

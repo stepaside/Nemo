@@ -12,10 +12,12 @@ using Nemo.Linq.Expressions;
 using Nemo.Reflection;
 using Nemo.Configuration.Mapping;
 using ExpressionVisitor = Nemo.Data.PredicateVisitor;
+using System.ComponentModel;
 
 namespace Nemo.Data
 {
-    internal static class SqlBuilder
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static class SqlBuilder
     {
         private const string SqlSelectPagingFormatRowNumber = "SELECT {6} FROM (SELECT ROW_NUMBER() OVER (ORDER BY {2}) AS __row, {1} FROM {0}{3}) AS t WHERE __row > {4} AND __row <= {5}";
         private const string SqlSelectSkipFormatRowNumber = "SELECT {5} FROM (SELECT ROW_NUMBER() OVER (ORDER BY {2}) AS __row, {1} FROM {0}{3}) AS t WHERE __row > {4}";
@@ -45,7 +47,7 @@ namespace Nemo.Data
 
         private static readonly ConcurrentDictionary<Tuple<Type, DialectProvider>, string> AllTables = new ConcurrentDictionary<Tuple<Type, DialectProvider>, string>();
 
-        internal static string GetTableNameForSql(Type objectType, DialectProvider dialect)
+        public static string GetTableNameForSql(Type objectType, DialectProvider dialect)
         {
             if (Reflector.IsEmitted(objectType))
             {
@@ -119,7 +121,7 @@ namespace Nemo.Data
             }
         }
 
-        internal static string GetSelectStatement<T, T1, T2, T3, T4>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1,
+        public static string GetSelectStatement<T, T1, T2, T3, T4>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1,
             Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
             int page, int pageSize, int skipCount, bool first,  DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
@@ -370,20 +372,20 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+        public static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
         {
             return GetSelectStatement<T, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, null, null, null, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+        public static string GetSelectStatement<T, T1>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
         {
             return GetSelectStatement<T, T1, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join, null, null, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1, T2>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+        public static string GetSelectStatement<T, T1, T2>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -391,7 +393,7 @@ namespace Nemo.Data
             return GetSelectStatement<T, T1, T2, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join1, join2, null, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
-        internal static string GetSelectStatement<T, T1, T2, T3>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
+        public static string GetSelectStatement<T, T1, T2, T3>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
             where T2 : class
@@ -400,7 +402,7 @@ namespace Nemo.Data
             return GetSelectStatement<T, T1, T2, T3, ObjectFactory.Fake>(predicate, join1, join2, join3, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
-        internal static string GetSelectCountStatement<T>(Expression<Func<T, bool>> predicate, DialectProvider dialect)
+        public static string GetSelectCountStatement<T>(Expression<Func<T, bool>> predicate, DialectProvider dialect)
         {
             const string aliasRoot = "r";
             var tableName = GetTableNameForSql(typeof(T), dialect) + " " + aliasRoot;
@@ -418,7 +420,7 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetSelectAggregationStatement<T, TColumn>(string aggregateName, Expression<Func<T, TColumn>> projection, Expression<Func<T, bool>> predicate, DialectProvider dialect)
+        public static string GetSelectAggregationStatement<T, TColumn>(string aggregateName, Expression<Func<T, TColumn>> projection, Expression<Func<T, bool>> predicate, DialectProvider dialect)
         {
             const string aliasRoot = "r";
             var tableName = GetTableNameForSql(typeof(T), dialect) + " " + aliasRoot;
@@ -441,7 +443,7 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetInsertStatement(Type objectType, Param[] parameters, DialectProvider dialect)
+        public static string GetInsertStatement(Type objectType, Param[] parameters, DialectProvider dialect)
         {
             var tableName = GetTableNameForSql(objectType, dialect);
             var columns = parameters.Where(p => !p.IsAutoGenerated).Select(p => dialect.IdentifierEscapeStartCharacter + p.Source + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");
@@ -459,7 +461,7 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetUpdateStatement(Type objectType, IList<Param> parameters, IList<Param> primaryKey, DialectProvider dialect)
+        public static string GetUpdateStatement(Type objectType, IList<Param> parameters, IList<Param> primaryKey, DialectProvider dialect)
         {
             var tableName = GetTableNameForSql(objectType, dialect);
             var columns = parameters.Select(p => string.Format(SqlSetFormat, p.Source, dialect.ParameterPrefix + p.Name, dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter)).ToDelimitedString(",");
@@ -469,7 +471,7 @@ namespace Nemo.Data
             return sql;
         }
 
-        internal static string GetDeleteStatement(Type objectType, IList<Param> primaryKey, DialectProvider dialect, string softDeleteColumn = null)
+        public static string GetDeleteStatement(Type objectType, IList<Param> primaryKey, DialectProvider dialect, string softDeleteColumn = null)
         {
             var tableName = GetTableNameForSql(objectType, dialect);
             var where = primaryKey.Select(p => string.Format(SqlSetFormat, p.Source, dialect.ParameterPrefix + p.Name, dialect.IdentifierEscapeStartCharacter, dialect.IdentifierEscapeEndCharacter)).ToDelimitedString(" AND ");

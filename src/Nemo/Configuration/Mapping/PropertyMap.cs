@@ -18,7 +18,7 @@ namespace Nemo.Configuration.Mapping
         private readonly Expression<Func<T, TProperty>> _selector;
         private bool _not;
 
-        internal PropertyMap(Expression<Func<T, TProperty>> selector, bool not = false)
+        public PropertyMap(Expression<Func<T, TProperty>> selector, bool not = false)
         {
             _selector = selector;
             _not = not;

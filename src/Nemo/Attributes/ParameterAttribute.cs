@@ -9,30 +9,14 @@ namespace Nemo.Attributes
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public sealed class ParameterAttribute : PropertyAttribute
     {
-        private ParameterDirection _direction = ParameterDirection.Input;
-
         public ParameterAttribute(string name)
         {
             Name = name;
         }
 
-        public string Name
-        {
-            get;
-            private set;
-        }
+        public string Name { get; }
 
-        public ParameterDirection Direction
-        {
-            get
-            {
-                return _direction;
-            }
-            set
-            {
-                _direction = value;
-            }
-        }
+        public ParameterDirection Direction { get; set; } = ParameterDirection.Input;
     }
 
 }
