@@ -229,7 +229,7 @@ namespace Nemo.Reflection
             }
 
             // create the final type. 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
             var type = typeBuilder.CreateTypeInfo().AsType();
 #else
             var type = typeBuilder.CreateType();
@@ -254,7 +254,7 @@ namespace Nemo.Reflection
             DefineProperties(null, typeBuilder, null, interfaceType, DynamicProxyType.Implementation);
 
             // create the final type. 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
             var type = typeBuilder.CreateTypeInfo().AsType();
 #else
             var type = typeBuilder.CreateType();

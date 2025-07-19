@@ -174,7 +174,7 @@ namespace Nemo.Configuration
             return this;
         }
 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
 
         public Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; private set; }
 
@@ -225,7 +225,7 @@ namespace Nemo.Configuration
 
             mergedConfig.SetPadListExpansion(PadListExpansion || configuration.PadListExpansion);
 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
             mergedConfig.SetSystemConfiguration(SystemConfiguration ?? configuration.SystemConfiguration);
 #endif
 

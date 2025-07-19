@@ -1,4 +1,4 @@
-﻿#if NETSTANDARD2_0_OR_GREATER
+﻿#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

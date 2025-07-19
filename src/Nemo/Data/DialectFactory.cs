@@ -13,7 +13,7 @@ namespace Nemo.Data
     {
         public static DialectProvider GetProvider(string connectionName, INemoConfiguration config)
         {
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
             var connectionStringsSettings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);
 
             if (connectionStringsSettings == null)

@@ -96,7 +96,7 @@ namespace Nemo.Data
 
             string cleanConnectionString;
 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
             var connectionStringSetting = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionName);
             if (connectionStringSetting != null)
             {
@@ -134,7 +134,7 @@ namespace Nemo.Data
 
             if (!lostPassword)
             {
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
                 dynamic connectionStrings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionStrings();
 
                 if (connectionStrings == null)
@@ -161,7 +161,7 @@ namespace Nemo.Data
                     builder["user id"] = uid;
                 }
 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
                 dynamic connectionStrings = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionStrings();
 
                 if (connectionStrings == null)
@@ -243,7 +243,7 @@ namespace Nemo.Data
 
             string cleanConnectionString = null;
 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
 
             string connectionString = null;
             string providerName = null;
@@ -304,7 +304,7 @@ namespace Nemo.Data
             string providerName = null;
             string cleanConnectionString = null;
 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
             var connectionStringSetting = (config ?? ConfigurationFactory.DefaultConfiguration).SystemConfiguration?.ConnectionString(connectionStringOrName);
 
             if (connectionStringSetting != null)
@@ -347,7 +347,7 @@ namespace Nemo.Data
         internal static DbDataAdapter CreateDataAdapter(DbConnection connection, INemoConfiguration config)
         {
             var providerName = GetProviderInvariantNameByConnectionString(connection.ConnectionString, config, out var _);
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
             return providerName != null ? GetDbProviderFactory(providerName).CreateDataAdapter() : null;
 #else
             return providerName != null ? DbProviderFactories.GetFactory(providerName).CreateDataAdapter() : null;

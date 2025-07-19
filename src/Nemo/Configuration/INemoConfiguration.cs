@@ -45,7 +45,7 @@ namespace Nemo.Configuration
         INemoConfiguration SetPadListExpansion(bool value);
         INemoConfiguration Merge(INemoConfiguration configuration);
 
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
         Microsoft.Extensions.Configuration.IConfiguration SystemConfiguration { get; }
         INemoConfiguration SetSystemConfiguration(Microsoft.Extensions.Configuration.IConfiguration systemConfiguration);
 #endif
