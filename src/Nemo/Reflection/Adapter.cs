@@ -76,7 +76,7 @@ namespace Nemo.Reflection
                 var isAnonymous = Reflector.IsAnonymousType(n.Item1);
                 var name = string.Format("{0}_{1}_{2}", isAnonymous ? n.Item1.Name : n.Item1.FullName, n.Item2.FullName, n.Item3);
                 // creates the assembly and module.
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
                 var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
 #else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
@@ -103,7 +103,7 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
                 var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
 #else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
@@ -130,7 +130,7 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
                 var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
 #else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
@@ -162,7 +162,7 @@ namespace Nemo.Reflection
             {
                 var name = string.Format("{0}_{1}", n.Item1.FullName, n.Item3);
                 // creates the assembly and module.
-#if NETSTANDARD2_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
                 var builder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
 #else
                 var builder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);

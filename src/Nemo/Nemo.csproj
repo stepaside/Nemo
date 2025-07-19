@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net472;netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net472;netstandard2.0;netstandard2.1;net8.0</TargetFrameworks>
     <RestorePackages>true</RestorePackages>
     <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -11,9 +11,9 @@
     <NeutralLanguage>en-US</NeutralLanguage>
     <AssemblyName>Nemo</AssemblyName>
     <AssemblyTitle>Nemo</AssemblyTitle>
-    <AssemblyVersion>2.8.7</AssemblyVersion>
-    <FileVersion>2.8.7</FileVersion>
-    <PackageVersion>2.8.7</PackageVersion>
+    <AssemblyVersion>2.9.0</AssemblyVersion>
+    <FileVersion>2.9.0</FileVersion>
+    <PackageVersion>2.9.0</PackageVersion>
     <RootNamespace>Nemo</RootNamespace>
 
     <PackageId>Nemo</PackageId>
@@ -21,7 +21,7 @@
     <Description>.Net Enterprise Micro-ORM</Description>
     <Authors>Max Stepanskiy</Authors>
     <Company>Stepaside, Inc.</Company>
-    <Copyright>Copyright © Max Stepanskiy 2012-2024</Copyright>
+    <Copyright>Copyright © Max Stepanskiy 2012-2025</Copyright>
     <PackageProjectUrl>https://github.com/stepaside/Nemo/wiki</PackageProjectUrl>
     <PackageTags>ORM micro-ORM data-mapper sql-mapper</PackageTags>
     
@@ -45,12 +45,12 @@
   <!-- common NuGet package refs that affect all projects -->
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
-    <PackageReference Include="System.Interactive" Version="6.0.1" />
-    <PackageReference Include="System.Interactive.Async.Providers" Version="6.0.1" />
+	<PackageReference Include="System.Data.SqlClient" Version="4.9.0" />
+    <PackageReference Include="System.Interactive" Version="6.0.3" />
+    <PackageReference Include="System.Interactive.Async.Providers" Version="6.0.3" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1' or '$(TargetFramework)' == 'net8.0'">
 	<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" />
 	<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
 	<PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
