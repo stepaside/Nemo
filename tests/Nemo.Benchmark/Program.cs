@@ -8,6 +8,16 @@ namespace Nemo.Benchmark
     {
         static void Main(string[] args)
         {
+            try
+            {
+                DatabaseSetup.CreateNorthwindDatabase();
+            }
+            catch (System.Exception ex)
+            {
+                System.Console.WriteLine($"Database setup failed: {ex.Message}");
+                return;
+            }
+
 #if DEBUG
             var summary = BenchmarkRunner.Run<OrmBenchmark>(new DebugInProcessConfig());
 #else
