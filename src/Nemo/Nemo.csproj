@@ -18,12 +18,12 @@
 
     <PackageId>Nemo</PackageId>
     <Title>Nemo</Title>
-    <Description>.Net Enterprise Micro-ORM</Description>
+    <Description>Enterprise-ready .NET micro-ORM combining blazing performance with rich features. Stop choosing between speed and productivity - get compiled expression performance, built-in caching, validation, serialization, Unit of Work, and native multi-database support in one lightweight package.</Description>
     <Authors>Max Stepanskiy</Authors>
     <Company>Stepaside, Inc.</Company>
     <Copyright>Copyright © Max Stepanskiy 2012-2025</Copyright>
     <PackageProjectUrl>https://github.com/stepaside/Nemo/wiki</PackageProjectUrl>
-    <PackageTags>ORM micro-ORM data-mapper sql-mapper</PackageTags>
+    <PackageTags>ORM micro-ORM enterprise performance caching validation serialization unit-of-work multi-database dotnet csharp sql postgresql mysql sqlserver</PackageTags>
     
     <RepositoryUrl>https://github.com/stepaside/Nemo</RepositoryUrl>
     <RepositoryType>Github</RepositoryType>
