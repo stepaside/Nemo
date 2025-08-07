@@ -9,7 +9,7 @@ using Nemo.Reflection;
 
 namespace Nemo.Configuration
 {
-    public class ConfigurationFactory
+    public static class ConfigurationFactory
     {
         private static Lazy<INemoConfiguration> _configuration = new(() =>
         {
@@ -34,15 +34,39 @@ namespace Nemo.Configuration
 
         public static INemoConfiguration Configure(Func<INemoConfiguration> config = null)
         {
-            if (_configuration.IsValueCreated) return null;
+            if (_configuration.IsValueCreated) 
+                return null;
 
-            MappingFactory.Initialize();
             if (config != null)
             {
-                _configuration = new Lazy<INemoConfiguration>(config, true);
+                _configuration = new Lazy<INemoConfiguration>(() =>
+                {
+                    MappingFactory.Initialize();
+                    return config();
+                }, true);
             }
             return _configuration.Value;
         }
+
+        /// <summary>
+        /// Set the configuration that will be initalized lazily
+        /// </summary>
+        public static void ConfigureLazy(Action<INemoConfiguration> config = null)
+        {
+            if (_configuration.IsValueCreated) return;
+
+            if (config != null)
+            {
+                _configuration = new Lazy<INemoConfiguration>(() =>
+                {
+                    MappingFactory.Initialize();
+                    var c = new DefaultNemoConfiguration();
+                    config(c);
+                    return c;
+                }, true);
+            }
+        }
+
 
         public static void RefreshEntityMappings()
         {
