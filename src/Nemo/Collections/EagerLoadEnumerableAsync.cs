@@ -13,6 +13,7 @@ using Nemo.Extensions;
 
 namespace Nemo.Collections
 {
+
     internal class EagerLoadEnumerableAsync<T> : IAsyncEnumerable<T>
         where T : class
     {

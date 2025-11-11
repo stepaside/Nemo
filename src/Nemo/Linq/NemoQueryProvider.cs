@@ -14,7 +14,7 @@ using Activator = System.Activator;
 
 namespace Nemo.Linq
 {
-    public class NemoQueryProvider : IAsyncQueryProvider, IQueryProvider
+    public class NemoQueryProvider : IQueryProvider
     {
         private readonly DbConnection _connection;
         private readonly INemoConfiguration _config;
@@ -59,7 +59,7 @@ namespace Nemo.Linq
             return NemoQueryContext.Execute(expression, _connection, config: _config);
         }
 
-        IAsyncQueryable<TElement> IAsyncQueryProvider.CreateQuery<TElement>(Expression expression)
+        public IAsyncEnumerable<TElement> CreateQuery<TElement>(Expression expression)
         {
             return new NemoQueryableAsync<TElement>(this, expression);
         }

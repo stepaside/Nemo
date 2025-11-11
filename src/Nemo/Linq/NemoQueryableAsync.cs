@@ -9,7 +9,7 @@ using Nemo.Extensions;
 
 namespace Nemo.Linq
 {
-    public class NemoQueryableAsync<T> : IOrderedAsyncQueryable<T>
+    public class NemoQueryableAsync<T> : IAsyncEnumerable<T>
     {
         private readonly NemoQueryProvider _provider;
         private readonly Expression _expression;
