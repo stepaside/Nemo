@@ -81,7 +81,7 @@ namespace Nemo.Utilities
         public static byte[] Random(int length)
         {
             var data = new byte[length];
-            new RNGCryptoServiceProvider().GetBytes(data);
+            RandomNumberGenerator.Create().GetBytes(data);
             return data;
         }
 

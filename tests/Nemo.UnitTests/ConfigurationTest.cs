@@ -2,6 +2,7 @@
 
 namespace Nemo.UnitTests
 {
+#if DEBUG
     /// <summary>
     /// Because configuration is static, these tests are not thread-safe. I aim to fix that in the future - DJL 8/7/2025
     /// </summary>
@@ -11,6 +12,7 @@ namespace Nemo.UnitTests
         [TestMethod]
         public void Default_Config_Test()
         {
+            ConfigurationFactory.Reset();
             var config = ConfigurationFactory.DefaultConfiguration;
             Assert.IsFalse(config.AutoTypeCoercion);
         }
@@ -18,6 +20,7 @@ namespace Nemo.UnitTests
         [TestMethod]
         public void Configure_Test()
         {
+            ConfigurationFactory.Reset();
             var config = ConfigurationFactory.Configure()
                 .SetAutoTypeCoercion(true);
             Assert.IsTrue(config.AutoTypeCoercion);
@@ -26,10 +29,12 @@ namespace Nemo.UnitTests
         [TestMethod]
         public void Configure_Lazy_Test()
         {
+            ConfigurationFactory.Reset();
             ConfigurationFactory.ConfigureLazy(c => c
                 .SetAutoTypeCoercion(true));
             var config = ConfigurationFactory.DefaultConfiguration;
             Assert.IsTrue(config.AutoTypeCoercion);
         }
     }
+#endif
 }

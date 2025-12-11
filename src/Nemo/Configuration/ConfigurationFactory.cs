@@ -119,5 +119,17 @@ namespace Nemo.Configuration
             var refletectType = Reflector.GetReflectedType(type);
             return !refletectType.IsSimpleType && !refletectType.IsSimpleList;
         }
+
+#if DEBUG
+        public static void Reset()
+        {
+            _configuration = new Lazy<INemoConfiguration>(() =>
+            {
+                MappingFactory.Initialize();
+                return new DefaultNemoConfiguration();
+            }, true);
+            _typedConfigurations.Clear();
+        }
+#endif
     }
 }

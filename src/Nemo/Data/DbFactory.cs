@@ -10,7 +10,11 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.Common;
+#if NETSTANDARD2_0_OR_GREATER || NETCOREAPP
+using Microsoft.Data.SqlClient;
+#else
 using System.Data.SqlClient;
+#endif
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -438,7 +442,7 @@ namespace Nemo.Data
                 throw new ArgumentNullException(nameof(providerName));
             }
             
-#if NETSTANDARD2_1_OR_GREATER || NET472_OR_GREATER
+#if NETSTANDARD2_1_OR_GREATER || NET472_OR_GREATER || NET8_0_OR_GREATER
             if (!ProviderInvariantNames.Contains(providerName)) throw new NotSupportedException($"Unsupported Provider Factory specified: {providerName}");
 
             try
@@ -485,7 +489,7 @@ namespace Nemo.Data
         {
             if (type == DataAccessProviderTypes.SqlServer)
             {
-                return SqlClientFactory.Instance; // this library has a ref to SqlClient so this works
+                return GetDbProviderFactory("System.Data.SqlClient.SqlClientFactory", "System.Data.SqlClient");
             }
 
             if (type == DataAccessProviderTypes.SqlServerCore)

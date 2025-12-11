@@ -41,9 +41,9 @@ namespace NemoTest
         {
             var provider = DialectFactory.GetProvider("DbConnection", _nemoConfig);
 
-            var factory = DbFactory.GetDbProviderFactory(DataAccessProviderTypes.SqlServer);
+            var factory = DbFactory.GetDbProviderFactory(DataAccessProviderTypes.SqlServerCore);
 
-            var connection = DbFactory.CreateConnection("Data Source=.;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;", DataAccessProviderTypes.SqlServer);
+            var connection = DbFactory.CreateConnection("Data Source=.;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;", DataAccessProviderTypes.SqlServerCore);
 
             var settings = ConfigurationFactory.Get(typeof(object)).SystemConfiguration.ConnectionString("DbConnection");
 
