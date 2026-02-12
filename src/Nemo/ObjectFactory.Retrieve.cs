@@ -58,9 +58,7 @@ namespace Nemo
             {
                 config ??= ConfigurationFactory.Get<TResult>();
 
-                queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
-
-                Log.CaptureBegin($"Retrieving from L1 cache: {queryKey}", config);
+                queryKey = GetQueryKey<TResult>(operation, parameters ?? Array.Empty<Param>(), returnType);
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -74,8 +72,6 @@ namespace Nemo
 
                 if (result != null)
                 {
-                    Log.Capture($"Found in L1 cache: {queryKey}", config);
-
                     if (returnType == OperationReturnType.MultiResult)
                     {
                         ((IMultiResult)result).Reset();
@@ -84,8 +80,6 @@ namespace Nemo
                     Log.CaptureEnd(config);
                     return result;
                 }
-                Log.Capture($"Not found in L1 cache: {queryKey}", config);
-                Log.CaptureEnd(config);
             }
 
             result = RetrieveItems(operation, parameters, operationType, returnType, connectionName, connection, types, map, schema, config, identityMap);
@@ -153,12 +147,25 @@ namespace Nemo
             return result;
         }
 
-        private static string GetQueryKey<T>(string operation, IEnumerable<Param> parameters, OperationReturnType returnType)
+        private static string GetQueryKey<T>(string operation, IList<Param> parameters, OperationReturnType returnType)
         {
-            var combined = new StringBuilder();
-            combined.Append(returnType.ToString()).Append("/").Append(operation).Append("/").Append(parameters.OrderBy(p => p.Name).Select(p => $"{p.Name}={p.Value}").ToDelimitedString(","));
-            var hash = Hash.Compute(Encoding.UTF8.GetBytes(combined.ToString()));
-            return typeof(T).FullName + "/" + hash;
+            var sb = new StringBuilder();
+            sb.Append(returnType.ToString()).Append("/").Append(operation);
+            if (parameters.Count > 0)
+            {
+                sb.Append("/");
+                var sorted = parameters.Count > 1;
+                IEnumerable<Param> paramSource = sorted ? parameters.OrderBy(p => p.Name) : parameters;
+                var first = true;
+                foreach (var p in paramSource)
+                {
+                    if (!first) sb.Append(",");
+                    sb.Append(p.Name).Append("=").Append(p.Value);
+                    first = false;
+                }
+            }
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(sb.ToString()));
+            return string.Concat(typeof(T).FullName, "/", hash.ToString());
         }
 
         /// <summary>
@@ -344,9 +351,7 @@ namespace Nemo
             {
                 config ??= ConfigurationFactory.Get<TResult>();
 
-                queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
-
-                Log.CaptureBegin($"Retrieving from L1 cache: {queryKey}", config);
+                queryKey = GetQueryKey<TResult>(operation, parameters ?? Array.Empty<Param>(), returnType);
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -360,8 +365,6 @@ namespace Nemo
 
                 if (result != null)
                 {
-                    Log.Capture($"Found in L1 cache: {queryKey}", config);
-
                     if (returnType == OperationReturnType.MultiResult)
                     {
                         ((IMultiResult)result).Reset();
@@ -370,8 +373,6 @@ namespace Nemo
                     Log.CaptureEnd(config);
                     return result;
                 }
-                Log.Capture($"Not found in L1 cache: {queryKey}", config);
-                Log.CaptureEnd(config);
             }
 
             result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, schema, config, identityMap).ConfigureAwait(false);

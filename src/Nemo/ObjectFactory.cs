@@ -838,7 +838,14 @@ namespace Nemo
 
         private static OperationType GuessOperationType(string operation)
         {
-            return operation.Any(char.IsWhiteSpace) ? OperationType.Sql : OperationType.StoredProcedure;
+            for (var i = 0; i < operation.Length; i++)
+            {
+                if (char.IsWhiteSpace(operation[i]))
+                {
+                    return OperationType.Sql;
+                }
+            }
+            return OperationType.StoredProcedure;
         }
 
         #endregion
@@ -1070,6 +1077,7 @@ namespace Nemo
                 var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
                 var columns = !isSimpleType ? reader.GetColumns() : null;
                 var isAnonymous = typeof(T) == typeof(object);
+                var record = useMapper && !isSimpleType && !isAnonymous ? (IDataRecord)new WrappedRecord(reader, columns) : null;
                 while (reader.Read())
                 {
                     if (isSimpleType)
@@ -1084,7 +1092,6 @@ namespace Nemo
                     else if (useMapper)
                     {
                         var item = Create<T>(isInterface);
-                        var record = (IDataRecord)new WrappedRecord(reader, columns);
                         Map(record, item, config.AutoTypeCoercion);
                         
                         TrySetObjectState(item);
@@ -1217,6 +1224,7 @@ namespace Nemo
                     var isSimpleType = reflectedTypes[resultIndex].IsSimpleType;
                     var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
                     var columns = !isSimpleType ? reader.GetColumns() : null;
+                    var wrappedReader = useMapper && !isSimpleType && !isAnonymous ? (object)new WrappedReader(reader, columns) : null;
                     while (reader.Read())
                     {
                         if (isSimpleType)
@@ -1231,7 +1239,7 @@ namespace Nemo
                         }
                         else if (useMapper)
                         {
-                            var item = Map((object)new WrappedReader(reader, columns), types[resultIndex], config.AutoTypeCoercion);
+                            var item = Map(wrappedReader, types[resultIndex], config.AutoTypeCoercion);
                             TrySetObjectState(item);
                             yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
                         }
