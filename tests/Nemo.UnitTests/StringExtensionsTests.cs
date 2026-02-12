@@ -94,12 +94,11 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentNullException))]
         public void ToDelimitedString_NullSource_ThrowsArgumentNullException()
         {
             List<string> nullList = null;
             
-            nullList.ToDelimitedString(",");
+            Assert.ThrowsExactly<ArgumentNullException>(() => nullList.ToDelimitedString(","));
         }
 
         [TestMethod]
