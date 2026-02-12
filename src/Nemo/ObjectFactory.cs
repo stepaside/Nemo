@@ -1077,6 +1077,19 @@ namespace Nemo
                 var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
                 var columns = !isSimpleType ? reader.GetColumns() : null;
                 var isAnonymous = typeof(T) == typeof(object);
+                var autoTypeCoercion = config.AutoTypeCoercion;
+                var hasMap = map != null;
+                var typeCount = hasMap ? types.Count : 0;
+                var args = hasMap ? new object[typeCount] : null;
+                Mapper.PropertyMapper[] secondaryMappers = null;
+                if (hasMap && typeCount > 1 && useMapper)
+                {
+                    secondaryMappers = new Mapper.PropertyMapper[typeCount];
+                    for (var i = 1; i < typeCount; i++)
+                    {
+                        secondaryMappers[i] = Mapper.CreateDelegate(typeof(IDataRecord), types[i], true, autoTypeCoercion);
+                    }
+                }
                 while (reader.Read())
                 {
                     if (isSimpleType)
@@ -1092,20 +1105,23 @@ namespace Nemo
                     {
                         var item = Create<T>(isInterface);
                         var record = (IDataRecord)new WrappedRecord(reader, columns);
-                        Map(record, item, config.AutoTypeCoercion);
+                        if (autoTypeCoercion)
+                            FastIndexerMapperWithTypeCoercion<IDataRecord, T>.Map(record, item);
+                        else
+                            FastIndexerMapper<IDataRecord, T>.Map(record, item);
                         
                         TrySetObjectState(item);
 
-                        if (map != null)
+                        if (hasMap)
                         {
-                            var args = new object[types.Count];
                             args[0] = item;
-                            for (var i = 1; i < types.Count; i++)
+                            for (var i = 1; i < typeCount; i++)
                             {
                                 var identity = CreateIdentity(types[i], reader);
                                 if (!references.TryGetValue(identity, out var reference))
                                 {
-                                    reference = Map((object)record, types[i], config.AutoTypeCoercion);
+                                    reference = Create(types[i]);
+                                    secondaryMappers[i](record, reference);
                                     TrySetObjectState(reference);
                                     references.Add(identity, reference);
                                 }
@@ -1133,11 +1149,10 @@ namespace Nemo
 
                         TrySetObjectState(item);
 
-                        if (map != null)
+                        if (hasMap)
                         {
-                            var args = new object[types.Count];
                             args[0] = item;
-                            for (var i = 1; i < types.Count; i++)
+                            for (var i = 1; i < typeCount; i++)
                             {
                                 var identity = CreateIdentity(types[i], reader);
                                 if (!references.TryGetValue(identity, out var reference))
@@ -1168,7 +1183,7 @@ namespace Nemo
                 // Flush accumulating item
                 if (isAccumulator)
                 {
-                    var mappedItem = map(new object[types.Count]);
+                    var mappedItem = map(new object[typeCount]);
                     if (mappedItem != null)
                     {
                         yield return mappedItem;
@@ -1194,14 +1209,30 @@ namespace Nemo
             return bag;
         }
 
+        private static readonly ConcurrentDictionary<Type, string[]> PrimaryKeyColumnCache = new ConcurrentDictionary<Type, string[]>();
+
+        private static string[] GetPrimaryKeyColumnNames(Type objectType)
+        {
+            return PrimaryKeyColumnCache.GetOrAdd(objectType, type =>
+            {
+                var nameMap = Reflector.GetPropertyNameMap(type);
+                return nameMap.Values.Where(p => p.IsPrimaryKey)
+                    .Select(p => p.MappedColumnName ?? p.PropertyName)
+                    .OrderBy(_ => _)
+                    .ToArray();
+            });
+        }
+
         private static Tuple<Type, string> CreateIdentity(Type objectType, IDataRecord record)
         {
-            var nameMap = Reflector.GetPropertyNameMap(objectType);
-            var identity = Tuple.Create(objectType, string.Join(",", nameMap.Values.Where(p => p.IsPrimaryKey)
-                                                                                .Select(p => p.MappedColumnName ?? p.PropertyName)
-                                                                                .OrderBy(_ => _)
-                                                                                .Select(n => Convert.ToString(record.GetValue(record.GetOrdinal(n))))));
-            return identity;
+            var pkColumns = GetPrimaryKeyColumnNames(objectType);
+            var sb = new StringBuilder();
+            for (var i = 0; i < pkColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append(Convert.ToString(record.GetValue(record.GetOrdinal(pkColumns[i]))));
+            }
+            return Tuple.Create(objectType, sb.ToString());
         }
 
         private static IEnumerable<MultiResultItem> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, INemoConfiguration config)
@@ -1212,7 +1243,13 @@ namespace Nemo
                 skipNext = true;
             }
 
-            var reflectedTypes = types.Select(t => Reflector.GetReflectedType(t)).ToList();
+            var reflectedTypes = new ReflectedType[types.Count];
+            for (var i = 0; i < types.Count; i++)
+            {
+                reflectedTypes[i] = Reflector.GetReflectedType(types[i]);
+            }
+
+            var autoTypeCoercion = config.AutoTypeCoercion;
 
             try
             {
@@ -1224,30 +1261,37 @@ namespace Nemo
                     var isSimpleType = reflectedTypes[resultIndex].IsSimpleType;
                     var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
                     var columns = !isSimpleType ? reader.GetColumns() : null;
+                    var currentType = types[resultIndex];
+                    Mapper.PropertyMapper resultMapper = null;
+                    if (useMapper && !isSimpleType && !isAnonymous)
+                    {
+                        resultMapper = Mapper.CreateDelegate(typeof(IDataRecord), currentType, true, autoTypeCoercion);
+                    }
                     while (reader.Read())
                     {
                         if (isSimpleType)
                         {
                             var item = reader.GetValue(0);
-                            yield return new MultiResultItem { Item = Reflector.ChangeType(item, types[resultIndex]), ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
+                            yield return new MultiResultItem { Item = Reflector.ChangeType(item, currentType), ItemType = currentType, ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
                         }
                         else if (isAnonymous)
                         {
                             var item = CreateDynamicItem(reader, columns, true);
-                            yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
+                            yield return new MultiResultItem { Item = item, ItemType = currentType, ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
                         }
                         else if (useMapper)
                         {
-                            var item = Map((object)new WrappedReader(reader, columns), types[resultIndex], config.AutoTypeCoercion);
-                            TrySetObjectState(item);
-                            yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
+                            var target = Create(currentType);
+                            resultMapper(new WrappedReader(reader, columns), target);
+                            TrySetObjectState(target);
+                            yield return new MultiResultItem { Item = target, ItemType = currentType, ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
                         }
                         else
                         {
                             var bag = CreateDynamicItem(reader, columns, false);
-                            var item = Wrap(bag, types[resultIndex]);
+                            var item = Wrap(bag, currentType);
                             TrySetObjectState(item);
-                            yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
+                            yield return new MultiResultItem { Item = item, ItemType = currentType, ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
                         }
 
                         if (skipNext)
