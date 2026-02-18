@@ -391,12 +391,13 @@ namespace Nemo
              where T : class
         {
             var statementId = 0;
-            var insertSql = new StringBuilder();
-            var insertParameters = new List<Param>();
-
+            
             var batches = items.Split(batchSize <= 0 ? 500 : batchSize);
             foreach (var batch in batches)
             {
+                var insertSql = new StringBuilder();
+                var insertParameters = new List<Param>();
+
                 var entities = batch as T[] ?? batch.ToArray();
                 entities.GenerateKeys(config);
 
@@ -475,7 +476,7 @@ namespace Nemo
             {
                 if (connectionOpenedHere)
                 {
-                    connection.Clone();
+                    connection.Close();
                 }
 
                 if (!externalConnection)
@@ -688,6 +689,12 @@ namespace Nemo
             command.CommandText = operationText;
             command.CommandType = operationType == OperationType.StoredProcedure ? CommandType.StoredProcedure : CommandType.Text;
             command.CommandTimeout = 0;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
             var outputParameters = DbFactory.SetupParameters(command, parameters, dialect, config);
 
             if (dbConnection.State != ConnectionState.Open)
@@ -916,9 +923,14 @@ namespace Nemo
         
         private static T ConvertDataRow<T>(DataRow row, bool isInterface, bool isSimpleType, INemoConfiguration config, IIdentityMap identityMap, string[] primaryKey)
         {
-            var result = identityMap.GetEntityByKey<DataRow, T>(row.GetKeySelector(primaryKey), out var hash);
+            string hash = null;
 
-            if (result != null) return result;
+            var canUseIdentity = identityMap != null && primaryKey != null && primaryKey.Length > 0;
+            if (canUseIdentity)
+            {
+                var result = identityMap.GetEntityByKey<DataRow, T>(row.GetPrimaryKeyValues(primaryKey), out hash);
+                if (result != null) return result;
+            }
 
             T value;
             if (isSimpleType)
@@ -955,7 +967,11 @@ namespace Nemo
 
             if (identityMap != null)
             {
-                var primaryKeyValue = new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => row[k]), StringComparer.Ordinal);
+                var primaryKeyValue = new SortedDictionary<string, object>(StringComparer.Ordinal);
+                foreach (var k in primaryKey)
+                {
+                    primaryKeyValue[k] = row[k];
+                }
                 hash = primaryKeyValue.ComputeHash(targetType);
 
                 if (identityMap.TryGetValue(hash, out var result))
@@ -1070,6 +1086,7 @@ namespace Nemo
                 var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
                 var columns = !isSimpleType ? reader.GetColumns() : null;
                 var isAnonymous = typeof(T) == typeof(object);
+                var primaryKeyOrdinals = GetAllPrimaryKeyOrdinals(reader, map, types);
                 while (reader.Read())
                 {
                     if (isSimpleType)
@@ -1086,7 +1103,7 @@ namespace Nemo
                         var item = Create<T>(isInterface);
                         var record = (IDataRecord)new WrappedRecord(reader, columns);
                         Map(record, item, config.AutoTypeCoercion);
-                        
+
                         TrySetObjectState(item);
 
                         if (map != null)
@@ -1095,7 +1112,7 @@ namespace Nemo
                             args[0] = item;
                             for (var i = 1; i < types.Count; i++)
                             {
-                                var identity = CreateIdentity(types[i], reader);
+                                var identity = CreateIdentity(types[i], reader, primaryKeyOrdinals[i]);
                                 if (!references.TryGetValue(identity, out var reference))
                                 {
                                     reference = Map((object)record, types[i], config.AutoTypeCoercion);
@@ -1132,7 +1149,7 @@ namespace Nemo
                             args[0] = item;
                             for (var i = 1; i < types.Count; i++)
                             {
-                                var identity = CreateIdentity(types[i], reader);
+                                var identity = CreateIdentity(types[i], reader, primaryKeyOrdinals[i]);
                                 if (!references.TryGetValue(identity, out var reference))
                                 {
                                     reference = Wrap(bag, types[i]);
@@ -1177,6 +1194,21 @@ namespace Nemo
             }
         }
 
+        private static int[][] GetAllPrimaryKeyOrdinals<T>(IDataReader reader, Func<object[], T> map, IList<Type> types)
+        {
+            int[][] primaryKeyOrdinals = null;
+            if (map != null && types != null)
+            {
+                primaryKeyOrdinals = new int[types.Count][];
+                for (var i = 1; i < types.Count; i++)
+                {
+                    primaryKeyOrdinals[i] = GetPrimaryKeyOrdinals(types[i], reader);
+                }
+            }
+
+            return primaryKeyOrdinals;
+        }
+
         private static IDictionary<string, object> CreateDynamicItem(IDataReader reader, ISet<string> columns, bool isDynamic)
         {
             IDictionary<string, object> bag = !isDynamic ? new Dictionary<string, object>() : new ExpandoObject();
@@ -1187,14 +1219,24 @@ namespace Nemo
             return bag;
         }
 
-        private static Tuple<Type, string> CreateIdentity(Type objectType, IDataRecord record)
+        private static int[] GetPrimaryKeyOrdinals(Type objectType, IDataRecord record)
         {
             var nameMap = Reflector.GetPropertyNameMap(objectType);
-            var identity = Tuple.Create(objectType, string.Join(",", nameMap.Values.Where(p => p.IsPrimaryKey)
-                                                                                .Select(p => p.MappedColumnName ?? p.PropertyName)
-                                                                                .OrderBy(_ => _)
-                                                                                .Select(n => Convert.ToString(record.GetValue(record.GetOrdinal(n))))));
-            return identity;
+            return nameMap.Values.Where(p => p.IsPrimaryKey)
+                                .Select(p => p.MappedColumnName ?? p.PropertyName)
+                                .OrderBy(_ => _)
+                                .Select(n => record.GetOrdinal(n))
+                                .ToArray();
+        }
+
+        private static Tuple<Type, string> CreateIdentity(Type objectType, IDataRecord record, int[] primaryKeyOrdinals)
+        {
+            var values = new string[primaryKeyOrdinals.Length];
+            for (var i = 0; i < primaryKeyOrdinals.Length; i++)
+            {
+                values[i] = Convert.ToString(record.GetValue(primaryKeyOrdinals[i]));
+            }
+            return Tuple.Create(objectType, string.Join(",", values));
         }
 
         private static IEnumerable<MultiResultItem> ConvertDataReaderMultiResult(IDataReader reader, IList<Type> types, INemoConfiguration config)

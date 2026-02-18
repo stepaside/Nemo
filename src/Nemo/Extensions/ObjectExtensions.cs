@@ -1084,14 +1084,24 @@ namespace Nemo.Extensions
             return objectType.FullName + "/" + hash;
         }
 
-        internal static Func<SortedDictionary<string, object>> GetKeySelector(this DataRow row, string[] primaryKey)
+        internal static SortedDictionary<string, object> GetPrimaryKeyValues(this DataRow row, string[] primaryKey)
         {
-            return () => new SortedDictionary<string, object>(primaryKey.ToDictionary(k => k, k => row[k]));
+            var dict = new SortedDictionary<string, object>();
+            foreach (var k in primaryKey)
+            {
+                dict[k] = row[k];
+            }
+            return dict;
         }
 
-        internal static Func<SortedDictionary<string, object>> GetKeySelector(this object item, string[] propertyKey)
+        internal static SortedDictionary<string, object> GetPrimaryKeyValues(this object item, string[] propertyKey)
         {
-            return () => new SortedDictionary<string, object>(propertyKey.ToDictionary(k => k, k => item.Property(k)));
+            var dict = new SortedDictionary<string, object>();
+            foreach (var k in propertyKey)
+            {
+                dict[k] = item.Property(k);
+            }
+            return dict;
         }
 
         #endregion

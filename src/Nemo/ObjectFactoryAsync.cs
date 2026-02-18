@@ -83,7 +83,7 @@ namespace Nemo
             {
                 if (connectionOpenedHere)
                 {
-                    connection.Clone();
+                    connection.Close();
                 }
 
                 if (!externalConnection)
@@ -104,7 +104,7 @@ namespace Nemo
         {
             config ??= ConfigurationFactory.Get<T>();
 
-            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = null, CaptureException = captureException, Configuration = config };
+            var request = new OperationRequest { Parameters = parameters, ReturnType = OperationReturnType.NonQuery, ConnectionName = connectionName, Connection = connection, CaptureException = captureException, Configuration = config };
 
             if (config.GenerateInsertSql)
             {
@@ -302,6 +302,12 @@ namespace Nemo
             command.CommandText = operationText;
             command.CommandType = operationType == OperationType.StoredProcedure ? CommandType.StoredProcedure : CommandType.Text;
             command.CommandTimeout = 0;
+
+            if (transaction != null)
+            {
+                command.Transaction = transaction;
+            }
+
             var outputParameters = DbFactory.SetupParameters(command, parameters, dialect, config);
 
             if (dbConnection.State != ConnectionState.Open)

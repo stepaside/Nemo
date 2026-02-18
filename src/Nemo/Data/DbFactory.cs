@@ -656,8 +656,9 @@ namespace Nemo.Data
 
                                 if (!string.IsNullOrEmpty(splitString))
                                 {
-                                    command.CommandText = dialect.Value.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => $"({splitString})");
-                                    parameter.Value = string.Join(",", items.Cast<object>().ToArray());
+                                    var replacement = $"({splitString})";
+                                    command.CommandText = dialect.Value.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => replacement);
+                                    parameter.Value = string.Join(",", items.Cast<object>());
                                     dbParam.Value = parameter.Value;
                                     count++;
                                 }
@@ -703,23 +704,20 @@ namespace Nemo.Data
                                         }
                                     }
 
-                                    var expanedParameters = isPositional ? Enumerable.Repeat('?', expansionParameters.Count).ToDelimitedString(",") : expansionParameters.Select(n => $"{dialect.Value.ParameterPrefix}{n}").ToDelimitedString(",");
+                                    var expanedParameters = isPositional ? string.Join(",", Enumerable.Repeat("?", expansionParameters.Count)) : expansionParameters.Select(n => $"{dialect.Value.ParameterPrefix}{n}").ToDelimitedString(",");
+                                    var wrappedExpanedParameters = $"({expanedParameters})";
                                     if (isPositional)
                                     {
                                         var current = 0;
                                         command.CommandText = dialect.Value.PositionalParameterMatcher.Replace(command.CommandText, match =>
                                         {
                                             current++;
-                                            if (current > count)
-                                            {
-                                                return $"({expanedParameters})";
-                                            }
-                                            return match.Value;
+                                            return current > count ? wrappedExpanedParameters : match.Value;
                                         }, count + 1);
                                     }
                                     else
                                     {
-                                        command.CommandText = dialect.Value.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => match.Groups[1].Success && match.Groups[3].Success ? expanedParameters : $"({expanedParameters})");
+                                        command.CommandText = dialect.Value.ParameterNameMatcherWithGroups.Replace(command.CommandText, match => match.Groups[1].Success && match.Groups[3].Success ? expanedParameters : wrappedExpanedParameters);
                                     }
 
                                     count += expansionParameters.Count;
@@ -729,7 +727,7 @@ namespace Nemo.Data
                             }
                             else
                             {
-                                parameter.Value = string.Join(",", items.Cast<object>().ToArray());
+                                parameter.Value = string.Join(",", items.Cast<object>());
                                 dbParam.Value = parameter.Value;
                                 count++;
                             }

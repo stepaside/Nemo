@@ -287,7 +287,7 @@ namespace Nemo.Data
                                 .ToDelimitedString(",");
                         if (page > 0 && pageSize > 0)
                         {
-                            sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, primaryKey, whereClause, (page - 1) * pageSize, pageSize);
+                            sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, primaryKey, (page - 1) * pageSize, pageSize);
                         }
                         else
                         {

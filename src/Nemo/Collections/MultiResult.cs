@@ -181,6 +181,8 @@ namespace Nemo.Collections
             var results = source.AsEnumerable().Select(s => s.ToList()).ToList();
             
             var relations = InferRelations(source.AllTypes).ToList();
+            var relationsByType = BuildRelationsByType(relations);
+            var childrenByRelationKey = BuildChildrenByRelationKey(relations, results);
 
             var roots = new List<T>();
 
@@ -192,7 +194,7 @@ namespace Nemo.Collections
                 foreach (var item in results[i])
                 {
                     string hash = null;
-                    var value = source.IsCached ? identityMap.GetEntityByKey<object, object>(item.GetKeySelector(propertyKey), out hash) : null;
+                    var value = source.IsCached ? identityMap.GetEntityByKey<object, object>(item.GetPrimaryKeyValues(propertyKey), out hash) : null;
                     if (value != null)
                     {
                         if (i == 0)
@@ -208,7 +210,7 @@ namespace Nemo.Collections
                         roots.Add((T)item);
                     }
 
-                    LoadRelatedData(item, source.AllTypes[i], relations, results, source.IsCached, config);
+                    LoadRelatedData(item, source.AllTypes[i], relationsByType, childrenByRelationKey, source.IsCached, config);
 
                     identityMap.WriteThrough(item, hash);
                 }
@@ -222,22 +224,38 @@ namespace Nemo.Collections
             return roots;
         }
         
-        private static void LoadRelatedData(object value, Type objectType, List<ObjectRelation> relations, List<List<object>> set, bool cached, INemoConfiguration config)
+        private static void LoadRelatedData(
+            object value,
+            Type objectType,
+            IDictionary<Type, IDictionary<string, ObjectRelation>> relationsByType,
+            IDictionary<ObjectRelation, IDictionary<object[], List<object>>> childrenByRelationKey,
+            bool cached,
+            INemoConfiguration config)
         {
             var propertyMap = Reflector.GetPropertyMap(objectType);
 
-            var primaryKey = value.GetPrimaryKey();
+            if (!relationsByType.TryGetValue(objectType, out var relationMap))
+            {
+                return;
+            }
             
             foreach (var property in propertyMap)
             {
-                // By convention each relation should end with the name of the property prefixed with underscore
-                var relation = relations.FirstOrDefault(r => r.Name.EndsWith("_" + property.Key.Name));
+                if (!relationMap.TryGetValue(property.Key.Name, out var relation) || relation == null || !relation.IsValid())
+                {
+                    continue;
+                }
 
-                if (relation == null || !relation.IsValid()) continue;
+                if (!childrenByRelationKey.TryGetValue(relation, out var relationBuckets))
+                {
+                    continue;
+                }
 
-                var items = set[relation.To.Index].Where(item => relation.To.Properties.Zip(relation.From.Properties, (to, from) => new { To = to, From = from }).All(p => object.Equals(item.Property(p.To.PropertyName), primaryKey[p.From.PropertyName]))).ToList();
-                
-                if (items.Count == 0) continue;
+                var parentKey = BuildRelationKey(value, relation.From.Properties);
+                if (!relationBuckets.TryGetValue(parentKey, out var items) || items.Count == 0)
+                {
+                    continue;
+                }
                 
                 object propertyValue = null;
                 if (property.Value.IsDataEntity || property.Value.IsObject)
@@ -245,7 +263,7 @@ namespace Nemo.Collections
                     var propertyKey = cached ? ObjectFactory.GetPrimaryKeyProperties(property.Key.PropertyType) : null;
                     var identityMap = cached ? Identity.Get(property.Key.PropertyType, config) : null;
 
-                    propertyValue = cached ? identityMap.GetEntityByKey<object, object>(items[0].GetKeySelector(propertyKey), out var hash) ?? items[0] : items[0];
+                    propertyValue = cached ? identityMap.GetEntityByKey<object, object>(items[0].GetPrimaryKeyValues(propertyKey), out var hash) ?? items[0] : items[0];
 
                     SetForeignKeys(property.Key.PropertyType, propertyValue, objectType, value);
                 }
@@ -270,7 +288,7 @@ namespace Nemo.Collections
 
                         foreach (var item in items)
                         {
-                            var listItem = cached ? identityMap.GetEntityByKey<object, object>(item.GetKeySelector(propertyKey), out var hash) ?? item : item;
+                            var listItem = cached ? identityMap.GetEntityByKey<object, object>(item.GetPrimaryKeyValues(propertyKey), out var hash) ?? item : item;
                             
                             SetForeignKeys(foreignKeys, listItem, value);
 
@@ -283,6 +301,77 @@ namespace Nemo.Collections
                 
                 Reflector.Property.Set(value.GetType(), value, property.Key.Name, propertyValue);
             }
+        }
+
+        private static IDictionary<Type, IDictionary<string, ObjectRelation>> BuildRelationsByType(IEnumerable<ObjectRelation> relations)
+        {
+            var map = new Dictionary<Type, IDictionary<string, ObjectRelation>>();
+
+            foreach (var relation in relations)
+            {
+                if (relation == null || !relation.IsValid())
+                {
+                    continue;
+                }
+
+                if (!map.TryGetValue(relation.From.Type, out var typeRelations))
+                {
+                    typeRelations = new Dictionary<string, ObjectRelation>(StringComparer.Ordinal);
+                    map[relation.From.Type] = typeRelations;
+                }
+
+                var propertyName = relation.Name != null && relation.Name.StartsWith("_", StringComparison.Ordinal)
+                    ? relation.Name.Substring(1)
+                    : relation.Name;
+
+                if (!string.IsNullOrEmpty(propertyName) && !typeRelations.ContainsKey(propertyName))
+                {
+                    typeRelations[propertyName] = relation;
+                }
+            }
+
+            return map;
+        }
+
+        private static IDictionary<ObjectRelation, IDictionary<object[], List<object>>> BuildChildrenByRelationKey(
+            IEnumerable<ObjectRelation> relations,
+            IList<List<object>> set)
+        {
+            var map = new Dictionary<ObjectRelation, IDictionary<object[], List<object>>>();
+
+            foreach (var relation in relations)
+            {
+                if (relation == null || !relation.IsValid())
+                {
+                    continue;
+                }
+
+                var keyMap = new Dictionary<object[], List<object>>(ObjectArrayComparer.Instance);
+                foreach (var child in set[relation.To.Index])
+                {
+                    var key = BuildRelationKey(child, relation.To.Properties);
+                    if (!keyMap.TryGetValue(key, out var list))
+                    {
+                        list = new List<object>();
+                        keyMap[key] = list;
+                    }
+                    list.Add(child);
+                }
+
+                map[relation] = keyMap;
+            }
+
+            return map;
+        }
+
+        private static object[] BuildRelationKey(object value, IList<ReflectedProperty> properties)
+        {
+            var result = new object[properties.Count];
+            for (var i = 0; i < properties.Count; i++)
+            {
+                result[i] = value.Property(properties[i].PropertyName);
+            }
+            return result;
         }
 
         private static void SetForeignKeys(Type propertyType, object propertyValue, Type parentType, object parentValue)
@@ -353,6 +442,52 @@ namespace Nemo.Collections
             public Type Type { get; set; }
             public int Index { get; set; }
             public List<ReflectedProperty> Properties { get; set; }
+        }
+
+        private sealed class ObjectArrayComparer : IEqualityComparer<object[]>
+        {
+            internal static readonly ObjectArrayComparer Instance = new ObjectArrayComparer();
+
+            public bool Equals(object[] x, object[] y)
+            {
+                if (ReferenceEquals(x, y))
+                {
+                    return true;
+                }
+
+                if (x == null || y == null || x.Length != y.Length)
+                {
+                    return false;
+                }
+
+                for (var i = 0; i < x.Length; i++)
+                {
+                    if (!object.Equals(x[i], y[i]))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            public int GetHashCode(object[] obj)
+            {
+                if (obj == null)
+                {
+                    return 0;
+                }
+
+                unchecked
+                {
+                    var hash = 17;
+                    for (var i = 0; i < obj.Length; i++)
+                    {
+                        hash = (hash * 31) + (obj[i]?.GetHashCode() ?? 0);
+                    }
+                    return hash;
+                }
+            }
         }
     }
 }

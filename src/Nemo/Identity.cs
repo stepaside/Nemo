@@ -48,13 +48,12 @@ namespace Nemo
             }
         }
 
-        internal static TResult GetEntityByKey<T, TResult>(this IIdentityMap identityMap, Func<SortedDictionary<string, object>> getKey, out string hash)
+        internal static TResult GetEntityByKey<T, TResult>(this IIdentityMap identityMap, SortedDictionary<string, object> primaryKeyValue, out string hash)
         {
             hash = null;
 
-            if (identityMap != null)
+            if (identityMap != null && primaryKeyValue != null && primaryKeyValue.Count > 0)
             {
-                var primaryKeyValue = getKey();
                 hash = primaryKeyValue.ComputeHash(typeof(T));
 
                 if (identityMap.TryGetValue(hash, out object result))
