@@ -2,9 +2,6 @@
 using Nemo.Extensions;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Nemo
 {
@@ -55,11 +52,17 @@ namespace Nemo
             if (identityMap != null && primaryKeyValue != null && primaryKeyValue.Count > 0)
             {
                 hash = primaryKeyValue.ComputeHash(typeof(T));
+                return identityMap.GetEntityByHash<TResult>(hash);
+            }
 
-                if (identityMap.TryGetValue(hash, out object result))
-                {
-                    return (TResult)result;
-                }
+            return default(TResult);
+        }
+
+        internal static TResult GetEntityByHash<TResult>(this IIdentityMap identityMap, string hash)
+        {
+            if (identityMap != null && !string.IsNullOrEmpty(hash) && identityMap.TryGetValue(hash, out object result))
+            {
+                return (TResult)result;
             }
 
             return default(TResult);

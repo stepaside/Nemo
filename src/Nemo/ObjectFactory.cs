@@ -36,6 +36,9 @@ namespace Nemo
         public const string OperationDelete = "Delete";
         public const string OperationDestroy = "Destroy";
 
+        private static readonly ConcurrentDictionary<Type, string[]> PrimaryKeyPropertyCache = new ConcurrentDictionary<Type, string[]>();
+        private static readonly ConcurrentDictionary<Type, string[]> PrimaryKeyColumnCache = new ConcurrentDictionary<Type, string[]>();
+
         #endregion
 
         #region Instantiation Methods
@@ -928,7 +931,8 @@ namespace Nemo
             var canUseIdentity = identityMap != null && primaryKey != null && primaryKey.Length > 0;
             if (canUseIdentity)
             {
-                var result = identityMap.GetEntityByKey<DataRow, T>(row.GetPrimaryKeyValues(primaryKey), out hash);
+                hash = row.ComputeHash(primaryKey, typeof(T));
+                var result = identityMap.GetEntityByHash<T>(hash);
                 if (result != null) return result;
             }
 
@@ -1563,14 +1567,32 @@ namespace Nemo
 
         public static string[] GetPrimaryKeyProperties(Type objectType)
         {
-            var propertyMap = Reflector.GetPropertyMap(objectType);
-            return propertyMap.Values.Where(p => p.CanRead && p.IsPrimaryKey).Select(p => p.PropertyName).ToArray();
+            var properties = GetPrimaryKeyPropertiesCached(objectType);
+            return (string[])properties.Clone();
+        }
+
+        internal static string[] GetPrimaryKeyPropertiesCached(Type objectType)
+        {
+            return PrimaryKeyPropertyCache.GetOrAdd(objectType, t =>
+            {
+                var propertyMap = Reflector.GetPropertyMap(t);
+                return propertyMap.Values.Where(p => p.CanRead && p.IsPrimaryKey)
+                    .Select(p => p.PropertyName)
+                    .OrderBy(p => p, StringComparer.Ordinal)
+                    .ToArray();
+            });
         }
 
         private static string[] GetPrimaryKeyColumns(Type objectType)
         {
-            var propertyMap = Reflector.GetPropertyMap(objectType);
-            return propertyMap.Values.Where(p => p.CanRead && p.IsPrimaryKey).Select(p => p.MappedColumnName ?? p.PropertyName).ToArray();
+            return PrimaryKeyColumnCache.GetOrAdd(objectType, t =>
+            {
+                var propertyMap = Reflector.GetPropertyMap(t);
+                return propertyMap.Values.Where(p => p.CanRead && p.IsPrimaryKey)
+                    .Select(p => p.MappedColumnName ?? p.PropertyName)
+                    .OrderBy(p => p, StringComparer.Ordinal)
+                    .ToArray();
+            });
         }
 
         #endregion

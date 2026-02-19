@@ -189,12 +189,16 @@ namespace Nemo.Collections
             for (var i = 0; i < source.AllTypes.Length; i++)
             {
                 var identityMap = source.IsCached ? Identity.Get(source.AllTypes[i], config) : null;
-                var propertyKey = source.IsCached ? ObjectFactory.GetPrimaryKeyProperties(source.AllTypes[i]) : null;
+                var propertyKey = source.IsCached ? ObjectFactory.GetPrimaryKeyPropertiesCached(source.AllTypes[i]) : null;
                 var count = 0;
                 foreach (var item in results[i])
                 {
                     string hash = null;
-                    var value = source.IsCached ? identityMap.GetEntityByKey<object, object>(item.GetPrimaryKeyValues(propertyKey), out hash) : null;
+                    if (source.IsCached)
+                    {
+                        hash = item.ComputeHash(propertyKey, typeof(object));
+                    }
+                    var value = source.IsCached ? identityMap.GetEntityByHash<object>(hash) : null;
                     if (value != null)
                     {
                         if (i == 0)
@@ -260,10 +264,10 @@ namespace Nemo.Collections
                 object propertyValue = null;
                 if (property.Value.IsDataEntity || property.Value.IsObject)
                 {
-                    var propertyKey = cached ? ObjectFactory.GetPrimaryKeyProperties(property.Key.PropertyType) : null;
+                    var propertyKey = cached ? ObjectFactory.GetPrimaryKeyPropertiesCached(property.Key.PropertyType) : null;
                     var identityMap = cached ? Identity.Get(property.Key.PropertyType, config) : null;
 
-                    propertyValue = cached ? identityMap.GetEntityByKey<object, object>(items[0].GetPrimaryKeyValues(propertyKey), out var hash) ?? items[0] : items[0];
+                    propertyValue = cached ? identityMap.GetEntityByHash<object>(items[0].ComputeHash(propertyKey, typeof(object))) ?? items[0] : items[0];
 
                     SetForeignKeys(property.Key.PropertyType, propertyValue, objectType, value);
                 }
@@ -272,7 +276,7 @@ namespace Nemo.Collections
                     var elementType = property.Value.ElementType;
                     if (elementType != null)
                     {
-                        var propertyKey = cached ? ObjectFactory.GetPrimaryKeyProperties(elementType) : null;;
+                        var propertyKey = cached ? ObjectFactory.GetPrimaryKeyPropertiesCached(elementType) : null;
                         var foreignKeys = Reflector.GetPropertyNameMap(elementType).Values.Where(p => p.PropertyType == objectType).ToArray();
                         var identityMap = cached ? Identity.Get(elementType, config) : null;
 
@@ -288,7 +292,7 @@ namespace Nemo.Collections
 
                         foreach (var item in items)
                         {
-                            var listItem = cached ? identityMap.GetEntityByKey<object, object>(item.GetPrimaryKeyValues(propertyKey), out var hash) ?? item : item;
+                            var listItem = cached ? identityMap.GetEntityByHash<object>(item.ComputeHash(propertyKey, typeof(object))) ?? item : item;
                             
                             SetForeignKeys(foreignKeys, listItem, value);
 

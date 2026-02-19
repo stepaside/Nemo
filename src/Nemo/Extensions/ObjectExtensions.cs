@@ -1084,24 +1084,37 @@ namespace Nemo.Extensions
             return objectType.FullName + "/" + hash;
         }
 
-        internal static SortedDictionary<string, object> GetPrimaryKeyValues(this DataRow row, string[] primaryKey)
-        {
-            var dict = new SortedDictionary<string, object>();
-            foreach (var k in primaryKey)
-            {
-                dict[k] = row[k];
-            }
-            return dict;
-        }
+        internal static string ComputeHash(this DataRow row, string[] primaryKey, Type objectType) => ComputeHash(primaryKey, k => row[k], objectType);
 
-        internal static SortedDictionary<string, object> GetPrimaryKeyValues(this object item, string[] propertyKey)
+        internal static string ComputeHash(this object item, string[] propertyKey, Type objectType) => ComputeHash(propertyKey, item.Property, objectType);
+
+        private static string ComputeHash(string[] keys, Func<string, object> getValue, Type objectType)
         {
-            var dict = new SortedDictionary<string, object>();
-            foreach (var k in propertyKey)
+            if (keys == null || keys.Length == 0)
             {
-                dict[k] = item.Property(k);
+                return null;
             }
-            return dict;
+
+            var normalizedType = objectType;
+            if (normalizedType == typeof(object) && Reflector.IsEmitted(normalizedType))
+            {
+                normalizedType = Reflector.GetInterface(normalizedType);
+            }
+
+            var output = new StringBuilder();
+            for (var i = 0; i < keys.Length; i++)
+            {
+                var key = keys[i];
+                var value = getValue(key);
+                if (i > 0)
+                {
+                    output.Append(',');
+                }
+                output.Append(key).Append('=').Append(value);
+            }
+
+            var hash = Hash.Compute(Encoding.UTF8.GetBytes(output.ToString()));
+            return normalizedType.FullName + "/" + hash;
         }
 
         #endregion
