@@ -340,6 +340,14 @@ namespace Nemo.Data
                     {
                         sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, pageSize, (page - 1) * pageSize);
                     }
+                    else if (dialect is SqliteDialectProvider)
+                    {
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, -1, skipCount);
+                    }
+                    else if (dialect is MySqlDialectProvider)
+                    {
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, ulong.MaxValue, skipCount);
+                    }
                     else
                     {
                         sql = string.Format(SqlSelectSkipFormat, tableName, selection, whereClause, orderByClause, skipCount);
