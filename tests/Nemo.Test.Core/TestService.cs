@@ -43,7 +43,7 @@ namespace NemoTest
 
             var factory = DbFactory.GetDbProviderFactory(DataAccessProviderTypes.SqlServerCore);
 
-            var connection = DbFactory.CreateConnection("Data Source=.;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;", DataAccessProviderTypes.SqlServerCore);
+            var connection = DbFactory.CreateConnection("Data Source=.\\SQLEXPRESS;Initial Catalog=Northwind;Integrated Security=SSPI;", DataAccessProviderTypes.SqlServerCore);
 
             var settings = ConfigurationFactory.Get(typeof(object)).SystemConfiguration.ConnectionString("DbConnection");
 

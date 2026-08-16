@@ -46,9 +46,9 @@ namespace NemoTest
 
             var factory = DbFactory.GetDbProviderFactory(DataAccessProviderTypes.SqlServer);
 
-            var guessed_connection = DbFactory.CreateConnection("Data Source=localhost;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;");
+            var guessed_connection = DbFactory.CreateConnection("Data Source=.\\SQLEXPRESS;Initial Catalog=Northwind;Integrated Security=SSPI");
 
-            var connection = DbFactory.CreateConnection("Data Source=.;Initial Catalog=Northwind;Uid=sa;Pwd=Passw0rd;", DataAccessProviderTypes.SqlServer);
+            var connection = DbFactory.CreateConnection("Data Source=.\\SQLEXPRESS;Initial Catalog=Northwind;Integrated Security=SSPI", DataAccessProviderTypes.SqlServer);
 
             //// Simple retrieve with dynamic parameters
             //var retrieve_customer_test = ObjectFactory.Retrieve<Customer>(parameters: new { CustomerID = "ALFKI" }).FirstOrDefault();
