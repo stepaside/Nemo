@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -241,7 +242,7 @@ namespace Nemo
         public static async Task<IEnumerable<T>> ToEnumerableAsync<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken = default)
             where T : class
         {
-            if (!(source is EagerLoadEnumerableAsync<T> loader)) return source.ToEnumerable();
+            if (!(source is EagerLoadEnumerableAsync<T> loader)) return ToBlockingEnumerable(source, cancellationToken);
 
             var iterator = await loader.GetEnumeratorAsync(cancellationToken).ConfigureAwait(false);
             return iterator.AsEnumerable();
@@ -402,16 +403,51 @@ namespace Nemo
                 {
                     first = source;
                 }
-                else if (first is EagerLoadEnumerableAsync<T>)
+                else if (first is EagerLoadEnumerableAsync<T> firstEager && source is EagerLoadEnumerableAsync<T> sourceEager)
                 {
-                    first = ((EagerLoadEnumerableAsync<T>)first).Union(source);
+                    first = firstEager.Union(sourceEager);
                 }
                 else
                 {
-                    first = first.Union(source);
+                    first = UnionAsyncCore(first, source);
                 }
             }
-            return first ?? AsyncEnumerable.Empty<T>();
+            return first ?? EmptyAsync<T>();
+        }
+
+        private static async IAsyncEnumerable<T> UnionAsyncCore<T>(IAsyncEnumerable<T> first, IAsyncEnumerable<T> second, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var set = new HashSet<T>();
+            await foreach (var item in first.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                if (set.Add(item)) yield return item;
+            }
+            await foreach (var item in second.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                if (set.Add(item)) yield return item;
+            }
+        }
+
+        private static async IAsyncEnumerable<T> EmptyAsync<T>()
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            yield break;
+        }
+
+        private static IEnumerable<T> ToBlockingEnumerable<T>(IAsyncEnumerable<T> source, CancellationToken cancellationToken)
+        {
+            var enumerator = source.GetAsyncEnumerator(cancellationToken);
+            try
+            {
+                while (enumerator.MoveNextAsync().AsTask().GetAwaiter().GetResult())
+                {
+                    yield return enumerator.Current;
+                }
+            }
+            finally
+            {
+                enumerator.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
         }
 
         public static IAsyncEnumerable<TSource> IncludeAsync<TSource, TInclude>(this IAsyncEnumerable<TSource> source, Expression<Func<TSource, TInclude, bool>> join)

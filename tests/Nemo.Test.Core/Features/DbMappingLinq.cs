@@ -102,9 +102,9 @@ namespace NemoTestCore.Features
 
         private static IQueryable<Order> Orders => new NemoQueryable<Order>(Connection);
 
-        private static IAsyncQueryable<Customer> CustomersAsync => new NemoQueryableAsync<Customer>(Connection);
+        private static IQueryable<Customer> CustomersAsync => new NemoQueryable<Customer>(Connection);
 
-        private static IAsyncQueryable<Order> OrdersAsync => new NemoQueryableAsync<Order>(Connection);
+        private static IQueryable<Order> OrdersAsync => new NemoQueryable<Order>(Connection);
 
         public static void SelectAllCustomers()
         {

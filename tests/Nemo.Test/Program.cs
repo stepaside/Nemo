@@ -106,7 +106,7 @@ namespace NemoTest
             var max2 = new NemoQueryable<Order>().Max(o => o.OrderId);
             var max3 = new NemoQueryable<Order>().Where(o => o.CustomerId == "ALFKI").Max(o => o.OrderId);
 
-            var maxAsync = new NemoQueryableAsync<Order>().MaxAsync(o => o.OrderId).Result;
+            var maxAsync = new NemoQueryable<Order>().MaxAsync(o => o.OrderId).Result;
 
             var count1 = new NemoQueryable<Customer>().Count(c => c.Id == "ALFKI");
             var count2 = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Count();
@@ -122,7 +122,7 @@ namespace NemoTest
 
             var linqCustomer = new NemoQueryable<Customer>().FirstOrDefault(c => c.Id == "ALFKI");
 
-            var linqCustomersAsync = new NemoQueryableAsync<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefaultAsync().Result;
+            var linqCustomersAsync = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefaultAsync().Result;
 
             var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
 

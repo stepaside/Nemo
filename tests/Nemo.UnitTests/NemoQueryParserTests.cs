@@ -251,31 +251,47 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
-        public void Parse_ToListAsync_TreatedAsNoOp()
+        public void Parse_FirstOrDefaultAsyncWithPredicate_ProducesFirstOrDefaultPlan()
         {
-            var source = new NemoQueryableAsync<TestEntity>();
-            var expression = Expression.Call(typeof(AsyncQueryable), "ToListAsync", new[] { typeof(TestEntity) },
-                source.Expression, Expression.Constant(default(System.Threading.CancellationToken)));
+            var expression = Expression.Call(typeof(NemoQueryableExtensions), nameof(NemoQueryableExtensions.FirstOrDefaultAsync), new[] { typeof(TestEntity) },
+                Query.Expression, Expression.Quote((Expression<Func<TestEntity, bool>>)(x => x.Name == "test")), Expression.Constant(default(System.Threading.CancellationToken)));
 
             var plan = NemoQueryParser.Parse(expression, true);
 
-            Assert.IsFalse(plan.IsCount);
-            Assert.IsNull(plan.Aggregate);
-            Assert.AreEqual(Nemo.SelectOption.All, plan.SelectOption);
+            Assert.AreEqual(Nemo.SelectOption.FirstOrDefault, plan.SelectOption);
+            Assert.IsNotNull(plan.Predicate);
         }
 
         [TestMethod]
-        public void Parse_ToArrayAsync_TreatedAsNoOp()
+        public void Parse_CountAsync_ProducesCountPlan()
         {
-            var source = new NemoQueryableAsync<TestEntity>();
-            var expression = Expression.Call(typeof(AsyncQueryable), "ToArrayAsync", new[] { typeof(TestEntity) },
-                source.Expression, Expression.Constant(default(System.Threading.CancellationToken)));
+            var expression = Expression.Call(typeof(NemoQueryableExtensions), nameof(NemoQueryableExtensions.CountAsync), new[] { typeof(TestEntity) },
+                Query.Expression, Expression.Constant(default(System.Threading.CancellationToken)));
 
             var plan = NemoQueryParser.Parse(expression, true);
 
-            Assert.IsFalse(plan.IsCount);
-            Assert.IsNull(plan.Aggregate);
-            Assert.AreEqual(Nemo.SelectOption.All, plan.SelectOption);
+            Assert.IsTrue(plan.IsCount);
+            Assert.IsFalse(plan.IsLongCount);
+        }
+
+        [TestMethod]
+        public void Parse_MaxAsync_ProducesAggregatePlan()
+        {
+            var expression = Expression.Call(typeof(NemoQueryableExtensions), nameof(NemoQueryableExtensions.MaxAsync), new[] { typeof(TestEntity), typeof(int) },
+                Query.Expression, Expression.Quote((Expression<Func<TestEntity, int>>)(x => x.Id)), Expression.Constant(default(System.Threading.CancellationToken)));
+
+            var plan = NemoQueryParser.Parse(expression, true);
+
+            Assert.AreEqual(ObjectFactory.AggregateNames.MAX, plan.Aggregate);
+            Assert.AreEqual("Id", plan.AggregateProperty.Name);
+        }
+
+        [TestMethod]
+        public async System.Threading.Tasks.Task ToListAsync_NonNemoQueryable_Throws()
+        {
+            var query = new[] { new TestEntity() }.AsQueryable();
+
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => query.ToListAsync());
         }
 
         [TestMethod]
