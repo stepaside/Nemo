@@ -92,8 +92,6 @@ namespace Nemo.Linq
             {
                 case IQueryable queryable:
                     return queryable.ElementType;
-                case IAsyncQueryable asyncQueryable:
-                    return asyncQueryable.ElementType;
                 default:
                     throw new NotSupportedException("Invalid query: expected a Nemo query source.");
             }
@@ -102,7 +100,7 @@ namespace Nemo.Linq
         private static void Apply(NemoQueryPlan plan, MethodCallExpression call, bool async)
         {
             var method = call.Method;
-            if (method.DeclaringType != typeof(Queryable) && method.DeclaringType != typeof(AsyncQueryable))
+            if (method.DeclaringType != typeof(Queryable) && method.DeclaringType != typeof(NemoQueryableExtensions))
             {
                 throw new NotSupportedException($"The method '{method.DeclaringType}.{method.Name}' is not supported by the Nemo LINQ provider.");
             }
@@ -155,10 +153,6 @@ namespace Nemo.Linq
                         EnsureNoPaging(plan, name);
                         AddPredicate(plan, firstPredicate);
                     }
-                    break;
-
-                case "ToList":
-                case "ToArray":
                     break;
 
                 case "Count":
