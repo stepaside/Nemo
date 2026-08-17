@@ -59,6 +59,14 @@ namespace Nemo.Utilities
             Capture(message, logPRovider, context);
         }
 
+        public static void Capture(Func<string> messageFactory, INemoConfiguration config)
+        {
+            if (!IsEnabled(config, out var logProvider)) return;
+
+            var context = GetContext(config);
+            Capture(messageFactory(), logProvider, context);
+        }
+
         private static void Capture(string message, ILogProvider logProvider, Tuple<Guid, Stopwatch> context)
         {
             if (message == null) return;
@@ -76,6 +84,16 @@ namespace Nemo.Utilities
 
             var context = CreateContext(config);
             Capture(message, logProvider, context);
+            context.Item2.Start();
+            return true;
+        }
+
+        public static bool CaptureBegin(Func<string> messageFactory, INemoConfiguration config)
+        {
+            if (!IsEnabled(config, out var logProvider)) return false;
+
+            var context = CreateContext(config);
+            Capture(messageFactory(), logProvider, context);
             context.Item2.Start();
             return true;
         }

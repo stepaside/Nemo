@@ -1088,9 +1088,11 @@ namespace Nemo
                 var count = reader.FieldCount;
                 var references = new Dictionary<Tuple<Type, string>, object>();
                 var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
-                var columns = !isSimpleType ? reader.GetColumns() : null;
                 var isAnonymous = typeof(T) == typeof(object);
+                var columns = !isSimpleType && (isAnonymous || !useMapper) ? reader.GetColumns() : null;
                 var primaryKeyOrdinals = GetAllPrimaryKeyOrdinals(reader, map, types);
+                var readerMapper = !isSimpleType && !isAnonymous && useMapper ? Mapper.CreateReaderDelegate(reader, typeof(T), config.AutoTypeCoercion) : null;
+                var referenceMappers = readerMapper != null && map != null && types != null ? GetAllReaderMappers(reader, types, config.AutoTypeCoercion) : null;
                 while (reader.Read())
                 {
                     if (isSimpleType)
@@ -1105,8 +1107,7 @@ namespace Nemo
                     else if (useMapper)
                     {
                         var item = Create<T>(isInterface);
-                        var record = (IDataRecord)new WrappedRecord(reader, columns);
-                        Map(record, item, config.AutoTypeCoercion);
+                        readerMapper(reader, item);
 
                         TrySetObjectState(item);
 
@@ -1119,7 +1120,8 @@ namespace Nemo
                                 var identity = CreateIdentity(types[i], reader, primaryKeyOrdinals[i]);
                                 if (!references.TryGetValue(identity, out var reference))
                                 {
-                                    reference = Map((object)record, types[i], config.AutoTypeCoercion);
+                                    reference = Create(types[i]);
+                                    referenceMappers[i](reader, reference);
                                     TrySetObjectState(reference);
                                     references.Add(identity, reference);
                                 }
@@ -1198,6 +1200,17 @@ namespace Nemo
             }
         }
 
+        private static Mapper.PropertyMapper[] GetAllReaderMappers(IDataRecord record, IList<Type> types, bool autoTypeCoercion)
+        {
+            var mappers = new Mapper.PropertyMapper[types.Count];
+            for (var i = 1; i < types.Count; i++)
+            {
+                mappers[i] = Mapper.CreateReaderDelegate(record, types[i], autoTypeCoercion);
+            }
+
+            return mappers;
+        }
+
         private static int[][] GetAllPrimaryKeyOrdinals<T>(IDataReader reader, Func<object[], T> map, IList<Type> types)
         {
             int[][] primaryKeyOrdinals = null;
@@ -1262,7 +1275,8 @@ namespace Nemo
                     var isAnonymous = types[resultIndex] == typeof(object);
                     var isSimpleType = reflectedTypes[resultIndex].IsSimpleType;
                     var useMapper = !isInterface || config.DefaultMaterializationMode == MaterializationMode.Exact;
-                    var columns = !isSimpleType ? reader.GetColumns() : null;
+                    var columns = !isSimpleType && (isAnonymous || !useMapper) ? reader.GetColumns() : null;
+                    var readerMapper = !isSimpleType && !isAnonymous && useMapper ? Mapper.CreateReaderDelegate(reader, types[resultIndex], config.AutoTypeCoercion) : null;
                     while (reader.Read())
                     {
                         if (isSimpleType)
@@ -1277,7 +1291,8 @@ namespace Nemo
                         }
                         else if (useMapper)
                         {
-                            var item = Map((object)new WrappedReader(reader, columns), types[resultIndex], config.AutoTypeCoercion);
+                            var item = Create(types[resultIndex]);
+                            readerMapper(reader, item);
                             TrySetObjectState(item);
                             yield return new MultiResultItem { Item = item, ItemType = types[resultIndex], ItemTypeIndex = resultIndex, SkipNextCallback = changeSkipNext };
                         }
