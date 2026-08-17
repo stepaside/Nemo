@@ -18,9 +18,9 @@ namespace Nemo.Collections
     {
         private readonly Dictionary<string, Type> _sqlMap;
         private readonly List<string> _sqlOrder;
-        private Func<string, IList<Type>, Task<IEnumerable<T>>> _load;
+        private Func<string, IList<Type>, CancellationToken, Task<IEnumerable<T>>> _load;
        
-        public EagerLoadEnumerableAsync(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, Task<IEnumerable<T>>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount, INemoConfiguration config)
+        public EagerLoadEnumerableAsync(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, CancellationToken, Task<IEnumerable<T>>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount, INemoConfiguration config)
         {
             _sqlOrder = sql.ToList();
             _sqlMap = _sqlOrder.Zip(types, (s, t) => new { Key = s, Value = t }).ToDictionary(t => t.Key, t => t.Value);
@@ -36,10 +36,11 @@ namespace Nemo.Collections
             Configuration = config;
         }
 
-        internal async Task<IEnumerator<T>> GetEnumeratorAsync()
+        internal async Task<IEnumerator<T>> GetEnumeratorAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var types = _sqlMap.Arrange(_sqlOrder, t => t.Key).Select(t => t.Value).ToArray();
-            var result = await _load(_sqlOrder.ToDelimitedString("; "), types).ConfigureAwait(false);
+            var result = await _load(_sqlOrder.ToDelimitedString("; "), types, cancellationToken).ConfigureAwait(false);
 
             var multiresult = result as IMultiResult;
             if (multiresult != null)
@@ -63,7 +64,7 @@ namespace Nemo.Collections
            
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            return new EagerLoadEnumeratorAsync(GetEnumeratorAsync);
+            return new EagerLoadEnumeratorAsync(GetEnumeratorAsync, cancellationToken);
         }
 
         internal Expression<Func<T, bool>> Predicate { get; }
@@ -97,12 +98,14 @@ namespace Nemo.Collections
 
         private class EagerLoadEnumeratorAsync : IAsyncEnumerator<T>
         {
-            private readonly Func<Task<IEnumerator<T>>> _loader;
+            private readonly Func<CancellationToken, Task<IEnumerator<T>>> _loader;
+            private readonly CancellationToken _cancellationToken;
             private IEnumerator<T> _internal;
 
-            public EagerLoadEnumeratorAsync(Func<Task<IEnumerator<T>>> loader)
+            public EagerLoadEnumeratorAsync(Func<CancellationToken, Task<IEnumerator<T>>> loader, CancellationToken cancellationToken)
             {
                 _loader = loader;
+                _cancellationToken = cancellationToken;
             }
 
             public T Current { get; private set; }
@@ -114,25 +117,26 @@ namespace Nemo.Collections
 
             public ValueTask DisposeAsync()
             {
-                _internal.Dispose();
+                _internal?.Dispose();
                 return new ValueTask(Task.CompletedTask);
             }
 
             public async ValueTask<bool> MoveNextAsync()
             {
+                _cancellationToken.ThrowIfCancellationRequested();
+
                 if (_internal == null)
                 {
-                    _internal = await _loader().ConfigureAwait(false);
+                    _internal = await _loader(_cancellationToken).ConfigureAwait(false);
                 }
 
-                try
-                {
-                    return _internal.MoveNext();
-                }
-                finally
+                if (_internal.MoveNext())
                 {
                     Current = _internal.Current;
+                    return true;
                 }
+
+                return false;
             }
         }
     }

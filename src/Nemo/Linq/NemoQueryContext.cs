@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading;
 using Nemo.Configuration;
 
 namespace Nemo.Linq
@@ -19,21 +20,27 @@ namespace Nemo.Linq
         private static readonly MethodInfo AggregateAsyncMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "AggregateAsync" && m.GetGenericArguments().Length == 2);
 
         // Executes the expression tree that is passed to it. 
-        internal static object Execute(Expression expression, DbConnection connection = null, bool async = false, INemoConfiguration config = null)
+        internal static object Execute(Expression expression, DbConnection connection = null, bool async = false, INemoConfiguration config = null, CancellationToken cancellationToken = default)
         {
             var plan = NemoQueryParser.Parse(expression, async);
             var type = plan.ElementType;
 
             if (plan.IsCount)
             {
+                var countArgs = async
+                    ? new object[] { plan.Predicate, null, connection, config, cancellationToken }
+                    : new object[] { plan.Predicate, null, connection, config };
                 return (async ? CountAsyncMethod : CountMethod).MakeGenericMethod(type, plan.IsLongCount ? typeof(long) : typeof(int))
-                    .Invoke(null, new object[] { plan.Predicate, null, connection, config });
+                    .Invoke(null, countArgs);
             }
 
             if (plan.Aggregate != null)
             {
+                var aggregateArgs = async
+                    ? new object[] { plan.Aggregate.Value, plan.AggregateProjection, plan.Predicate, null, connection, config, cancellationToken }
+                    : new object[] { plan.Aggregate.Value, plan.AggregateProjection, plan.Predicate, null, connection, config };
                 return (async ? AggregateAsyncMethod : AggregateMethod).MakeGenericMethod(type, plan.AggregateProperty.PropertyType)
-                    .Invoke(null, new object[] { plan.Aggregate.Value, plan.AggregateProjection, plan.Predicate, null, connection, config });
+                    .Invoke(null, aggregateArgs);
             }
 
             plan.GetPaging(out var page, out var pageSize, out var skipCount);

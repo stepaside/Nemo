@@ -12,6 +12,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nemo
@@ -306,15 +307,15 @@ namespace Nemo
 
         #region Retrieve Async Methods
 
-        public static async Task<T> RetrieveScalarAsync<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, INemoConfiguration config = null)
+        public static async Task<T> RetrieveScalarAsync<T>(string sql, object parameters = null, string connectionName = null, DbConnection connection = null, string schema = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
         {
             config ??= ConfigurationFactory.DefaultConfiguration;
 
             var parameterList = ExtractParameters(parameters);
 
             var response = connection != null
-                ? await ExecuteAsync(sql, parameterList, OperationReturnType.Scalar, GuessOperationType(sql), connection: connection, schema: schema, config: config).ConfigureAwait(false)
-                : await ExecuteAsync(sql, parameterList, OperationReturnType.Scalar, GuessOperationType(sql), connectionName: connectionName, schema: schema, config: config).ConfigureAwait(false);
+                ? await ExecuteAsync(sql, parameterList, OperationReturnType.Scalar, GuessOperationType(sql), connection: connection, schema: schema, config: config, cancellationToken: cancellationToken).ConfigureAwait(false)
+                : await ExecuteAsync(sql, parameterList, OperationReturnType.Scalar, GuessOperationType(sql), connectionName: connectionName, schema: schema, config: config, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             var value = response.Value;
             if (value == null)
@@ -325,7 +326,7 @@ namespace Nemo
             return (T)Reflector.ChangeType(value, typeof(T));
         }
 
-        private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
+        private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
         {
             Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
@@ -374,7 +375,7 @@ namespace Nemo
                 Log.CaptureEnd(config);
             }
 
-            result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, schema, config, identityMap).ConfigureAwait(false);
+            result = await RetrieveItemsAsync(operation, parameters, operationType, returnType, connectionName, connection, types, map, schema, config, identityMap, cancellationToken).ConfigureAwait(false);
 
             if (queryKey != null)
             {
@@ -408,7 +409,7 @@ namespace Nemo
             return result;
         }
 
-        private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, INemoConfiguration config, IdentityMap<T> identityMap)
+        private static async Task<IEnumerable<T>> RetrieveItemsAsync<T>(string operation, IList<Param> parameters, OperationType operationType, OperationReturnType returnType, string connectionName, DbConnection connection, IList<Type> types, Func<object[], T> map, string schema, INemoConfiguration config, IdentityMap<T> identityMap, CancellationToken cancellationToken = default)
         {
             if (operationType == OperationType.Guess)
             {
@@ -423,8 +424,8 @@ namespace Nemo
             Log.Capture(operationText, config);
 
             var response = connection != null
-                ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema, config: config).ConfigureAwait(false)
-                : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema, config: config).ConfigureAwait(false);
+                ? await ExecuteAsync(operationText, parameters, returnType, connection: connection, operationType: operationType, types: types, schema: schema, config: config, cancellationToken: cancellationToken).ConfigureAwait(false)
+                : await ExecuteAsync(operationText, parameters, returnType, connectionName: connectionName ?? config?.DefaultConnectionName, operationType: operationType, types: types, schema: schema, config: config, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             Log.CaptureEnd(config);
 

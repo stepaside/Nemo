@@ -66,16 +66,21 @@ namespace Nemo.Linq
 
         private static readonly MethodInfo ToEnumerableAsyncMethod = typeof(ObjectFactory).GetMethod("ToEnumerableAsync");
 
+        internal object ExecuteAsyncCore(Expression expression, CancellationToken token)
+        {
+            return NemoQueryContext.Execute(expression, _connection, true, _config, token);
+        }
+
         public async ValueTask<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken token)
         {
-            var async = NemoQueryContext.Execute(expression, _connection, true, _config);
+            var async = NemoQueryContext.Execute(expression, _connection, true, _config, token);
             var typeName = async.GetType().Name;
             if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
                 var type = Reflector.GetElementType(typeof(TResult));
                 if (typeof(IList).IsAssignableFrom(typeof(TResult)))
                 {
-                    var task = (Task)ToEnumerableAsyncMethod.MakeGenericMethod(type).Invoke(null, new object[] { async });
+                    var task = (Task)ToEnumerableAsyncMethod.MakeGenericMethod(type).Invoke(null, new object[] { async, token });
                     await task.ConfigureAwait(false);
                     var items = (IEnumerable)typeof(Task<>).MakeGenericType(typeof(IEnumerable<>).MakeGenericType(type)).GetProperty("Result").GetGetMethod().Invoke(task, null);
                     var list = List.Create(type);
@@ -92,13 +97,13 @@ namespace Nemo.Linq
                 }
                 else
                 {
-                    var task = (Task<TResult>)ToEnumerableAsyncMethod.MakeGenericMethod(type).Invoke(null, new object[] { async });
+                    var task = (Task<TResult>)ToEnumerableAsyncMethod.MakeGenericMethod(type).Invoke(null, new object[] { async, token });
                     return await task.ConfigureAwait(false);
                 }
             }
             else if (typeName == "EagerLoadEnumerableAsync`1" && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
-                return await ((IAsyncEnumerable<TResult>)async).FirstOrDefaultAsync().ConfigureAwait(false);
+                return await ((IAsyncEnumerable<TResult>)async).FirstOrDefaultAsync(token).ConfigureAwait(false);
             }
             else
             {
