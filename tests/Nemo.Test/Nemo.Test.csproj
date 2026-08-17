@@ -92,21 +92,6 @@
     <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.IdentityModel" />
-    <Reference Include="System.Interactive, Version=6.0.0.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Interactive.6.0.1\lib\netstandard2.0\System.Interactive.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Interactive.Async, Version=6.0.0.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Interactive.Async.6.0.1\lib\netstandard2.0\System.Interactive.Async.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Interactive.Async.Providers, Version=6.0.0.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Interactive.Async.Providers.6.0.1\lib\netstandard2.0\System.Interactive.Async.Providers.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Linq.Async, Version=6.0.0.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Linq.Async.6.0.1\lib\netstandard2.0\System.Linq.Async.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Linq.Async.Queryable, Version=6.0.0.0, Culture=neutral, PublicKeyToken=94bc3704cddfc263, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Linq.Async.Queryable.6.0.1\lib\netstandard2.0\System.Linq.Async.Queryable.dll</HintPath>
-    </Reference>
     <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
     </Reference>

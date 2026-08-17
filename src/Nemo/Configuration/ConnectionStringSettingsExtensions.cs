@@ -35,7 +35,7 @@ namespace Nemo.Configuration
                     }
                     else
                     {
-                        return new ConnectionStringSettingsCollection(connectionStrings.Do(p => p.Value.Name = p.Key).Select(p => p.Value));
+                        return new ConnectionStringSettingsCollection(connectionStrings.Select(p => { p.Value.Name = p.Key; return p.Value; }));
                     }
                 }
 
