@@ -228,6 +228,34 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void Parse_ToListAsync_TreatedAsNoOp()
+        {
+            var source = new NemoQueryableAsync<TestEntity>();
+            var expression = Expression.Call(typeof(AsyncQueryable), "ToListAsync", new[] { typeof(TestEntity) },
+                source.Expression, Expression.Constant(default(System.Threading.CancellationToken)));
+
+            var plan = NemoQueryParser.Parse(expression, true);
+
+            Assert.IsFalse(plan.IsCount);
+            Assert.IsNull(plan.Aggregate);
+            Assert.AreEqual(Nemo.SelectOption.All, plan.SelectOption);
+        }
+
+        [TestMethod]
+        public void Parse_ToArrayAsync_TreatedAsNoOp()
+        {
+            var source = new NemoQueryableAsync<TestEntity>();
+            var expression = Expression.Call(typeof(AsyncQueryable), "ToArrayAsync", new[] { typeof(TestEntity) },
+                source.Expression, Expression.Constant(default(System.Threading.CancellationToken)));
+
+            var plan = NemoQueryParser.Parse(expression, true);
+
+            Assert.IsFalse(plan.IsCount);
+            Assert.IsNull(plan.Aggregate);
+            Assert.AreEqual(Nemo.SelectOption.All, plan.SelectOption);
+        }
+
+        [TestMethod]
         public void Parse_ValueTypeOrderByKey_Preserved()
         {
             var plan = Parse(Query.OrderBy(x => x.Id));

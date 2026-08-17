@@ -156,6 +156,10 @@ namespace Nemo.Linq
                     }
                     break;
 
+                case "ToList":
+                case "ToArray":
+                    break;
+
                 case "Count":
                 case "LongCount":
                     EnsureNoPaging(plan, name);
