@@ -40,6 +40,10 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nemo.UnitTests" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1' or '$(TargetFramework)' == 'net10.0'">
     <PackageReference Include="System.Interactive" Version="7.0.0" />
     <PackageReference Include="System.Interactive.Async.Providers" Version="7.0.0" />

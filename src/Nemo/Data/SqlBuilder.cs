@@ -100,6 +100,15 @@ namespace Nemo.Data
             return tableName;
         }
 
+        private static MemberInfo GetSortMember(Expression body)
+        {
+            while (body is UnaryExpression unary && (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.ConvertChecked))
+            {
+                body = unary.Operand;
+            }
+            return ((MemberExpression)body).Member;
+        }
+
         internal static string GetOperator(ExpressionType type)
         {
             switch (type)
@@ -222,7 +231,7 @@ namespace Nemo.Data
                         var sortReverse = new StringBuilder();
                         foreach (var o in orderBy)
                         {
-                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[GetSortMember(o.OrderBy.Body).Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
                             sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                             sortReverse.AppendFormat("{0} {1}, ", column, !o.Reverse ? "DESC" : "ASC");
                         }
@@ -263,7 +272,7 @@ namespace Nemo.Data
                         var sort = new StringBuilder();
                         foreach (var o in orderBy)
                         {
-                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[GetSortMember(o.OrderBy.Body).Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
                             sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
@@ -299,7 +308,7 @@ namespace Nemo.Data
                         var sort = new StringBuilder();
                         foreach (var o in orderBy)
                         {
-                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[GetSortMember(o.OrderBy.Body).Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
                             sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
@@ -321,7 +330,7 @@ namespace Nemo.Data
                         var sort = new StringBuilder(" ORDER BY ");
                         foreach (var o in orderBy)
                         {
-                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                            var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[GetSortMember(o.OrderBy.Body).Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
                             sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
@@ -330,6 +339,14 @@ namespace Nemo.Data
                     if (page > 0 && pageSize > 0)
                     {
                         sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, pageSize, (page - 1) * pageSize);
+                    }
+                    else if (dialect is SqliteDialectProvider)
+                    {
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, -1, skipCount);
+                    }
+                    else if (dialect is MySqlDialectProvider)
+                    {
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, ulong.MaxValue, skipCount);
                     }
                     else
                     {
@@ -345,7 +362,7 @@ namespace Nemo.Data
                     var sort = new StringBuilder(" ORDER BY ");
                     foreach (var o in orderBy)
                     {
-                        var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[((MemberExpression)o.OrderBy.Body).Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
+                        var column = aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[GetSortMember(o.OrderBy.Body).Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter;
                         sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                     }
                     sort.Length -= 2;
