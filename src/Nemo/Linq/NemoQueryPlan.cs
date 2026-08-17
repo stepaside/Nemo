@@ -11,6 +11,7 @@ namespace Nemo.Linq
     {
         public LambdaExpression KeySelector { get; set; }
         public bool Descending { get; set; }
+        internal Delegate CompiledKeySelector;
     }
 
     internal sealed class NemoQueryPlan
@@ -18,6 +19,7 @@ namespace Nemo.Linq
         public Type ElementType { get; set; }
         public LambdaExpression Predicate { get; set; }
         public List<NemoQuerySort> OrderBy { get; } = new List<NemoQuerySort>();
+        public List<NemoQuerySort> PostOrderBy { get; } = new List<NemoQuerySort>();
         public int Skip { get; set; }
         public int Take { get; set; }
         public bool IsEmpty { get; set; }
@@ -117,18 +119,32 @@ namespace Nemo.Linq
 
                 case "OrderBy":
                 case "OrderByDescending":
-                    EnsureNoPaging(plan, name);
-                    plan.OrderBy.Clear();
-                    plan.OrderBy.Add(new NemoQuerySort { KeySelector = GetRequiredLambda(call), Descending = name == "OrderByDescending" });
+                    if (HasPaging(plan))
+                    {
+                        plan.PostOrderBy.Clear();
+                        plan.PostOrderBy.Add(new NemoQuerySort { KeySelector = GetRequiredLambda(call), Descending = name == "OrderByDescending" });
+                    }
+                    else
+                    {
+                        plan.OrderBy.Clear();
+                        plan.OrderBy.Add(new NemoQuerySort { KeySelector = GetRequiredLambda(call), Descending = name == "OrderByDescending" });
+                    }
                     break;
 
                 case "ThenBy":
                 case "ThenByDescending":
-                    EnsureNoPaging(plan, name);
-                    plan.OrderBy.Add(new NemoQuerySort { KeySelector = GetRequiredLambda(call), Descending = name == "ThenByDescending" });
+                    if (HasPaging(plan))
+                    {
+                        plan.PostOrderBy.Add(new NemoQuerySort { KeySelector = GetRequiredLambda(call), Descending = name == "ThenByDescending" });
+                    }
+                    else
+                    {
+                        plan.OrderBy.Add(new NemoQuerySort { KeySelector = GetRequiredLambda(call), Descending = name == "ThenByDescending" });
+                    }
                     break;
 
                 case "Skip":
+                    EnsureNoPostSort(plan, name);
                     var skip = Math.Max(0, GetInt(call.Arguments[1]));
                     if (plan.Take > 0)
                     {
@@ -142,6 +158,7 @@ namespace Nemo.Linq
                     break;
 
                 case "Take":
+                    EnsureNoPostSort(plan, name);
                     var take = Math.Max(0, GetInt(call.Arguments[1]));
                     plan.Take = plan.Take > 0 ? Math.Min(plan.Take, take) : take;
                     if (take == 0)
@@ -208,11 +225,24 @@ namespace Nemo.Linq
             }
         }
 
+        private static bool HasPaging(NemoQueryPlan plan)
+        {
+            return plan.Skip > 0 || plan.Take > 0 || plan.IsEmpty;
+        }
+
         private static void EnsureNoPaging(NemoQueryPlan plan, string operatorName)
         {
             if (plan.Skip > 0 || plan.Take > 0)
             {
                 throw new NotSupportedException($"'{operatorName}' after Skip or Take is not supported by the Nemo LINQ provider.");
+            }
+        }
+
+        private static void EnsureNoPostSort(NemoQueryPlan plan, string operatorName)
+        {
+            if (plan.PostOrderBy.Count > 0)
+            {
+                throw new NotSupportedException($"'{operatorName}' after a post-paging OrderBy is not supported by the Nemo LINQ provider.");
             }
         }
 

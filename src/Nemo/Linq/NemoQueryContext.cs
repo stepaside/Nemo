@@ -19,6 +19,9 @@ namespace Nemo.Linq
         private static readonly MethodInfo CountMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "Count" && m.GetGenericArguments().Length == 2);
         private static readonly MethodInfo CountAsyncMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "CountAsync" && m.GetGenericArguments().Length == 2);
         
+        private static readonly MethodInfo SortPageMethod = typeof(NemoQueryContext).GetMethod(nameof(SortPage), BindingFlags.NonPublic | BindingFlags.Static);
+        private static readonly MethodInfo SortPageAsyncMethod = typeof(NemoQueryContext).GetMethod(nameof(SortPageAsync), BindingFlags.NonPublic | BindingFlags.Static);
+
         private static readonly MethodInfo EmptyMethod = typeof(NemoQueryContext).GetMethod(nameof(Empty), BindingFlags.NonPublic | BindingFlags.Static);
         private static readonly MethodInfo EmptyAsyncMethod = typeof(NemoQueryContext).GetMethod(nameof(EmptyAsync), BindingFlags.NonPublic | BindingFlags.Static);
 
@@ -102,7 +105,68 @@ namespace Nemo.Linq
                 orderByArray.SetValue(sorting, i);
             }
 
-            return GetOrAddInvoker(async ? SelectAsyncMethod : SelectMethod, type)(new object[] { plan.Predicate, null, connection, page, pageSize, skipCount, null, plan.SelectOption, config, orderByArray });
+            var selectOption = plan.PostOrderBy.Count > 0 && plan.SelectOption != SelectOption.All ? SelectOption.All : plan.SelectOption;
+            var result = GetOrAddInvoker(async ? SelectAsyncMethod : SelectMethod, type)(new object[] { plan.Predicate, null, connection, page, pageSize, skipCount, null, selectOption, config, orderByArray });
+
+            if (plan.PostOrderBy.Count > 0)
+            {
+                return GetOrAddInvoker(async ? SortPageAsyncMethod : SortPageMethod, type)(new object[] { result, plan, cancellationToken });
+            }
+
+            return result;
+        }
+
+        private static Func<T, object> GetKeySelector<T>(NemoQuerySort sort)
+        {
+            if (sort.CompiledKeySelector is Func<T, object> compiled)
+            {
+                return compiled;
+            }
+            var body = sort.KeySelector.Body;
+            if (body.Type.IsValueType)
+            {
+                body = Expression.Convert(body, typeof(object));
+            }
+            var selector = Expression.Lambda<Func<T, object>>(body, sort.KeySelector.Parameters).Compile();
+            sort.CompiledKeySelector = selector;
+            return selector;
+        }
+
+        private static IEnumerable<T> ApplySort<T>(IEnumerable<T> items, NemoQueryPlan plan)
+        {
+            IOrderedEnumerable<T> ordered = null;
+            foreach (var sort in plan.PostOrderBy)
+            {
+                var keySelector = GetKeySelector<T>(sort);
+                if (ordered == null)
+                {
+                    ordered = sort.Descending ? items.OrderByDescending(keySelector) : items.OrderBy(keySelector);
+                }
+                else
+                {
+                    ordered = sort.Descending ? ordered.ThenByDescending(keySelector) : ordered.ThenBy(keySelector);
+                }
+            }
+            return ordered ?? items;
+        }
+
+        private static IEnumerable<T> SortPage<T>(IEnumerable<T> source, NemoQueryPlan plan, CancellationToken cancellationToken)
+        {
+            return ApplySort(source, plan);
+        }
+
+        private static async IAsyncEnumerable<T> SortPageAsync<T>(IAsyncEnumerable<T> source, NemoQueryPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var items = new List<T>();
+            await foreach (var item in System.Threading.Tasks.TaskAsyncEnumerableExtensions.WithCancellation(source, cancellationToken).ConfigureAwait(false))
+            {
+                items.Add(item);
+            }
+
+            foreach (var item in ApplySort(items, plan))
+            {
+                yield return item;
+            }
         }
 
         private static IEnumerable<T> Empty<T>()

@@ -127,6 +127,31 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void Parse_OrderByAfterPaging_CapturedAsPostOrderBy()
+        {
+            var plan = Parse(Query.OrderBy(x => x.Id).Skip(3).Take(7).OrderBy(x => x.Name).ThenByDescending(x => x.Id));
+
+            Assert.AreEqual(1, plan.OrderBy.Count);
+            Assert.AreEqual(2, plan.PostOrderBy.Count);
+            Assert.IsFalse(plan.PostOrderBy[0].Descending);
+            Assert.IsTrue(plan.PostOrderBy[1].Descending);
+            Assert.AreEqual(3, plan.Skip);
+            Assert.AreEqual(7, plan.Take);
+        }
+
+        [TestMethod]
+        public void Parse_SkipAfterPostPagingOrderBy_Throws()
+        {
+            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Take(10).OrderBy(x => x.Name).Skip(2)));
+        }
+
+        [TestMethod]
+        public void Parse_TakeAfterPostPagingOrderBy_Throws()
+        {
+            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Take(10).OrderBy(x => x.Name).Take(2)));
+        }
+
+        [TestMethod]
         public void Parse_WhereAfterTake_Throws()
         {
             Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Take(10).Where(x => x.IsActive)));
