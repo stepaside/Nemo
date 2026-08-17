@@ -5,6 +5,8 @@ namespace Nemo.Attributes.Converters
 	public class DBNullableTypeConverter<T> : ITypeConverter<object, T?> 
         where T : struct
 	{
+        private static readonly ITypeConverter<object, T> ValueConverter = new SimpleTypeConverter<T>(true);
+
 		#region ITypeConverter<object,T?> Members
 		
         T? ITypeConverter<object, T?>.ConvertForward(object from)
@@ -13,9 +15,13 @@ namespace Nemo.Attributes.Converters
 			{
 				return null;
 			}
+			else if (from is T value)
+			{
+				return value;
+			}
 			else
 			{
-				return (T)from;
+				return ValueConverter.ConvertForward(from);
 			}
 		}
 

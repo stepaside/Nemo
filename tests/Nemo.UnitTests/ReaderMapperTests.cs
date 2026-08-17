@@ -107,6 +107,24 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void ReaderMapper_CoercesMismatchedFieldTypesForNullableProperties()
+        {
+            var table = new DataTable();
+            table.Columns.Add("ManagerId", typeof(long));
+            table.Rows.Add(9L);
+
+            using var reader = table.CreateDataReader();
+            reader.Read();
+
+            var mapper = Mapper.CreateReaderDelegate(reader, typeof(Person), true);
+
+            var person = new Person();
+            mapper(reader, person);
+
+            Assert.AreEqual(9, person.ManagerId);
+        }
+
+        [TestMethod]
         public void ReaderMapper_IsCachedPerResultSetShape()
         {
             using var first = CreateReader(1, "a", 1, DateTime.Today, 1d, true);
