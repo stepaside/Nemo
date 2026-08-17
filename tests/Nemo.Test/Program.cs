@@ -100,7 +100,7 @@ namespace NemoTest
             // Dynamic select
             var selected_customers_10 = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
             //var selected_customers_10_repeat = ObjectFactory.Select<Customer>(page: 1, pageSize: 10).ToList();
-            var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2);
+            var selected_customers_A = ObjectFactory.Select<ICustomer>(c => c.CompanyName.StartsWith("A"), page: 1, pageSize: 2).ToList();
 
             var max1 = ObjectFactory.Max<Order, int>(o => o.OrderId, o => o.CustomerId == "ALFKI");
             var max2 = new NemoQueryable<Order>().Max(o => o.OrderId);
@@ -112,19 +112,21 @@ namespace NemoTest
             var count2 = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Count();
 
             var selected_customers_A_count = ObjectFactory.Count<ICustomer>(c => c.CompanyName.StartsWith("A"));
-            var linqCustomers = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
+            var linqCustomers = new NemoQueryable<Customer>().OrderBy(c => c.Id).Take(10).Skip(selected_customers_A_count).ToList();
+            // Note that sort is done in memory becasue of the order by is applied after the skip and take
+            var linqCustomersWithInMemorySort = new NemoQueryable<Customer>().Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).ToList();
             var linqCustomersQuery = (from c in new NemoQueryable<Customer>()
-                                        where c.Id == "ALFKI"
                                         orderby c.Id ascending
                                         select c).Take(10).Skip(selected_customers_A_count).ToList();
+            var linqCustomersQuery2 = (from c in new NemoQueryable<Customer>() where c.Id == "ALFKI" select c).FirstOrDefault();
 
             var allCustomers = new NemoQueryable<Customer>().ToList();
 
             var linqCustomer = new NemoQueryable<Customer>().FirstOrDefault(c => c.Id == "ALFKI");
 
-            var linqCustomersAsync = new NemoQueryable<Customer>().Where(c => c.Id == "ALFKI").Take(10).Skip(selected_customers_A_count).OrderBy(c => c.Id).FirstOrDefaultAsync().Result;
+            var linqCustomersAsync = new NemoQueryable<Customer>().OrderBy(c => c.Id).Take(10).Skip(selected_customers_A_count).FirstOrDefaultAsync().Result;
 
-            var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0);
+            var selected_customers_with_orders = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0).ToList();
 
             var selected_customers_and_orders_include = ObjectFactory.Select<ICustomer>(c => c.Orders.Count > 0).Include<ICustomer, IOrder>((c, o) => c.Id == o.CustomerId).ToList();
 
