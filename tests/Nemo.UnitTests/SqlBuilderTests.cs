@@ -8,6 +8,14 @@ using System.Linq;
 
 namespace Nemo.UnitTests
 {
+    public static class SqlBuilderTestExtensions
+    {
+        public static bool In<T>(this T value, params T[] values)
+        {
+            return values.Contains(value);
+        }
+    }
+
     [TestClass]
     public class SqlBuilderTests
     {
@@ -332,6 +340,180 @@ namespace Nemo.UnitTests
             {
                 UseOrderedParameters = true;
             }
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_Parameterized_ReplacesLiteralsWithParameters()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Id == 1 && x.Name == "John's";
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("@p__0"));
+            Assert.IsTrue(result.Contains("@p__1"));
+            Assert.IsFalse(result.Contains("John"));
+            Assert.AreEqual(2, parameters.Count);
+            Assert.AreEqual(1, parameters[0].Value);
+            Assert.AreEqual("John's", parameters[1].Value);
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_ParameterizedCapturedVariable_UsesParameter()
+        {
+            var name = "Alice";
+            Expression<Func<TestEntity, bool>> predicate = x => x.Name == name;
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("@p__0"));
+            Assert.IsFalse(result.Contains("Alice"));
+            Assert.AreEqual(1, parameters.Count);
+            Assert.AreEqual("Alice", parameters[0].Value);
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_ParameterizedNullComparison_UsesIsNull()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Name == null;
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("is null"));
+            Assert.AreEqual(0, parameters.Count);
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_ParameterizedStringContains_UsesLikeParameter()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Name.Contains("Test");
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("like @p__0"));
+            Assert.IsFalse(result.Contains("%TEST%"));
+            Assert.AreEqual(1, parameters.Count);
+            Assert.AreEqual("%TEST%", parameters[0].Value);
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_ParameterizedStartsWithEndsWith_UsesWildcardParameters()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Name.StartsWith("Ab") || x.Name.EndsWith("yz");
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("like @p__0"));
+            Assert.IsTrue(result.Contains("like @p__1"));
+            Assert.AreEqual(2, parameters.Count);
+            Assert.AreEqual("AB%", parameters[0].Value);
+            Assert.AreEqual("%YZ", parameters[1].Value);
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_ParameterizedInCollection_ParameterizesEachValue()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Id.In(1, 2, 3);
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("In (@p__0,@p__1,@p__2)"));
+            Assert.AreEqual(3, parameters.Count);
+            CollectionAssert.AreEqual(new object[] { 1, 2, 3 }, parameters.Select(p => p.Value).ToArray());
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_ParameterizedDialectPrefix_UsesDialectParameterPrefix()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Id == 5;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, PostgresDialectProvider.Instance, parameters);
+
+            Assert.IsTrue(result.Contains(PostgresDialectProvider.Instance.ParameterPrefix + "p__0"));
+            Assert.AreEqual(1, parameters.Count);
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_ParameterizedOrderedParameterDialect_FallsBackToLiterals()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Id == 7;
+            var dialect = new TestOrderedParameterDialect();
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("7"));
+            Assert.AreEqual(0, parameters.Count);
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_NoParameterList_KeepsLiteralBehavior()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Name == "Literal";
+            var dialect = SqlServerDialectProvider.Instance;
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect);
+
+            Assert.IsTrue(result.Contains("'Literal'"));
+        }
+
+        [TestMethod]
+        public void GetSelectCountStatement_Parameterized_UsesParameters()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.Amount > 100m;
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectCountStatement(predicate, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("SELECT COUNT(*)"));
+            Assert.IsTrue(result.Contains("@p__0"));
+            Assert.AreEqual(1, parameters.Count);
+            Assert.AreEqual(100m, parameters[0].Value);
+        }
+
+        [TestMethod]
+        public void GetSelectAggregationStatement_Parameterized_UsesParameters()
+        {
+            Expression<Func<TestEntity, decimal>> projection = x => x.Amount;
+            Expression<Func<TestEntity, bool>> predicate = x => x.Id > 10;
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectAggregationStatement("SUM", projection, predicate, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("SELECT SUM("));
+            Assert.IsTrue(result.Contains("@p__0"));
+            Assert.AreEqual(1, parameters.Count);
+            Assert.AreEqual(10, parameters[0].Value);
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_ParameterizedDateTime_UsesParameter()
+        {
+            var cutoff = new DateTime(2024, 1, 15);
+            Expression<Func<TestEntity, bool>> predicate = x => x.CreatedDate >= cutoff;
+            var dialect = SqlServerDialectProvider.Instance;
+            var parameters = new List<Param>();
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 0, 0, false, dialect, parameters);
+
+            Assert.IsTrue(result.Contains("@p__0"));
+            Assert.IsFalse(result.Contains("2024"));
+            Assert.AreEqual(1, parameters.Count);
+            Assert.AreEqual(cutoff, parameters[0].Value);
         }
     }
 }
