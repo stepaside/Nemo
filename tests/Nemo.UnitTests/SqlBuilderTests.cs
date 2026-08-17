@@ -320,6 +320,30 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void GetSelectStatement_NonAlignedSkipTake_Sqlite_EmitsLimitOffset()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.IsActive == true;
+            var dialect = SqliteDialectProvider.Instance;
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 7, 3, false, dialect);
+
+            Assert.IsTrue(result.Contains("LIMIT 7"));
+            Assert.IsTrue(result.Contains("OFFSET 3"));
+        }
+
+        [TestMethod]
+        public void GetSelectStatement_NonAlignedSkipTake_SqlServer_EmitsRowNumberRange()
+        {
+            Expression<Func<TestEntity, bool>> predicate = x => x.IsActive == true;
+            var dialect = SqlServerDialectProvider.Instance;
+
+            var result = SqlBuilder.GetSelectStatement(predicate, 0, 7, 3, false, dialect);
+
+            Assert.IsTrue(result.Contains("__row > 3"));
+            Assert.IsTrue(result.Contains("__row <= 10"));
+        }
+
+        [TestMethod]
         public void GetInsertStatement_OrderedParameters_UsesQuestionMarks()
         {
             var parameters = new[]

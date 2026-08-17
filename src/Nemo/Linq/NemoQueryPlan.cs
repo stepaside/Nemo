@@ -20,6 +20,7 @@ namespace Nemo.Linq
         public List<NemoQuerySort> OrderBy { get; } = new List<NemoQuerySort>();
         public int Skip { get; set; }
         public int Take { get; set; }
+        public bool IsEmpty { get; set; }
         public SelectOption SelectOption { get; set; } = SelectOption.All;
         public bool IsCount { get; set; }
         public bool IsLongCount { get; set; }
@@ -35,12 +36,8 @@ namespace Nemo.Linq
 
             if (Take > 0 && Skip > 0)
             {
-                if (Skip % Take != 0)
-                {
-                    throw new NotSupportedException($"Skip({Skip}) combined with Take({Take}) is not supported unless Skip is a multiple of Take (page-aligned access).");
-                }
-                page = Skip / Take + 1;
                 pageSize = Take;
+                skipCount = Skip;
             }
             else if (Take > 0)
             {
@@ -132,16 +129,25 @@ namespace Nemo.Linq
                     break;
 
                 case "Skip":
+                    var skip = Math.Max(0, GetInt(call.Arguments[1]));
                     if (plan.Take > 0)
                     {
-                        throw new NotSupportedException("Skip after Take is not supported by the Nemo LINQ provider; apply Skip before Take.");
+                        plan.Take -= Math.Min(plan.Take, skip);
+                        if (plan.Take == 0)
+                        {
+                            plan.IsEmpty = true;
+                        }
                     }
-                    plan.Skip += GetInt(call.Arguments[1]);
+                    plan.Skip += skip;
                     break;
 
                 case "Take":
-                    var take = GetInt(call.Arguments[1]);
+                    var take = Math.Max(0, GetInt(call.Arguments[1]));
                     plan.Take = plan.Take > 0 ? Math.Min(plan.Take, take) : take;
+                    if (take == 0)
+                    {
+                        plan.IsEmpty = true;
+                    }
                     break;
 
                 case "First":

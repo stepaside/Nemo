@@ -18,6 +18,7 @@ description: How to end-to-end test Nemo's LINQ provider (NemoQueryable and its 
 ## SQLite gotchas
 - Use **System.Data.SQLite.Core** (`SQLiteConnection`), NOT Microsoft.Data.Sqlite: `ObjectFactory.Execute` disposes the DbCommand before the deferred reader is enumerated, and Microsoft.Data.Sqlite closes readers on command dispose ("Invalid attempt to call FieldCount when reader is closed"). This is pre-existing library behavior.
 - Skip-only queries (`SqlBuilder.SqlSelectSkipFormat` = `SELECT ... OFFSET n` without LIMIT) are invalid SQLite/MySQL syntax and fail at runtime; may be fixed later — verify before assuming broken.
+- Arbitrary Skip/Take combinations are supported: non-aligned `Skip(s).Take(t)` and `Take(t).Skip(s)` (rewritten to `LIMIT max(0, t-s) OFFSET s`) both work. `Take(0)` or a skip consuming the whole take window short-circuits to an empty result with **no SQL executed** — assert via a SQL-log sentinel, not by expecting a SELECT.
 
 ## SQL assertion notes
 - Nemo logs generated SQL with lowercase null checks (`is null` / `is not null`) — use case-insensitive assertions.

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
@@ -18,6 +19,9 @@ namespace Nemo.Linq
         private static readonly MethodInfo CountMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "Count" && m.GetGenericArguments().Length == 2);
         private static readonly MethodInfo CountAsyncMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "CountAsync" && m.GetGenericArguments().Length == 2);
         
+        private static readonly MethodInfo EmptyMethod = typeof(NemoQueryContext).GetMethod(nameof(Empty), BindingFlags.NonPublic | BindingFlags.Static);
+        private static readonly MethodInfo EmptyAsyncMethod = typeof(NemoQueryContext).GetMethod(nameof(EmptyAsync), BindingFlags.NonPublic | BindingFlags.Static);
+
         private static readonly MethodInfo AggregateMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "Aggregate" && m.GetGenericArguments().Length == 2);
         private static readonly MethodInfo AggregateAsyncMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "AggregateAsync" && m.GetGenericArguments().Length == 2);
 
@@ -53,6 +57,11 @@ namespace Nemo.Linq
                 ? AsyncPlans.GetValue(expression, e => NemoQueryParser.Parse(e, true))
                 : SyncPlans.GetValue(expression, e => NemoQueryParser.Parse(e, false));
             var type = plan.ElementType;
+
+            if (plan.IsEmpty && !plan.IsCount && plan.Aggregate == null)
+            {
+                return GetOrAddInvoker(async ? EmptyAsyncMethod : EmptyMethod, type)(Array.Empty<object>());
+            }
 
             if (plan.IsCount)
             {
@@ -94,6 +103,17 @@ namespace Nemo.Linq
             }
 
             return GetOrAddInvoker(async ? SelectAsyncMethod : SelectMethod, type)(new object[] { plan.Predicate, null, connection, page, pageSize, skipCount, null, plan.SelectOption, config, orderByArray });
+        }
+
+        private static IEnumerable<T> Empty<T>()
+        {
+            return Enumerable.Empty<T>();
+        }
+
+        private static async IAsyncEnumerable<T> EmptyAsync<T>()
+        {
+            await System.Threading.Tasks.Task.CompletedTask.ConfigureAwait(false);
+            yield break;
         }
     }
 }

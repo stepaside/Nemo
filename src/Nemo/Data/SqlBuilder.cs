@@ -221,7 +221,10 @@ namespace Nemo.Data
                 whereClause = string.Format(SqlWhereFormat, expression);
             }
 
-            if (skipCount > 0 || (page > 0 && pageSize > 0))
+            var offset = (page > 0 && pageSize > 0 ? (page - 1) * pageSize : 0) + skipCount;
+            var limit = pageSize;
+
+            if (offset > 0 || limit > 0)
             {
                 if (dialect is SqlServerLegacyDialectProvider)
                 {
@@ -233,9 +236,9 @@ namespace Nemo.Data
                         var primaryKeyDescending = mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
                             .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " DESC")
                             .ToDelimitedString(",");
-                        if (page > 0 && pageSize > 0)
+                        if (limit > 0)
                         {
-                            sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, primaryKeyAscending, primaryKeyDescending, whereClause, pageSize, page * pageSize);
+                            sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, primaryKeyAscending, primaryKeyDescending, whereClause, limit, offset + limit);
                         }
                         else
                         {
@@ -254,9 +257,9 @@ namespace Nemo.Data
                         }
                         sort.Length -= 2;
                         sortReverse.Length -= 2;
-                        if (page > 0 && pageSize > 0)
+                        if (limit > 0)
                         {
-                            sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, sort, sortReverse, whereClause, pageSize, page * pageSize);
+                            sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, sort, sortReverse, whereClause, limit, offset + limit);
                         }
                         else
                         {
@@ -275,13 +278,13 @@ namespace Nemo.Data
                             mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
                                 .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter)
                                 .ToDelimitedString(",");
-                        if (page > 0 && pageSize > 0)
+                        if (limit > 0)
                         {
-                            sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, primaryKey, whereClause, (page - 1) * pageSize, page * pageSize, selectionWithoutAlias);
+                            sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, primaryKey, whereClause, offset, offset + limit, selectionWithoutAlias);
                         }
                         else
                         {
-                            sql = string.Format(SqlSelectSkipFormatRowNumber, tableName, selection, primaryKey, whereClause, skipCount, selectionWithoutAlias);
+                            sql = string.Format(SqlSelectSkipFormatRowNumber, tableName, selection, primaryKey, whereClause, offset, selectionWithoutAlias);
                         }
                     }
                     else
@@ -293,13 +296,13 @@ namespace Nemo.Data
                             sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
-                        if (page > 0 && pageSize > 0)
+                        if (limit > 0)
                         {
-                            sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, sort, whereClause, (page - 1) * pageSize, page * pageSize, selectionWithoutAlias);
+                            sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, sort, whereClause, offset, offset + limit, selectionWithoutAlias);
                         }
                         else
                         {
-                            sql = string.Format(SqlSelectSkipFormatRowNumber, tableName, selection, sort, whereClause, skipCount, selectionWithoutAlias);
+                            sql = string.Format(SqlSelectSkipFormatRowNumber, tableName, selection, sort, whereClause, offset, selectionWithoutAlias);
                         }
                     }
                 }
@@ -311,13 +314,13 @@ namespace Nemo.Data
                             mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
                                 .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter)
                                 .ToDelimitedString(",");
-                        if (page > 0 && pageSize > 0)
+                        if (limit > 0)
                         {
-                            sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, primaryKey, (page - 1) * pageSize, pageSize);
+                            sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, primaryKey, offset, limit);
                         }
                         else
                         {
-                            sql = string.Format(SqlSelectSkipWithOrderByFormat, tableName, selection, whereClause, primaryKey, skipCount);
+                            sql = string.Format(SqlSelectSkipWithOrderByFormat, tableName, selection, whereClause, primaryKey, offset);
                         }
                     }
                     else
@@ -329,13 +332,13 @@ namespace Nemo.Data
                             sort.AppendFormat("{0} {1}, ", column, !o.Reverse ? "ASC" : "DESC");
                         }
                         sort.Length -= 2;
-                        if (page > 0 && pageSize > 0)
+                        if (limit > 0)
                         {
-                            sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, sort, (page - 1) * pageSize, pageSize);
+                            sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, sort, offset, limit);
                         }
                         else
                         {
-                            sql = string.Format(SqlSelectSkipWithOrderByFormat, tableName, selection, whereClause, sort, skipCount);
+                            sql = string.Format(SqlSelectSkipWithOrderByFormat, tableName, selection, whereClause, sort, offset);
                         }
                     }
                 }
@@ -353,21 +356,21 @@ namespace Nemo.Data
                         sort.Length -= 2;
 						orderByClause = sort.ToString();
                     }
-                    if (page > 0 && pageSize > 0)
+                    if (limit > 0)
                     {
-                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, pageSize, (page - 1) * pageSize);
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, limit, offset);
                     }
                     else if (dialect is SqliteDialectProvider)
                     {
-                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, -1, skipCount);
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, -1, offset);
                     }
                     else if (dialect is MySqlDialectProvider)
                     {
-                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, ulong.MaxValue, skipCount);
+                        sql = string.Format(SqlSelectPagingFormat, tableName, selection, whereClause, orderByClause, ulong.MaxValue, offset);
                     }
                     else
                     {
-                        sql = string.Format(SqlSelectSkipFormat, tableName, selection, whereClause, orderByClause, skipCount);
+                        sql = string.Format(SqlSelectSkipFormat, tableName, selection, whereClause, orderByClause, offset);
                     }
                 }
             }
