@@ -139,7 +139,24 @@ namespace Nemo.Data
             where T3 : class
             where T4 : class
         {
+            return GetSelectStatement(predicate, join1, join2, join3, join4, page, pageSize, skipCount, first, dialect, null, orderBy);
+        }
+
+        public static string GetSelectStatement<T, T1, T2, T3, T4>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1,
+            Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, Expression<Func<T3, T4, bool>> join4,
+            int page, int pageSize, int skipCount, bool first,  DialectProvider dialect, IList<Param> parameters, params Sorting<T>[] orderBy)
+            where T : class
+            where T1 : class
+            where T2 : class
+            where T3 : class
+            where T4 : class
+        {
             const string aliasRoot = "r";
+
+            if (dialect.UseOrderedParameters)
+            {
+                parameters = null;
+            }
 
             var fake = typeof(ObjectFactory.Fake);
             var types = new Dictionary<Type, LambdaExpression>();
@@ -200,7 +217,7 @@ namespace Nemo.Data
             {
                 var evaluated = Evaluator.PartialEval(predicate);
                 evaluated = LocalCollectionExpander.Rewrite(evaluated);
-                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot);
+                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot, parameters);
                 whereClause = string.Format(SqlWhereFormat, expression);
             }
 
@@ -395,11 +412,24 @@ namespace Nemo.Data
             return GetSelectStatement<T, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, null, null, null, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
+        public static string GetSelectStatement<T>(Expression<Func<T, bool>> predicate, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, IList<Param> parameters, params Sorting<T>[] orderBy)
+            where T : class
+        {
+            return GetSelectStatement<T, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, null, null, null, null, page, pageSize, skipCount, first, dialect, parameters, orderBy);
+        }
+
         public static string GetSelectStatement<T, T1>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
             where T : class
             where T1 : class
         {
             return GetSelectStatement<T, T1, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join, null, null, null, page, pageSize, skipCount, first, dialect, orderBy);
+        }
+
+        public static string GetSelectStatement<T, T1>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, IList<Param> parameters, params Sorting<T>[] orderBy)
+            where T : class
+            where T1 : class
+        {
+            return GetSelectStatement<T, T1, ObjectFactory.Fake, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join, null, null, null, page, pageSize, skipCount, first, dialect, parameters, orderBy);
         }
 
         public static string GetSelectStatement<T, T1, T2>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
@@ -408,6 +438,14 @@ namespace Nemo.Data
             where T2 : class
         {
             return GetSelectStatement<T, T1, T2, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join1, join2, null, null, page, pageSize, skipCount, first, dialect, orderBy);
+        }
+
+        public static string GetSelectStatement<T, T1, T2>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, IList<Param> parameters, params Sorting<T>[] orderBy)
+            where T : class
+            where T1 : class
+            where T2 : class
+        {
+            return GetSelectStatement<T, T1, T2, ObjectFactory.Fake, ObjectFactory.Fake>(predicate, join1, join2, null, null, page, pageSize, skipCount, first, dialect, parameters, orderBy);
         }
 
         public static string GetSelectStatement<T, T1, T2, T3>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, params Sorting<T>[] orderBy)
@@ -419,17 +457,36 @@ namespace Nemo.Data
             return GetSelectStatement<T, T1, T2, T3, ObjectFactory.Fake>(predicate, join1, join2, join3, null, page, pageSize, skipCount, first, dialect, orderBy);
         }
 
+        public static string GetSelectStatement<T, T1, T2, T3>(Expression<Func<T, bool>> predicate, Expression<Func<T, T1, bool>> join1, Expression<Func<T1, T2, bool>> join2, Expression<Func<T2, T3, bool>> join3, int page, int pageSize, int skipCount, bool first, DialectProvider dialect, IList<Param> parameters, params Sorting<T>[] orderBy)
+            where T : class
+            where T1 : class
+            where T2 : class
+            where T3 : class
+        {
+            return GetSelectStatement<T, T1, T2, T3, ObjectFactory.Fake>(predicate, join1, join2, join3, null, page, pageSize, skipCount, first, dialect, parameters, orderBy);
+        }
+
         public static string GetSelectCountStatement<T>(Expression<Func<T, bool>> predicate, DialectProvider dialect)
+        {
+            return GetSelectCountStatement(predicate, dialect, null);
+        }
+
+        public static string GetSelectCountStatement<T>(Expression<Func<T, bool>> predicate, DialectProvider dialect, IList<Param> parameters)
         {
             const string aliasRoot = "r";
             var tableName = GetTableNameForSql(typeof(T), dialect) + " " + aliasRoot;
+
+            if (dialect.UseOrderedParameters)
+            {
+                parameters = null;
+            }
 
             var whereClause = string.Empty;
             if (predicate != null)
             {
                 var evaluated = Evaluator.PartialEval(predicate);
                 evaluated = LocalCollectionExpander.Rewrite(evaluated);
-                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot);
+                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot, parameters);
                 whereClause = string.Format(SqlWhereFormat, expression);
             }
 
@@ -439,15 +496,25 @@ namespace Nemo.Data
 
         public static string GetSelectAggregationStatement<T, TColumn>(string aggregateName, Expression<Func<T, TColumn>> projection, Expression<Func<T, bool>> predicate, DialectProvider dialect)
         {
+            return GetSelectAggregationStatement(aggregateName, projection, predicate, dialect, null);
+        }
+
+        public static string GetSelectAggregationStatement<T, TColumn>(string aggregateName, Expression<Func<T, TColumn>> projection, Expression<Func<T, bool>> predicate, DialectProvider dialect, IList<Param> parameters)
+        {
             const string aliasRoot = "r";
             var tableName = GetTableNameForSql(typeof(T), dialect) + " " + aliasRoot;
+
+            if (dialect.UseOrderedParameters)
+            {
+                parameters = null;
+            }
 
             var whereClause = string.Empty;
             if (predicate != null)
             {
                 var evaluated = Evaluator.PartialEval(predicate);
                 evaluated = LocalCollectionExpander.Rewrite(evaluated);
-                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot);
+                var expression = PredicateVisitor.Visit<T>(evaluated, dialect, aliasRoot, parameters);
                 whereClause = string.Format(SqlWhereFormat, expression);
             }
 

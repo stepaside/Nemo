@@ -37,8 +37,9 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
                 connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
             }
-            var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName));
-            return RetrieveScalar<TResult>(sql, connection: connection, config: config);
+            var parameters = new List<Param>();
+            var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName), parameters);
+            return RetrieveScalar<TResult>(sql, parameters: parameters.Count > 0 ? parameters : null, connection: connection, config: config);
         }
 
         public static TResult Max<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
@@ -81,8 +82,9 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
                 connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
             }
-            var sql = SqlBuilder.GetSelectAggregationStatement(aggregateName.ToString(), projection, predicate, DialectFactory.GetProvider(connection, providerName));
-            return RetrieveScalar<TResult>(sql, connection: connection, config: config);
+            var parameters = new List<Param>();
+            var sql = SqlBuilder.GetSelectAggregationStatement(aggregateName.ToString(), projection, predicate, DialectFactory.GetProvider(connection, providerName), parameters);
+            return RetrieveScalar<TResult>(sql, parameters: parameters.Count > 0 ? parameters : null, connection: connection, config: config);
         }
 
         #endregion
@@ -111,8 +113,9 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
                 connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
             }
-            var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName));
-            return RetrieveScalarAsync<TResult>(sql, connection: connection, config: config, cancellationToken: cancellationToken);
+            var parameters = new List<Param>();
+            var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName), parameters);
+            return RetrieveScalarAsync<TResult>(sql, parameters: parameters.Count > 0 ? parameters : null, connection: connection, config: config, cancellationToken: cancellationToken);
         }
 
         public static Task<TResult> MaxAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
@@ -153,8 +156,9 @@ namespace Nemo
                 providerName = DbFactory.GetProviderInvariantName(connectionName, typeof(T), config);
                 connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
             }
-            var sql = SqlBuilder.GetSelectAggregationStatement(aggregateName.ToString(), projection, predicate, DialectFactory.GetProvider(connection, providerName));
-            return RetrieveScalarAsync<TResult>(sql, connection: connection, config: config, cancellationToken: cancellationToken);
+            var parameters = new List<Param>();
+            var sql = SqlBuilder.GetSelectAggregationStatement(aggregateName.ToString(), projection, predicate, DialectFactory.GetProvider(connection, providerName), parameters);
+            return RetrieveScalarAsync<TResult>(sql, parameters: parameters.Count > 0 ? parameters : null, connection: connection, config: config, cancellationToken: cancellationToken);
         }
 
         #endregion

@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Nemo.Configuration;
 
@@ -19,10 +21,25 @@ namespace Nemo.Linq
         private static readonly MethodInfo AggregateMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "Aggregate" && m.GetGenericArguments().Length == 2);
         private static readonly MethodInfo AggregateAsyncMethod = typeof(ObjectFactory).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).First(m => m.Name == "AggregateAsync" && m.GetGenericArguments().Length == 2);
 
+        private static readonly ConcurrentDictionary<(MethodInfo Method, Type Type1, Type Type2), MethodInfo> ClosedGenericMethods = new ConcurrentDictionary<(MethodInfo, Type, Type), MethodInfo>();
+
+        private static readonly ConcurrentDictionary<Type, (Type SortingType, Type FuncType)> SortingTypes = new ConcurrentDictionary<Type, (Type, Type)>();
+
+        private static readonly ConditionalWeakTable<Expression, NemoQueryPlan> SyncPlans = new ConditionalWeakTable<Expression, NemoQueryPlan>();
+
+        private static readonly ConditionalWeakTable<Expression, NemoQueryPlan> AsyncPlans = new ConditionalWeakTable<Expression, NemoQueryPlan>();
+
+        private static MethodInfo GetOrAddClosedMethod(MethodInfo method, Type type1, Type type2 = null)
+        {
+            return ClosedGenericMethods.GetOrAdd((method, type1, type2), key => key.Type2 != null ? key.Method.MakeGenericMethod(key.Type1, key.Type2) : key.Method.MakeGenericMethod(key.Type1));
+        }
+
         // Executes the expression tree that is passed to it. 
         internal static object Execute(Expression expression, DbConnection connection = null, bool async = false, INemoConfiguration config = null, CancellationToken cancellationToken = default)
         {
-            var plan = NemoQueryParser.Parse(expression, async);
+            var plan = async
+                ? AsyncPlans.GetValue(expression, e => NemoQueryParser.Parse(e, true))
+                : SyncPlans.GetValue(expression, e => NemoQueryParser.Parse(e, false));
             var type = plan.ElementType;
 
             if (plan.IsCount)
@@ -30,7 +47,7 @@ namespace Nemo.Linq
                 var countArgs = async
                     ? new object[] { plan.Predicate, null, connection, config, cancellationToken }
                     : new object[] { plan.Predicate, null, connection, config };
-                return (async ? CountAsyncMethod : CountMethod).MakeGenericMethod(type, plan.IsLongCount ? typeof(long) : typeof(int))
+                return GetOrAddClosedMethod(async ? CountAsyncMethod : CountMethod, type, plan.IsLongCount ? typeof(long) : typeof(int))
                     .Invoke(null, countArgs);
             }
 
@@ -39,14 +56,13 @@ namespace Nemo.Linq
                 var aggregateArgs = async
                     ? new object[] { plan.Aggregate.Value, plan.AggregateProjection, plan.Predicate, null, connection, config, cancellationToken }
                     : new object[] { plan.Aggregate.Value, plan.AggregateProjection, plan.Predicate, null, connection, config };
-                return (async ? AggregateAsyncMethod : AggregateMethod).MakeGenericMethod(type, plan.AggregateProperty.PropertyType)
+                return GetOrAddClosedMethod(async ? AggregateAsyncMethod : AggregateMethod, type, plan.AggregateProperty.PropertyType)
                     .Invoke(null, aggregateArgs);
             }
 
             plan.GetPaging(out var page, out var pageSize, out var skipCount);
 
-            var funcType = typeof(Func<,>).MakeGenericType(type, typeof(object));
-            var sortingType = typeof(Sorting<>).MakeGenericType(type);
+            var (sortingType, funcType) = SortingTypes.GetOrAdd(type, t => (typeof(Sorting<>).MakeGenericType(t), typeof(Func<,>).MakeGenericType(t, typeof(object))));
             var orderByArray = Array.CreateInstance(sortingType, plan.OrderBy.Count);
             for (var i = 0; i < plan.OrderBy.Count; i++)
             {
@@ -62,7 +78,7 @@ namespace Nemo.Linq
                 orderByArray.SetValue(sorting, i);
             }
 
-            return (async ? SelectAsyncMethod : SelectMethod).MakeGenericMethod(type)
+            return GetOrAddClosedMethod(async ? SelectAsyncMethod : SelectMethod, type)
                 .Invoke(null, new object[] { plan.Predicate, null, connection, page, pageSize, skipCount, null, plan.SelectOption, config, orderByArray });
         }
     }

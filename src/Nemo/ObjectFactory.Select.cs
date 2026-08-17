@@ -30,10 +30,11 @@ namespace Nemo
 
             var provider = DialectFactory.GetProvider(connection, providerName);
 
-            var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
+            var parameters = new List<Param>();
+            var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sql }, new[] { typeof(T) },
-                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, types: t, cached: cached, config: config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                (s, t) => RetrieveImplemenation<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.SingleResult, connectionName, connection, types: t, cached: cached, config: config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -55,11 +56,12 @@ namespace Nemo
                 provider = DialectFactory.GetProvider(connection, providerName);
             }
 
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
-            var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, 0, false, provider, orderBy);
+            var parameters = new List<Param>();
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
+            var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, 0, false, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin }, new[] { typeof(T), typeof(T1) },
-                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -83,12 +85,13 @@ namespace Nemo
                 provider = DialectFactory.GetProvider(connection, providerName);
             }
 
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, orderBy);
+            var parameters = new List<Param>();
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2 }, new[] { typeof(T), typeof(T1), typeof(T2) },
-                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -113,13 +116,14 @@ namespace Nemo
                 provider = DialectFactory.GetProvider(connection, providerName);
             }
 
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, orderBy);
+            var parameters = new List<Param>();
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) },
-                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -145,14 +149,15 @@ namespace Nemo
                 provider = DialectFactory.GetProvider(connection, providerName);
             }
 
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, 0, false, provider, orderBy);
+            var parameters = new List<Param>();
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, 0, false, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerable<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3, sqlJoin4 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) },
-              (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+              (s, t) => ((IMultiResult)RetrieveImplemenation<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -255,10 +260,11 @@ namespace Nemo
 
             var provider = DialectFactory.GetProvider(connection, providerName);
 
-            var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
+            var parameters = new List<Param>();
+            var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sql }, new[] { typeof(T) },
-                (s, t, ct) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                (s, t, ct) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.SingleResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -280,11 +286,12 @@ namespace Nemo
                 provider = DialectFactory.GetProvider(connection, providerName);
             }
 
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
-            var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, 0, false, provider, orderBy);
+            var parameters = new List<Param>();
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
+            var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, 0, false, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin }, new[] { typeof(T), typeof(T1) },
-                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -308,12 +315,13 @@ namespace Nemo
                 provider = DialectFactory.GetProvider(connection, providerName);
             }
 
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, orderBy);
+            var parameters = new List<Param>();
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2 }, new[] { typeof(T), typeof(T1), typeof(T2) },
-                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -338,13 +346,14 @@ namespace Nemo
                 provider = DialectFactory.GetProvider(connection, providerName);
             }
 
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, orderBy);
+            var parameters = new List<Param>();
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) },
-                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -370,14 +379,15 @@ namespace Nemo
                 provider = DialectFactory.GetProvider(connection, providerName);
             }
 
-            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
-            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, orderBy);
-            var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, 0, false, provider, orderBy);
+            var parameters = new List<Param>();
+            var sqlRoot = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, parameters, orderBy);
+            var sqlJoin1 = SqlBuilder.GetSelectStatement(predicate, join1, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, parameters, orderBy);
+            var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, 0, false, provider, parameters, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3, sqlJoin4 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) },
-                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, parameters.Count > 0 ? parameters : null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
