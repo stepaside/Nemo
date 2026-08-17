@@ -8,6 +8,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nemo
@@ -232,12 +233,12 @@ namespace Nemo
 
         #region Select Async Methods
 
-        public static async Task<IEnumerable<T>> ToEnumerableAsync<T>(this IAsyncEnumerable<T> source)
+        public static async Task<IEnumerable<T>> ToEnumerableAsync<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken = default)
             where T : class
         {
             if (!(source is EagerLoadEnumerableAsync<T> loader)) return source.ToEnumerable();
 
-            var iterator = await loader.GetEnumeratorAsync().ConfigureAwait(false);
+            var iterator = await loader.GetEnumeratorAsync(cancellationToken).ConfigureAwait(false);
             return iterator.AsEnumerable();
         }
 
@@ -257,7 +258,7 @@ namespace Nemo
             var sql = SqlBuilder.GetSelectStatement(predicate, page, pageSize, skipCount, selectOption != SelectOption.All, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sql }, new[] { typeof(T) },
-                (s, t) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, types: t, cached: cached, config: config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                (s, t, ct) => RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.SingleResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -283,7 +284,7 @@ namespace Nemo
             var sqlJoin = SqlBuilder.GetSelectStatement(predicate, join, 0, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin }, new[] { typeof(T), typeof(T1) },
-                async (s, t) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -312,7 +313,7 @@ namespace Nemo
             var sqlJoin2 = SqlBuilder.GetSelectStatement(predicate, join1, join2, 0, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2 }, new[] { typeof(T), typeof(T1), typeof(T2) },
-                async (s, t) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -343,7 +344,7 @@ namespace Nemo
             var sqlJoin3 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, 0, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3) },
-                async (s, t) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }
@@ -376,7 +377,7 @@ namespace Nemo
             var sqlJoin4 = SqlBuilder.GetSelectStatement(predicate, join1, join2, join3, join4, 0, 0, 0, false, provider, orderBy);
 
             var result = new EagerLoadEnumerableAsync<T>(new[] { sqlRoot, sqlJoin1, sqlJoin2, sqlJoin3, sqlJoin4 }, new[] { typeof(T), typeof(T1), typeof(T2), typeof(T3), typeof(T4) },
-                async (s, t) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
+                async (s, t, ct) => ((IMultiResult)await RetrieveImplemenationAsync<T>(s, OperationType.Sql, null, OperationReturnType.MultiResult, connectionName, connection, types: t, cached: cached, config: config, cancellationToken: ct).ConfigureAwait(false)).Aggregate<T>(config), predicate, provider, selectOption, connectionName, connection, page, pageSize, skipCount, config);
 
             return result;
         }

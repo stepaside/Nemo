@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Nemo.Configuration;
 using Nemo.Extensions;
 
@@ -14,13 +16,12 @@ namespace Nemo.Linq
         private readonly NemoQueryProvider _provider;
         private readonly Expression _expression;
         private readonly CancellationToken _cancellationToken;
-        private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
         public NemoQueryableAsync(DbConnection connection, INemoConfiguration config, CancellationToken cancellationToken)
         {
             _provider = new NemoQueryProvider(connection, config);
             _expression = Expression.Constant(this);
-            _cancellationToken = cancellationToken == CancellationToken.None ? _tokenSource.Token : _cancellationToken;
+            _cancellationToken = cancellationToken;
         }
 
         public NemoQueryableAsync() : this(CancellationToken.None)
@@ -46,7 +47,7 @@ namespace Nemo.Linq
 
             _provider = provider;
             _expression = expression;
-            _cancellationToken = cancellationToken == CancellationToken.None ? _tokenSource.Token : _cancellationToken;
+            _cancellationToken = cancellationToken;
         }
 
         public NemoQueryableAsync(NemoQueryProvider provider, Expression expression) : this(provider, expression, CancellationToken.None)
@@ -55,7 +56,28 @@ namespace Nemo.Linq
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            return Provider.ExecuteAsync<T>(Expression, _cancellationToken).AsTask().ToAsyncEnumerable().GetAsyncEnumerator();
+            var token = _cancellationToken;
+            if (cancellationToken.CanBeCanceled)
+            {
+                token = token.CanBeCanceled ? CancellationTokenSource.CreateLinkedTokenSource(token, cancellationToken).Token : cancellationToken;
+            }
+            return Enumerate(token).GetAsyncEnumerator(token);
+        }
+
+        private async IAsyncEnumerable<T> Enumerate([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var result = _provider.ExecuteAsyncCore(_expression, cancellationToken);
+            if (result is IAsyncEnumerable<T> stream)
+            {
+                await foreach (var item in stream.WithCancellation(cancellationToken).ConfigureAwait(false))
+                {
+                    yield return item;
+                }
+            }
+            else
+            {
+                yield return await ((Task<T>)result).ConfigureAwait(false);
+            }
         }
 
         public Type ElementType

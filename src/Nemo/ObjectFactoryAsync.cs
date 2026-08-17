@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Nemo.Attributes;
 using Nemo.Collections;
@@ -259,7 +260,7 @@ namespace Nemo
             return response;
         }
 
-        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IEnumerable<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings", INemoConfiguration config = null)
+        internal static async Task<OperationResponse> ExecuteAsync(string operationText, IEnumerable<Param> parameters, OperationReturnType returnType, OperationType operationType, IList<Type> types = null, string connectionName = null, DbConnection connection = null, DbTransaction transaction = null, bool captureException = false, string schema = null, string connectionStringSection = "ConnectionStrings", INemoConfiguration config = null, CancellationToken cancellationToken = default)
         {
             var rootType = types?[0];
 
@@ -312,7 +313,7 @@ namespace Nemo
 
             if (dbConnection.State != ConnectionState.Open)
             {
-                await dbConnection.OpenAsync().ConfigureAwait(false);
+                await dbConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
             }
 
             var response = new OperationResponse { ReturnType = returnType };
@@ -321,7 +322,7 @@ namespace Nemo
                 switch (returnType)
                 {
                     case OperationReturnType.NonQuery:
-                        response.RecordsAffected = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                        response.RecordsAffected = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                         break;
                     case OperationReturnType.MultiResult:
                     case OperationReturnType.SingleResult:
@@ -346,10 +347,10 @@ namespace Nemo
                         }
 
                         closeConnection = false;
-                        response.Value = await command.ExecuteReaderAsync(behavior).ConfigureAwait(false);
+                        response.Value = await command.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
                         break;
                     case OperationReturnType.Scalar:
-                        response.Value = await command.ExecuteScalarAsync().ConfigureAwait(false);
+                        response.Value = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
                         break;
                 }
 

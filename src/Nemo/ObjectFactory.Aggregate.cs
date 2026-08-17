@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nemo
@@ -88,19 +89,19 @@ namespace Nemo
 
         #region Aggregate Async Methods
 
-        public static Task<int> CountAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
+        public static Task<int> CountAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
             where T : class
         {
-            return CountAsync<T, int>(predicate, connectionName, connection, config);
+            return CountAsync<T, int>(predicate, connectionName, connection, config, cancellationToken);
         }
 
-        public static Task<long> LongCountAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
+        public static Task<long> LongCountAsync<T>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
             where T : class
         {
-            return CountAsync<T, long>(predicate, connectionName, connection, config);
+            return CountAsync<T, long>(predicate, connectionName, connection, config, cancellationToken);
         }
 
-        internal static Task<TResult> CountAsync<T, TResult>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
+        internal static Task<TResult> CountAsync<T, TResult>(Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
             where T : class
             where TResult : struct
         {
@@ -111,38 +112,38 @@ namespace Nemo
                 connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
             }
             var sql = SqlBuilder.GetSelectCountStatement(predicate, DialectFactory.GetProvider(connection, providerName));
-            return RetrieveScalarAsync<TResult>(sql, connection: connection, config: config);
+            return RetrieveScalarAsync<TResult>(sql, connection: connection, config: config, cancellationToken: cancellationToken);
         }
 
-        public static Task<TResult> MaxAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
+        public static Task<TResult> MaxAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
            where T : class
            where TResult : struct
         {
-            return AggregateAsync(AggregateNames.MAX, projection, predicate, connectionName, connection, config);
+            return AggregateAsync(AggregateNames.MAX, projection, predicate, connectionName, connection, config, cancellationToken);
         }
 
-        public static Task<TResult> MinAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
+        public static Task<TResult> MinAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
            where T : class
            where TResult : struct
         {
-            return AggregateAsync(AggregateNames.MIN, projection, predicate, connectionName, connection, config);
+            return AggregateAsync(AggregateNames.MIN, projection, predicate, connectionName, connection, config, cancellationToken);
         }
 
-        public static Task<TResult> SumAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
+        public static Task<TResult> SumAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
            where T : class
            where TResult : struct
         {
-            return AggregateAsync(AggregateNames.SUM, projection, predicate, connectionName, connection, config);
+            return AggregateAsync(AggregateNames.SUM, projection, predicate, connectionName, connection, config, cancellationToken);
         }
 
-        public static Task<TResult> AverageAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
+        public static Task<TResult> AverageAsync<T, TResult>(Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
            where T : class
            where TResult : struct
         {
-            return AggregateAsync(AggregateNames.AVG, projection, predicate, connectionName, connection, config);
+            return AggregateAsync(AggregateNames.AVG, projection, predicate, connectionName, connection, config, cancellationToken);
         }
 
-        internal static Task<TResult> AggregateAsync<T, TResult>(AggregateNames aggregateName, Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null)
+        internal static Task<TResult> AggregateAsync<T, TResult>(AggregateNames aggregateName, Expression<Func<T, TResult>> projection, Expression<Func<T, bool>> predicate = null, string connectionName = null, DbConnection connection = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
            where T : class
            where TResult : struct
         {
@@ -153,7 +154,7 @@ namespace Nemo
                 connection = DbFactory.CreateConnection(connectionName, typeof(T), config);
             }
             var sql = SqlBuilder.GetSelectAggregationStatement(aggregateName.ToString(), projection, predicate, DialectFactory.GetProvider(connection, providerName));
-            return RetrieveScalarAsync<TResult>(sql, connection: connection, config: config);
+            return RetrieveScalarAsync<TResult>(sql, connection: connection, config: config, cancellationToken: cancellationToken);
         }
 
         #endregion
