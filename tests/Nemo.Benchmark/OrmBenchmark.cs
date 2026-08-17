@@ -126,10 +126,11 @@ namespace Nemo.Benchmark
                 cmd.CommandType = CommandType.Text;
                 using (var reader = cmd.ExecuteReader())
                 {
+                    var map = ObjectFactory.CreateReaderMapper<Customer>(reader);
                     while (reader.Read())
                     {
                         var customer = new Customer();
-                        ObjectFactory.Map(reader, customer);
+                        map(reader, customer);
                     }
                 }
             }
@@ -149,10 +150,11 @@ namespace Nemo.Benchmark
                 cmd.Parameters.Add(param);
                 using (var reader = cmd.ExecuteReader())
                 {
+                    var map = ObjectFactory.CreateReaderMapper<Customer>(reader);
                     while (reader.Read())
                     {
                         var customer = new Customer();
-                        ObjectFactory.Map(reader, customer);
+                        map(reader, customer);
                     }
                 }
             }
