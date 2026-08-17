@@ -105,7 +105,7 @@ namespace Nemo.Linq.Expressions
                     }
                     switch (member.Member)
                     {
-                        case FieldInfo field:
+                        case FieldInfo field when field.IsStatic || instance != null:
                             value = field.GetValue(instance);
                             return true;
                         case PropertyInfo property when property.GetIndexParameters().Length == 0 && (property.GetMethod?.IsStatic == true || instance != null):
