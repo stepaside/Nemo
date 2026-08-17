@@ -13,7 +13,11 @@ using Nemo.Extensions;
 
 namespace Nemo.Collections
 {
-    internal class EagerLoadEnumerableAsync<T> : IAsyncEnumerable<T>
+    internal interface IEagerLoadEnumerableAsync
+    {
+    }
+
+    internal class EagerLoadEnumerableAsync<T> : IAsyncEnumerable<T>, IEagerLoadEnumerableAsync
         where T : class
     {
         private readonly Dictionary<string, Type> _sqlMap;

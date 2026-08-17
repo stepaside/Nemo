@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
@@ -10,7 +11,6 @@ using System.Threading.Tasks;
 using Nemo.Collections;
 using Nemo.Configuration;
 using Nemo.Reflection;
-using Activator = System.Activator;
 
 namespace Nemo.Linq
 {
@@ -33,21 +33,21 @@ namespace Nemo.Linq
         public IQueryable CreateQuery(Expression expression)
         {
             var elementType = Reflector.GetElementType(expression.Type) ?? expression.Type;
-            try
+            var factory = QueryableFactories.GetOrAdd(elementType, t =>
             {
-                return (IQueryable)Activator.CreateInstance(typeof(NemoQueryable<>).MakeGenericType(elementType), new object[] { this, expression });
-            }
-            catch (System.Reflection.TargetInvocationException tie)
-            {
-                throw tie.GetBaseException();
-            }
+                var queryableType = typeof(NemoQueryable<>).MakeGenericType(t);
+                var constructor = queryableType.GetConstructor(new[] { typeof(NemoQueryProvider), typeof(Expression) });
+                var providerParameter = Expression.Parameter(typeof(NemoQueryProvider), "provider");
+                var expressionParameter = Expression.Parameter(typeof(Expression), "expression");
+                return Expression.Lambda<Func<NemoQueryProvider, Expression, IQueryable>>(Expression.New(constructor, providerParameter, expressionParameter), providerParameter, expressionParameter).Compile();
+            });
+            return factory(this, expression);
         }
 
         public TResult Execute<TResult>(Expression expression)
         {
             var result = NemoQueryContext.Execute(expression, _connection, config: _config);
-            var typeName = result.GetType().Name;
-            if (typeName == "EagerLoadEnumerable`1"  && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
+            if (result is IEagerLoadEnumerable && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
                 return ((IEnumerable)result).OfType<TResult>().FirstOrDefault();
             }
@@ -64,7 +64,22 @@ namespace Nemo.Linq
             return new NemoQueryableAsync<TElement>(this, expression);
         }
 
-        private static readonly MethodInfo ToEnumerableAsyncMethod = typeof(ObjectFactory).GetMethod("ToEnumerableAsync");
+        private static readonly MethodInfo MaterializeAsyncMethod = typeof(NemoQueryProvider).GetMethod(nameof(MaterializeAsync), BindingFlags.NonPublic | BindingFlags.Static);
+
+        private static readonly ConcurrentDictionary<Type, Func<NemoQueryProvider, Expression, IQueryable>> QueryableFactories = new ConcurrentDictionary<Type, Func<NemoQueryProvider, Expression, IQueryable>>();
+
+        private static readonly ConcurrentDictionary<Type, Func<object, CancellationToken, Task<IEnumerable>>> Materializers = new ConcurrentDictionary<Type, Func<object, CancellationToken, Task<IEnumerable>>>();
+
+        private static async Task<IEnumerable> MaterializeAsync<T>(object source, CancellationToken token)
+            where T : class
+        {
+            return await ((IAsyncEnumerable<T>)source).ToEnumerableAsync(token).ConfigureAwait(false);
+        }
+
+        private static Func<object, CancellationToken, Task<IEnumerable>> GetMaterializer(Type elementType)
+        {
+            return Materializers.GetOrAdd(elementType, t => (Func<object, CancellationToken, Task<IEnumerable>>)MaterializeAsyncMethod.MakeGenericMethod(t).CreateDelegate(typeof(Func<object, CancellationToken, Task<IEnumerable>>)));
+        }
 
         internal object ExecuteAsyncCore(Expression expression, CancellationToken token)
         {
@@ -74,15 +89,12 @@ namespace Nemo.Linq
         public async ValueTask<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken token)
         {
             var async = NemoQueryContext.Execute(expression, _connection, true, _config, token);
-            var typeName = async.GetType().Name;
             if (typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
                 var type = Reflector.GetElementType(typeof(TResult));
+                var items = await GetMaterializer(type)(async, token).ConfigureAwait(false);
                 if (typeof(IList).IsAssignableFrom(typeof(TResult)))
                 {
-                    var task = (Task)ToEnumerableAsyncMethod.MakeGenericMethod(type).Invoke(null, new object[] { async, token });
-                    await task.ConfigureAwait(false);
-                    var items = (IEnumerable)typeof(Task<>).MakeGenericType(typeof(IEnumerable<>).MakeGenericType(type)).GetProperty("Result").GetGetMethod().Invoke(task, null);
                     var list = List.Create(type);
                     foreach (var item in items)
                     {
@@ -95,13 +107,9 @@ namespace Nemo.Linq
                     }
                     return (TResult)list;
                 }
-                else
-                {
-                    var task = (Task<TResult>)ToEnumerableAsyncMethod.MakeGenericMethod(type).Invoke(null, new object[] { async, token });
-                    return await task.ConfigureAwait(false);
-                }
+                return (TResult)items;
             }
-            else if (typeName == "EagerLoadEnumerableAsync`1" && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
+            else if (async is IEagerLoadEnumerableAsync && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
                 return await ((IAsyncEnumerable<TResult>)async).FirstOrDefaultAsync(token).ConfigureAwait(false);
             }

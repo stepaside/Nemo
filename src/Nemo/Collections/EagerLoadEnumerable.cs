@@ -10,7 +10,11 @@ using Nemo.Configuration;
 
 namespace Nemo.Collections
 {
-    internal class EagerLoadEnumerable<T> : IEnumerable<T>
+    internal interface IEagerLoadEnumerable
+    {
+    }
+
+    internal class EagerLoadEnumerable<T> : IEnumerable<T>, IEagerLoadEnumerable
         where T : class
     {
         private readonly Dictionary<string, Type> _sqlMap;

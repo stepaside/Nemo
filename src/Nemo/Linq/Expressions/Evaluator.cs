@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Nemo.Linq.Expressions
 {
@@ -75,9 +76,51 @@ namespace Nemo.Linq.Expressions
                 {
                     return e;
                 }
-                var lambda = Expression.Lambda(e);
-                var fn = lambda.Compile();
-                return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+                if (TryEvaluateFast(e, out var value))
+                {
+                    return Expression.Constant(value, e.Type);
+                }
+                var lambda = Expression.Lambda<Func<object>>(Expression.Convert(e, typeof(object)));
+                return Expression.Constant(lambda.Compile()(), e.Type);
+            }
+        }
+
+        /// <summary>
+        /// Evaluates constant and captured-member sub-trees without compiling a lambda.
+        /// </summary>
+        internal static bool TryEvaluateFast(Expression expression, out object value)
+        {
+            switch (expression)
+            {
+                case ConstantExpression constant:
+                    value = constant.Value;
+                    return true;
+
+                case MemberExpression member:
+                    object instance = null;
+                    if (member.Expression != null && !TryEvaluateFast(member.Expression, out instance))
+                    {
+                        value = null;
+                        return false;
+                    }
+                    switch (member.Member)
+                    {
+                        case FieldInfo field:
+                            value = field.GetValue(instance);
+                            return true;
+                        case PropertyInfo property when property.GetIndexParameters().Length == 0 && (property.GetMethod?.IsStatic == true || instance != null):
+                            value = property.GetValue(instance);
+                            return true;
+                    }
+                    value = null;
+                    return false;
+
+                case UnaryExpression unary when unary.NodeType == ExpressionType.Convert && unary.Method == null && unary.Type.IsAssignableFrom(unary.Operand.Type):
+                    return TryEvaluateFast(unary.Operand, out value);
+
+                default:
+                    value = null;
+                    return false;
             }
         }
 
