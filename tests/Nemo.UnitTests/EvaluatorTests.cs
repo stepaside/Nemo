@@ -79,6 +79,52 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void TryEvaluateFast_NullableValue_ReturnsUnderlyingValue()
+        {
+            DateTime? cutoff = new DateTime(2020, 1, 2);
+            Expression<Func<DateTime>> lambda = () => cutoff.Value;
+
+            Assert.IsTrue(Evaluator.TryEvaluateFast(lambda.Body, out var value));
+            Assert.AreEqual(new DateTime(2020, 1, 2), value);
+        }
+
+        [TestMethod]
+        public void TryEvaluateFast_NullableHasValue_ReturnsFlag()
+        {
+            int? present = 5;
+            int? missing = null;
+            Expression<Func<bool>> presentLambda = () => present.HasValue;
+            Expression<Func<bool>> missingLambda = () => missing.HasValue;
+
+            Assert.IsTrue(Evaluator.TryEvaluateFast(presentLambda.Body, out var presentValue));
+            Assert.AreEqual(true, presentValue);
+            Assert.IsTrue(Evaluator.TryEvaluateFast(missingLambda.Body, out var missingValue));
+            Assert.AreEqual(false, missingValue);
+        }
+
+        [TestMethod]
+        public void TryEvaluateFast_NullableValueOnEmpty_ReturnsFalse()
+        {
+            int? missing = null;
+            Expression<Func<int>> lambda = () => missing.Value;
+
+            Assert.IsFalse(Evaluator.TryEvaluateFast(lambda.Body, out _));
+        }
+
+        [TestMethod]
+        public void PartialEval_CapturedNullableValue_BecomesConstant()
+        {
+            int? threshold = 10;
+            Expression<Func<int, bool>> lambda = x => x > threshold.Value;
+
+            var evaluated = (Expression<Func<int, bool>>)Evaluator.PartialEval(lambda);
+            var binary = (BinaryExpression)evaluated.Body;
+
+            Assert.AreEqual(ExpressionType.Constant, binary.Right.NodeType);
+            Assert.AreEqual(10, ((ConstantExpression)binary.Right).Value);
+        }
+
+        [TestMethod]
         public void PartialEval_CapturedValues_BecomeConstants()
         {
             var threshold = 10;

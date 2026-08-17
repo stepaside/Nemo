@@ -103,6 +103,27 @@ namespace Nemo.Linq.Expressions
                         value = null;
                         return false;
                     }
+                    var declaringType = member.Member.DeclaringType;
+                    if (declaringType != null && declaringType.IsGenericType && declaringType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                    {
+                        // A boxed Nullable<T> is either null or a boxed T, so reflection on Nullable<T> members would fail
+                        switch (member.Member.Name)
+                        {
+                            case "HasValue":
+                                value = instance != null;
+                                return true;
+                            case "Value" when instance != null:
+                                value = instance;
+                                return true;
+                        }
+                        value = null;
+                        return false;
+                    }
+                    if (instance != null && declaringType != null && !declaringType.IsInstanceOfType(instance))
+                    {
+                        value = null;
+                        return false;
+                    }
                     switch (member.Member)
                     {
                         case FieldInfo field when field.IsStatic || instance != null:
