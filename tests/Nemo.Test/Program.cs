@@ -8,6 +8,7 @@ using Nemo.Data;
 using Nemo.Extensions;
 using Nemo.Fn;
 using Nemo.Linq;
+using Nemo.Reflection;
 using Nemo.Serialization;
 using Nemo.UnitOfWork;
 using Nemo.Utilities;
@@ -691,10 +692,11 @@ namespace NemoTest
                 //cmd.Parameters.Add(param);
                 using (var reader = cmd.ExecuteReader())
                 {
+                    var map = ObjectFactory.CreateReaderMapper<Customer>(reader);
                     while (reader.Read()) 
                     {
                         var customer = new Customer();
-                        ObjectFactory.Map(reader, customer);
+                        map(reader, customer);
                     }
                 }
             }
@@ -713,10 +715,11 @@ namespace NemoTest
                     //cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
+                        var map = ObjectFactory.CreateReaderMapper<Customer>(reader);
                         while (reader.Read()) 
                         {
                             var customer = new Customer();
-                            ObjectFactory.Map(reader, customer);
+                            map(reader, customer);
                         };
                     }
                 }

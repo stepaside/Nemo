@@ -136,10 +136,11 @@ namespace NemoTest
                 //cmd.Parameters.Add(param);
                 using (var reader = cmd.ExecuteReader())
                 {
+                    var map = ObjectFactory.CreateReaderMapper<Customer>(reader);
                     while (reader.Read())
                     {
                         var customer = new Customer();
-                        ObjectFactory.Map(reader, customer);
+                        map(reader, customer);
                     }
                 }
             }
@@ -158,10 +159,11 @@ namespace NemoTest
                     //cmd.Parameters.Add(param);
                     using (var reader = cmd.ExecuteReader())
                     {
+                        var map = ObjectFactory.CreateReaderMapper<Customer>(reader);
                         while (reader.Read())
                         {
                             var customer = new Customer();
-                            ObjectFactory.Map(reader, customer);
+                            map(reader, customer);
                         };
                     }
                 }
