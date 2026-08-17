@@ -45,7 +45,7 @@ namespace Nemo.Linq
         public TResult Execute<TResult>(Expression expression)
         {
             var result = NemoQueryContext.Execute(expression, _connection, config: _config);
-            if (result is IEagerLoadEnumerable && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
+            if (result is IEnumerable && !typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
             {
                 return ((IEnumerable)result).OfType<TResult>().FirstOrDefault();
             }

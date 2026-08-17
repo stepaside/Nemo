@@ -40,9 +40,9 @@ namespace Nemo.UnitTests
             Assert.AreEqual(5, plan.Take);
 
             plan.GetPaging(out var page, out var pageSize, out var skipCount);
-            Assert.AreEqual(3, page);
+            Assert.AreEqual(0, page);
             Assert.AreEqual(5, pageSize);
-            Assert.AreEqual(0, skipCount);
+            Assert.AreEqual(10, skipCount);
         }
 
         [TestMethod]
@@ -80,17 +80,50 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
-        public void Parse_NonAlignedSkipTake_Throws()
+        public void Parse_NonAlignedSkipTake_MapsToSkipCountAndPageSize()
         {
             var plan = Parse(Query.Skip(5).Take(10));
 
-            Assert.ThrowsException<NotSupportedException>(() => plan.GetPaging(out _, out _, out _));
+            plan.GetPaging(out var page, out var pageSize, out var skipCount);
+            Assert.AreEqual(0, page);
+            Assert.AreEqual(10, pageSize);
+            Assert.AreEqual(5, skipCount);
         }
 
         [TestMethod]
-        public void Parse_TakeThenSkip_Throws()
+        public void Parse_TakeThenSkip_RewritesToSkipThenTake()
         {
-            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Take(10).Skip(5)));
+            var plan = Parse(Query.Take(10).Skip(3));
+
+            Assert.AreEqual(3, plan.Skip);
+            Assert.AreEqual(7, plan.Take);
+            Assert.IsFalse(plan.IsEmpty);
+        }
+
+        [TestMethod]
+        public void Parse_TakeThenSkipAll_IsEmpty()
+        {
+            var plan = Parse(Query.Take(10).Skip(10));
+
+            Assert.IsTrue(plan.IsEmpty);
+        }
+
+        [TestMethod]
+        public void Parse_TakeZero_IsEmpty()
+        {
+            var plan = Parse(Query.Take(0));
+
+            Assert.IsTrue(plan.IsEmpty);
+        }
+
+        [TestMethod]
+        public void Parse_TakeSkipTake_ComposesCorrectly()
+        {
+            var plan = Parse(Query.Take(10).Skip(5).Take(3));
+
+            Assert.AreEqual(5, plan.Skip);
+            Assert.AreEqual(3, plan.Take);
+            Assert.IsFalse(plan.IsEmpty);
         }
 
         [TestMethod]
