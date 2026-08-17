@@ -46,6 +46,29 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void Parse_SkipAndTake_CapturedVariables()
+        {
+            var skip = 10;
+            var take = 5;
+            var plan = Parse(Query.OrderBy(x => x.Id).Skip(skip).Take(take));
+
+            Assert.AreEqual(10, plan.Skip);
+            Assert.AreEqual(5, plan.Take);
+        }
+
+        [TestMethod]
+        public void CreateQuery_NonGeneric_ReturnsTypedQueryable()
+        {
+            var provider = new NemoQueryProvider();
+            var source = Query.Where(x => x.Id > 0);
+
+            var queryable = ((IQueryProvider)provider).CreateQuery(source.Expression);
+
+            Assert.IsInstanceOfType(queryable, typeof(NemoQueryable<TestEntity>));
+            Assert.AreSame(source.Expression, queryable.Expression);
+        }
+
+        [TestMethod]
         public void Parse_SkipOnly_MapsToSkipCount()
         {
             var plan = Parse(Query.Skip(7));

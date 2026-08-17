@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using Nemo.Linq.Expressions;
 
 namespace Nemo.Linq
 {
@@ -281,11 +282,11 @@ namespace Nemo.Linq
 
         private static int GetInt(Expression argument)
         {
-            if (argument is ConstantExpression constant)
+            if (Evaluator.TryEvaluateFast(argument, out var value))
             {
-                return Convert.ToInt32(constant.Value);
+                return Convert.ToInt32(value);
             }
-            return Convert.ToInt32(Expression.Lambda(argument).Compile().DynamicInvoke());
+            return Convert.ToInt32(Expression.Lambda<Func<object>>(Expression.Convert(argument, typeof(object))).Compile()());
         }
 
         private class ParameterReplacer : ExpressionVisitor
