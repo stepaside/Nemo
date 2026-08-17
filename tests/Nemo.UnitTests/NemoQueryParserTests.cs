@@ -142,19 +142,19 @@ namespace Nemo.UnitTests
         [TestMethod]
         public void Parse_SkipAfterPostPagingOrderBy_Throws()
         {
-            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Take(10).OrderBy(x => x.Name).Skip(2)));
+            Assert.Throws<NotSupportedException>(() => Parse(Query.Take(10).OrderBy(x => x.Name).Skip(2)));
         }
 
         [TestMethod]
         public void Parse_TakeAfterPostPagingOrderBy_Throws()
         {
-            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Take(10).OrderBy(x => x.Name).Take(2)));
+            Assert.Throws<NotSupportedException>(() => Parse(Query.Take(10).OrderBy(x => x.Name).Take(2)));
         }
 
         [TestMethod]
         public void Parse_WhereAfterTake_Throws()
         {
-            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Take(10).Where(x => x.IsActive)));
+            Assert.Throws<NotSupportedException>(() => Parse(Query.Take(10).Where(x => x.IsActive)));
         }
 
         [TestMethod]
@@ -278,25 +278,25 @@ namespace Nemo.UnitTests
             var expression = Expression.Call(typeof(Queryable), nameof(Queryable.Sum), new[] { typeof(TestEntity) },
                 Query.Expression, Expression.Quote(selector));
 
-            Assert.ThrowsException<NotSupportedException>(() => Parse(expression));
+            Assert.Throws<NotSupportedException>(() => Parse(expression));
         }
 
         [TestMethod]
         public void Parse_SelectProjection_Throws()
         {
-            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Select(x => new { x.Id })));
+            Assert.Throws<NotSupportedException>(() => Parse(Query.Select(x => new { x.Id })));
         }
 
         [TestMethod]
         public void Parse_Distinct_Throws()
         {
-            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.Distinct()));
+            Assert.Throws<NotSupportedException>(() => Parse(Query.Distinct()));
         }
 
         [TestMethod]
         public void Parse_GroupBy_Throws()
         {
-            Assert.ThrowsException<NotSupportedException>(() => Parse(Query.GroupBy(x => x.Name)));
+            Assert.Throws<NotSupportedException>(() => Parse(Query.GroupBy(x => x.Name)));
         }
 
         [TestMethod]
@@ -349,7 +349,7 @@ namespace Nemo.UnitTests
         {
             var query = new[] { new TestEntity() }.AsQueryable();
 
-            await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => query.ToListAsync());
+            await Assert.ThrowsAsync<InvalidOperationException>(() => query.ToListAsync());
         }
 
         [TestMethod]

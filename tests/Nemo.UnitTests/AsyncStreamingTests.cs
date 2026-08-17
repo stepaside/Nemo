@@ -110,7 +110,7 @@ namespace Nemo.UnitTests
             var source = CreateSource(new[] { new Item { Id = 1 } });
 
             var enumerator = source.GetAsyncEnumerator(cts.Token);
-            await Assert.ThrowsExceptionAsync<OperationCanceledException>(async () => await enumerator.MoveNextAsync());
+            await Assert.ThrowsAsync<OperationCanceledException>(async () => await enumerator.MoveNextAsync());
             await enumerator.DisposeAsync();
         }
 
@@ -123,7 +123,7 @@ namespace Nemo.UnitTests
             var enumerator = source.GetAsyncEnumerator(cts.Token);
             Assert.IsTrue(await enumerator.MoveNextAsync());
             cts.Cancel();
-            await Assert.ThrowsExceptionAsync<OperationCanceledException>(async () => await enumerator.MoveNextAsync());
+            await Assert.ThrowsAsync<OperationCanceledException>(async () => await enumerator.MoveNextAsync());
             await enumerator.DisposeAsync();
         }
 

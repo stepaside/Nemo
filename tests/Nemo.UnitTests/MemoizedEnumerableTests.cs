@@ -55,13 +55,13 @@ namespace Nemo.UnitTests
         {
             var buffer = new[] { 1, 2, 3 }.Memoize();
             buffer.Dispose();
-            Assert.ThrowsException<ObjectDisposedException>(() => buffer.ToList());
+            Assert.Throws<ObjectDisposedException>(() => buffer.ToList());
         }
 
         [TestMethod]
         public void Memoize_NullSource_Throws()
         {
-            Assert.ThrowsException<ArgumentNullException>(() => ((IEnumerable<int>)null).Memoize());
+            Assert.Throws<ArgumentNullException>(() => ((IEnumerable<int>)null).Memoize());
         }
     }
 }
