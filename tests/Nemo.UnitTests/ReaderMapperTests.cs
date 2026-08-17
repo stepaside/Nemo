@@ -125,6 +125,77 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void GetReaderDelegate_ReusesMapperForSameRecordInstance()
+        {
+            using var reader = CreateReader(7, "Jane", 3, new DateTime(2020, 5, 1), 1234.5d, true);
+
+            var first = Mapper.GetReaderDelegate(reader, typeof(Person), true);
+            var second = Mapper.GetReaderDelegate(reader, typeof(Person), true);
+
+            Assert.AreSame(first, second);
+            Assert.AreNotSame(first, Mapper.GetReaderDelegate(reader, typeof(OtherPerson), true));
+        }
+
+        [TestMethod]
+        public void GetReaderDelegate_ResolvesAgainWhenShapeChangesOnSameReader()
+        {
+            var first = new DataTable("First");
+            first.Columns.Add("person_id", typeof(int));
+            first.Rows.Add(5);
+
+            var second = new DataTable("Second");
+            second.Columns.Add("Name", typeof(string));
+            second.Rows.Add("Jane");
+
+            using var set = new DataTableReader(new[] { first, second });
+            set.Read();
+
+            var person = new Person { Name = "unchanged" };
+            Mapper.GetReaderDelegate(set, typeof(Person), true)(set, person);
+
+            Assert.AreEqual(5, person.Id);
+            Assert.AreEqual("unchanged", person.Name);
+
+            set.NextResult();
+            set.Read();
+
+            Mapper.GetReaderDelegate(set, typeof(Person), true)(set, person);
+
+            Assert.AreEqual(5, person.Id);
+            Assert.AreEqual("Jane", person.Name);
+        }
+
+        [TestMethod]
+        public void CreateReaderMapper_MapsRecordsOfResultSet()
+        {
+            using var reader = CreateReader(7, "Jane", 3, new DateTime(2020, 5, 1), 1234.5d, true);
+
+            var map = ObjectFactory.CreateReaderMapper<Person>(reader, true);
+            var person = new Person();
+            map(reader, person);
+
+            Assert.AreEqual(7, person.Id);
+            Assert.AreEqual("Jane", person.Name);
+        }
+
+        [TestMethod]
+        public void MapRecord_MapsRecordByOrdinal()
+        {
+            using var reader = CreateReader(7, "Jane", 3, new DateTime(2020, 5, 1), 1234.5d, true);
+
+            var person = ObjectFactory.Map<IDataRecord, Person>(reader, new Person());
+
+            Assert.AreEqual(7, person.Id);
+            Assert.AreEqual("Jane", person.Name);
+            Assert.AreEqual(3, person.ManagerId);
+        }
+
+        public class OtherPerson
+        {
+            public string Name { get; set; }
+        }
+
+        [TestMethod]
         public void ReaderMapper_IsCachedPerResultSetShape()
         {
             using var first = CreateReader(1, "a", 1, DateTime.Today, 1d, true);
