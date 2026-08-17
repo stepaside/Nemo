@@ -141,7 +141,7 @@ namespace Nemo
                 {
                     if (source is IDataRecord record)
                     {
-                        FastIndexerMapperWithTypeCoercion<IDataRecord, TResult>.Map(record, target);
+                        MapRecord(record, target, true);
                     }
                     else if (source is IDictionary<string, object> dictionary)
                     {
@@ -156,7 +156,7 @@ namespace Nemo
                 {
                     if (source is IDataRecord record)
                     {
-                        FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
+                        MapRecord(record, target, false);
                     }
                     else if (source is IDictionary<string, object> dictionary)
                     {
@@ -187,7 +187,7 @@ namespace Nemo
                 {
                     if (source is IDataRecord record)
                     {
-                        FastIndexerMapperWithTypeCoercion<IDataRecord, TResult>.Map(record, target);
+                        MapRecord(record, target, true);
                     }
                     else if (source is IDictionary<string, object> dictionary)
                     {
@@ -202,7 +202,7 @@ namespace Nemo
                 {
                     if (source is IDataRecord record)
                     {
-                        FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
+                        MapRecord(record, target, false);
                     }
                     else if (source is IDictionary<string, object> dictionary)
                     {
@@ -219,6 +219,38 @@ namespace Nemo
                 FastMapper<TSource, TResult>.Map(source, target);
             }
             return target;
+        }
+
+        private static void MapRecord<TResult>(IDataRecord record, TResult target, bool autoTypeCoercion)
+        {
+            //  Anonymous, dynamic and interface targets keep the name based indexer mapping
+            if (typeof(TResult) == typeof(object) || typeof(TResult).IsInterface)
+            {
+                if (autoTypeCoercion)
+                {
+                    FastIndexerMapperWithTypeCoercion<IDataRecord, TResult>.Map(record, target);
+                }
+                else
+                {
+                    FastIndexerMapper<IDataRecord, TResult>.Map(record, target);
+                }
+                return;
+            }
+
+            Mapper.GetReaderDelegate(record, typeof(TResult), autoTypeCoercion)(record, target);
+        }
+
+        /// <summary>
+        /// Creates a mapper which reads values from a data record by ordinal. Resolve it once per result set and reuse it
+        /// for every record of that result set.
+        /// </summary>
+        public static Action<IDataRecord, T> CreateReaderMapper<T>(IDataRecord record, bool? autoTypeCoercion = null)
+        {
+            if (record == null) throw new ArgumentNullException(nameof(record));
+
+            var coercion = autoTypeCoercion ?? (ConfigurationFactory.Get<T>()?.AutoTypeCoercion).GetValueOrDefault();
+            var mapper = Mapper.CreateReaderDelegate(record, typeof(T), coercion);
+            return (r, t) => mapper(r, t);
         }
 
         public static T Map<T>(IDictionary<string, object> source)

@@ -9,6 +9,7 @@ using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Nemo.Reflection
@@ -21,6 +22,17 @@ namespace Nemo.Reflection
         private static readonly ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper> Mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper>();
         private static readonly ConcurrentDictionary<Type, DictionaryMapper> DictionaryMappers = new ConcurrentDictionary<Type, DictionaryMapper>();
         private static readonly ConcurrentDictionary<Tuple<Type, bool, string>, PropertyMapper> ReaderMappers = new ConcurrentDictionary<Tuple<Type, bool, string>, PropertyMapper>();
+        private static readonly ConditionalWeakTable<IDataRecord, ReaderMapperEntry> LastReaderMappers = new ConditionalWeakTable<IDataRecord, ReaderMapperEntry>();
+
+        private sealed class ReaderMapperEntry
+        {
+            public Type TargetType;
+            public bool AutoTypeCoercion;
+            public int FieldCount;
+            public string FirstColumn;
+            public string LastColumn;
+            public PropertyMapper Mapper;
+        }
 
         private static readonly MethodInfo IsDBNullMethod = typeof(IDataRecord).GetMethod("IsDBNull", new[] { typeof(int) });
 
@@ -52,6 +64,42 @@ namespace Nemo.Reflection
         internal static DictionaryMapper CreateDelegate(Type sourceType)
         {
             var mapper = DictionaryMappers.GetOrAdd(sourceType, t => GenerateDictionaryMapperDelegate(t));
+            return mapper;
+        }
+
+        /// <summary>
+        /// Returns a mapper which reads values from a data record by ordinal, reusing the mapper resolved for the same
+        /// record instance when its shape is unchanged. Intended for callers which map one record at a time and cannot
+        /// hold on to the mapper themselves.
+        /// </summary>
+        internal static PropertyMapper GetReaderDelegate(IDataRecord record, Type targetType, bool autoTypeCoercion)
+        {
+            var count = record.FieldCount;
+            if (count == 0) return CreateReaderDelegate(record, targetType, autoTypeCoercion);
+
+            if (LastReaderMappers.TryGetValue(record, out var entry)
+                && entry.TargetType == targetType
+                && entry.AutoTypeCoercion == autoTypeCoercion
+                && entry.FieldCount == count
+                && entry.FirstColumn == record.GetName(0)
+                && entry.LastColumn == record.GetName(count - 1))
+            {
+                return entry.Mapper;
+            }
+
+            var mapper = CreateReaderDelegate(record, targetType, autoTypeCoercion);
+
+            LastReaderMappers.Remove(record);
+            LastReaderMappers.Add(record, new ReaderMapperEntry
+            {
+                TargetType = targetType,
+                AutoTypeCoercion = autoTypeCoercion,
+                FieldCount = count,
+                FirstColumn = record.GetName(0),
+                LastColumn = record.GetName(count - 1),
+                Mapper = mapper
+            });
+
             return mapper;
         }
 
