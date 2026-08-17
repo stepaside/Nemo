@@ -19,5 +19,9 @@ description: How to end-to-end test Nemo's LINQ provider (NemoQueryable/NemoQuer
 - Use **System.Data.SQLite.Core** (`SQLiteConnection`), NOT Microsoft.Data.Sqlite: `ObjectFactory.Execute` disposes the DbCommand before the deferred reader is enumerated, and Microsoft.Data.Sqlite closes readers on command dispose ("Invalid attempt to call FieldCount when reader is closed"). This is pre-existing library behavior.
 - Skip-only queries (`SqlBuilder.SqlSelectSkipFormat` = `SELECT ... OFFSET n` without LIMIT) are invalid SQLite/MySQL syntax and fail at runtime; may be fixed later — verify before assuming broken.
 
+## Async LINQ notes
+- `ToListAsync`/`ToArrayAsync` are supported as of PR #20; on older branches they throw `NotSupportedException` (use `await foreach` instead there).
+- When both System.Linq.Async and System.Interactive.Async are referenced, `AverageAsync` can be ambiguous — call it explicitly as `System.Linq.AsyncQueryable.AverageAsync(...)`.
+
 ## Devin Secrets Needed
 None — SQLite is file-based, no credentials.
