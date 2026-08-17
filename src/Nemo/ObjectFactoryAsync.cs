@@ -311,14 +311,14 @@ namespace Nemo
 
             var outputParameters = DbFactory.SetupParameters(command, parameters, dialect, config);
 
-            if (dbConnection.State != ConnectionState.Open)
-            {
-                await dbConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
-            }
-
             var response = new OperationResponse { ReturnType = returnType };
             try
             {
+                if (dbConnection.State != ConnectionState.Open)
+                {
+                    await dbConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                }
+
                 switch (returnType)
                 {
                     case OperationReturnType.NonQuery:
@@ -332,22 +332,24 @@ namespace Nemo
                         {
                             case OperationReturnType.SingleResult:
                                 behavior = CommandBehavior.SingleResult;
+                                if (closeConnection)
+                                {
+                                    behavior |= CommandBehavior.CloseConnection;
+                                }
                                 break;
                             case OperationReturnType.SingleRow:
                                 behavior = CommandBehavior.SingleRow;
-                                break;
-                            default:
-                                closeConnection = false;
+                                if (closeConnection)
+                                {
+                                    behavior |= CommandBehavior.CloseConnection;
+                                }
                                 break;
                         }
 
-                        if (closeConnection)
-                        {
-                            behavior |= CommandBehavior.CloseConnection;
-                        }
-
-                        closeConnection = false;
                         response.Value = await command.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
+                        // Ownership of closing the connection is transferred to the reader
+                        // (or to the multi-result consumer) only once it has been obtained.
+                        closeConnection = false;
                         break;
                     case OperationReturnType.Scalar:
                         response.Value = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
@@ -371,6 +373,7 @@ namespace Nemo
                 }
                 else
                 {
+                    closeConnection = closeConnection || transaction == null && connection == null;
                     throw;
                 }
             }

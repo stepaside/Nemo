@@ -56,27 +56,44 @@ namespace Nemo.Linq
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            var token = _cancellationToken;
-            if (cancellationToken.CanBeCanceled)
-            {
-                token = token.CanBeCanceled ? CancellationTokenSource.CreateLinkedTokenSource(token, cancellationToken).Token : cancellationToken;
-            }
-            return Enumerate(token).GetAsyncEnumerator(token);
+            return Enumerate(cancellationToken).GetAsyncEnumerator();
         }
 
         private async IAsyncEnumerable<T> Enumerate([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var result = _provider.ExecuteAsyncCore(_expression, cancellationToken);
-            if (result is IAsyncEnumerable<T> stream)
+            CancellationTokenSource linkedSource = null;
+            var token = _cancellationToken;
+            if (cancellationToken.CanBeCanceled)
             {
-                await foreach (var item in stream.WithCancellation(cancellationToken).ConfigureAwait(false))
+                if (token.CanBeCanceled)
                 {
-                    yield return item;
+                    linkedSource = CancellationTokenSource.CreateLinkedTokenSource(token, cancellationToken);
+                    token = linkedSource.Token;
+                }
+                else
+                {
+                    token = cancellationToken;
                 }
             }
-            else
+
+            try
             {
-                yield return await ((Task<T>)result).ConfigureAwait(false);
+                var result = _provider.ExecuteAsyncCore(_expression, token);
+                if (result is IAsyncEnumerable<T> stream)
+                {
+                    await foreach (var item in stream.WithCancellation(token).ConfigureAwait(false))
+                    {
+                        yield return item;
+                    }
+                }
+                else
+                {
+                    yield return await ((Task<T>)result).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                linkedSource?.Dispose();
             }
         }
 
