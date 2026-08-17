@@ -42,7 +42,7 @@ namespace Nemo
 
         private static IEnumerable<TResult> RetrieveImplemenation<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, INemoConfiguration config = null)
         {
-            Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
+            Log.CaptureBegin(() => $"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
 
             string queryKey = null;
@@ -61,7 +61,7 @@ namespace Nemo
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
-                Log.CaptureBegin($"Retrieving from L1 cache: {queryKey}", config);
+                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}", config);
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -75,7 +75,7 @@ namespace Nemo
 
                 if (result != null)
                 {
-                    Log.Capture($"Found in L1 cache: {queryKey}", config);
+                    Log.Capture(() => $"Found in L1 cache: {queryKey}", config);
 
                     if (returnType == OperationReturnType.MultiResult)
                     {
@@ -85,7 +85,7 @@ namespace Nemo
                     Log.CaptureEnd(config);
                     return result;
                 }
-                Log.Capture($"Not found in L1 cache: {queryKey}", config);
+                Log.Capture(() => $"Not found in L1 cache: {queryKey}", config);
                 Log.CaptureEnd(config);
             }
 
@@ -93,7 +93,7 @@ namespace Nemo
 
             if (queryKey != null)
             {
-                Log.CaptureBegin($"Saving to L1 cache: {queryKey}", config);
+                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}", config);
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
@@ -134,7 +134,7 @@ namespace Nemo
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
-            Log.CaptureBegin($"Retrieving data", config);
+            Log.CaptureBegin("Retrieving data", config);
             Log.Capture(operationText, config);
 
             var response = connection != null
@@ -143,7 +143,7 @@ namespace Nemo
 
             Log.CaptureEnd(config);
 
-            Log.CaptureBegin($"Translating response", config);
+            Log.CaptureBegin("Translating response", config);
 
 
             var reflectedType = Reflector.GetReflectedType<T>();
@@ -328,7 +328,7 @@ namespace Nemo
 
         private static async Task<IEnumerable<TResult>> RetrieveImplemenationAsync<TResult>(string operation, OperationType operationType, IList<Param> parameters, OperationReturnType returnType, string connectionName, DbConnection connection, Func<object[], TResult> map = null, IList<Type> types = null, string schema = null, bool? cached = null, INemoConfiguration config = null, CancellationToken cancellationToken = default)
         {
-            Log.CaptureBegin($"Retrieve {typeof(TResult).FullName}", config);
+            Log.CaptureBegin(() => $"Retrieve {typeof(TResult).FullName}", config);
             IEnumerable<TResult> result;
 
             string queryKey = null;
@@ -347,7 +347,7 @@ namespace Nemo
 
                 queryKey = GetQueryKey<TResult>(operation, parameters ?? new Param[] { }, returnType);
 
-                Log.CaptureBegin($"Retrieving from L1 cache: {queryKey}", config);
+                Log.CaptureBegin(() => $"Retrieving from L1 cache: {queryKey}", config);
 
                 if (returnType == OperationReturnType.MultiResult)
                 {
@@ -361,7 +361,7 @@ namespace Nemo
 
                 if (result != null)
                 {
-                    Log.Capture($"Found in L1 cache: {queryKey}", config);
+                    Log.Capture(() => $"Found in L1 cache: {queryKey}", config);
 
                     if (returnType == OperationReturnType.MultiResult)
                     {
@@ -371,7 +371,7 @@ namespace Nemo
                     Log.CaptureEnd(config);
                     return result;
                 }
-                Log.Capture($"Not found in L1 cache: {queryKey}", config);
+                Log.Capture(() => $"Not found in L1 cache: {queryKey}", config);
                 Log.CaptureEnd(config);
             }
 
@@ -379,7 +379,7 @@ namespace Nemo
 
             if (queryKey != null)
             {
-                Log.CaptureBegin($"Saving to L1 cache: {queryKey}", config);
+                Log.CaptureBegin(() => $"Saving to L1 cache: {queryKey}", config);
 
                 if (!(result is IList<TResult>) && !(result is IMultiResult))
                 {
@@ -420,7 +420,7 @@ namespace Nemo
 
             var operationText = GetOperationText(typeof(T), operation, operationType, schema, config);
 
-            Log.CaptureBegin($"Retrieving data", config);
+            Log.CaptureBegin("Retrieving data", config);
             Log.Capture(operationText, config);
 
             var response = connection != null
@@ -429,7 +429,7 @@ namespace Nemo
 
             Log.CaptureEnd(config);
 
-            Log.CaptureBegin($"Translating response", config);
+            Log.CaptureBegin("Translating response", config);
 
             var reflectedType = Reflector.GetReflectedType<T>();
             var result = Translate(response, map, types, reflectedType.IsInterface, reflectedType.IsSimpleType, config, identityMap);
