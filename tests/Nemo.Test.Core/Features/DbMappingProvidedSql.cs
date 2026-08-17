@@ -1,5 +1,6 @@
 ﻿using Nemo;
 using Nemo.Attributes;
+using Nemo.Collections;
 using Nemo.Configuration;
 using Nemo.Configuration.Mapping;
 using Nemo.Data;
