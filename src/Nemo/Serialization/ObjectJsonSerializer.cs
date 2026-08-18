@@ -1,60 +1,105 @@
-﻿using System;
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using Nemo.Collections.Extensions;
-using Nemo.Utilities;
+using System.Text.Json;
 
 namespace Nemo.Serialization
 {
     public static class ObjectJsonSerializer
     {
+        /// <summary>
+        /// Options used by ToJson/FromJson when no options are provided. Nemo specific behavior
+        /// (property selection, data entity activation, interface materialization) is preserved
+        /// by <see cref="JsonSerializationOptions.Create"/>.
+        /// </summary>
+        public static JsonSerializerOptions Options { get; set; } = JsonSerializationOptions.Default;
+
         public static string ToJson<T>(this T dataEntity)
             where T : class
         {
-            var output = new StringBuilder(1024);
-            using (var writer = new StringWriter(output))
-            {
-                new JsonSerializationWriter().WriteObject(dataEntity, null, writer);
-            }
-            return output.ToString();
+            return dataEntity.ToJson((JsonSerializerOptions)null);
+        }
+
+        public static string ToJson<T>(this T dataEntity, JsonSerializerOptions options)
+            where T : class
+        {
+            if (dataEntity == null) return null;
+            return JsonSerializer.Serialize(dataEntity, JsonSerializationOptions.GetWriteType(dataEntity, typeof(T)), options ?? Options);
         }
 
         public static void ToJson<T>(this T dataEntity, TextWriter writer)
             where T : class
         {
-            new JsonSerializationWriter().WriteObject(dataEntity, null, writer);
+            dataEntity.ToJson(writer, null);
+        }
+
+        public static void ToJson<T>(this T dataEntity, TextWriter writer, JsonSerializerOptions options)
+            where T : class
+        {
+            if (writer == null) throw new ArgumentNullException(nameof(writer));
+            writer.Write(dataEntity.ToJson(options));
         }
 
         public static string ToJson<T>(this IEnumerable<T> dataEntitys)
             where T : class
         {
-            var output = new StringBuilder(1024);
-            using (var writer = new StringWriter(output))
-            {
-                new JsonSerializationWriter().WriteObject(dataEntitys.ToList(), null, writer);
-            }
-            return output.ToString();
+            return dataEntitys.ToJson((JsonSerializerOptions)null);
+        }
+
+        public static string ToJson<T>(this IEnumerable<T> dataEntitys, JsonSerializerOptions options)
+            where T : class
+        {
+            if (dataEntitys == null) return null;
+            return JsonSerializer.Serialize(dataEntitys, options ?? Options);
         }
 
         public static void ToJson<T>(this IEnumerable<T> dataEntitys, TextWriter writer)
             where T : class
         {
-            new JsonSerializationWriter().WriteObject(dataEntitys.ToList(), null, writer);
+            dataEntitys.ToJson(writer, null);
+        }
+
+        public static void ToJson<T>(this IEnumerable<T> dataEntitys, TextWriter writer, JsonSerializerOptions options)
+            where T : class
+        {
+            if (writer == null) throw new ArgumentNullException(nameof(writer));
+            writer.Write(dataEntitys.ToJson(options));
         }
 
         public static T FromJson<T>(this string json)
             where T : class
         {
-            return (T)json.FromJson(typeof(T));
+            return (T)json.FromJson(typeof(T), null);
+        }
+
+        public static T FromJson<T>(this string json, JsonSerializerOptions options)
+            where T : class
+        {
+            return (T)json.FromJson(typeof(T), options);
         }
 
         public static object FromJson(this string json, Type objectType)
         {
-            var value = Json.Parse(json);
-            return JsonSerializationReader.ReadObject(value, objectType);
+            return json.FromJson(objectType, null);
+        }
+
+        public static object FromJson(this string json, Type objectType, JsonSerializerOptions options)
+        {
+            if (objectType == null) throw new ArgumentNullException(nameof(objectType));
+            if (json == null) return null;
+            return JsonSerializer.Deserialize(json, objectType, options ?? Options);
+        }
+
+        public static T FromJson<T>(this TextReader reader)
+            where T : class
+        {
+            return (T)reader.FromJson(typeof(T), null);
+        }
+
+        public static object FromJson(this TextReader reader, Type objectType, JsonSerializerOptions options)
+        {
+            if (reader == null) throw new ArgumentNullException(nameof(reader));
+            return reader.ReadToEnd().FromJson(objectType, options);
         }
     }
 }

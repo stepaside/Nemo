@@ -73,9 +73,6 @@ namespace NemoTest
             var packedJson = company.ToJson();
             var unpackedJson = packedJson.FromJson<Company>();
 
-            var packedXml = company.ToXml();
-            var unpackedXml = packedXml.FromXml<Company>();
-
             var packed = company.Serialize();
             var unpacked = packed.Deserialize<Company>();
 
@@ -267,18 +264,12 @@ namespace NemoTest
             Console.WriteLine();
             Console.WriteLine("JSON DOM Parsing");
 
-            RunJsonParser(json, 500);
             RunJsonNetParser(json, 500);
             RunSystemJsonParser(json, 500);
             // ServiceStack does not support DOM parsing
             // RunServiceStackJsonParser<Customer>(new Customer(customer), 500);
 
             var xsd = Xsd<ICustomer>.Text;
-            var xml = retrieve_customer.ToXml();
-            using (var reader = XmlReader.Create(new StringReader(xml)))
-            {
-                var customer_from_xml = reader.FromXml<ICustomer>();
-            }
 
             Console.WriteLine();
             Console.WriteLine("Object Fetching and Materialization");
@@ -330,7 +321,6 @@ namespace NemoTest
             },
             s => (SimpleObject)binform.Deserialize(new MemoryStream(s)), "BinaryFormatter", s => s.Length);
 
-            RunSerializationBenchmark(simpleObjectList, s => s.ToXml(), s => s.FromXml<SimpleObject>(), "ObjectXmlSerializer", s => s.Length);
             RunSerializationBenchmark(simpleObjectList,
             s =>
             {
@@ -419,7 +409,6 @@ namespace NemoTest
                 }
             }, "BinaryFormatter", s => s.Length);
 
-            RunSerializationBenchmark(complexObjectList, s => s.ToXml(), s => s.FromXml<ComplexObject>(), "ObjectXmlSerializer", s => s.Length);
             RunSerializationBenchmark(complexObjectList,
             s =>
             {
@@ -781,23 +770,6 @@ namespace NemoTest
             Console.WriteLine("Entity Framework: " + timer.Elapsed.TotalMilliseconds);
         }
         
-        public static void RunJsonParser(string json, int count)
-        {
-            // Warm-up
-            var root = Json.Parse(json);
-
-            var t = new Stopwatch();
-            t.Start();
-            for (var i = 0; i < count; i++)
-            {
-                root = Json.Parse(json);
-            }
-            t.Stop();
-            var time = t.Elapsed.TotalMilliseconds * 1000;
-
-            Console.WriteLine("Json Parser: {0}µs", time);
-        }
-
         public static void RunJsonNetParser(string json, int count)
         {
             // Warm-up
