@@ -20,6 +20,7 @@ namespace Nemo.UnitOfWork
     {
         private const string ScopeNameStore = "__ObjectScope";
         private bool? _hasException = null;
+        private bool _disposed;
         
         internal static Stack<ObjectScope> Scopes
         {
@@ -150,21 +151,57 @@ namespace Nemo.UnitOfWork
 
         public void Dispose()
         {
-            if (AutoCommit)
-            {
-                if (_hasException == null)
-                {
-                    long exceptionCode = Marshal.GetExceptionCode();
-                    _hasException = exceptionCode != 0 && exceptionCode != 0xCCCCCCCC;
-                }
+            if (_disposed) return;
+            _disposed = true;
 
-                if (_hasException.Value || !Item.Commit(ItemType))
+            try
+            {
+                if (AutoCommit && Item != null)
                 {
-                    Item.Rollback(ItemType);
+                    if (_hasException == null)
+                    {
+                        long exceptionCode = Marshal.GetExceptionCode();
+                        _hasException = exceptionCode != 0 && exceptionCode != 0xCCCCCCCC;
+                    }
+
+                    if (_hasException.Value || !Item.Commit(ItemType))
+                    {
+                        Item.Rollback(ItemType);
+                    }
                 }
             }
-            Transaction.Dispose();
-            Scopes.Pop();
+            finally
+            {
+                try
+                {
+                    Transaction?.Dispose();
+                }
+                finally
+                {
+                    RemoveScope();
+                }
+            }
+        }
+
+        private void RemoveScope()
+        {
+            var scopes = Scopes;
+            if (scopes.Count == 0) return;
+
+            if (ReferenceEquals(scopes.Peek(), this))
+            {
+                scopes.Pop();
+                return;
+            }
+
+            if (!scopes.Contains(this)) return;
+
+            var retained = scopes.Where(s => !ReferenceEquals(s, this)).ToArray();
+            scopes.Clear();
+            for (var i = retained.Length - 1; i >= 0; i--)
+            {
+                scopes.Push(retained[i]);
+            }
         }
     }
 }
