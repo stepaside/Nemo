@@ -22,26 +22,74 @@ namespace Nemo.UnitOfWork
         private const string ScopeNameStore = "__ObjectScope";
         private bool? _hasException = null;
         private bool _disposed;
-        
-        internal static Stack<ObjectScope> Scopes
+        private volatile bool _removed;
+
+        /// <summary>
+        /// Immutable stack of scopes. A new head is written to the execution context on every push and removal,
+        /// so parallel execution flows never observe or corrupt each other's scopes.
+        /// </summary>
+        private sealed class ScopeNode
+        {
+            internal ScopeNode(ObjectScope scope, ScopeNode next)
+            {
+                Scope = scope;
+                Next = next;
+            }
+
+            internal ObjectScope Scope { get; }
+
+            internal ScopeNode Next { get; }
+        }
+
+        private static ScopeNode Head
+        {
+            get => ConfigurationFactory.DefaultConfiguration.ExecutionContext.Get(ScopeNameStore) as ScopeNode;
+            set => ConfigurationFactory.DefaultConfiguration.ExecutionContext.Set(ScopeNameStore, value);
+        }
+
+        private static IEnumerable<ObjectScope> ActiveScopes
         {
             get
             {
-                var scopes = ConfigurationFactory.DefaultConfiguration.ExecutionContext.Get(ScopeNameStore);
-                if (scopes == null)
+                for (var node = Head; node != null; node = node.Next)
                 {
-                    scopes = new Stack<ObjectScope>();
-                    ConfigurationFactory.DefaultConfiguration.ExecutionContext.Set(ScopeNameStore, scopes);
+                    // A scope removed by another execution flow cannot be unlinked from this flow's head,
+                    // because an execution context written inside an async method does not flow back to its caller.
+                    if (node.Scope._removed) continue;
+                    yield return node.Scope;
                 }
-                return (Stack<ObjectScope>)scopes;
             }
+        }
+
+        internal static int ScopeCount
+        {
+            get
+            {
+                var count = 0;
+                for (var node = Head; node != null; node = node.Next)
+                {
+                    if (!node.Scope._removed) count++;
+                }
+                return count;
+            }
+        }
+
+        internal static ObjectScope[] ScopeArray => ActiveScopes.ToArray();
+
+        internal static void ClearScopes()
+        {
+            Head = null;
         }
 
         public static ObjectScope Current
         {
             get
             {
-                return Scopes.FirstOrDefault();
+                for (var node = Head; node != null; node = node.Next)
+                {
+                    if (!node.Scope._removed) return node.Scope;
+                }
+                return null;
             }
         }
 
@@ -82,7 +130,7 @@ namespace Nemo.UnitOfWork
                 Item = item;
                 ItemSnapshot = CreateSnapshot(item);
             }
-            Scopes.Push(this);
+            Head = new ScopeNode(this, Head);
             if (connection == null || connection.State != ConnectionState.Open)
             {
                 Transaction = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions { IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted }, TransactionScopeAsyncFlowOption.Enabled);
@@ -107,7 +155,7 @@ namespace Nemo.UnitOfWork
 
         public bool IsNew { get; }
 
-        internal bool IsNested => Scopes.Count > 1;
+        internal bool IsNested => ScopeCount > 1;
 
         internal TransactionScope Transaction { get; }
 
@@ -146,7 +194,7 @@ namespace Nemo.UnitOfWork
         private bool UpdateSnapshot<T>(T dataEntity, int index)
             where T : class
         {
-            var outerScope = Scopes.ElementAtOrDefault(index);
+            var outerScope = ScopeAt(index);
             if (outerScope != null)
             {
                 if (outerScope.Item == dataEntity)
@@ -161,7 +209,12 @@ namespace Nemo.UnitOfWork
 
         public void Dispose()
         {
-            if (_disposed) return;
+            if (_disposed)
+            {
+                // The scope may still be referenced by another execution flow than the one that disposed it.
+                RemoveScope();
+                return;
+            }
             _disposed = true;
 
             try
@@ -195,7 +248,11 @@ namespace Nemo.UnitOfWork
 
         public async ValueTask DisposeAsync()
         {
-            if (_disposed) return;
+            if (_disposed)
+            {
+                RemoveScope();
+                return;
+            }
             _disposed = true;
 
             try
@@ -221,25 +278,19 @@ namespace Nemo.UnitOfWork
             }
         }
 
+        private static ObjectScope ScopeAt(int index) => ActiveScopes.ElementAtOrDefault(index);
+
         private void RemoveScope()
         {
-            var scopes = Scopes;
-            if (scopes.Count == 0) return;
+            _removed = true;
 
-            if (ReferenceEquals(scopes.Peek(), this))
-            {
-                scopes.Pop();
-                return;
-            }
-
-            if (!scopes.Contains(this)) return;
-
-            var retained = scopes.Where(s => !ReferenceEquals(s, this)).ToArray();
-            scopes.Clear();
+            var retained = ActiveScopes.ToArray();
+            ScopeNode rebuilt = null;
             for (var i = retained.Length - 1; i >= 0; i--)
             {
-                scopes.Push(retained[i]);
+                rebuilt = new ScopeNode(retained[i], rebuilt);
             }
+            Head = rebuilt;
         }
     }
 }

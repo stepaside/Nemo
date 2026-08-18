@@ -52,7 +52,7 @@ namespace Nemo.UnitTests
         [TestInitialize]
         public void ClearScopes()
         {
-            ObjectScope.Scopes.Clear();
+            ObjectScope.ClearScopes();
         }
 
         [TestMethod]
@@ -67,7 +67,7 @@ namespace Nemo.UnitTests
                     entity.Name = "b";
                 }
 
-                Assert.AreEqual(0, ObjectScope.Scopes.Count);
+                Assert.AreEqual(0, ObjectScope.ScopeCount);
                 Assert.IsNull(ObjectScope.Current);
             }
         }
@@ -88,7 +88,7 @@ namespace Nemo.UnitTests
                 });
 
                 Assert.AreEqual("body", exception.Message);
-                Assert.AreEqual(0, ObjectScope.Scopes.Count);
+                Assert.AreEqual(0, ObjectScope.ScopeCount);
             }
         }
 
@@ -105,12 +105,12 @@ namespace Nemo.UnitTests
 
                 outer.Dispose();
 
-                Assert.AreEqual(1, ObjectScope.Scopes.Count);
+                Assert.AreEqual(1, ObjectScope.ScopeCount);
                 Assert.AreSame(inner, ObjectScope.Current);
 
                 inner.Dispose();
 
-                Assert.AreEqual(0, ObjectScope.Scopes.Count);
+                Assert.AreEqual(0, ObjectScope.ScopeCount);
             }
         }
 
@@ -125,13 +125,13 @@ namespace Nemo.UnitTests
 
                 middle.Dispose();
 
-                CollectionAssert.AreEqual(new[] { inner, outer }, ObjectScope.Scopes.ToArray());
+                CollectionAssert.AreEqual(new[] { inner, outer }, ObjectScope.ScopeArray);
 
                 inner.Dispose();
                 Assert.AreSame(outer, ObjectScope.Current);
 
                 outer.Dispose();
-                Assert.AreEqual(0, ObjectScope.Scopes.Count);
+                Assert.AreEqual(0, ObjectScope.ScopeCount);
             }
         }
 
@@ -146,7 +146,7 @@ namespace Nemo.UnitTests
                 inner.Dispose();
                 inner.Dispose();
 
-                Assert.AreEqual(1, ObjectScope.Scopes.Count);
+                Assert.AreEqual(1, ObjectScope.ScopeCount);
                 Assert.AreSame(outer, ObjectScope.Current);
 
                 outer.Dispose();
