@@ -10,7 +10,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace Nemo.Reflection
 {
@@ -21,7 +20,7 @@ namespace Nemo.Reflection
 
         private static readonly ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper> Mappers = new ConcurrentDictionary<Tuple<Type, Type, bool, bool>, PropertyMapper>();
         private static readonly ConcurrentDictionary<Type, DictionaryMapper> DictionaryMappers = new ConcurrentDictionary<Type, DictionaryMapper>();
-        private static readonly ConcurrentDictionary<Tuple<Type, bool, string>, PropertyMapper> ReaderMappers = new ConcurrentDictionary<Tuple<Type, bool, string>, PropertyMapper>();
+        private static readonly ConcurrentDictionary<ReaderShapeKey, PropertyMapper> ReaderMappers = new ConcurrentDictionary<ReaderShapeKey, PropertyMapper>();
         private static readonly ConditionalWeakTable<IDataRecord, ReaderMapperEntry> LastReaderMappers = new ConditionalWeakTable<IDataRecord, ReaderMapperEntry>();
 
         private sealed class ReaderMapperEntry
@@ -32,6 +31,73 @@ namespace Nemo.Reflection
             public string FirstColumn;
             public string LastColumn;
             public PropertyMapper Mapper;
+        }
+
+        /// <summary>
+        /// Identifies a generated reader mapper by the shape of the result set it reads, avoiding building a key string
+        /// for every result set.
+        /// </summary>
+        private sealed class ReaderShapeKey : IEquatable<ReaderShapeKey>
+        {
+            private readonly int _hashCode;
+
+            public ReaderShapeKey(Type targetType, bool autoTypeCoercion, string[] columnNames, Type[] fieldTypes)
+            {
+                TargetType = targetType;
+                AutoTypeCoercion = autoTypeCoercion;
+                ColumnNames = columnNames;
+                FieldTypes = fieldTypes;
+
+                unchecked
+                {
+                    var hashCode = targetType.GetHashCode();
+                    hashCode = (hashCode * 31) + (autoTypeCoercion ? 1 : 0);
+                    for (var i = 0; i < columnNames.Length; i++)
+                    {
+                        hashCode = (hashCode * 31) + (columnNames[i] != null ? StringComparer.Ordinal.GetHashCode(columnNames[i]) : 0);
+                        hashCode = (hashCode * 31) + (fieldTypes[i]?.GetHashCode() ?? 0);
+                    }
+                    _hashCode = hashCode;
+                }
+            }
+
+            public Type TargetType { get; }
+
+            public bool AutoTypeCoercion { get; }
+
+            public string[] ColumnNames { get; }
+
+            public Type[] FieldTypes { get; }
+
+            public bool Equals(ReaderShapeKey other)
+            {
+                if (ReferenceEquals(this, other)) return true;
+                if (other == null || _hashCode != other._hashCode || TargetType != other.TargetType
+                    || AutoTypeCoercion != other.AutoTypeCoercion || ColumnNames.Length != other.ColumnNames.Length)
+                {
+                    return false;
+                }
+
+                for (var i = 0; i < ColumnNames.Length; i++)
+                {
+                    if (!string.Equals(ColumnNames[i], other.ColumnNames[i], StringComparison.Ordinal) || FieldTypes[i] != other.FieldTypes[i])
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as ReaderShapeKey);
+            }
+
+            public override int GetHashCode()
+            {
+                return _hashCode;
+            }
         }
 
         private static readonly MethodInfo IsDBNullMethod = typeof(IDataRecord).GetMethod("IsDBNull", new[] { typeof(int) });
@@ -112,15 +178,13 @@ namespace Nemo.Reflection
             var count = record.FieldCount;
             var columnNames = new string[count];
             var fieldTypes = new Type[count];
-            var shape = new StringBuilder();
             for (var i = 0; i < count; i++)
             {
                 columnNames[i] = record.GetName(i);
                 fieldTypes[i] = GetFieldType(record, i);
-                shape.Append(columnNames[i]).Append('\u0002').Append(fieldTypes[i]?.FullName).Append('\u0001');
             }
-            var key = Tuple.Create(targetType, autoTypeCoercion, shape.ToString());
-            return ReaderMappers.GetOrAdd(key, t => GenerateReaderDelegate(t.Item1, columnNames, fieldTypes, t.Item2));
+            var key = new ReaderShapeKey(targetType, autoTypeCoercion, columnNames, fieldTypes);
+            return ReaderMappers.GetOrAdd(key, t => GenerateReaderDelegate(t.TargetType, t.ColumnNames, t.FieldTypes, t.AutoTypeCoercion));
         }
 
         private static Type GetFieldType(IDataRecord record, int ordinal)

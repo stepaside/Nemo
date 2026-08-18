@@ -1,20 +1,29 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Nemo.Extensions;
 
 namespace Nemo.Collections
 {
-    internal class TypeArray : IEqualityComparer<TypeArray>
+    internal sealed class TypeArray : IEquatable<TypeArray>
     {
         private readonly IList<Type> _types;
-        private readonly Lazy<int> _hashCode;
+        private readonly int _hashCode;
 
         public TypeArray(IList<Type> types)
         {
             _types = types;
-            _hashCode = new Lazy<int>(() => _types.Select(t => t.FullName).ToDelimitedString("|").GetHashCode(), true);
+
+            unchecked
+            {
+                var hashCode = 17;
+                if (types != null)
+                {
+                    for (var i = 0; i < types.Count; i++)
+                    {
+                        hashCode = (hashCode * 31) + (types[i]?.GetHashCode() ?? 0);
+                    }
+                }
+                _hashCode = hashCode;
+            }
         }
 
         public IList<Type> Types
@@ -25,14 +34,29 @@ namespace Nemo.Collections
             }
         }
 
-        public bool Equals(TypeArray x, TypeArray y)
+        public bool Equals(TypeArray other)
         {
-            return (x._types?.SequenceEqual(y._types, EqualityComparer<Type>.Default)).GetValueOrDefault();
+            if (ReferenceEquals(this, other)) return true;
+            if (other == null || _hashCode != other._hashCode) return false;
+            if (_types == null || other._types == null) return _types == other._types;
+            if (_types.Count != other._types.Count) return false;
+
+            for (var i = 0; i < _types.Count; i++)
+            {
+                if (_types[i] != other._types[i]) return false;
+            }
+
+            return true;
         }
 
-        public int GetHashCode(TypeArray obj)
+        public override bool Equals(object obj)
         {
-            return obj._hashCode.Value;
+            return Equals(obj as TypeArray);
+        }
+
+        public override int GetHashCode()
+        {
+            return _hashCode;
         }
     }
 }
