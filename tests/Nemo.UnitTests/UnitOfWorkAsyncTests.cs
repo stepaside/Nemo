@@ -20,7 +20,7 @@ namespace Nemo.UnitTests
         [TestInitialize]
         public void ClearScopes()
         {
-            ObjectScope.Scopes.Clear();
+            ObjectScope.ClearScopes();
         }
 
         [TestMethod]
@@ -44,7 +44,7 @@ namespace Nemo.UnitTests
             thread.Join();
 
             Assert.IsNull(captured, captured?.Message);
-            Assert.AreEqual(0, ObjectScope.Scopes.Count);
+            Assert.AreEqual(0, ObjectScope.ScopeCount);
         }
 
         [TestMethod]
@@ -89,7 +89,7 @@ namespace Nemo.UnitTests
             }
 
             Assert.AreEqual("b", entity.Name);
-            Assert.AreEqual(0, ObjectScope.Scopes.Count);
+            Assert.AreEqual(0, ObjectScope.ScopeCount);
         }
 
         [TestMethod]
@@ -99,7 +99,7 @@ namespace Nemo.UnitTests
 
             await scope.DisposeAsync();
 
-            Assert.AreEqual(0, ObjectScope.Scopes.Count);
+            Assert.AreEqual(0, ObjectScope.ScopeCount);
             Assert.IsNull(ObjectScope.Current);
         }
 
@@ -112,11 +112,11 @@ namespace Nemo.UnitTests
             inner.Dispose();
             await inner.DisposeAsync();
 
-            Assert.AreEqual(1, ObjectScope.Scopes.Count);
+            Assert.AreEqual(1, ObjectScope.ScopeCount);
             Assert.AreSame(outer, ObjectScope.Current);
 
             await outer.DisposeAsync();
-            Assert.AreEqual(0, ObjectScope.Scopes.Count);
+            Assert.AreEqual(0, ObjectScope.ScopeCount);
         }
 
         [TestMethod]
@@ -131,7 +131,7 @@ namespace Nemo.UnitTests
             }
 
             Assert.AreEqual("b", entity.Name);
-            Assert.AreEqual(0, ObjectScope.Scopes.Count);
+            Assert.AreEqual(0, ObjectScope.ScopeCount);
         }
 
         [TestMethod]
@@ -147,7 +147,7 @@ namespace Nemo.UnitTests
             }
 
             Assert.AreEqual("a", entity.Name);
-            Assert.AreEqual(0, ObjectScope.Scopes.Count);
+            Assert.AreEqual(0, ObjectScope.ScopeCount);
         }
     }
 }
