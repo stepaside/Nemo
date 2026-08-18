@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using Nemo.Attributes;
 using Nemo.Collections;
@@ -38,11 +37,15 @@ namespace Nemo.Serialization
         private readonly Stream _stream;
         private readonly Encoding _encoding;
         private readonly Stack<object> _path;
+        // Scratch buffers shared by all writers on the thread: their contents never outlive a single
+        // write call, so nested writers cannot observe each other's data.
+        [ThreadStatic] private static byte[] _numberBuffer;
+        [ThreadStatic] private static byte[] _textBuffer;
 
         private SerializationWriter(Stream stream, SerializationMode mode, Encoding encoding)
         {
             _stream = stream ?? new MemoryStream(512);
-            _encoding = encoding ?? new UTF8Encoding();
+            _encoding = encoding ?? Encoding.UTF8;
             _serializeAll = (mode & SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (mode & SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
             _path = new Stack<object>();
@@ -78,7 +81,7 @@ namespace Nemo.Serialization
 
         private void WriteFixed32(uint value)
         {
-            var buffer = new byte[4];
+            var buffer = _numberBuffer ?? (_numberBuffer = new byte[8]);
             buffer[0] = (byte)value;
             buffer[1] = (byte)(value >> 8);
             buffer[2] = (byte)(value >> 16);
@@ -88,7 +91,7 @@ namespace Nemo.Serialization
 
         private void WriteFixed64(ulong value)
         {
-            var buffer = new byte[8];
+            var buffer = _numberBuffer ?? (_numberBuffer = new byte[8]);
             buffer[0] = (byte)value;
             buffer[1] = (byte)(value >> 8);
             buffer[2] = (byte)(value >> 16);
@@ -203,14 +206,16 @@ namespace Nemo.Serialization
             }
             else
             {
-                var chars = value.ToCharArray();
-                var length = _encoding.GetByteCount(chars);
+                var length = _encoding.GetByteCount(value);
                 Write((uint)length + 1);
                 if (length > 0)
                 {
-                    var buffer = new byte[length];
-                    _encoding.GetBytes(chars, 0, chars.Length, buffer, 0);
-                    _stream.Write(buffer, 0, length);
+                    if (_textBuffer == null || _textBuffer.Length < length)
+                    {
+                        _textBuffer = new byte[length];
+                    }
+                    _encoding.GetBytes(value, 0, value.Length, _textBuffer, 0);
+                    _stream.Write(_textBuffer, 0, length);
                 }
             }
         }

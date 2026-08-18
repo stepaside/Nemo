@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using Nemo.Attributes;
 using Nemo.Collections;
@@ -49,13 +48,18 @@ namespace Nemo.Serialization
             public ObjectDeserializer Deserializer;
         }
 
-        private byte[] _headerBuffer;
+        // Scratch buffers shared by all readers on the thread: their contents never outlive a single
+        // read call, so nested readers cannot observe each other's data.
+        [ThreadStatic] private static byte[] _textBuffer;
+        [ThreadStatic] private static byte[] _numberBuffer;
+        [ThreadStatic] private static int[] _decimalBits;
+        [ThreadStatic] private static byte[] _headerBuffer;
         private readonly bool _dateTimeKindIncluded;
 
         private SerializationReader(Stream stream, Encoding encoding, bool readHeader = true)
         {
             _stream = stream;
-            _encoding = encoding ?? new UTF8Encoding();
+            _encoding = encoding ?? Encoding.UTF8;
             if (!readHeader)
             {
                 return;
@@ -85,16 +89,16 @@ namespace Nemo.Serialization
 
         private uint ReadFixed32()
         {
-            var buffer = new byte[4];
-            _stream.Read(buffer, 0, 4);
+            var buffer = _numberBuffer ?? (_numberBuffer = new byte[8]);
+            ReadBuffer(buffer, 4);
             var v = (uint)((int)buffer[0] | (int)buffer[1] << 8 | (int)buffer[2] << 16 | (int)buffer[3] << 24);
             return v;
         }
 
         private ulong ReadFixed64()
         {
-            var buffer = new byte[8];
-            _stream.Read(buffer, 0, 8);
+            var buffer = _numberBuffer ?? (_numberBuffer = new byte[8]);
+            ReadBuffer(buffer, 8);
             var v1 = (uint)((int)buffer[0] | (int)buffer[1] << 8 | (int)buffer[2] << 16 | (int)buffer[3] << 24);
             var v2 = (uint)((int)buffer[4] | (int)buffer[5] << 8 | (int)buffer[6] << 16 | (int)buffer[7] << 24);
             var v = (ulong)v2 << 32 | (ulong)v1;
@@ -215,7 +219,7 @@ namespace Nemo.Serialization
 
         public decimal ReadDecimal()
         {
-            var bits = new int[4];
+            var bits = _decimalBits ?? (_decimalBits = new int[4]);
             bits[0] = ReadInt32();
             bits[1] = ReadInt32();
             bits[2] = ReadInt32();
@@ -239,16 +243,7 @@ namespace Nemo.Serialization
 
             length -= 1;
             var buffer = new byte[length];
-            int l = 0;
-            while (l < length)
-            {
-                int r = _stream.Read(buffer, l, (int)length - l);
-                if (r == 0)
-                {
-                    throw new EndOfStreamException();
-                }
-                l += r;
-            }
+            ReadBuffer(buffer, (int)length);
             return buffer;
         }
 
@@ -288,18 +283,12 @@ namespace Nemo.Serialization
             }
 
             length -= 1;
-            var buffer = new byte[length];
-            int l = 0;
-            while (l < length)
+            if (_textBuffer == null || _textBuffer.Length < length)
             {
-                int r = _stream.Read(buffer, l, (int)length - l);
-                if (r == 0)
-                {
-                    throw new EndOfStreamException();
-                }
-                l += r;
+                _textBuffer = new byte[(int)length];
             }
-            return _encoding.GetString(buffer);
+            ReadBuffer(_textBuffer, (int)length);
+            return _encoding.GetString(_textBuffer, 0, (int)length);
         }
 
         public DateTime ReadDateTime()
@@ -475,7 +464,7 @@ namespace Nemo.Serialization
             {
                 return cached;
             }
-            var type = typeName.IndexOf(',') > -1 ? Type.GetType(typeName, false) : AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).FirstOrDefault(t => t.FullName == typeName);
+            var type = Type.GetType(typeName, false) ?? FindType(typeName);
             if (type != null)
             {
                 _types.TryAdd(typeName, type);
@@ -752,6 +741,31 @@ namespace Nemo.Serialization
                 return updated;
             });
             return entry.Deserializer;
+        }
+
+        /// <summary>
+        /// Scans loaded assemblies for a type given by its full name only. Assemblies whose types cannot
+        /// be loaded are skipped instead of failing the whole lookup.
+        /// </summary>
+        private static Type FindType(string typeName)
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type type;
+                try
+                {
+                    type = assembly.GetType(typeName, false);
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+            return null;
         }
 
         private void ReadBuffer(byte[] buffer, int count)
