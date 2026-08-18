@@ -12,6 +12,7 @@ namespace Nemo.Reflection
         {
             private static readonly ConcurrentDictionary<Tuple<Type, string>, GenericGetter> Getters = new ConcurrentDictionary<Tuple<Type, string>, GenericGetter>();
             private static readonly ConcurrentDictionary<Tuple<Type, string>, Tuple<GenericSetter, Type>> Setters = new ConcurrentDictionary<Tuple<Type, string>, Tuple<GenericSetter, Type>>();
+            private static readonly ConcurrentDictionary<Tuple<Type, string>, Action<object, object>> SetterActions = new ConcurrentDictionary<Tuple<Type, string>, Action<object, object>>();
             
             #region Property Getters
 
@@ -34,6 +35,43 @@ namespace Nemo.Reflection
                     return getMethod(target);
                 }
                 return null;
+            }
+
+            /// <summary>
+            /// Returns a cached getter allowing callers which read the same property from many instances to resolve it once.
+            /// </summary>
+            internal static GenericGetter GetGetter(Type targetType, string propertyName)
+            {
+                return Getters.GetOrAdd(Tuple.Create(targetType, propertyName), GenerateGetter);
+            }
+
+            /// <summary>
+            /// Returns a cached setter with the same conversion semantics as <see cref="Set(Type, object, string, object)"/>,
+            /// allowing callers which write the same property on many instances to resolve it once.
+            /// </summary>
+            internal static Action<object, object> GetSetter(Type targetType, string propertyName)
+            {
+                return SetterActions.GetOrAdd(Tuple.Create(targetType, propertyName), key =>
+                {
+                    var setter = Setters.GetOrAdd(key, GenerateSetter);
+                    var setMethod = setter.Item1;
+                    if (setMethod == null) return null;
+
+                    var propertyType = setter.Item2;
+                    return (target, value) =>
+                    {
+                        if (target == null) return;
+
+                        if (value != null && value is IConvertible && value.GetType() != propertyType)
+                        {
+                            setMethod(target, ChangeType(value, propertyType));
+                        }
+                        else
+                        {
+                            setMethod(target, value);
+                        }
+                    };
+                });
             }
 
             private static GenericGetter GenerateGetter(Tuple<Type, string> key)

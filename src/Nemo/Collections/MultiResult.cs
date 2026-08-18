@@ -8,6 +8,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Nemo.Collections
@@ -138,8 +139,16 @@ namespace Nemo.Collections
     public static class MultiResult
     {
         private static readonly ConcurrentDictionary<Type, Type> _types = new ConcurrentDictionary<Type, Type>();
-        private static readonly ConcurrentDictionary<TypeArray, List<MethodInfo>> _methods = new ConcurrentDictionary<TypeArray, List<MethodInfo>>();
+        private static readonly ConcurrentDictionary<Type, Func<IMultiResult, IEnumerable<object>>> _retrievers = new ConcurrentDictionary<Type, Func<IMultiResult, IEnumerable<object>>>();
         private static readonly ConcurrentDictionary<Type, List<ObjectRelation>> _relations = new ConcurrentDictionary<Type, List<ObjectRelation>>();
+        private static readonly ConcurrentDictionary<Type, List<RelationTemplate>> _templates = new ConcurrentDictionary<Type, List<RelationTemplate>>();
+        private static readonly ConcurrentDictionary<TypeArray, List<RelationPlan>[]> _plans = new ConcurrentDictionary<TypeArray, List<RelationPlan>[]>();
+        private static readonly MethodInfo RetrieveMethod = typeof(IMultiResult).GetMethod(nameof(IMultiResult.Retrieve));
+        private static readonly MethodInfo CastMethod = typeof(Enumerable).GetMethods(BindingFlags.Static | BindingFlags.Public).First(m => m.Name == nameof(Enumerable.Cast));
+        private static readonly List<object> EmptyResult = new List<object>();
+
+        //  A key standing in for a null relation key, which a dictionary cannot store
+        private static readonly object NullKey = new object();
 
         internal static IMultiResult Create(IList<Type> types, IEnumerable<MultiResultItem> source, bool cached, INemoConfiguration config)
         {
@@ -155,18 +164,24 @@ namespace Nemo.Collections
         {
             if (source == null) yield break;
 
-            var key = new TypeArray(source.AllTypes);
-
-            var methods = _methods.GetOrAdd(key, t =>
+            var types = source.AllTypes;
+            for (var i = 0; i < types.Length; i++)
             {
-                var retrieve = source.GetType().GetMethod("Retrieve");
-                return t.Types.Select(type => retrieve.MakeGenericMethod(type)).ToList();
-            });
-
-            foreach(var method in methods)
-            {
-                yield return ((IEnumerable)method.Invoke(source, null)).Cast<object>();
+                yield return _retrievers.GetOrAdd(types[i], CreateRetriever)(source);
             }
+        }
+
+        private static Func<IMultiResult, IEnumerable<object>> CreateRetriever(Type type)
+        {
+            var parameter = Expression.Parameter(typeof(IMultiResult), "source");
+            Expression body = Expression.Call(parameter, RetrieveMethod.MakeGenericMethod(type));
+
+            //  A sequence of reference types is covariant with a sequence of objects, whereas value types have to be boxed
+            body = type.IsValueType
+                ? Expression.Call(CastMethod.MakeGenericMethod(typeof(object)), body)
+                : (Expression)Expression.Convert(body, typeof(IEnumerable<object>));
+
+            return Expression.Lambda<Func<IMultiResult, IEnumerable<object>>>(body, parameter).Compile();
         }
 
         public static IEnumerable<T> Aggregate<T>(this IMultiResult source)
@@ -178,18 +193,37 @@ namespace Nemo.Collections
         public static IEnumerable<T> Aggregate<T>(this IMultiResult source, INemoConfiguration config)
             where T : class
         {
-            var results = source.AsEnumerable().Select(s => s.ToList()).ToList();
-            
-            var relations = InferRelations(source.AllTypes).ToList();
-            var relationsByType = BuildRelationsByType(relations);
-            var childrenByRelationKey = BuildChildrenByRelationKey(relations, results);
+            var types = source.AllTypes;
+            var results = new List<object>[types.Length];
+            var resultIndex = 0;
+
+            foreach (var set in source.AsEnumerable())
+            {
+                if (resultIndex == results.Length) break;
+
+                var items = new List<object>();
+                foreach (var item in set)
+                {
+                    items.Add(item);
+                }
+                results[resultIndex++] = items;
+            }
+
+            while (resultIndex < results.Length)
+            {
+                results[resultIndex++] = EmptyResult;
+            }
+
+            var plans = GetPlans(types);
+            var relations = BuildRelations(plans, results);
 
             var roots = new List<T>();
 
-            for (var i = 0; i < source.AllTypes.Length; i++)
+            for (var i = 0; i < types.Length; i++)
             {
-                var identityMap = source.IsCached ? Identity.Get(source.AllTypes[i], config) : null;
-                var propertyKey = source.IsCached ? ObjectFactory.GetPrimaryKeyPropertiesCached(source.AllTypes[i]) : null;
+                var identityMap = source.IsCached ? Identity.Get(types[i], config) : null;
+                var propertyKey = source.IsCached ? ObjectFactory.GetPrimaryKeyPropertiesCached(types[i]) : null;
+                var typeRelations = relations?[i];
                 var count = 0;
                 foreach (var item in results[i])
                 {
@@ -214,7 +248,10 @@ namespace Nemo.Collections
                         roots.Add((T)item);
                     }
 
-                    LoadRelatedData(item, source.AllTypes[i], relationsByType, childrenByRelationKey, source.IsCached, config);
+                    if (typeRelations != null)
+                    {
+                        LoadRelatedData(item, typeRelations, source.IsCached, config);
+                    }
 
                     identityMap.WriteThrough(item, hash);
                 }
@@ -227,182 +264,231 @@ namespace Nemo.Collections
 
             return roots;
         }
-        
-        private static void LoadRelatedData(
-            object value,
-            Type objectType,
-            IDictionary<Type, IDictionary<string, ObjectRelation>> relationsByType,
-            IDictionary<ObjectRelation, IDictionary<object[], List<object>>> childrenByRelationKey,
-            bool cached,
-            INemoConfiguration config)
+
+        private static void LoadRelatedData(object value, List<RelationState> relations, bool cached, INemoConfiguration config)
         {
-            var propertyMap = Reflector.GetPropertyMap(objectType);
+            var valueType = value.GetType();
 
-            if (!relationsByType.TryGetValue(objectType, out var relationMap))
+            foreach (var state in relations)
             {
-                return;
-            }
-            
-            foreach (var property in propertyMap)
-            {
-                if (!relationMap.TryGetValue(property.Key.Name, out var relation) || relation == null || !relation.IsValid())
+                if (state.IsEmpty) continue;
+
+                var template = state.Template;
+
+                if (state.ParentType != valueType)
+                {
+                    var accessorType = GetAccessorType(valueType);
+                    state.ParentKeyGetters = GetGetters(accessorType, template.ParentKeyProperties);
+                    //  Matching the property assignment of the previous implementation which used the runtime type
+                    state.PropertySetter = Reflector.Property.GetSetter(valueType, template.PropertyName);
+                    state.ParentType = valueType;
+                }
+
+                var items = state.Find(value);
+                if (items == null || items.Count == 0)
                 {
                     continue;
                 }
 
-                if (!childrenByRelationKey.TryGetValue(relation, out var relationBuckets))
-                {
-                    continue;
-                }
+                var propertyKey = cached ? ObjectFactory.GetPrimaryKeyPropertiesCached(template.ElementType) : null;
+                var identityMap = cached ? Identity.Get(template.ElementType, config) : null;
 
-                var parentKey = BuildRelationKey(value, relation.From.Properties);
-                if (!relationBuckets.TryGetValue(parentKey, out var items) || items.Count == 0)
+                object propertyValue;
+                if (template.IsSingle)
                 {
-                    continue;
-                }
-                
-                object propertyValue = null;
-                if (property.Value.IsDataEntity || property.Value.IsObject)
-                {
-                    var propertyKey = cached ? ObjectFactory.GetPrimaryKeyPropertiesCached(property.Key.PropertyType) : null;
-                    var identityMap = cached ? Identity.Get(property.Key.PropertyType, config) : null;
-
                     propertyValue = cached ? identityMap.GetEntityByHash<object>(items[0].ComputeHash(propertyKey, typeof(object))) ?? items[0] : items[0];
 
-                    SetForeignKeys(property.Key.PropertyType, propertyValue, objectType, value);
+                    state.SetForeignKeys(propertyValue, value);
                 }
-                else if (property.Value.IsDataEntityList || property.Value.IsObjectList)
+                else
                 {
-                    var elementType = property.Value.ElementType;
-                    if (elementType != null)
+                    var list = template.IsListInterface
+                        ? List.Create(template.ElementType, template.Distinct, template.Sorted)
+                        : (IList)template.PropertyType.New();
+
+                    foreach (var item in items)
                     {
-                        var propertyKey = cached ? ObjectFactory.GetPrimaryKeyPropertiesCached(elementType) : null;
-                        var foreignKeys = Reflector.GetPropertyNameMap(elementType).Values.Where(p => p.PropertyType == objectType).ToArray();
-                        var identityMap = cached ? Identity.Get(elementType, config) : null;
+                        var listItem = cached ? identityMap.GetEntityByHash<object>(item.ComputeHash(propertyKey, typeof(object))) ?? item : item;
 
-                        IList list;
-                        if (!property.Value.IsListInterface)
-                        {
-                            list = (IList)property.Key.PropertyType.New();
-                        }
-                        else
-                        {
-                            list = List.Create(elementType, property.Value.Distinct, property.Value.Sorted);
-                        }
+                        state.SetForeignKeys(listItem, value);
 
-                        foreach (var item in items)
-                        {
-                            var listItem = cached ? identityMap.GetEntityByHash<object>(item.ComputeHash(propertyKey, typeof(object))) ?? item : item;
-                            
-                            SetForeignKeys(foreignKeys, listItem, value);
-
-                            list.Add(listItem);
-                        }
-
-                        propertyValue = list;
+                        list.Add(listItem);
                     }
+
+                    propertyValue = list;
                 }
-                
-                Reflector.Property.Set(value.GetType(), value, property.Key.Name, propertyValue);
+
+                state.PropertySetter?.Invoke(value, propertyValue);
             }
         }
 
-        private static IDictionary<Type, IDictionary<string, ObjectRelation>> BuildRelationsByType(IEnumerable<ObjectRelation> relations)
+        /// <summary>
+        /// Returns the relations to load for each result set, cached for the combination of the result set types.
+        /// </summary>
+        private static List<RelationPlan>[] GetPlans(Type[] types)
         {
-            var map = new Dictionary<Type, IDictionary<string, ObjectRelation>>();
+            return _plans.GetOrAdd(new TypeArray(types), key =>
+            {
+                var allTypes = key.Types;
 
+                var typeIndexes = new Dictionary<Type, int>();
+                for (var i = 0; i < allTypes.Count; i++)
+                {
+                    if (!typeIndexes.ContainsKey(allTypes[i]))
+                    {
+                        typeIndexes[allTypes[i]] = i;
+                    }
+                }
+
+                var plans = new List<RelationPlan>[allTypes.Count];
+
+                for (var i = 0; i < allTypes.Count; i++)
+                {
+                    List<RelationPlan> typePlans = null;
+
+                    foreach (var template in _templates.GetOrAdd(allTypes[i], CreateTemplates))
+                    {
+                        if (!typeIndexes.TryGetValue(template.ElementType, out var childIndex)) continue;
+
+                        typePlans ??= new List<RelationPlan>();
+                        typePlans.Add(new RelationPlan { Template = template, ChildIndex = childIndex });
+                    }
+
+                    plans[i] = typePlans;
+                }
+
+                return plans;
+            });
+        }
+
+        private static List<RelationState>[] BuildRelations(List<RelationPlan>[] plans, List<object>[] results)
+        {
+            List<RelationState>[] relations = null;
+
+            for (var i = 0; i < plans.Length; i++)
+            {
+                var typePlans = plans[i];
+                if (typePlans == null) continue;
+
+                var states = new List<RelationState>(typePlans.Count);
+                foreach (var plan in typePlans)
+                {
+                    var state = new RelationState { Template = plan.Template };
+                    state.Index(results[plan.ChildIndex]);
+                    states.Add(state);
+                }
+
+                relations ??= new List<RelationState>[plans.Length];
+                relations[i] = states;
+            }
+
+            return relations;
+        }
+
+        /// <summary>
+        /// Describes how a related property of a type is populated, cached for the lifetime of the process.
+        /// </summary>
+        private static List<RelationTemplate> CreateTemplates(Type objectType)
+        {
+            var templates = new List<RelationTemplate>();
+
+            var relations = _relations.GetOrAdd(objectType, t => InferRelations(t).ToList());
+            if (relations.Count == 0) return templates;
+
+            var relationsByProperty = new Dictionary<string, ObjectRelation>(StringComparer.Ordinal);
             foreach (var relation in relations)
             {
-                if (relation == null || !relation.IsValid())
-                {
-                    continue;
-                }
+                if (relation?.From == null || relation.To == null) continue;
 
-                if (!map.TryGetValue(relation.From.Type, out var typeRelations))
-                {
-                    typeRelations = new Dictionary<string, ObjectRelation>(StringComparer.Ordinal);
-                    map[relation.From.Type] = typeRelations;
-                }
-
-                var propertyName = relation.Name != null && relation.Name.StartsWith("_", StringComparison.Ordinal)
+                var relationName = relation.Name != null && relation.Name.StartsWith("_", StringComparison.Ordinal)
                     ? relation.Name.Substring(1)
                     : relation.Name;
 
-                if (!string.IsNullOrEmpty(propertyName) && !typeRelations.ContainsKey(propertyName))
-                {
-                    typeRelations[propertyName] = relation;
-                }
+                if (string.IsNullOrEmpty(relationName) || relationsByProperty.ContainsKey(relationName)) continue;
+
+                relationsByProperty[relationName] = relation;
             }
 
-            return map;
-        }
-
-        private static IDictionary<ObjectRelation, IDictionary<object[], List<object>>> BuildChildrenByRelationKey(
-            IEnumerable<ObjectRelation> relations,
-            IList<List<object>> set)
-        {
-            var map = new Dictionary<ObjectRelation, IDictionary<object[], List<object>>>();
-
-            foreach (var relation in relations)
+            foreach (var property in Reflector.GetPropertyMap(objectType))
             {
-                if (relation == null || !relation.IsValid())
+                if (!relationsByProperty.TryGetValue(property.Key.Name, out var relation)) continue;
+
+                Type elementType;
+                bool isSingle;
+                if (property.Value.IsDataEntity || property.Value.IsObject)
+                {
+                    elementType = property.Key.PropertyType;
+                    isSingle = true;
+                }
+                else if (property.Value.IsDataEntityList || property.Value.IsObjectList)
+                {
+                    elementType = property.Value.ElementType;
+                    isSingle = false;
+                }
+                else
                 {
                     continue;
                 }
 
-                var keyMap = new Dictionary<object[], List<object>>(ObjectArrayComparer.Instance);
-                foreach (var child in set[relation.To.Index])
-                {
-                    var key = BuildRelationKey(child, relation.To.Properties);
-                    if (!keyMap.TryGetValue(key, out var list))
-                    {
-                        list = new List<object>();
-                        keyMap[key] = list;
-                    }
-                    list.Add(child);
-                }
+                if (elementType == null) continue;
 
-                map[relation] = keyMap;
+                templates.Add(new RelationTemplate
+                {
+                    PropertyName = property.Key.Name,
+                    PropertyType = property.Key.PropertyType,
+                    ElementType = elementType,
+                    IsSingle = isSingle,
+                    IsListInterface = property.Value.IsListInterface,
+                    Distinct = property.Value.Distinct,
+                    Sorted = property.Value.Sorted,
+                    ParentKeyProperties = GetPropertyNames(relation.From.Properties),
+                    ChildKeyProperties = GetPropertyNames(relation.To.Properties),
+                    ForeignKeyProperties = Reflector.GetPropertyNameMap(elementType).Values.Where(p => p.PropertyType == objectType).Select(p => p.PropertyName).ToArray()
+                });
             }
 
-            return map;
+            return templates;
         }
 
-        private static object[] BuildRelationKey(object value, IList<ReflectedProperty> properties)
+        private static string[] GetPropertyNames(IList<ReflectedProperty> properties)
         {
-            var result = new object[properties.Count];
+            var names = new string[properties.Count];
             for (var i = 0; i < properties.Count; i++)
             {
-                result[i] = value.Property(properties[i].PropertyName);
+                names[i] = properties[i].PropertyName;
             }
-            return result;
+            return names;
         }
 
-        private static void SetForeignKeys(Type propertyType, object propertyValue, Type parentType, object parentValue)
+        private static Type GetAccessorType(Type entityType)
         {
-            var foreignKeys = Reflector.GetPropertyNameMap(propertyType).Values.Where(p => p.PropertyType == parentType);
-
-            SetForeignKeys(foreignKeys, propertyValue, parentValue);
-        }
-
-        private static void SetForeignKeys(IEnumerable<ReflectedProperty> foreignKeys, object propertyValue, object parentValue)
-        {
-            foreach (var foreignKey in foreignKeys)
+            var reflectedType = Reflector.GetReflectedType(entityType);
+            if (entityType == typeof(object) && reflectedType.IsEmitted && reflectedType.InterfaceTypeName != null)
             {
-                propertyValue.Property(foreignKey.PropertyName, parentValue);
+                return reflectedType.InterfaceType;
             }
+
+            return reflectedType.IsMarkerInterface ? reflectedType.UnderlyingType : entityType;
         }
 
-        private static IEnumerable<ObjectRelation> InferRelations(IList<Type> objectTypes)
+        private static Reflector.Property.GenericGetter[] GetGetters(Type accessorType, string[] propertyNames)
         {
-            foreach (var objectType in objectTypes)
+            var getters = new Reflector.Property.GenericGetter[propertyNames.Length];
+            for (var i = 0; i < propertyNames.Length; i++)
             {
-                foreach (var relation in _relations.GetOrAdd(objectType, t => InferRelations(t).ToList()))
-                {
-                    relation.To.Index = objectTypes.FindIndex(t => t == relation.To.Type);
-                    yield return relation;
-                }
+                getters[i] = Reflector.Property.GetGetter(accessorType, propertyNames[i]);
             }
+            return getters;
+        }
+
+        private static Action<object, object>[] GetSetters(Type accessorType, string[] propertyNames)
+        {
+            var setters = new Action<object, object>[propertyNames.Length];
+            for (var i = 0; i < propertyNames.Length; i++)
+            {
+                setters[i] = Reflector.Property.GetSetter(accessorType, propertyNames[i]);
+            }
+            return setters;
         }
 
         private static IEnumerable<ObjectRelation> InferRelations(Type objectType)
@@ -434,18 +520,153 @@ namespace Nemo.Collections
             public string Name { get; set; }
             public ObjectVertex From { get; set; }
             public ObjectVertex To { get; set; }
-
-            public bool IsValid()
-            {
-                return From != null && To != null && From.Index >= 0 && To.Index >= 0;
-            }
         }
         
         private class ObjectVertex
         {
             public Type Type { get; set; }
-            public int Index { get; set; }
             public List<ReflectedProperty> Properties { get; set; }
+        }
+
+        /// <summary>
+        /// Cached description of a related property of a type, independent of the query it takes part in.
+        /// </summary>
+        private sealed class RelationTemplate
+        {
+            public string PropertyName;
+            public Type PropertyType;
+            public Type ElementType;
+            public bool IsSingle;
+            public bool IsListInterface;
+            public Attributes.DistinctAttribute Distinct;
+            public Attributes.SortedAttribute Sorted;
+            public string[] ParentKeyProperties;
+            public string[] ChildKeyProperties;
+            public string[] ForeignKeyProperties;
+        }
+
+        /// <summary>
+        /// A relation template bound to the result set providing its children.
+        /// </summary>
+        private sealed class RelationPlan
+        {
+            public RelationTemplate Template;
+            public int ChildIndex;
+        }
+
+        /// <summary>
+        /// Per-aggregation state of a relation holding the children indexed by their key and the property accessors
+        /// resolved for the types encountered.
+        /// </summary>
+        private sealed class RelationState
+        {
+            public RelationTemplate Template;
+            public Type ParentType;
+            public Reflector.Property.GenericGetter[] ParentKeyGetters;
+            public Action<object, object> PropertySetter;
+
+            private Dictionary<object, List<object>> _childrenByKey;
+            private Dictionary<object[], List<object>> _childrenByCompositeKey;
+            private Type _childType;
+            private Action<object, object>[] _foreignKeySetters;
+
+            public bool IsEmpty
+            {
+                get { return _childrenByKey == null && _childrenByCompositeKey == null; }
+            }
+
+            public void Index(List<object> children)
+            {
+                if (children.Count == 0) return;
+
+                var keyProperties = Template.ChildKeyProperties;
+                if (keyProperties.Length == 0 || keyProperties.Length != Template.ParentKeyProperties.Length) return;
+
+                var composite = keyProperties.Length > 1;
+                if (composite)
+                {
+                    _childrenByCompositeKey = new Dictionary<object[], List<object>>(ObjectArrayComparer.Instance);
+                }
+                else
+                {
+                    _childrenByKey = new Dictionary<object, List<object>>();
+                }
+
+                Type childType = null;
+                Reflector.Property.GenericGetter[] getters = null;
+
+                foreach (var child in children)
+                {
+                    var type = child.GetType();
+                    if (type != childType)
+                    {
+                        childType = type;
+                        getters = GetGetters(GetAccessorType(type), keyProperties);
+                    }
+
+                    if (composite)
+                    {
+                        var key = new object[keyProperties.Length];
+                        for (var i = 0; i < key.Length; i++)
+                        {
+                            key[i] = getters[i](child);
+                        }
+
+                        if (!_childrenByCompositeKey.TryGetValue(key, out var items))
+                        {
+                            items = new List<object>();
+                            _childrenByCompositeKey.Add(key, items);
+                        }
+                        items.Add(child);
+                    }
+                    else
+                    {
+                        var key = getters[0](child) ?? NullKey;
+                        if (!_childrenByKey.TryGetValue(key, out var items))
+                        {
+                            items = new List<object>();
+                            _childrenByKey.Add(key, items);
+                        }
+                        items.Add(child);
+                    }
+                }
+            }
+
+            public List<object> Find(object parent)
+            {
+                if (_childrenByKey != null)
+                {
+                    return _childrenByKey.TryGetValue(ParentKeyGetters[0](parent) ?? NullKey, out var items) ? items : null;
+                }
+
+                if (_childrenByCompositeKey == null) return null;
+
+                var key = new object[ParentKeyGetters.Length];
+                for (var i = 0; i < key.Length; i++)
+                {
+                    key[i] = ParentKeyGetters[i](parent);
+                }
+
+                return _childrenByCompositeKey.TryGetValue(key, out var matches) ? matches : null;
+            }
+
+            public void SetForeignKeys(object child, object parent)
+            {
+                var foreignKeys = Template.ForeignKeyProperties;
+                if (foreignKeys.Length == 0) return;
+
+                var type = child.GetType();
+                if (type != _childType)
+                {
+                    _childType = type;
+                    _foreignKeySetters = GetSetters(GetAccessorType(type), foreignKeys);
+                }
+
+                for (var i = 0; i < _foreignKeySetters.Length; i++)
+                {
+                    _foreignKeySetters[i]?.Invoke(child, parent);
+                }
+            }
         }
 
         private sealed class ObjectArrayComparer : IEqualityComparer<object[]>
