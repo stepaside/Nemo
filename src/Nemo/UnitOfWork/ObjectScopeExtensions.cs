@@ -254,7 +254,7 @@ namespace Nemo.UnitOfWork
 
         #region Change Detection Methods
 
-        private static ChangeNode CompareObjects(object currentObject, object oldObject, ChangeNode parentNode = null)
+        internal static ChangeNode CompareObjects(object currentObject, object oldObject, ChangeNode parentNode = null)
         {
             if (currentObject == null && oldObject == null)
             {
@@ -431,34 +431,61 @@ namespace Nemo.UnitOfWork
                 return changeList;
             }
 
-            var objectMapCurrent = new Dictionary<string, object>();
-            var objectMapOld = new Dictionary<string, object>();
-
-            if (currentList != null)
-            {
-                for (var i = 0; i < currentList.Count; i++)
-                {
-                    objectMapCurrent.Add(currentList[i].ComputeHash(), currentList[i]);
-                }
-            }
+            var oldItemsByHash = new Dictionary<string, Queue<int>>();
 
             if (oldList != null)
             {
                 for (var i = 0; i < oldList.Count; i++)
                 {
-                    objectMapOld.Add(oldList[i].ComputeHash(), oldList[i]);
+                    if (oldList[i] == null) continue;
+
+                    var hash = oldList[i].ComputeHash();
+                    if (!oldItemsByHash.TryGetValue(hash, out var indexes))
+                    {
+                        indexes = new Queue<int>();
+                        oldItemsByHash.Add(hash, indexes);
+                    }
+                    indexes.Enqueue(i);
                 }
             }
 
-            var modifications = objectMapCurrent.Where(k => objectMapOld.ContainsKey(k.Key));
-            var additions = objectMapCurrent.Where(k => !objectMapOld.ContainsKey(k.Key));
-            var deletions = objectMapOld.Where(k => !objectMapCurrent.ContainsKey(k.Key));
+            var matchedOldItems = new bool[oldList?.Count ?? 0];
+            var modifications = new List<Tuple<object, object>>();
+            var additions = new List<object>();
+
+            if (currentList != null)
+            {
+                for (var i = 0; i < currentList.Count; i++)
+                {
+                    if (currentList[i] == null) continue;
+
+                    if (oldItemsByHash.TryGetValue(currentList[i].ComputeHash(), out var indexes) && indexes.Count > 0)
+                    {
+                        var oldIndex = indexes.Dequeue();
+                        matchedOldItems[oldIndex] = true;
+                        modifications.Add(Tuple.Create(currentList[i], oldList[oldIndex]));
+                    }
+                    else
+                    {
+                        additions.Add(currentList[i]);
+                    }
+                }
+            }
+
+            var deletions = new List<object>();
+            for (var i = 0; i < matchedOldItems.Length; i++)
+            {
+                if (!matchedOldItems[i] && oldList[i] != null)
+                {
+                    deletions.Add(oldList[i]);
+                }
+            }
 
             foreach (var pair in modifications)
             {
-                var changes = CompareObjects(pair.Value, objectMapOld[pair.Key]);
+                var changes = CompareObjects(pair.Item1, pair.Item2);
 
-                var changeNode = new ChangeNode { PropertyName = propertyName, Value = pair.Value, Parent = parentNode, Index = changeList.Count };
+                var changeNode = new ChangeNode { PropertyName = propertyName, Value = pair.Item1, Parent = parentNode, Index = changeList.Count };
 
                 if (changes.Count > 0)
                 {
@@ -470,11 +497,11 @@ namespace Nemo.UnitOfWork
                 changeList.Add(changeNode);
             }
 
-            foreach (var pair in additions)
+            foreach (var item in additions)
             {
-                var changes = CompareObjects(pair.Value, null);
+                var changes = CompareObjects(item, null);
 
-                var changeNode = new ChangeNode { ObjectState = ObjectState.New, PropertyName = propertyName, Value = pair.Value, Parent = parentNode, Index = changeList.Count };
+                var changeNode = new ChangeNode { ObjectState = ObjectState.New, PropertyName = propertyName, Value = item, Parent = parentNode, Index = changeList.Count };
 
                 if (changes.Count > 0)
                 {
@@ -485,11 +512,11 @@ namespace Nemo.UnitOfWork
                 changeList.Add(changeNode);
             }
 
-            foreach (var pair in deletions)
+            foreach (var item in deletions)
             {
-                var changes = CompareObjects(null, pair.Value);
+                var changes = CompareObjects(null, item);
 
-                var changeNode = new ChangeNode { ObjectState = ObjectState.Deleted, PropertyName = propertyName, Value = pair.Value, Parent = parentNode, Index = changeList.Count };
+                var changeNode = new ChangeNode { ObjectState = ObjectState.Deleted, PropertyName = propertyName, Value = item, Parent = parentNode, Index = changeList.Count };
 
                 if (changes.Count > 0)
                 {
