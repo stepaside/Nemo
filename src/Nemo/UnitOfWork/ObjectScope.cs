@@ -12,11 +12,12 @@ using System.Data.Common;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Transactions;
 
 namespace Nemo.UnitOfWork
 {
-    public class ObjectScope : IDisposable
+    public class ObjectScope : IDisposable, IAsyncDisposable
     {
         private const string ScopeNameStore = "__ObjectScope";
         private bool? _hasException = null;
@@ -84,7 +85,7 @@ namespace Nemo.UnitOfWork
             Scopes.Push(this);
             if (connection == null || connection.State != ConnectionState.Open)
             {
-                Transaction = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions { IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted });
+                Transaction = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions { IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted }, TransactionScopeAsyncFlowOption.Enabled);
             }
             else
             {
@@ -113,6 +114,15 @@ namespace Nemo.UnitOfWork
         internal DbConnection Connection { get; }
 
         internal INemoConfiguration Configuration { get; }
+
+        /// <summary>
+        /// Marks the scope as failed so that an auto-committing scope rolls back on disposal.
+        /// Required for asynchronous scopes, where an in-flight exception cannot be detected on disposal.
+        /// </summary>
+        public void MarkFailed()
+        {
+            _hasException = true;
+        }
 
         internal void Cleanup()
         {
@@ -165,6 +175,34 @@ namespace Nemo.UnitOfWork
                     }
 
                     if (_hasException.Value || !Item.Commit(ItemType))
+                    {
+                        Item.Rollback(ItemType);
+                    }
+                }
+            }
+            finally
+            {
+                try
+                {
+                    Transaction?.Dispose();
+                }
+                finally
+                {
+                    RemoveScope();
+                }
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            try
+            {
+                if (AutoCommit && Item != null)
+                {
+                    if (_hasException.GetValueOrDefault() || !await Item.CommitAsync(ItemType).ConfigureAwait(false))
                     {
                         Item.Rollback(ItemType);
                     }
