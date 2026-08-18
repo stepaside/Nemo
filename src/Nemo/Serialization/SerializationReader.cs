@@ -34,18 +34,35 @@ namespace Nemo.Serialization
         private static readonly ConcurrentDictionary<string, Type> _types = new ConcurrentDictionary<string, Type>();
         
         public delegate object[] ObjectDeserializer(SerializationReader reader, int count);
-        private static readonly ConcurrentDictionary<Type, ObjectDeserializer> _deserializers = new ConcurrentDictionary<Type, ObjectDeserializer>();
+        private static readonly ConcurrentDictionary<Type, HeaderDeserializer[]> _deserializers = new ConcurrentDictionary<Type, HeaderDeserializer[]>();
         private static readonly ConcurrentDictionary<Type, ObjectDeserializer> _deserializersNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
-        private static readonly ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllProperties = new ConcurrentDictionary<Type, ObjectDeserializer>();
+        private static readonly ConcurrentDictionary<Type, HeaderDeserializer[]> _deserializersWithAllProperties = new ConcurrentDictionary<Type, HeaderDeserializer[]>();
         private static readonly ConcurrentDictionary<Type, ObjectDeserializer> _deserializersWithAllPropertiesNoHeader = new ConcurrentDictionary<Type, ObjectDeserializer>();
 
-        private SerializationReader(Stream stream, Encoding encoding)
+        /// <summary>
+        /// A generated deserializer together with the raw property name header it was generated from.
+        /// The same type can be serialized with different property sets, so the header is part of the key.
+        /// </summary>
+        private sealed class HeaderDeserializer
+        {
+            public byte[] Header;
+            public ObjectDeserializer Deserializer;
+        }
+
+        private byte[] _headerBuffer;
+
+        private SerializationReader(Stream stream, Encoding encoding, bool readHeader = true)
         {
             _stream = stream;
             _encoding = encoding ?? new UTF8Encoding();
+            if (!readHeader)
+            {
+                return;
+            }
+
             var mode = (SerializationMode)ReadByte();
-            _serializeAll = (mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
-            _includePropertyNames = (mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
+            _serializeAll = (mode & SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
+            _includePropertyNames = (mode & SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
             if (mode != SerializationMode.Manual)
             {
                 _objectByte = ReadByte();
@@ -284,9 +301,21 @@ namespace Nemo.Serialization
         public DateTime ReadDateTime()
         {
             var ticks = ReadTicks();
-            if (ticks == long.MinValue) return DateTime.MinValue;
-            if (ticks == long.MaxValue) return DateTime.MaxValue;
-            return UnixDateTime.Epoch.AddTicks(ticks);
+            var kind = (DateTimeKind)ReadByte();
+            DateTime value;
+            if (ticks == long.MinValue)
+            {
+                value = DateTime.MinValue;
+            }
+            else if (ticks == long.MaxValue)
+            {
+                value = DateTime.MaxValue;
+            }
+            else
+            {
+                value = UnixDateTime.Epoch.AddTicks(ticks);
+            }
+            return DateTime.SpecifyKind(value, kind);
         }
         
         public TimeSpan ReadTimeSpan()
@@ -436,16 +465,18 @@ namespace Nemo.Serialization
             {
                 return null;
             }
-            Type type = _types.GetOrAdd(typeName, k => typeName.IndexOf(',') > -1 ? Type.GetType(typeName) : AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).FirstOrDefault(t => t.FullName == typeName));
+            if (_types.TryGetValue(typeName, out var cached))
+            {
+                return cached;
+            }
+            var type = typeName.IndexOf(',') > -1 ? Type.GetType(typeName, false) : AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).FirstOrDefault(t => t.FullName == typeName);
+            if (type != null)
+            {
+                _types.TryAdd(typeName, type);
+            }
             return type;
         }
 
-        private void Skip(int count)
-        {
-            var buffer = new byte[count];
-            _stream.Read(buffer, 0, count);
-        }
-        
         public object ReadObject(Type objectType)
         {
             return ReadObject(objectType, _objectByte.HasValue ? (ObjectTypeCode)_objectByte.Value : Reflector.GetObjectTypeCode(objectType), typeof(IConvertible).IsAssignableFrom(objectType));
@@ -651,10 +682,16 @@ namespace Nemo.Serialization
         public static object ReadObjectWithType(byte[] buffer)
         {
             var typeLength = BitConverter.ToInt32(buffer.Slice(0, 4), 0);
-            var typeName = Encoding.UTF8.GetString(buffer.Slice(4, typeLength));
-            var reader = CreateReader(buffer.Slice(4 + typeLength, buffer.Length - 1));
-            var result = reader.ReadObject(GetType(typeName));
-            return result;
+            var typeName = Encoding.UTF8.GetString(buffer.Slice(4, 4 + typeLength));
+            var objectType = GetType(typeName);
+            if (objectType == null)
+            {
+                throw new SerializationException($"Type '{typeName}' could not be resolved.");
+            }
+            using (var reader = CreateReader(buffer.Slice(4 + typeLength, buffer.Length)))
+            {
+                return reader.ReadObject(objectType);
+            }
         }
 
         private static object ConvertIfNecessary(object value, Type objectType, ObjectTypeCode typeCode, ObjectTypeCode expectedTypeCode, bool isConvertible)
@@ -668,43 +705,95 @@ namespace Nemo.Serialization
 
         private ObjectDeserializer CreateDelegate(Type objectType)
         {
-            var exists = true;
-            var propertyCount = -1; 
-            var propertyLength = -1;
-            if (_includePropertyNames)
+            if (!_includePropertyNames)
             {
-                propertyCount = (int)ReadUInt32();
-                propertyLength = (int)ReadUInt32();
+                var cache = _serializeAll ? _deserializersWithAllPropertiesNoHeader : _deserializersNoHeader;
+                return cache.GetOrAdd(objectType, t => GenerateDelegate(GetDataEntityType(t), null));
             }
-            ObjectDeserializer deserializer;
-            if (!_serializeAll)
-            {
-                deserializer = _includePropertyNames ? _deserializers.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists)) : _deserializersNoHeader.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
-            }
-            else
-            {
-                deserializer = _includePropertyNames ? _deserializersWithAllProperties.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists)) : _deserializersWithAllPropertiesNoHeader.GetOrAdd(objectType, t => CreateDeserializer(t, propertyCount, ref exists));
-            }
-            if (exists && _includePropertyNames)
-            {
-                Skip(propertyLength);
-            }
-            return deserializer;
-        }
 
-        private ObjectDeserializer CreateDeserializer(Type objectType, int propertyCount, ref bool exists)
-        {
-            var dataEntityType = objectType.IsInterface ? ObjectFactory.Create(objectType).GetType() : objectType;
-            var propertyNames = new List<string>();
-            if (_includePropertyNames)
+            // The property name header describes the payload, so it has to be consumed whether or not a
+            // delegate was already generated, and it identifies the delegate: the same type can be
+            // serialized with different property sets. The header is matched as raw bytes to keep the
+            // cache hit path allocation free.
+            var propertyCount = (int)ReadUInt32();
+            var headerLength = (int)ReadUInt32();
+            if (_headerBuffer == null || _headerBuffer.Length < headerLength)
             {
-                for (var i = 0; i < propertyCount; i++)
+                _headerBuffer = new byte[Math.Max(headerLength, 128)];
+            }
+            ReadBuffer(_headerBuffer, headerLength);
+
+            var cacheWithHeader = _serializeAll ? _deserializersWithAllProperties : _deserializers;
+            if (cacheWithHeader.TryGetValue(objectType, out var candidates))
+            {
+                for (var i = 0; i < candidates.Length; i++)
                 {
-                    propertyNames.Add(ReadString());
+                    if (HeaderEquals(candidates[i].Header, _headerBuffer, headerLength))
+                    {
+                        return candidates[i].Deserializer;
+                    }
                 }
             }
-            exists = false;
-            return GenerateDelegate(dataEntityType, propertyNames);
+
+            var header = new byte[headerLength];
+            Buffer.BlockCopy(_headerBuffer, 0, header, 0, headerLength);
+            var entry = new HeaderDeserializer { Header = header, Deserializer = GenerateDelegate(GetDataEntityType(objectType), ReadPropertyNames(header, propertyCount)) };
+            cacheWithHeader.AddOrUpdate(objectType, new[] { entry }, (t, existing) =>
+            {
+                var updated = new HeaderDeserializer[existing.Length + 1];
+                Array.Copy(existing, updated, existing.Length);
+                updated[existing.Length] = entry;
+                return updated;
+            });
+            return entry.Deserializer;
+        }
+
+        private void ReadBuffer(byte[] buffer, int count)
+        {
+            var read = 0;
+            while (read < count)
+            {
+                var chunk = _stream.Read(buffer, read, count - read);
+                if (chunk == 0)
+                {
+                    throw new EndOfStreamException();
+                }
+                read += chunk;
+            }
+        }
+
+        private static bool HeaderEquals(byte[] header, byte[] buffer, int length)
+        {
+            if (header.Length != length)
+            {
+                return false;
+            }
+            for (var i = 0; i < length; i++)
+            {
+                if (header[i] != buffer[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private List<string> ReadPropertyNames(byte[] header, int propertyCount)
+        {
+            using (var reader = new SerializationReader(new MemoryStream(header), _encoding, false))
+            {
+                var names = new List<string>(propertyCount);
+                for (var i = 0; i < propertyCount; i++)
+                {
+                    names.Add(reader.ReadString());
+                }
+                return names;
+            }
+        }
+
+        private static Type GetDataEntityType(Type objectType)
+        {
+            return objectType.IsInterface ? ObjectFactory.Create(objectType).GetType() : objectType;
         }
 
         private ObjectDeserializer GenerateDelegate(Type objectType, List<string> propertyNames)
@@ -719,6 +808,12 @@ namespace Nemo.Serialization
             if (Reflector.IsEmitted(objectType))
             {
                 interfaceType = Reflector.GetInterface(objectType) ?? objectType;
+            }
+
+            var constructor = objectType.GetConstructor(Type.EmptyTypes);
+            if (constructor == null)
+            {
+                throw new NotSupportedException($"Type '{objectType.FullName}' cannot be deserialized because it does not have a public parameterless constructor.");
             }
 
             var properties = Reflector.GetAllProperties(interfaceType);
@@ -751,7 +846,7 @@ namespace Nemo.Serialization
             il.MarkLabel(enterLoop);
 
             // Create instance of a given type
-            il.Emit(OpCodes.Newobj, objectType.GetConstructor(Type.EmptyTypes));
+            il.Emit(OpCodes.Newobj, constructor);
             il.Emit(OpCodes.Stloc_2);
 
             foreach (var property in orderedProperties)
@@ -762,7 +857,7 @@ namespace Nemo.Serialization
                 Type propertyType;
                 if (!Reflector.IsDataEntityList(property.PropertyType, out propertyType))
                 {
-                    propertyType = property.PropertyType;
+                    propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
                 }
                 il.Emit(OpCodes.Ldtoken, propertyType);
                 il.Emit(OpCodes.Call, getTypeFromHandle);

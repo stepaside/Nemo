@@ -876,6 +876,7 @@ namespace Nemo.Reflection
 
         public static ObjectTypeCode GetObjectTypeCode(Type type)
         {
+            type = Nullable.GetUnderlyingType(type) ?? type;
             var typeCode = Type.GetTypeCode(type);
             switch (typeCode)
             {

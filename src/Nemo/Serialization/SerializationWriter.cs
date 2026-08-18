@@ -43,10 +43,20 @@ namespace Nemo.Serialization
         {
             _stream = stream ?? new MemoryStream(512);
             _encoding = encoding ?? new UTF8Encoding();
-            _serializeAll = (mode | SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
-            _includePropertyNames = (mode | SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
+            _serializeAll = (mode & SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
+            _includePropertyNames = (mode & SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
             _path = new Stack<object>();
             Write((byte)mode);
+        }
+
+        private static int GetVarIntSize(uint value)
+        {
+            var size = 1;
+            for (; value >= 0x80u; value >>= 7)
+            {
+                size++;
+            }
+            return size;
         }
 
         private static uint EncodeZigZag32(int n)
@@ -246,6 +256,7 @@ namespace Nemo.Serialization
             {
                 Write(value - UnixDateTime.Epoch);
             }
+            Write((byte)value.Kind);
         }
         
         public void Write(TimeSpan value)
@@ -324,7 +335,7 @@ namespace Nemo.Serialization
         {
             if (map == null)
             {
-                Write(-1);
+                Write(0u);
             }
             else
             {
@@ -408,7 +419,7 @@ namespace Nemo.Serialization
 
         public void WriteObject(object value, ObjectTypeCode typeCode, IDictionary<Type, int> typeMap)
         {
-            if (value == null || _path.Any(p => Equals(p, value)))
+            if (value == null || IsInPath(value))
             {
                 Write((byte)TypeCode.Empty);
             }
@@ -563,6 +574,18 @@ namespace Nemo.Serialization
             }
         }
 
+        private bool IsInPath(object value)
+        {
+            foreach (var item in _path)
+            {
+                if (ReferenceEquals(item, value))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public static byte[] WriteObjectWithType(object value)
         {
             var writer = SerializationWriter.CreateWriter(SerializationMode.Compact);
@@ -662,15 +685,15 @@ namespace Nemo.Serialization
                 il.Emit(OpCodes.Conv_U4);
                 il.Emit(OpCodes.Callvirt, writeLength);
 
-                var orderedPropertiesWithLength = orderedProperties.Select(p => Tuple.Create(p, Encoding.UTF8.GetByteCount(p.Name))).ToList();
-                var overhead = orderedPropertiesWithLength.Select(t => t.Item2 <= byte.MaxValue ? 1 : (t.Item2 <= ushort.MaxValue ? 2 : ((uint)t.Item2 <= uint.MaxValue ? 4 : 8))).Sum();
+                var nameLengths = orderedProperties.Select(p => Encoding.UTF8.GetByteCount(p.Name)).ToList();
+                var overhead = nameLengths.Select(l => GetVarIntSize((uint)l + 1)).Sum();
 
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldc_I4, orderedPropertiesWithLength.Sum(p => p.Item2) + overhead);
+                il.Emit(OpCodes.Ldc_I4, nameLengths.Sum() + overhead);
                 il.Emit(OpCodes.Conv_U4);
                 il.Emit(OpCodes.Callvirt, writeLength);
 
-                foreach (var property in properties)
+                foreach (var property in orderedProperties)
                 {
                     //Write property name
                     il.Emit(OpCodes.Ldarg_0);
