@@ -279,5 +279,140 @@ namespace Nemo.UnitTests
             Assert.AreEqual(1, result.Children.Count);
             Assert.IsNull(result.Children[0].Parent);
         }
+
+        [TestMethod]
+        public void Strings_RoundTripAcrossLengthsAndEncodings()
+        {
+            var values = new[]
+            {
+                null,
+                string.Empty,
+                "a",
+                "\u00e9\u4e2d\u6587\U0001F600",
+                new string('x', 1000),
+                new string('\u4e2d', 300)
+            };
+
+            foreach (var mode in AllModes)
+            {
+                foreach (var value in values)
+                {
+                    var result = new NullableEntity { Id = 1, Name = value }.Serialize(mode).Deserialize<NullableEntity>();
+
+                    Assert.AreEqual(value, result.Name, mode.ToString());
+                }
+            }
+        }
+
+        [TestMethod]
+        public void NestedGraph_ReusedBuffersDoNotCorruptStrings()
+        {
+            var parent = new Parent
+            {
+                Id = 1,
+                Name = new string('p', 500),
+                Children = new List<Child>
+                {
+                    new Child { Id = 2, Label = "short" },
+                    new Child { Id = 3, Label = new string('\u00fc', 400) },
+                    new Child { Id = 4, Label = string.Empty }
+                },
+                Map = new Dictionary<string, int> { { "key", 9 } }
+            };
+
+            var result = parent.Serialize(SerializationMode.SerializeAll).Deserialize<Parent>();
+
+            Assert.AreEqual(parent.Name, result.Name);
+            Assert.AreEqual("short", result.Children[0].Label);
+            Assert.AreEqual(parent.Children[1].Label, result.Children[1].Label);
+            Assert.AreEqual(string.Empty, result.Children[2].Label);
+            Assert.AreEqual(9, result.Map["key"]);
+        }
+
+        [TestMethod]
+        public void ConcurrentSerialization_IsThreadSafe()
+        {
+            var results = new bool[8];
+
+            System.Threading.Tasks.Parallel.For(0, results.Length, i =>
+            {
+                var ok = true;
+                for (var n = 0; n < 200; n++)
+                {
+                    var entity = new NullableEntity
+                    {
+                        Id = i,
+                        Count = n,
+                        Amount = 1.5m * n,
+                        When = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMinutes(n),
+                        Name = new string((char)('a' + i), n + 1)
+                    };
+
+                    var result = entity.Serialize(SerializationMode.SerializeAll).Deserialize<NullableEntity>();
+                    ok &= result.Name == entity.Name && result.Count == entity.Count
+                        && result.Amount == entity.Amount && result.When == entity.When;
+                }
+                results[i] = ok;
+            });
+
+            foreach (var ok in results)
+            {
+                Assert.IsTrue(ok);
+            }
+        }
+
+        [TestMethod]
+        public void TruncatedPayload_ThrowsEndOfStream()
+        {
+            var data = new NullableEntity { Id = 1, Count = 5, Name = "truncate me" }.Serialize(SerializationMode.SerializeAll);
+            var truncated = new byte[data.Length / 2];
+            Array.Copy(data, truncated, truncated.Length);
+
+            Assert.Throws<System.IO.EndOfStreamException>(() => truncated.Deserialize<NullableEntity>());
+        }
+
+        [TestMethod]
+        public void LargePayload_GrowsWriterBuffer()
+        {
+            var children = new List<Child>();
+            for (var i = 0; i < 500; i++)
+            {
+                children.Add(new Child { Id = i, Label = new string('c', 50) });
+            }
+            var parent = new Parent { Id = 1, Name = "big", Children = children };
+
+            var result = parent.Serialize(SerializationMode.SerializeAll).Deserialize<Parent>();
+
+            Assert.AreEqual(500, result.Children.Count);
+            Assert.AreEqual(new string('c', 50), result.Children[499].Label);
+            Assert.AreEqual(499, result.Children[499].Id);
+        }
+
+        [TestMethod]
+        public void FloatingPointAndDecimal_RoundTrip()
+        {
+            var entity = new NumericEntity
+            {
+                Id = 1,
+                Single = 1.2345f,
+                Double = -9876.54321d,
+                Amount = -79228162514264337593543950335m
+            };
+
+            var result = entity.Serialize(SerializationMode.SerializeAll).Deserialize<NumericEntity>();
+
+            Assert.AreEqual(entity.Single, result.Single);
+            Assert.AreEqual(entity.Double, result.Double);
+            Assert.AreEqual(entity.Amount, result.Amount);
+        }
+
+        public class NumericEntity
+        {
+            [PrimaryKey]
+            public int Id { get; set; }
+            public float Single { get; set; }
+            public double Double { get; set; }
+            public decimal Amount { get; set; }
+        }
     }
 }
