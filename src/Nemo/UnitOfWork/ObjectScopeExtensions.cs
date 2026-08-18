@@ -15,7 +15,7 @@ using System.Collections.Concurrent;
 
 namespace Nemo.UnitOfWork
 {
-    public static class ObjectScopeExtensions
+    public static partial class ObjectScopeExtensions
     {
         private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> CommitMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
         private static readonly ConcurrentDictionary<Type, RuntimeMethodHandle> RollbackMethods = new ConcurrentDictionary<Type, RuntimeMethodHandle>();
