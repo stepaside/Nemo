@@ -147,6 +147,42 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void LegacyPayloadWithoutFormatFlag_StillDeserializes()
+        {
+            var data = new Parent { Id = 1, Name = "p", Map = new Dictionary<string, int> { { "a", 1 } } }.Serialize(SerializationMode.SerializeAll);
+            data[0] &= 0x7f; // clear the format flag, as payloads written by earlier versions do
+
+            var result = data.Deserialize<Parent>();
+
+            Assert.AreEqual(1, result.Id);
+            Assert.AreEqual("p", result.Name);
+            Assert.AreEqual(1, result.Map["a"]);
+        }
+
+        [TestMethod]
+        public void LegacyPayloadWithoutDateTimeKind_ReadsAsUtc()
+        {
+            byte[] legacy;
+            using (var writer = SerializationWriter.CreateWriter(SerializationMode.Manual))
+            {
+                writer.Write(new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc));
+                var current = writer.GetBytes();
+                // Earlier versions wrote no kind byte (it is the last byte here) and no format flag.
+                legacy = new byte[current.Length - 1];
+                Array.Copy(current, legacy, legacy.Length);
+                legacy[0] &= 0x7f;
+            }
+
+            using (var reader = SerializationReader.CreateReader(legacy))
+            {
+                var result = reader.ReadDateTime();
+
+                Assert.AreEqual(new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc), result);
+                Assert.AreEqual(DateTimeKind.Utc, result.Kind);
+            }
+        }
+
+        [TestMethod]
         public void CombinedMode_IncludesAllPropertiesAndPropertyNames()
         {
             var parent = new Parent { Id = 1, Name = "p", Children = new List<Child> { new Child { Id = 2, Label = "c" } } };

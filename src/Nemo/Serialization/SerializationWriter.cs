@@ -46,8 +46,15 @@ namespace Nemo.Serialization
             _serializeAll = (mode & SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (mode & SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
             _path = new Stack<object>();
-            Write((byte)mode);
+            Write((byte)((byte)mode | FormatVersionFlag));
         }
+
+        /// <summary>
+        /// Set in the header byte of every payload written by this version. Readers use it to tell
+        /// payloads that carry <see cref="DateTime.Kind" /> from payloads written before it was encoded.
+        /// The mode enum only uses the low nibble, so the high bits are free.
+        /// </summary>
+        internal const byte FormatVersionFlag = 0x80;
 
         private static int GetVarIntSize(uint value)
         {

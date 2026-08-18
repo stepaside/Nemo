@@ -50,6 +50,7 @@ namespace Nemo.Serialization
         }
 
         private byte[] _headerBuffer;
+        private readonly bool _dateTimeKindIncluded;
 
         private SerializationReader(Stream stream, Encoding encoding, bool readHeader = true)
         {
@@ -60,7 +61,10 @@ namespace Nemo.Serialization
                 return;
             }
 
-            var mode = (SerializationMode)ReadByte();
+            var header = ReadByte();
+            // Payloads written before the format flag was introduced do not carry DateTime.Kind.
+            _dateTimeKindIncluded = (header & SerializationWriter.FormatVersionFlag) != 0;
+            var mode = (SerializationMode)(header & ~SerializationWriter.FormatVersionFlag);
             _serializeAll = (mode & SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (mode & SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
             if (mode != SerializationMode.Manual)
@@ -301,7 +305,7 @@ namespace Nemo.Serialization
         public DateTime ReadDateTime()
         {
             var ticks = ReadTicks();
-            var kind = (DateTimeKind)ReadByte();
+            var kind = _dateTimeKindIncluded ? (DateTimeKind)ReadByte() : DateTimeKind.Utc;
             DateTime value;
             if (ticks == long.MinValue)
             {
@@ -363,7 +367,9 @@ namespace Nemo.Serialization
 
         public DateTimeOffset ReadDateTimeOffset()
         {
-            return new DateTimeOffset(ReadDateTime(), ReadTimeSpan());
+            // The offset carries the zone, so the DateTime part is always local to that offset.
+            var value = ReadDateTime();
+            return new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Unspecified), ReadTimeSpan());
         }
 
         public Guid ReadGuid()
