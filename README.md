@@ -16,8 +16,7 @@ Nemo
   	* L1 [cache support](https://github.com/stepaside/Nemo/wiki/Caching)
   	* Fast serialization
   		* Binary - very small footprint, one of the fastest and most compact binary serializers
-  		* XML - fast XML serializer supporting both element and attribute based serialization
-  		* JSON - one of the fastest JSON serializers
+  		* JSON - `System.Text.Json` based, with support for interface based DTO's
   	* [Unit of work](https://github.com/stepaside/Nemo/wiki/Unit-Of-Work) implementation
   	* Immutable [read-only DTO's](https://github.com/stepaside/Nemo/wiki/Read-Only-DTO)
   	* Extensive [configuration](https://github.com/stepaside/Nemo/wiki/Configuration) options
@@ -107,8 +106,7 @@ Nemo/
 - **Location**: `Serialization/` folder
 - **Formats Supported**:
   - **Binary**: Compact, high-performance
-  - **JSON**: Fast JSON serialization
-  - **XML**: Element and attribute-based
+  - **JSON**: `System.Text.Json` based, with support for interface based DTO's
 
 #### 7. **Collections & Extensions**
 - **Location**: `Collections/` folder
