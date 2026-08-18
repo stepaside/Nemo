@@ -45,6 +45,28 @@ namespace Nemo.UnitTests
             public string ReadOnly => "computed";
         }
 
+        public abstract class Person
+        {
+            public string Name { get; set; }
+            public DateTime DateOfBirth { get; set; }
+        }
+
+        public class Employee : Person
+        {
+            public DateTime HireDate { get; set; }
+        }
+
+        public class Manager : Employee
+        {
+            public List<Employee> Employees { get; set; } = new List<Employee>();
+        }
+
+        public class Company
+        {
+            public string Name { get; set; }
+            public List<Person> Contacts { get; set; } = new List<Person>();
+        }
+
         public class Node
         {
             public string Name { get; set; }
@@ -188,6 +210,43 @@ namespace Nemo.UnitTests
                 entity.ToJson(writer);
                 Assert.AreEqual(entity.ToJson(), writer.ToString());
             }
+        }
+
+        [TestMethod]
+        public void PolymorphicCollection_RoundTripsRuntimeTypes()
+        {
+            var manager = new Manager { Name = "Manager 1", HireDate = new DateTime(1990, 12, 20) };
+            manager.Employees.Add(new Employee { Name = "Employee 1.1", HireDate = new DateTime(1991, 1, 5) });
+            var company = new Company { Name = "Test Company" };
+            company.Contacts.Add(manager);
+            company.Contacts.Add(new Employee { Name = "Employee 2", HireDate = new DateTime(1992, 2, 6) });
+
+            var json = company.ToJson();
+            var result = json.FromJson<Company>();
+
+            Assert.IsTrue(json.Contains("\"$type\""));
+            Assert.AreEqual(2, result.Contacts.Count);
+            var resultManager = (Manager)result.Contacts[0];
+            Assert.AreEqual("Manager 1", resultManager.Name);
+            Assert.AreEqual(new DateTime(1990, 12, 20), resultManager.HireDate);
+            Assert.AreEqual(1, resultManager.Employees.Count);
+            Assert.AreEqual("Employee 1.1", resultManager.Employees[0].Name);
+            Assert.IsInstanceOfType(result.Contacts[1], typeof(Employee));
+            Assert.AreEqual("Employee 2", result.Contacts[1].Name);
+        }
+
+        [TestMethod]
+        public void PolymorphicValue_WithoutDiscriminator_Throws()
+        {
+            Assert.Throws<System.Text.Json.JsonException>(() => "{\"Contacts\":[{\"Name\":\"x\"}]}".FromJson<Company>());
+        }
+
+        [TestMethod]
+        public void PolymorphicValue_WithUnrelatedType_Throws()
+        {
+            var json = "{\"Contacts\":[{\"$type\":\"" + typeof(Child).FullName + "," + typeof(Child).Assembly.GetName().Name + "\"}]}";
+
+            Assert.Throws<System.Text.Json.JsonException>(() => json.FromJson<Company>());
         }
 
         [TestMethod]
