@@ -28,7 +28,8 @@ namespace Nemo.Serialization
                 TypeInfoResolver = new DefaultJsonTypeInfoResolver
                 {
                     Modifiers = { ApplyPropertyRules, ApplyDataEntityActivator }
-                }
+                },
+                Converters = { new JsonPolymorphicConverter() }
             };
             return options;
         }
