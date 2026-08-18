@@ -34,17 +34,19 @@ namespace Nemo.Serialization
 
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
-        private readonly Stream _stream;
         private readonly Encoding _encoding;
         private readonly Stack<object> _path;
-        // Scratch buffers shared by all writers on the thread: their contents never outlive a single
-        // write call, so nested writers cannot observe each other's data.
-        [ThreadStatic] private static byte[] _numberBuffer;
-        [ThreadStatic] private static byte[] _textBuffer;
+        private byte[] _buffer;
+        private int _position;
+        // Output buffers are handed back on Dispose and reused by the next writer on the thread.
+        [ThreadStatic] private static byte[] _pooledBuffer;
 
-        private SerializationWriter(Stream stream, SerializationMode mode, Encoding encoding)
+        private const int InitialBufferSize = 512;
+
+        private SerializationWriter(SerializationMode mode, Encoding encoding)
         {
-            _stream = stream ?? new MemoryStream(512);
+            _buffer = _pooledBuffer ?? new byte[InitialBufferSize];
+            _pooledBuffer = null;
             _encoding = encoding ?? Encoding.UTF8;
             _serializeAll = (mode & SerializationMode.SerializeAll) == SerializationMode.SerializeAll;
             _includePropertyNames = (mode & SerializationMode.IncludePropertyNames) == SerializationMode.IncludePropertyNames;
@@ -81,57 +83,87 @@ namespace Nemo.Serialization
 
         private void WriteFixed32(uint value)
         {
-            var buffer = _numberBuffer ?? (_numberBuffer = new byte[8]);
-            buffer[0] = (byte)value;
-            buffer[1] = (byte)(value >> 8);
-            buffer[2] = (byte)(value >> 16);
-            buffer[3] = (byte)(value >> 24);
-            _stream.Write(buffer, 0, 4);
+            EnsureCapacity(4);
+            var buffer = _buffer;
+            var position = _position;
+            buffer[position] = (byte)value;
+            buffer[position + 1] = (byte)(value >> 8);
+            buffer[position + 2] = (byte)(value >> 16);
+            buffer[position + 3] = (byte)(value >> 24);
+            _position = position + 4;
         }
 
         private void WriteFixed64(ulong value)
         {
-            var buffer = _numberBuffer ?? (_numberBuffer = new byte[8]);
-            buffer[0] = (byte)value;
-            buffer[1] = (byte)(value >> 8);
-            buffer[2] = (byte)(value >> 16);
-            buffer[3] = (byte)(value >> 24);
-            buffer[4] = (byte)(value >> 32);
-            buffer[5] = (byte)(value >> 40);
-            buffer[6] = (byte)(value >> 48);
-            buffer[7] = (byte)(value >> 56);
-            _stream.Write(buffer, 0, 8);
+            EnsureCapacity(8);
+            var buffer = _buffer;
+            var position = _position;
+            buffer[position] = (byte)value;
+            buffer[position + 1] = (byte)(value >> 8);
+            buffer[position + 2] = (byte)(value >> 16);
+            buffer[position + 3] = (byte)(value >> 24);
+            buffer[position + 4] = (byte)(value >> 32);
+            buffer[position + 5] = (byte)(value >> 40);
+            buffer[position + 6] = (byte)(value >> 48);
+            buffer[position + 7] = (byte)(value >> 56);
+            _position = position + 8;
         }
         
         public static SerializationWriter CreateWriter(SerializationMode mode)
         {
-            return new SerializationWriter(null, mode, null);
+            return new SerializationWriter(mode, null);
         }
 
         public byte[] GetBytes()
         {
-            var stream = _stream as MemoryStream;
-            if (stream != null)
+            var data = new byte[_position];
+            Buffer.BlockCopy(_buffer, 0, data, 0, _position);
+            return data;
+        }
+
+        private void EnsureCapacity(int count)
+        {
+            if (_position + count <= _buffer.Length)
             {
-                var data = stream.ToArray();
-                return data;
+                return;
             }
-            return new byte[0];
+
+            var length = _buffer.Length;
+            do
+            {
+                length *= 2;
+            }
+            while (length < _position + count);
+
+            var grown = new byte[length];
+            Buffer.BlockCopy(_buffer, 0, grown, 0, _position);
+            _buffer = grown;
+        }
+
+        private void WriteRaw(byte[] source, int offset, int count)
+        {
+            EnsureCapacity(count);
+            Buffer.BlockCopy(source, offset, _buffer, _position, count);
+            _position += count;
         }
 
         public void Write(byte value)
         {
-            _stream.WriteByte(value);
+            if (_position == _buffer.Length)
+            {
+                EnsureCapacity(1);
+            }
+            _buffer[_position++] = value;
         }
 
         public void Write(sbyte value)
         {
-            _stream.WriteByte((byte)value);
+            Write((byte)value);
         }
 
         public void Write(bool value)
         {
-            _stream.WriteByte(value ? (byte)1 : (byte)0);
+            Write(value ? (byte)1 : (byte)0);
         }
 
         public void Write(short value)
@@ -156,20 +188,28 @@ namespace Nemo.Serialization
 
         public void Write(uint value)
         {
+            EnsureCapacity(5);
+            var buffer = _buffer;
+            var position = _position;
             for (; value >= 0x80u; value >>= 7)
             {
-                _stream.WriteByte((byte)(value | 0x80u));
+                buffer[position++] = (byte)(value | 0x80u);
             }
-            _stream.WriteByte((byte)value);
+            buffer[position++] = (byte)value;
+            _position = position;
         }
 
         public void Write(ulong value)
         {
+            EnsureCapacity(10);
+            var buffer = _buffer;
+            var position = _position;
             for (; value >= 0x80u; value >>= 7)
             {
-                _stream.WriteByte((byte)(value | 0x80u));
+                buffer[position++] = (byte)(value | 0x80u);
             }
-            _stream.WriteByte((byte)value);
+            buffer[position++] = (byte)value;
+            _position = position;
         }
 
         public unsafe void Write(float value)
@@ -210,12 +250,8 @@ namespace Nemo.Serialization
                 Write((uint)length + 1);
                 if (length > 0)
                 {
-                    if (_textBuffer == null || _textBuffer.Length < length)
-                    {
-                        _textBuffer = new byte[length];
-                    }
-                    _encoding.GetBytes(value, 0, value.Length, _textBuffer, 0);
-                    _stream.Write(_textBuffer, 0, length);
+                    EnsureCapacity(length);
+                    _position += _encoding.GetBytes(value, 0, value.Length, _buffer, _position);
                 }
             }
         }
@@ -232,7 +268,7 @@ namespace Nemo.Serialization
                 Write((uint)length + 1);
                 if (length > 0)
                 {
-                    _stream.Write(value, 0, length);
+                    WriteRaw(value, 0, length);
                 }
             }
         }
@@ -767,7 +803,13 @@ namespace Nemo.Serialization
 
         public void Dispose()
         {
-            _stream.Dispose();
+            // Keep the larger of the two buffers around for the next writer on this thread.
+            if (_buffer != null && (_pooledBuffer == null || _pooledBuffer.Length < _buffer.Length))
+            {
+                _pooledBuffer = _buffer;
+            }
+            _buffer = null;
+            _position = 0;
         }
 
         #endregion

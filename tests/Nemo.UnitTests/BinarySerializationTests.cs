@@ -362,6 +362,33 @@ namespace Nemo.UnitTests
         }
 
         [TestMethod]
+        public void TruncatedPayload_ThrowsEndOfStream()
+        {
+            var data = new NullableEntity { Id = 1, Count = 5, Name = "truncate me" }.Serialize(SerializationMode.SerializeAll);
+            var truncated = new byte[data.Length / 2];
+            Array.Copy(data, truncated, truncated.Length);
+
+            Assert.Throws<System.IO.EndOfStreamException>(() => truncated.Deserialize<NullableEntity>());
+        }
+
+        [TestMethod]
+        public void LargePayload_GrowsWriterBuffer()
+        {
+            var children = new List<Child>();
+            for (var i = 0; i < 500; i++)
+            {
+                children.Add(new Child { Id = i, Label = new string('c', 50) });
+            }
+            var parent = new Parent { Id = 1, Name = "big", Children = children };
+
+            var result = parent.Serialize(SerializationMode.SerializeAll).Deserialize<Parent>();
+
+            Assert.AreEqual(500, result.Children.Count);
+            Assert.AreEqual(new string('c', 50), result.Children[499].Label);
+            Assert.AreEqual(499, result.Children[499].Id);
+        }
+
+        [TestMethod]
         public void FloatingPointAndDecimal_RoundTrip()
         {
             var entity = new NumericEntity

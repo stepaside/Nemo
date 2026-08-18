@@ -28,7 +28,8 @@ namespace Nemo.Serialization
         private readonly bool _serializeAll;
         private readonly bool _includePropertyNames;
         private byte? _objectByte;
-        private readonly Stream _stream;
+        private readonly byte[] _data;
+        private int _position;
         private readonly Encoding _encoding;
         private static readonly ConcurrentDictionary<string, Type> _types = new ConcurrentDictionary<string, Type>();
         
@@ -50,15 +51,13 @@ namespace Nemo.Serialization
 
         // Scratch buffers shared by all readers on the thread: their contents never outlive a single
         // read call, so nested readers cannot observe each other's data.
-        [ThreadStatic] private static byte[] _textBuffer;
-        [ThreadStatic] private static byte[] _numberBuffer;
         [ThreadStatic] private static int[] _decimalBits;
         [ThreadStatic] private static byte[] _headerBuffer;
         private readonly bool _dateTimeKindIncluded;
 
-        private SerializationReader(Stream stream, Encoding encoding, bool readHeader = true)
+        private SerializationReader(byte[] data, Encoding encoding, bool readHeader = true)
         {
-            _stream = stream;
+            _data = data;
             _encoding = encoding ?? Encoding.UTF8;
             if (!readHeader)
             {
@@ -89,20 +88,32 @@ namespace Nemo.Serialization
 
         private uint ReadFixed32()
         {
-            var buffer = _numberBuffer ?? (_numberBuffer = new byte[8]);
-            ReadBuffer(buffer, 4);
-            var v = (uint)((int)buffer[0] | (int)buffer[1] << 8 | (int)buffer[2] << 16 | (int)buffer[3] << 24);
-            return v;
+            var position = Advance(4);
+            var buffer = _data;
+            return (uint)(buffer[position] | buffer[position + 1] << 8 | buffer[position + 2] << 16 | buffer[position + 3] << 24);
         }
 
         private ulong ReadFixed64()
         {
-            var buffer = _numberBuffer ?? (_numberBuffer = new byte[8]);
-            ReadBuffer(buffer, 8);
-            var v1 = (uint)((int)buffer[0] | (int)buffer[1] << 8 | (int)buffer[2] << 16 | (int)buffer[3] << 24);
-            var v2 = (uint)((int)buffer[4] | (int)buffer[5] << 8 | (int)buffer[6] << 16 | (int)buffer[7] << 24);
-            var v = (ulong)v2 << 32 | (ulong)v1;
-            return v;
+            var position = Advance(8);
+            var buffer = _data;
+            var v1 = (uint)(buffer[position] | buffer[position + 1] << 8 | buffer[position + 2] << 16 | buffer[position + 3] << 24);
+            var v2 = (uint)(buffer[position + 4] | buffer[position + 5] << 8 | buffer[position + 6] << 16 | buffer[position + 7] << 24);
+            return (ulong)v2 << 32 | v1;
+        }
+
+        /// <summary>
+        /// Reserves <paramref name="count" /> bytes of the payload and returns the offset they start at.
+        /// </summary>
+        private int Advance(int count)
+        {
+            var position = _position;
+            if (position + count > _data.Length)
+            {
+                throw new EndOfStreamException();
+            }
+            _position = position + count;
+            return position;
         }
 
         public static SerializationReader CreateReader(SerializationInfo info)
@@ -113,23 +124,26 @@ namespace Nemo.Serialization
 
         public static SerializationReader CreateReader(byte[] buffer)
         {
-            return new SerializationReader(new MemoryStream(buffer), null);
+            return new SerializationReader(buffer, null);
         }
 
         public byte ReadByte()
         {
-            return (byte)_stream.ReadByte();
+            if (_position >= _data.Length)
+            {
+                throw new EndOfStreamException();
+            }
+            return _data[_position++];
         }
 
         public sbyte ReadSByte()
         {
-            return (sbyte)_stream.ReadByte();
+            return (sbyte)ReadByte();
         }
 
         public bool ReadBoolean()
         {
-            var b = _stream.ReadByte();
-            return b != 0;
+            return ReadByte() != 0;
         }
 
         public char ReadChar()
@@ -164,11 +178,11 @@ namespace Nemo.Serialization
 
             for (; offset < 32; offset += 7)
             {
-                var b = _stream.ReadByte();
-                if (b == -1)
+                if (_position >= _data.Length)
                 {
                     throw new EndOfStreamException();
                 }
+                var b = _data[_position++];
 
                 result |= (b & 0x7f) << offset;
 
@@ -188,11 +202,11 @@ namespace Nemo.Serialization
 
             for (; offset < 64; offset += 7)
             {
-                var b = _stream.ReadByte();
-                if (b == -1)
+                if (_position >= _data.Length)
                 {
                     throw new EndOfStreamException();
                 }
+                var b = _data[_position++];
 
                 result |= ((long)(b & 0x7f)) << offset;
 
@@ -243,7 +257,7 @@ namespace Nemo.Serialization
 
             length -= 1;
             var buffer = new byte[length];
-            ReadBuffer(buffer, (int)length);
+            Buffer.BlockCopy(_data, Advance((int)length), buffer, 0, (int)length);
             return buffer;
         }
 
@@ -283,12 +297,7 @@ namespace Nemo.Serialization
             }
 
             length -= 1;
-            if (_textBuffer == null || _textBuffer.Length < length)
-            {
-                _textBuffer = new byte[(int)length];
-            }
-            ReadBuffer(_textBuffer, (int)length);
-            return _encoding.GetString(_textBuffer, 0, (int)length);
+            return _encoding.GetString(_data, Advance((int)length), (int)length);
         }
 
         public DateTime ReadDateTime()
@@ -770,16 +779,7 @@ namespace Nemo.Serialization
 
         private void ReadBuffer(byte[] buffer, int count)
         {
-            var read = 0;
-            while (read < count)
-            {
-                var chunk = _stream.Read(buffer, read, count - read);
-                if (chunk == 0)
-                {
-                    throw new EndOfStreamException();
-                }
-                read += chunk;
-            }
+            Buffer.BlockCopy(_data, Advance(count), buffer, 0, count);
         }
 
         private static bool HeaderEquals(byte[] header, byte[] buffer, int length)
@@ -800,7 +800,7 @@ namespace Nemo.Serialization
 
         private List<string> ReadPropertyNames(byte[] header, int propertyCount)
         {
-            using (var reader = new SerializationReader(new MemoryStream(header), _encoding, false))
+            using (var reader = new SerializationReader(header, _encoding, false))
             {
                 var names = new List<string>(propertyCount);
                 for (var i = 0; i < propertyCount; i++)
@@ -914,7 +914,7 @@ namespace Nemo.Serialization
 
         public void Dispose()
         {
-            _stream.Dispose();
+            _position = 0;
         }
 
         #endregion
