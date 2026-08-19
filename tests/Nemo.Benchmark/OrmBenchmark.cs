@@ -32,6 +32,8 @@ namespace Nemo.Benchmark
 
         const string sql = @"select CustomerID, CompanyName from Customers";
         const string sqlById = @"select CustomerID, CompanyName from Customers where CustomerID = @CustomerId";
+        const string dapperSql = @"select CustomerID as Id, CompanyName from Customers";
+        const string dapperSqlById = @"select CustomerID as Id, CompanyName from Customers where CustomerID = @CustomerId";
 
         [GlobalSetup]
         public void Setup()
@@ -160,7 +162,56 @@ namespace Nemo.Benchmark
             }
         }
 
-        [Benchmark(Description = "Native Select All")]
+        [Benchmark(Description = "Handwritten Select All")]
+        public void RunHandwritten()
+        {
+            using (var cmd = _connection.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                cmd.CommandType = CommandType.Text;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var customer = new Customer
+                        {
+                            Id = reader.GetString(0),
+                            CompanyName = reader.IsDBNull(1) ? null : reader.GetString(1)
+                        };
+                    }
+                }
+            }
+        }
+
+        [Benchmark(Description = "Handwritten Select By Id")]
+        [ArgumentsSource(nameof(CustomerIdList))]
+        public void RunHandwritten(string id)
+        {
+            using (var cmd = _connection.CreateCommand())
+            {
+                cmd.CommandText = sqlById;
+                cmd.CommandType = CommandType.Text;
+                var param = cmd.CreateParameter();
+                param.ParameterName = "CustomerId";
+                param.Value = id;
+                cmd.Parameters.Add(param);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var customer = new Customer
+                        {
+                            Id = reader.GetString(0),
+                            CompanyName = reader.IsDBNull(1) ? null : reader.GetString(1)
+                        };
+                    }
+                }
+            }
+        }
+
+        // Reader-only floor: measures the round trip without materializing objects,
+        // so it is not comparable to the mapping benchmarks above.
+        [Benchmark(Description = "Native (no mapping) Select All")]
         public void RunNative()
         {
             using (var cmd = _connection.CreateCommand())
@@ -174,7 +225,7 @@ namespace Nemo.Benchmark
             }
         }
 
-        [Benchmark(Description = "Native Select By Id")]
+        [Benchmark(Description = "Native (no mapping) Select By Id")]
         [ArgumentsSource(nameof(CustomerIdList))]
         public void RunNative(string id)
         {
@@ -193,7 +244,7 @@ namespace Nemo.Benchmark
             }
         }
 
-        [Benchmark(Description = "Execute Select All")]
+        [Benchmark(Description = "Execute (no mapping) Select All")]
         public void RunExecute()
         {
             var req = new OperationRequest { Operation = sql, ReturnType = OperationReturnType.SingleResult, OperationType = OperationType.Sql, Connection = _connection };
@@ -204,7 +255,7 @@ namespace Nemo.Benchmark
             }
         }
 
-        [Benchmark(Description = "Execute Select By Id")]
+        [Benchmark(Description = "Execute (no mapping) Select By Id")]
         [ArgumentsSource(nameof(CustomerIdList))]
         public void RunExecute(string id)
         {
@@ -246,14 +297,14 @@ namespace Nemo.Benchmark
         [Benchmark(Description = "Dapper Select All")]
         public void RunDapper()
         {
-            var result = _connection.Query<Customer>(sql, null, buffered: false).ToList();
+            var result = _connection.Query<Customer>(dapperSql, null, buffered: false).ToList();
         }
 
         [Benchmark(Description = "Dapper Select By Id")]
         [ArgumentsSource(nameof(CustomerIdList))]
         public void RunDapper(string id)
         {
-            var result = _connection.Query<Customer>(sql, new { CustomerId = id }, buffered: false).ToList();
+            var result = _connection.Query<Customer>(dapperSqlById, new { CustomerId = id }, buffered: false).ToList();
         }
     }
 }

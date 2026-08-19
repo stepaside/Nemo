@@ -20,11 +20,21 @@ namespace Nemo.Collections
         private readonly Dictionary<string, Type> _sqlMap;
         private readonly List<string> _sqlOrder;
         private Func<string, IList<Type>, IEnumerable<T>> _load;
+        private string _operation;
+        private Type[] _operationTypes;
 
         public EagerLoadEnumerable(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, IEnumerable<T>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount, INemoConfiguration config)
         {
             _sqlOrder = sql.ToList();
-            _sqlMap = _sqlOrder.Zip(types, (s, t) => new { Key = s, Value = t }).ToDictionary(t => t.Key, t => t.Value);
+            _sqlMap = new Dictionary<string, Type>(_sqlOrder.Count);
+            using (var type = types.GetEnumerator())
+            {
+                foreach (var statement in _sqlOrder)
+                {
+                    if (!type.MoveNext()) break;
+                    _sqlMap.Add(statement, type.Current);
+                }
+            }
             _load = load;
             Predicate = predicate;
             Provider = provider;
@@ -39,8 +49,8 @@ namespace Nemo.Collections
 
         public IEnumerator<T> GetEnumerator()
         {
-            var types = _sqlMap.Arrange(_sqlOrder, t => t.Key).Select(t => t.Value).ToArray();
-            var result = _load(_sqlOrder.ToDelimitedString("; "), types);
+            var types = _operationTypes ?? (_operationTypes = GetOperationTypes());
+            var result = _load(_operation ?? (_operation = GetOperation()), types);
 
             var multiresult = result as IMultiResult;
             if (multiresult != null)
@@ -65,6 +75,21 @@ namespace Nemo.Collections
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        private string GetOperation()
+        {
+            return _sqlOrder.Count == 1 ? _sqlOrder[0] : _sqlOrder.ToDelimitedString("; ");
+        }
+
+        private Type[] GetOperationTypes()
+        {
+            var types = new Type[_sqlOrder.Count];
+            for (var i = 0; i < _sqlOrder.Count; i++)
+            {
+                types[i] = _sqlMap[_sqlOrder[i]];
+            }
+            return types;
         }
 
         internal Expression<Func<T, bool>> Predicate { get; }
@@ -95,6 +120,8 @@ namespace Nemo.Collections
                 {
                     _sqlOrder.Add(item.Key);
                     _sqlMap.Add(item.Key, item.Value);
+                    _operation = null;
+                    _operationTypes = null;
                 }
                 return this;
             }

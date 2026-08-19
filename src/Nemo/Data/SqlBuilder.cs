@@ -45,7 +45,51 @@ namespace Nemo.Data
         public const string DefaultSoftDeleteColumn = "__deleted";
         public const string DefaultTimestampColumn = "__timestamp";
 
-        private static readonly ConcurrentDictionary<Tuple<Type, DialectProvider>, string> AllTables = new ConcurrentDictionary<Tuple<Type, DialectProvider>, string>();
+        private static readonly ConcurrentDictionary<(Type Type, DialectProvider Dialect), string> AllTables = new ConcurrentDictionary<(Type, DialectProvider), string>();
+
+        private static readonly ConcurrentDictionary<(Type Type, DialectProvider Dialect, string Alias), string> AllSelections = new ConcurrentDictionary<(Type, DialectProvider, string), string>();
+
+        private static readonly ConcurrentDictionary<(Type Type, DialectProvider Dialect, string Alias), string> AllPrimaryKeys = new ConcurrentDictionary<(Type, DialectProvider, string), string>();
+
+        internal static string GetSelectionForSql(Type objectType, DialectProvider dialect, string alias)
+        {
+            return AllSelections.GetOrAdd((objectType, dialect, alias), key => BuildColumnList(Reflector.GetPropertyNameMap(key.Type).Values.Where(p => p.IsSelectable && p.IsSimpleType), key.Dialect, key.Alias, null));
+        }
+
+        private static string GetPrimaryKeyForSql(Type objectType, DialectProvider dialect, string alias, string suffix = null)
+        {
+            if (suffix != null)
+            {
+                return BuildColumnList(Reflector.GetPropertyNameMap(objectType).Values.Where(p => p.IsPrimaryKey), dialect, alias, suffix);
+            }
+
+            return AllPrimaryKeys.GetOrAdd((objectType, dialect, alias), key => BuildColumnList(Reflector.GetPropertyNameMap(key.Type).Values.Where(p => p.IsPrimaryKey), key.Dialect, key.Alias, null));
+        }
+
+        private static string BuildColumnList(IEnumerable<ReflectedProperty> properties, DialectProvider dialect, string alias, string suffix)
+        {
+            var columns = new StringBuilder();
+            foreach (var property in properties)
+            {
+                if (columns.Length > 0)
+                {
+                    columns.Append(',');
+                }
+
+                if (!string.IsNullOrEmpty(alias))
+                {
+                    columns.Append(alias).Append('.');
+                }
+
+                columns.Append(dialect.IdentifierEscapeStartCharacter).Append(property.MappedColumnName).Append(dialect.IdentifierEscapeEndCharacter);
+
+                if (suffix != null)
+                {
+                    columns.Append(suffix);
+                }
+            }
+            return columns.ToString();
+        }
 
         public static string GetTableNameForSql(Type objectType, DialectProvider dialect)
         {
@@ -54,7 +98,7 @@ namespace Nemo.Data
                 objectType = Reflector.GetInterface(objectType);
             }
             
-            if (AllTables.TryGetValue(Tuple.Create(objectType, dialect), out var tableName))
+            if (AllTables.TryGetValue((objectType, dialect), out var tableName))
             {
                 return tableName;
             }
@@ -84,7 +128,7 @@ namespace Nemo.Data
 
             if (tableName != null)
             {
-                AllTables.TryAdd(Tuple.Create(objectType, dialect), tableName);
+                AllTables.TryAdd((objectType, dialect), tableName);
                 return tableName;
             }
             
@@ -95,7 +139,7 @@ namespace Nemo.Data
             }
             tableName = dialect.IdentifierEscapeStartCharacter + tableName + dialect.IdentifierEscapeEndCharacter;
 
-            AllTables.TryAdd(Tuple.Create(objectType, dialect), tableName);
+            AllTables.TryAdd((objectType, dialect), tableName);
 
             return tableName;
         }
@@ -159,33 +203,34 @@ namespace Nemo.Data
             }
 
             var fake = typeof(ObjectFactory.Fake);
-            var types = new Dictionary<Type, LambdaExpression>();
+            Dictionary<Type, LambdaExpression> types = null;
             if (typeof(T1) != fake && join1 != null)
             {
-                types.Add(typeof(T1), join1);
+                (types = types ?? new Dictionary<Type, LambdaExpression>()).Add(typeof(T1), join1);
             }
             if (typeof(T2) != fake && join2 != null)
             {
-                types.Add(typeof(T2), join2);
+                (types = types ?? new Dictionary<Type, LambdaExpression>()).Add(typeof(T2), join2);
             }
             if (typeof(T3) != fake && join3 != null)
             {
-                types.Add(typeof(T3), join3);
+                (types = types ?? new Dictionary<Type, LambdaExpression>()).Add(typeof(T3), join3);
             }
             if (typeof(T4) != fake && join4 != null)
             {
-                types.Add(typeof(T4), join4);
+                (types = types ?? new Dictionary<Type, LambdaExpression>()).Add(typeof(T4), join4);
             }
 
             var mapRoot = Reflector.GetPropertyNameMap<T>();
-            var selection = mapRoot.Values.Where(p => p.IsSelectable && p.IsSimpleType).Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + p.MappedColumnName + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");
+            var selection = GetSelectionForSql(typeof(T), dialect, aliasRoot);
 
             var tableName = GetTableNameForSql(typeof(T), dialect) + " " + aliasRoot;
 
             var index = 1;
+            var typeJoinLast = typeof(T);
             var mapJoinLast = mapRoot;
             var aliasJoinLast = aliasRoot;
-            foreach (var type in types)
+            foreach (var type in types ?? Enumerable.Empty<KeyValuePair<Type, LambdaExpression>>())
             {
                 var aliasJoin = "t" + index;
                 var tableNameJoin = GetTableNameForSql(type.Key, dialect) + " " + aliasJoin;
@@ -200,15 +245,16 @@ namespace Nemo.Data
                     aliasJoinLast + "." + dialect.IdentifierEscapeStartCharacter + mapJoinLast[left.Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter, op,
                     aliasJoin + "." + dialect.IdentifierEscapeStartCharacter + mapJoin[right.Member.Name].MappedColumnName + dialect.IdentifierEscapeEndCharacter);
                 
+                typeJoinLast = type.Key;
                 mapJoinLast = mapJoin;
                 aliasJoinLast = aliasJoin;
                 
                 index++;
             }
 
-            if (types.Count > 0)
+            if (types != null)
             {
-                selection = mapJoinLast.Values.Where(p => p.IsSelectable && p.IsSimpleType).Select(p => aliasJoinLast + "." + dialect.IdentifierEscapeStartCharacter + p.MappedColumnName + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");
+                selection = GetSelectionForSql(typeJoinLast, dialect, aliasJoinLast);
             }
 
             var sql = string.Empty;
@@ -230,12 +276,8 @@ namespace Nemo.Data
                 {
                     if (orderBy.Length == 0)
                     {
-                        var primaryKeyAscending = mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
-                            .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " ASC")
-                            .ToDelimitedString(",");
-                        var primaryKeyDescending = mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
-                            .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter + " DESC")
-                            .ToDelimitedString(",");
+                        var primaryKeyAscending = GetPrimaryKeyForSql(typeof(T), dialect, aliasRoot, " ASC");
+                        var primaryKeyDescending = GetPrimaryKeyForSql(typeof(T), dialect, aliasRoot, " DESC");
                         if (limit > 0)
                         {
                             sql = string.Format(SqlSelectPagingFormatMssqlLegacy, tableName, selection, primaryKeyAscending, primaryKeyDescending, whereClause, limit, offset + limit);
@@ -269,15 +311,11 @@ namespace Nemo.Data
                 }
                 else if (dialect is SqlServerDialectProvider || dialect is OracleDialectProvider)
                 {
-                    var selectionWithoutAlias =
-                        mapRoot.Values.Where(p => p.IsSelectable && p.IsSimpleType).Select(p => dialect.IdentifierEscapeStartCharacter + p.MappedColumnName + dialect.IdentifierEscapeEndCharacter).ToDelimitedString(",");
+                    var selectionWithoutAlias = GetSelectionForSql(typeof(T), dialect, null);
 
                     if (orderBy.Length == 0)
                     {
-                        var primaryKey =
-                            mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
-                                .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter)
-                                .ToDelimitedString(",");
+                        var primaryKey = GetPrimaryKeyForSql(typeof(T), dialect, aliasRoot);
                         if (limit > 0)
                         {
                             sql = string.Format(SqlSelectPagingFormatRowNumber, tableName, selection, primaryKey, whereClause, offset, offset + limit, selectionWithoutAlias);
@@ -310,10 +348,7 @@ namespace Nemo.Data
                 {
                     if (orderBy.Length == 0)
                     {
-                        var primaryKey =
-                            mapRoot.Keys.Where(p => mapRoot[p].IsPrimaryKey)
-                                .Select(p => aliasRoot + "." + dialect.IdentifierEscapeStartCharacter + mapRoot[p].MappedColumnName + dialect.IdentifierEscapeEndCharacter)
-                                .ToDelimitedString(",");
+                        var primaryKey = GetPrimaryKeyForSql(typeof(T), dialect, aliasRoot);
                         if (limit > 0)
                         {
                             sql = string.Format(SqlSelectPagingWithOrderByFormat, tableName, selection, whereClause, primaryKey, offset, limit);
