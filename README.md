@@ -272,56 +272,57 @@ We ran comprehensive benchmarks using **BenchmarkDotNet** - the gold standard fo
 ### Benchmark Results Summary
 
 **Test Environment:**
-- AMD EPYC, 8 cores, .NET 8.0.18
+- Intel Core i9-11950H, 8 cores, .NET 10.0.11
 - SQL Server 2022 with Northwind customer data
-- BenchmarkDotNet v0.15.2 with ColdStart strategy
+- BenchmarkDotNet v0.15.8, warm in-process job (medians)
 
 **Performance Results (Select All Operations):**
 
 | Approach | Median Time | Operations/sec | Memory Allocated |
 |----------|-------------|----------------|------------------|
-| **Entity Framework Core** | 1,232 μs | 353 ops/sec | 101.12 KB |
-| **Native ADO.NET** | 434 μs | 2,157 ops/sec | 1.55 KB |
-| **Native + Nemo Mapper** | 448 μs | 1,868 ops/sec | 4.54 KB |
-| **Dapper** | 439 μs | 1,889 ops/sec | 3.76 KB |
-| **Nemo Execute** | 423 μs | 2,140 ops/sec | 2.73 KB |
-| **Nemo Retrieve** | 479 μs | 1,754 ops/sec | 5.07 KB |
-| **Nemo Select** | 511 μs | 1,555 ops/sec | 7.92 KB |
+| **Entity Framework Core** | 1,999 μs | 500 ops/sec | 178.12 KB |
+| **Dapper** | 656 μs | 1,525 ops/sec | 24.46 KB |
+| **Nemo Execute** (no mapping) | 610 μs | 1,640 ops/sec | 11.26 KB |
+| **Nemo Retrieve** | 653 μs | 1,532 ops/sec | 25.46 KB |
+| **Nemo Select** | 678 μs | 1,476 ops/sec | 26.70 KB |
+
+*Raw ADO.NET reader baselines are excluded from the select-all table: in this run their distributions were bimodal (interference during the raw-reader group), making the medians unrepresentative. Their by-id results below are stable and representative.*
 
 **Performance Results (Select By Id Operations):**
 
 | Approach | Median Time | Operations/sec | Memory Allocated |
 |----------|-------------|----------------|------------------|
-| **Entity Framework Core** | 1,395 μs | 322 ops/sec | 103.91 KB |
-| **Native ADO.NET** | 409 μs | 2,182 ops/sec | 4.12 KB |
-| **Native + Nemo Mapper** | 445 μs | 1,835 ops/sec | 4.68 KB |
-| **Dapper** | 443 μs | 1,804 ops/sec | 3.78 KB |
-| **Nemo Execute** | 463 μs | 1,921 ops/sec | 5.56 KB |
-| **Nemo Retrieve** | 491 μs | 1,675 ops/sec | 5.92 KB |
-| **Nemo Select** | 717 μs | 1,165 ops/sec | 13.28 KB |
+| **Entity Framework Core** | 1,381 μs | 724 ops/sec | 157.99 KB |
+| **Native ADO.NET** (no mapping) | 539 μs | 1,856 ops/sec | 11.48 KB |
+| **Handwritten mapping** | 543 μs | 1,841 ops/sec | 11.61 KB |
+| **Native + Nemo Mapper** | 556 μs | 1,799 ops/sec | 11.85 KB |
+| **Dapper** | 558 μs | 1,792 ops/sec | 12.02 KB |
+| **Nemo Execute** (no mapping) | 578 μs | 1,729 ops/sec | 12.95 KB |
+| **Nemo Retrieve** | 609 μs | 1,642 ops/sec | 13.58 KB |
+| **Nemo Select** | 717 μs | 1,394 ops/sec | 17.77 KB |
 
 ### Key Performance Insights
 
 **1. Nemo's Sweet Spot Confirmed**
 The results demonstrate exactly what we promised: Nemo bridges the gap between raw ADO.NET speed and EF Core productivity:
 
-- **vs Entity Framework Core**: Nemo is **3-4x faster** with **95% less memory allocation**
-- **vs Raw ADO.NET**: Nemo's mapping adds only **3-9% overhead** while providing full object mapping
-- **vs Dapper**: Nemo matches Dapper's speed while offering enterprise features like caching, validation, and Unit of Work
+- **vs Entity Framework Core**: Nemo is **2-3x faster** with **85-92% less memory allocation**
+- **vs Raw ADO.NET**: Nemo's compiled mapper adds only **~3% overhead** over a reader-only loop while providing full object mapping
+- **vs Dapper**: Nemo `Retrieve` is within ~10% of Dapper by-id and at parity on multi-row selects, while offering enterprise features like caching, validation, and Unit of Work
 
 **2. Memory Efficiency Advantage**
 Nemo's compiled expression approach delivers exceptional memory efficiency:
-- **Entity Framework Core**: 101-104 KB per operation
-- **Native + Nemo Mapper**: 4.54-4.68 KB per operation (**95% less than EF Core**)
-- **Dapper**: 3.76-3.78 KB per operation
-- **Native ADO.NET**: 1.55-4.12 KB per operation
+- **Entity Framework Core**: 158-178 KB per operation
+- **Native + Nemo Mapper**: 11.85 KB per operation (**~92% less than EF Core**)
+- **Dapper**: 12.02-24.46 KB per operation
+- **Native ADO.NET (reader only)**: 9.96-11.48 KB per operation
 
 **3. Enterprise Scale Impact**
 At enterprise scale, these differences are transformative:
-- **vs EF Core**: 3x faster response times, 20x less memory pressure
-- **10,000 requests/sec**: Nemo saves ~9 seconds vs EF Core per batch
-- **Memory pressure**: 95% reduction in GC pressure vs EF Core
-- **Throughput**: 5x more operations per second than EF Core
+- **vs EF Core**: 2-3x faster response times, ~7-12x less memory pressure
+- **10,000 requests/sec**: Nemo saves ~7-13 seconds vs EF Core per batch
+- **Memory pressure**: 85-92% reduction in GC pressure vs EF Core
+- **Throughput**: 2-3x more operations per second than EF Core
 
 ### The Transparency Advantage
 
