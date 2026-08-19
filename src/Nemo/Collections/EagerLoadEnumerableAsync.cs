@@ -23,11 +23,21 @@ namespace Nemo.Collections
         private readonly Dictionary<string, Type> _sqlMap;
         private readonly List<string> _sqlOrder;
         private Func<string, IList<Type>, CancellationToken, Task<IEnumerable<T>>> _load;
-       
+        private string _operation;
+        private Type[] _operationTypes;
+
         public EagerLoadEnumerableAsync(IEnumerable<string> sql, IEnumerable<Type> types, Func<string, IList<Type>, CancellationToken, Task<IEnumerable<T>>> load, Expression<Func<T, bool>> predicate, DialectProvider provider, SelectOption selectOption, string connectionName, DbConnection connection, int page, int pageSize, int skipCount, INemoConfiguration config)
         {
             _sqlOrder = sql.ToList();
-            _sqlMap = _sqlOrder.Zip(types, (s, t) => new { Key = s, Value = t }).ToDictionary(t => t.Key, t => t.Value);
+            _sqlMap = new Dictionary<string, Type>(_sqlOrder.Count);
+            using (var type = types.GetEnumerator())
+            {
+                foreach (var statement in _sqlOrder)
+                {
+                    if (!type.MoveNext()) break;
+                    _sqlMap.Add(statement, type.Current);
+                }
+            }
             _load = load;
             Predicate = predicate;
             Provider = provider;
@@ -43,8 +53,8 @@ namespace Nemo.Collections
         internal async Task<IEnumerator<T>> GetEnumeratorAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var types = _sqlMap.Arrange(_sqlOrder, t => t.Key).Select(t => t.Value).ToArray();
-            var result = await _load(_sqlOrder.ToDelimitedString("; "), types, cancellationToken).ConfigureAwait(false);
+            var types = _operationTypes ?? (_operationTypes = GetOperationTypes());
+            var result = await _load(_operation ?? (_operation = GetOperation()), types, cancellationToken).ConfigureAwait(false);
 
             var multiresult = result as IMultiResult;
             if (multiresult != null)
@@ -69,6 +79,21 @@ namespace Nemo.Collections
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             return new EagerLoadEnumeratorAsync(GetEnumeratorAsync, cancellationToken);
+        }
+
+        private string GetOperation()
+        {
+            return _sqlOrder.Count == 1 ? _sqlOrder[0] : _sqlOrder.ToDelimitedString("; ");
+        }
+
+        private Type[] GetOperationTypes()
+        {
+            var types = new Type[_sqlOrder.Count];
+            for (var i = 0; i < _sqlOrder.Count; i++)
+            {
+                types[i] = _sqlMap[_sqlOrder[i]];
+            }
+            return types;
         }
 
         internal Expression<Func<T, bool>> Predicate { get; }
@@ -96,6 +121,8 @@ namespace Nemo.Collections
             {
                 _sqlOrder.Add(item.Key);
                 _sqlMap.Add(item.Key, item.Value);
+                _operation = null;
+                _operationTypes = null;
             }
             return this;
         }
